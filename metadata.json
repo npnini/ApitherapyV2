@@ -1,0 +1,7 @@
+{
+  "name": "ApitherapyCare: Interactive 3D Treatment Planner",
+  "description": "A professional apitherapy management tool featuring AI-driven protocol selection and an interactive 3D human model for mapping bee sting treatment points.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
