@@ -1,0 +1,103 @@
+
+import React, { useState } from 'react';
+import { User, PatientData } from '../types';
+import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, Search, Mail } from 'lucide-react';
+
+interface PatientsDashboardProps {
+  user: User;
+  patients: PatientData[];
+  onAddPatient: () => void;
+  onStartTreatment: (patient: PatientData) => void;
+  onUpdatePatient: (patient: PatientData) => void;
+  onShowTreatments: (patient: PatientData) => void;
+}
+
+const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const filteredPatients = patients.filter(p => 
+    p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.identityNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Welcome, {user.fullName.split(' ')[0]}!</h2>
+          <p className="text-slate-500">Your central hub for patient management.</p>
+        </div>
+        <button onClick={onAddPatient} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10">
+          <PlusCircle size={16} />
+          Add New Patient
+        </button>
+      </div>
+
+      <div className="relative">
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input 
+          type="text"
+          placeholder="Search by name, ID, or email..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500"
+        />
+      </div>
+      
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm">
+        <div className="p-6 grid grid-cols-12 gap-4 font-black text-slate-400 text-[10px] uppercase tracking-widest border-b">
+            <div className="col-span-3">Patient</div>
+            <div className="col-span-2">Contact</div>
+            <div className="col-span-2">Condition</div>
+            <div>Severity</div>
+            <div>Last Treatment</div>
+            <div className="col-span-2 text-right pr-4">Actions</div>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {filteredPatients.length > 0 ? (
+            filteredPatients.map(patient => (
+              <div key={patient.id} className="grid grid-cols-12 gap-4 items-center p-6 group">
+                <div className="col-span-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-500 text-xs">{patient.fullName.slice(0, 2)}</div>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{patient.fullName}</p>
+                    <p className="font-mono text-xs text-slate-500">ID: {patient.identityNumber}</p>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                    <a href={`mailto:${patient.email}`} className="text-xs text-slate-600 hover:text-yellow-600 flex items-center gap-2">
+                      <Mail size={12}/> {patient.email}
+                    </a>
+                    <p className="font-mono text-xs text-slate-500 pt-1">{patient.mobile}</p>
+                </div>
+                <div className="col-span-2 text-xs font-bold text-slate-600 uppercase tracking-wider">{patient.condition}</div>
+                <div>
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full ${patient.severity === 'Severe' ? 'bg-red-100 text-red-800' : patient.severity === 'Moderate' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                    {patient.severity}
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-slate-500">{patient.lastTreatment}</div>
+                <div className="col-span-2 flex items-center justify-end gap-1">
+                    <button onClick={() => onUpdatePatient(patient)} className="p-2 text-slate-400 hover:text-slate-800 transition rounded-lg"><Edit size={14} /></button>
+                    <button onClick={() => onShowTreatments(patient)} className="p-2 text-slate-400 hover:text-slate-800 transition rounded-lg"><FileText size={14} /></button>
+                    <button onClick={() => onStartTreatment(patient)} className="bg-slate-900 text-white font-bold py-2 pl-3 pr-2 rounded-lg text-xs flex items-center gap-1.5 group-hover:bg-yellow-500 group-hover:text-slate-900 transition-all">
+                      Start <ChevronRight size={14} />
+                    </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center p-12 text-slate-500">
+              <UserIcon className="mx-auto mb-4" size={40} />
+              <h3 className="font-bold text-lg">No Patients Found</h3>
+              <p className="text-sm">No patients match your search criteria. Try adding a new patient.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PatientsDashboard;
