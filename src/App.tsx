@@ -1,168 +1,152 @@
-
-import React, { useState, useEffect } from 'react';
-import { PatientData, User, TreatmentSession } from './types';
-import Login from './components/Login'; // Corrected import path
-import CaretakerDetails from './components/CaretakerDetails';
-import PatientsDashboard from './components/PatientsDashboard';
+import React, { useState, useEffect, useCallback } from 'react';
+import { auth, db } from '../firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { Login } from './components/Login';
+import Dashboard from './components/Dashboard';
 import PatientDetails from './components/PatientDetails';
-import TreatmentsList from './components/TreatmentsList';
-import Treatment from './components/Treatment';
-import { auth, db } from './firebase';
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { collection, doc, getDoc, setDoc, getDocs, query, where, writeBatch } from "firebase/firestore";
-import { Beaker, ShieldCheck, Settings, Menu, ChevronRight, LayoutDashboard, BarChart3, ShieldAlert, User as UserIcon, LogOut } from 'lucide-react';
+import TreatmentPlanner from './components/TreatmentPlanner';
+import Header from './components/Header';
+import { PatientData } from './types/patient';
+import { AppUser } from './types/user';
+import { Treatment } from './types/treatment';
 
-type AppView = 'dashboard' | 'treatment' | 'reporting' | 'admin' | 'patient_details' | 'treatments_list' | 'caretaker_details';
-
-const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
-    <div className="w-full h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
-        <Beaker size={48} className="text-yellow-500 animate-pulse"/>
-        <p className="text-lg font-black tracking-tighter mt-4">{message}</p>
-    </div>
-);
+type View = 'dashboard' | 'patient_details' | 'treatment_planner';
 
 const App: React.FC = () => {
-  const [appUser, setAppUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+    const [appUser, setAppUser] = useState<AppUser | null>(null);
+    const [patients, setPatients] = useState<PatientData[]>([]);
+    const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
+    const [treatments, setTreatments] = useState<Treatment[]>([]);
+    const [currentView, setCurrentView] = useState<View>('dashboard');
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const [patients, setPatients] = useState<PatientData[]>([]);
-  const [treatments, setTreatments] = useState<TreatmentSession[]>([]);
+    const fetchData = useCallback(async (user: AppUser) => {
+        setIsLoading(true);
+        try {
+            const q = query(collection(db, "patients"), where("caretakerId", "==", user.userId));
+            const querySnapshot = await getDocs(q);
+            const patientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PatientData));
+            setPatients(patientsData);
 
-  const [currentView, setCurrentView] = useState<AppView>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-            setIsLoading(true);
-            await handleUserLogin(firebaseUser);
-            setIsLoading(false);
-        } else {
-            setAppUser(null);
+            if (selectedPatient) {
+                const treatmentsQuery = query(collection(db, `patients/${selectedPatient.id}/treatments`));
+                const treatmentsSnapshot = await getDocs(treatmentsQuery);
+                const treatmentsData = treatmentsSnapshot.docs.map(doc => ({ ...doc.data() } as Treatment));
+                setTreatments(treatmentsData);
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
             setIsLoading(false);
         }
-    });
-    return () => unsubscribe();
-  }, []);
+    }, [selectedPatient]);
 
-  const handleUserLogin = async (firebaseUser: FirebaseUser) => {
-    const userRef = doc(db, "users", firebaseUser.uid);
-    const userSnap = await getDoc(userRef);
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
+            if (user && user.email) {
+                const appUserData: AppUser = {
+                    userId: user.uid,
+                    email: user.email,
+                    displayName: user.displayName || 'No Name',
+                    photoURL: user.photoURL || ''
+                };
+                setAppUser(appUserData);
+                await fetchData(appUserData);
+            } else {
+                setAppUser(null);
+                setPatients([]);
+                setSelectedPatient(null);
+                setTreatments([]);
+                setCurrentView('dashboard');
+            }
+            setIsLoading(false);
+        });
+        return () => unsubscribe();
+    }, [fetchData]);
 
-    if (userSnap.exists()) {
-      const userData = userSnap.data() as User;
-      setAppUser(userData);
-      await fetchData(userData);
-      setNeedsOnboarding(false);
-      setCurrentView('dashboard');
-    } else {
-      const newUser: User = {
-        userId: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        fullName: firebaseUser.displayName || '',
-        mobile: firebaseUser.phoneNumber || '',
-        role: 'caretaker'
+    const handleLogout = async () => {
+        await signOut(auth);
+    };
+
+    const handleSelectPatient = (patient: PatientData) => {
+        setSelectedPatient(patient);
+        setCurrentView('patient_details');
+    };
+    const handleAddPatient = () => {
+        if (!appUser) return;
+        const newPatient: PatientData = { id: `p${Date.now()}`, fullName: '', age: 0, identityNumber: '', email: '', mobile: '', condition: '', severity: 'Mild', caretakerId: appUser.userId, lastTreatment: new Date().toISOString().split('T')[0] };
+        setSelectedPatient(newPatient);
+        setCurrentView('patient_details');
       };
-      try {
-        await setDoc(userRef, newUser);
-        setAppUser(newUser);
-        if (!newUser.fullName) { setNeedsOnboarding(true); }
-        else { await fetchData(newUser); }
-      } catch (error) {
-        console.error("Firebase Write Error:", error);
-        await auth.signOut();
-      }
+    
+      const handleSavePatient = async (updatedPatient: PatientData) => {
+        if(!appUser) return;
+        setIsLoading(true);
+        await setDoc(doc(db, "patients", updatedPatient.id), updatedPatient, { merge: true });
+        await fetchData(appUser);
+        setSelectedPatient(null);
+        setCurrentView('dashboard');
+        setIsLoading(false);
+      };
+
+    const handleBackToDashboard = () => {
+        setSelectedPatient(null);
+        setCurrentView('dashboard');
+    };
+
+    const handleStartTreatment = () => {
+        if (selectedPatient) {
+            setCurrentView('treatment_planner');
+        }
+    };
+    
+    const handleSaveTreatments = async (updatedTreatments: Treatment[]) => {
+        if (!selectedPatient) return;
+        setIsSaving(true);
+        try {
+            const batch = [];
+            for (const treatment of updatedTreatments) {
+                const treatmentRef = doc(db, `patients/${selectedPatient.id}/treatments`, treatment.id);
+                batch.push(setDoc(treatmentRef, treatment, { merge: true }));
+            }
+            await Promise.all(batch);
+            setTreatments(updatedTreatments); 
+        } catch (error) {
+            console.error("Error saving treatments:", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const renderContent = () => {
+        if (isLoading) {
+            return <div className="flex justify-center items-center h-full"><div>Initializing...</div></div>;
+        }
+
+        switch (currentView) {
+            case 'patient_details':
+                return selectedPatient && <PatientDetails patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatment} />;
+            case 'treatment_planner':
+                return selectedPatient && <TreatmentPlanner patient={selectedPatient} treatments={treatments} onSave={handleSaveTreatments} onBack={() => setCurrentView('patient_details')} isSaving={isSaving} />;
+            default:
+                return <Dashboard patients={patients} onSelectPatient={handleSelectPatient} onAddPatient={handleAddPatient} />;
+        }
+    };
+
+    if (!appUser) {
+        return <Login />;
     }
-  };
 
-  const fetchData = async (currentUser: User) => {
-    const patientsQuery = query(collection(db, "patients"), where("caretakerId", "==", currentUser.userId));
-    const patientsSnapshot = await getDocs(patientsQuery);
-    const patientsList = patientsSnapshot.docs.map(doc => doc.data() as PatientData);
-    setPatients(patientsList);
-  };
-
-  const handleSignOut = async () => {
-      await auth.signOut();
-  }
-
-  const handleCaretakerSave = async (details: { userId: string; fullName: string; mobile: string; }) => {
-    if (!appUser) return;
-    setIsLoading(true);
-    const updatedUser = { ...appUser, ...details };
-    await setDoc(doc(db, "users", appUser.userId), updatedUser);
-    setAppUser(updatedUser);
-    setNeedsOnboarding(false);
-    await fetchData(updatedUser);
-    setCurrentView('dashboard');
-    setIsLoading(false);
-  };
-
-  const handleAddPatient = () => {
-    if (!appUser) return;
-    const newPatient: PatientData = { id: `p${Date.now()}`, fullName: '', identityNumber: '', email: '', mobile: '', condition: '', severity: 'Mild', caretakerId: appUser.userId, lastTreatment: new Date().toISOString().split('T')[0] };
-    setSelectedPatient(newPatient);
-    setCurrentView('patient_details');
-  };
-
-  const handleSavePatient = async (updatedPatient: PatientData) => {
-    if(!appUser) return;
-    setIsLoading(true);
-    await setDoc(doc(db, "patients", updatedPatient.id), updatedPatient, { merge: true });
-    await fetchData(appUser);
-    setSelectedPatient(null);
-    setCurrentView('dashboard');
-    setIsLoading(false);
-  };
-
-  const handleSaveTreatment = async (treatment: TreatmentSession) => {
-    if(!appUser) return;
-    setIsLoading(true);
-    const batch = writeBatch(db);
-    batch.set(doc(db, "treatments", treatment.id), treatment);
-    batch.update(doc(db, "patients", treatment.patientId), { lastTreatment: treatment.date.split('T')[0] });
-    await batch.commit();
-    await fetchData(appUser);
-    setCurrentView('dashboard');
-    setIsLoading(false);
-  };
-
-  const handleStartTreatment = (p: PatientData) => { setSelectedPatient(p); setCurrentView('treatment'); };
-  const handleUpdatePatient = (p: PatientData) => { setSelectedPatient(p); setCurrentView('patient_details'); };
-  const handleShowTreatments = (p: PatientData) => { setSelectedPatient(p); setCurrentView('treatments_list'); };
-  const handleBackToDashboard = () => { setSelectedPatient(null); setCurrentView('dashboard'); };
-  const handleEditCaretaker = () => { setCurrentView('caretaker_details'); };
-
-  if (isLoading) {
-    return <LoadingSpinner message="Initializing..." />;
-  }
-
-  if (!appUser) {
-    return <Login />;
-  }
-
-  if (needsOnboarding) {
-      return <CaretakerDetails user={appUser} onSave={handleCaretakerSave} />
-  }
-
-  const renderMainView = () => {
-      switch (currentView) {
-          case 'dashboard': return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onStartTreatment={handleStartTreatment} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} />;
-          case 'patient_details': return selectedPatient && <PatientDetails patient={selectedPatient} onSave={handleSavePatient} onCancel={handleBackToDashboard} />;
-          case 'treatments_list': return selectedPatient && <TreatmentsList patient={selectedPatient} treatments={treatments.filter(t => t.patientId === selectedPatient.id)} onBack={handleBackToDashboard} />;
-          case 'treatment': return selectedPatient && <Treatment patient={selectedPatient} onSave={handleSaveTreatment} onExit={handleBackToDashboard} />;
-          case 'caretaker_details': return <CaretakerDetails user={appUser} onSave={handleCaretakerSave} />;
-          default: return <div>Unknown View</div>;
-      }
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex font-sans overflow-hidden">
-        {/* Sidebar and Main Content... */}
-    </div>
-  );
+    return (
+        <div className="min-h-screen bg-gray-100">
+            <Header user={appUser} onLogout={handleLogout} />
+            <main className="p-4 md:p-8">
+                {renderContent()}
+            </main>
+        </div>
+    );
 };
 
 export default App;
