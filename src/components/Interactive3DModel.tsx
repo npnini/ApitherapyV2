@@ -3,7 +3,7 @@ import React, { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html, Capsule, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
-import { StingPoint, Protocol } from '../types';
+import { StingPoint, Protocol } from '../../types';
 
 // Stylized Human Model Component (built with primitives)
 const StylizedHuman: React.FC = () => {

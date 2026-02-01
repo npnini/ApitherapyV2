@@ -1,18 +1,34 @@
 
 import React, { useState, useEffect } from 'react';
-import { PatientData } from '../types';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { PatientData } from '../types/patient';
+import { ChevronLeft, ChevronDown, Plus } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface PatientDetailsProps {
   patient: PatientData;
   onSave: (patient: PatientData) => void;
-  onCancel: () => void;
+  onBack: () => void;
+  onStartTreatment: () => void;
 }
 
-const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, onSave, onCancel }) => {
+const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, onSave, onBack, onStartTreatment }) => {
   const [formData, setFormData] = useState<PatientData>(patient);
+  const [caretakerName, setCaretakerName] = useState('');
 
-  useEffect(() => { setFormData(patient); }, [patient]);
+  useEffect(() => {
+    setFormData(patient);
+    if (patient.caretakerId) {
+      const fetchCaretakerName = async () => {
+        const userDocRef = doc(db, 'users', patient.caretakerId);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setCaretakerName(userDoc.data().fullName);
+        }
+      };
+      fetchCaretakerName();
+    }
+  }, [patient]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -28,7 +44,7 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, onSave, onCanc
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-3xl p-8 shadow-lg border border-slate-100 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-black text-slate-800 tracking-tighter">Patient Information</h2>
-        <button type="button" onClick={onCancel} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition"><ChevronLeft size={16} /> Back</button>
+        <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition"><ChevronLeft size={16} /> Back</button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -66,15 +82,21 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, onSave, onCanc
             <ChevronDown size={16} className="absolute right-4 top-10 text-slate-400 pointer-events-none" />
           </div>
            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Caretaker ID</label>
-              <p className="font-mono text-sm p-3 mt-1 bg-slate-50 border border-slate-100 rounded-xl">{formData.caretakerId}</p>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Caretaker</label>
+              <p className="font-mono text-sm p-3 mt-1 bg-slate-50 border border-slate-100 rounded-xl">{caretakerName || 'Not Assigned'}</p>
             </div>
         </div>
       </div>
       
-      <div className="mt-8 flex justify-end gap-4">
-        <button type="button" onClick={onCancel} className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
-        <button type="submit" className="px-8 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition">Save Changes</button>
+      <div className="mt-8 flex justify-between items-center">
+        <button type="button" onClick={onStartTreatment} className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-yellow-500 hover:bg-yellow-400 transition flex items-center gap-2">
+            <Plus size={16} />
+            Start New Treatment
+        </button>
+        <div className="flex gap-4">
+            <button type="button" onClick={onBack} className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
+            <button type="submit" className="px-8 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition">Save Changes</button>
+        </div>
       </div>
     </form>
   );

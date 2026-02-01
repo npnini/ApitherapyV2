@@ -12,7 +12,7 @@ import {
     signOut 
 } from "firebase/auth";
 import { doc, getDoc, collection, query, where, getDocs, limit, startAfter } from "firebase/firestore";
-import { auth, db } from './firebaseConfig';
+import { auth, db } from '../firebase';
 
 // --- Authentication Functions ---
 

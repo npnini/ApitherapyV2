@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { User, PatientData } from '../types';
+import { AppUser } from '../types/user';
+import { PatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, Search, Mail } from 'lucide-react';
 
 interface PatientsDashboardProps {
-  user: User;
+  user: AppUser;
   patients: PatientData[];
   onAddPatient: () => void;
   onStartTreatment: (patient: PatientData) => void;
@@ -25,7 +26,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     <div className="space-y-8 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Welcome, {user.fullName.split(' ')[0]}!</h2>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Welcome, {(user.displayName || '').split(' ')[0]}!</h2>
           <p className="text-slate-500">Your central hub for patient management.</p>
         </div>
         <button onClick={onAddPatient} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10">
