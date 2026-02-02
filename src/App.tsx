@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -13,9 +14,9 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
-import { StingingPoint, Protocol } from './types/protocol'; // Use StingingPoint
+import { StingingPoint, Protocol } from './types/protocol';
 
-type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin' | 'treatment_history' | 'user_details';
+type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'treatment_history' | 'user_details';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -71,14 +72,14 @@ const App: React.FC = () => {
     }, [fetchInitialData]);
 
     const handleLogout = async () => { await signOut(auth); };
-    const handleAdminClick = () => { setCurrentView('admin'); };
+    const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
         setSaveStatus('saving');
         const userRef = doc(db, 'users', appUser.uid);
-        const { uid, ...userDataToSave } = updatedUser; // Exclude uid from the document data
+        const { uid, ...userDataToSave } = updatedUser;
         await updateDoc(userRef, userDataToSave);
         setAppUser(updatedUser);
         setSaveStatus('idle');
@@ -146,7 +147,6 @@ const App: React.FC = () => {
         setCurrentView('treatment_execution');
     };
     
-    // CORRECTED: This function now accepts the correct data structure
     const handleSaveTreatment = async (stungPoints: StingingPoint[], finalNotes: string) => {
         if (!selectedPatient || !activeProtocol || !appUser) return;
         setSaveStatus('saving');
@@ -157,7 +157,6 @@ const App: React.FC = () => {
                 protocolName: activeProtocol.name,
                 patientReport: treatmentNotes.report,
                 vitals: `BP: ${treatmentNotes.bloodPressure}, HR: ${treatmentNotes.heartRate}`,
-                // CORRECTED: Save the array of stung point objects directly
                 stungPoints: stungPoints, 
                 finalNotes: finalNotes,
                 caretakerId: appUser.userId
@@ -178,7 +177,13 @@ const App: React.FC = () => {
 
         return (
             <div className="flex min-h-screen bg-slate-50">
-                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onUserDetailsClick={handleUserDetailsClick} />
+                <Sidebar 
+                    user={appUser} 
+                    onLogout={handleLogout} 
+                    onAdminClick={handleAdminClick} 
+                    onUserDetailsClick={handleUserDetailsClick}
+                    onPatientsClick={handleBackToDashboard} 
+                />
                 <main className="flex-grow p-4 md:p-8">
                     {(() => {
                         switch (currentView) {
@@ -192,7 +197,7 @@ const App: React.FC = () => {
                                 return selectedPatient && activeProtocol && <TreatmentExecution patient={selectedPatient} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />;
                             case 'treatment_history':
                                 return selectedPatient && <TreatmentHistory patient={selectedPatient} onBack={handleBackToDashboard} />;
-                            case 'admin':
+                            case 'admin_protocols':
                                 return <ProtocolAdmin />;
                             default:
                                 return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} />;
