@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings } from 'lucide-react';
 
 interface SidebarProps {
     user: AppUser | null;
@@ -9,9 +9,10 @@ interface SidebarProps {
     onAdminClick: () => void; 
     onUserDetailsClick: () => void;
     onPatientsClick: () => void;
+    onPointsAdminClick: () => void; // New prop for points admin
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick }) => {
     const [configOpen, setConfigOpen] = useState(false);
 
     if (!user) {
@@ -53,6 +54,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
                             <div className="pl-8 mt-2 space-y-1">
                                 <button onClick={onAdminClick} className="w-full text-left p-2 rounded-lg hover:bg-slate-700 transition text-sm">
                                     Protocol Configuration
+                                </button>
+                                <button onClick={onPointsAdminClick} className="w-full text-left p-2 rounded-lg hover:bg-slate-700 transition text-sm">
+                                    Points Configuration
                                 </button>
                             </div>
                         )}

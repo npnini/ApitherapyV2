@@ -1,153 +1,203 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { PatientData } from '../types/patient';
-import { Protocol, StingingPoint } from '../types/protocol';
-import { Treatment } from '../types/treatment';
-import { AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Protocol } from '../types/protocol';
+import { StingPoint } from '../types/apipuncture';
+import BodyScene from './BodyScene';
+import { AlertTriangle, CheckCircle, XCircle, Trash2, Loader, MousePointerClick, List } from 'lucide-react';
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
+
+interface HydratedProtocol extends Omit<Protocol, 'points'> {
+    points: StingPoint[];
+}
 
 interface TreatmentExecutionProps {
     patient: PatientData;
     protocol: Protocol;
-    onSave: (treatments: any[], notes: string) => void; // Changed to any[] to accommodate new structure
+    onSave: (stungPointIds: string[], notes: string) => void;
     onBack: () => void;
     saveStatus: SaveStatus;
     onFinish: () => void;
 }
 
 const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protocol, onSave, onBack, saveStatus, onFinish }) => {
-    const protocolPoints = protocol.points || [];
-    const [stungPoints, setStungPoints] = useState<StingingPoint[]>([]);
-    const [manualPointID, setManualPointID] = useState('');
-    const [manualPointName, setManualPointName] = useState('');
-    const [addPointError, setAddPointError] = useState('');
+    const [hydratedProtocol, setHydratedProtocol] = useState<HydratedProtocol | null>(null);
+    const [isHydrating, setIsHydrating] = useState(true);
+    const [hydrationError, setHydrationError] = useState<string | null>(null);
+
+    const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
+    const [activePointId, setActivePointId] = useState<string | null>(null);
+    const [isRolling, setIsRolling] = useState(true);
     const [finalNotes, setFinalNotes] = useState('');
 
-    const handleSelectPoint = (pointToAdd: StingingPoint) => {
-        if (!stungPoints.some(p => p.ID === pointToAdd.ID)) {
-            setStungPoints([...stungPoints, pointToAdd]);
-        }
-    };
+    const hydrateProtocol = useCallback(async () => {
+        setIsHydrating(true);
+        setHydrationError(null);
+        try {
+            const pointIds = protocol.points as unknown as string[];
+            if (!pointIds || pointIds.length === 0) {
+                setHydratedProtocol({ ...protocol, points: [] });
+                return;
+            }
 
-    const handleAddManualPoint = () => {
-        setAddPointError('');
-        if (manualPointID.trim() === '' || manualPointName.trim() === '') {
-            setAddPointError('Both ID and Name are required for custom points.');
-            return;
+            const pointPromises = pointIds.map(id => getDoc(doc(db, 'acupuncture_points', id)));
+            const pointDocs = await Promise.all(pointPromises);
+
+            const points: StingPoint[] = pointDocs.map(doc => {
+                if (!doc.exists()) {
+                    throw new Error(`Point with ID ${doc.id} not found.`);
+                }
+                const data = doc.data();
+                if (!data.position || data.position.x === undefined || data.position.y === undefined || data.position.z === undefined) {
+                    console.warn(`Point ${doc.id} is missing 3D coordinate data.`);
+                }
+                return { ...data, id: doc.id } as StingPoint;
+            });
+            
+            setHydratedProtocol({ ...protocol, points });
+
+        } catch (error) {
+            console.error("Error hydrating protocol:", error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+            setHydrationError(`Failed to load 3D model data. ${errorMessage}`);
+        } finally {
+            setIsHydrating(false);
         }
-        const newPoint: StingingPoint = {
-            ID: manualPointID.trim(),
-            name: manualPointName.trim(),
-            quantity: 1
-        };
-        setStungPoints([...stungPoints, newPoint]);
-        setManualPointID('');
-        setManualPointName('');
-    };
+    }, [protocol]);
+
+    useEffect(() => {
+        hydrateProtocol();
+    }, [hydrateProtocol]);
+
+    const handlePointSelect = useCallback((pointToAdd: StingPoint) => {
+        if (!stungPoints.some(p => p.id === pointToAdd.id)) {
+            setStungPoints(currentStungPoints => [...currentStungPoints, pointToAdd]);
+        }
+        setActivePointId(pointToAdd.id);
+    }, [stungPoints]);
 
     const handleRemoveStungPoint = (pointIdToRemove: string) => {
-        setStungPoints(stungPoints.filter(p => p.ID !== pointIdToRemove));
+        setStungPoints(stungPoints.filter(p => p.id !== pointIdToRemove));
+        if (activePointId === pointIdToRemove) {
+            setActivePointId(null);
+        }
     };
 
     const handleSave = () => {
-        const treatmentsToSave = stungPoints.map(p => ({
-            ID: p.ID,
-            name: p.name,
-            quantity: p.quantity,
-        }));
-        onSave(treatmentsToSave, finalNotes);
+        const stungPointIds = stungPoints.map(p => p.id);
+        onSave(stungPointIds, finalNotes);
     };
 
-    const isSaving = saveStatus === 'saving';
-
-    const renderSaveButton = () => {
-        if (saveStatus === 'success') {
-            return (
-                <button onClick={onFinish} className="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl transition">
-                    Back to Dashboard
-                </button>
-            );
-        }
+    if (isHydrating) {
         return (
-            <button onClick={handleSave} disabled={isSaving || stungPoints.length === 0} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-xl transition shadow-lg shadow-yellow-500/10 disabled:bg-slate-200 disabled:shadow-none">
-                {isSaving ? 'Saving...' : 'Save Final Treatment'}
-            </button>
+            <div className="flex justify-center items-center h-96">
+                <Loader className="animate-spin h-10 w-10 text-red-500" />
+                <p className="ml-4 text-slate-500">Loading protocol points...</p>
+            </div>
         );
-    };
+    }
 
-    const renderStatusMessage = () => {
-        if (saveStatus === 'success') {
-            return <div className="flex items-center text-green-600"><CheckCircle className="mr-2" /> Treatment saved successfully.</div>;
-        }
-        if (saveStatus === 'error') {
-            return <div className="flex items-center text-red-600"><XCircle className="mr-2" /> Failed to save treatment.</div>;
-        }
-        return null;
-    };
+    if (hydrationError) {
+        return (
+             <div className="text-center p-8 bg-white rounded-3xl shadow-lg border border-slate-100 max-w-lg mx-auto">
+                <AlertTriangle className="mx-auto h-12 w-12 text-yellow-400" />
+                <h3 className="mt-4 text-lg font-bold text-slate-800">Error Loading Data</h3>
+                <p className="mt-2 text-sm text-slate-600">{hydrationError}</p>
+                <p className="mt-2 text-xs text-slate-500">Please ensure all points in the protocol exist in the database and have valid coordinate data.</p>
+                <button onClick={onBack} className="mt-6 bg-slate-800 text-white font-bold py-2 px-6 rounded-lg">Back</button>
+            </div>
+        )
+    }
 
     return (
-        <div className="max-w-6xl mx-auto animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-                <div>
+        <div className="max-w-full mx-auto animate-fade-in px-4">
+            <div className="flex justify-between items-center mb-4">
+                 <div>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Perform Treatment</h2>
-                    <p className="text-slate-500">For: {patient.fullName} | Protocol: {protocol.name}</p>
+                    <p className="text-slate-500">For: <span className='font-bold'>{patient.fullName}</span> | Protocol: <span className='font-bold'>{protocol.name}</span></p>
                 </div>
-                <button onClick={onBack} className="text-sm font-bold text-slate-600 hover:text-slate-900">Back to Protocol Selection</button>
+                <button onClick={onBack} className="text-sm font-bold text-slate-600 hover:text-slate-900">Back</button>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-lg flex items-center justify-center">
-                    <div className="text-center">
-                        <AlertTriangle className="mx-auto h-12 w-12 text-yellow-400" />
-                        <h3 className="mt-2 text-lg font-bold text-slate-800">3D Model Not Loaded</h3>
-                        <p className="mt-1 text-sm text-slate-600">File <code className="bg-slate-200 px-1 rounded">body-model.glb</code> is missing.</p>
-                        <p className="mt-2 text-xs text-slate-500">Add the 3D model to the <code className="bg-slate-200 px-1 rounded">public</code> folder.</p>
+
+            <div className="grid grid-cols-12 gap-4">
+
+                {/* Left Column: Protocol Points */}
+                <div className="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center"><List size={20} className="mr-2"/> Protocol Points</h3>
+                    <p className="text-xs text-slate-500 mb-3">Hover to find, click to add.</p>
+                    <div className="flex-grow space-y-2 overflow-y-auto pr-1">
+                        {hydratedProtocol?.points.map(p => (
+                            <div 
+                                key={p.id}
+                                onMouseEnter={() => setActivePointId(p.id)}
+                                onMouseLeave={() => setActivePointId(null)}
+                                onClick={() => handlePointSelect(p)}
+                                className={`flex justify-between items-center p-2 rounded-lg border-2 transition-all cursor-pointer ${activePointId === p.id ? 'bg-red-100 border-red-300' : 'bg-white border-slate-200 hover:border-red-400'}`}
+                            >
+                                <div>
+                                    <span className="font-bold text-red-600 text-sm">{p.code}</span>
+                                    <span className="text-slate-600 text-xs"> - {p.label}</span>
+                                </div>
+                                {stungPoints.some(sp => sp.id === p.id) && <CheckCircle size={16} className="text-green-500" />}
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-lg flex flex-col">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tighter mb-4">Treatment Data</h3>
-                    
-                    <div className="mb-4">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Protocol Points</label>
-                        <div className="mt-1 p-3 min-h-[6rem] bg-slate-50 border border-slate-200 rounded-xl text-sm space-y-2">
-                            {protocolPoints.length > 0 ? protocolPoints.map(p => (
-                                <div key={p.ID} onClick={() => handleSelectPoint(p)} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:border-yellow-500">
-                                    <span>{p.ID} - {p.name}</span>
-                                </div>
-                            )) : <p className="text-slate-400">No protocol points defined.</p>}
-                        </div>
-                    </div>
+                {/* Center Column: 3D Model */}
+                <div className="col-span-6 bg-white rounded-3xl p-2 border border-slate-100 shadow-lg h-[650px] relative">
+                    <Canvas className="bg-slate-50 rounded-2xl">
+                        <BodyScene 
+                            protocol={hydratedProtocol} 
+                            onPointSelect={handlePointSelect}
+                            activePointId={activePointId}
+                            isRolling={isRolling}
+                        />
+                    </Canvas>
+                </div>
 
-                    <div className="mb-4 flex-grow">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Stung Points</label>
-                        <div className="mt-1 p-3 min-h-[8rem] bg-slate-50 border border-slate-200 rounded-xl text-sm space-y-2">
+                {/* Right Column: Treatment Data */}
+                <div className="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center"><MousePointerClick size={20} className="mr-2"/>Treatment Data</h3>
+                        <label htmlFor="autorotate" className="flex items-center cursor-pointer">
+                            <span className="text-sm font-bold text-slate-600 mr-2">Auto-Rotate</span>
+                            <div className="relative">
+                                <input id="autorotate" type="checkbox" className="sr-only" checked={isRolling} onChange={() => setIsRolling(!isRolling)} />
+                                <div className={`block w-10 h-6 rounded-full ${isRolling ? 'bg-red-500' : 'bg-slate-300'}`}></div>
+                                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isRolling ? 'translate-x-full' : ''}`}></div>
+                            </div>
+                        </label>
+                    </div>
+                     <div className="flex-grow flex flex-col mb-4">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Stung Points ({stungPoints.length})</label>
+                        <div className="mt-1 p-3 min-h-[12rem] max-h-[12rem] overflow-y-auto bg-slate-50 border border-slate-200 rounded-xl text-sm space-y-2">
                             {stungPoints.length > 0 ? stungPoints.map(p => (
-                                <div key={p.ID} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 animate-fade-in-fast">
-                                    <span>{p.ID} - {p.name}</span>
-                                    <button onClick={() => handleRemoveStungPoint(p.ID)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
+                                <div key={p.id} onClick={() => setActivePointId(p.id)} className={`flex justify-between items-center p-2 rounded-lg border transition-all cursor-pointer ${activePointId === p.id ? 'bg-red-100 border-red-300' : 'bg-white border-slate-200 hover:border-red-400'}`}>
+                                    <div>
+                                        <span className="font-bold text-red-600">{p.code}</span> - <span className="font-semibold text-slate-800">{p.label}</span>
+                                    </div>
+                                    <button onClick={(e) => {e.stopPropagation(); handleRemoveStungPoint(p.id)}} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
                                 </div>
-                            )) : <p className="text-slate-400">No points stung yet.</p>}
+                            )) : <p className="text-slate-400 text-center py-10">No points stung yet.</p>}
                         </div>
                     </div>
-
-                    <div className="mb-4">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase">Add Custom Point</label>
-                        <div className="flex items-start gap-2 mt-1">
-                            <input type="text" value={manualPointID} onChange={(e) => setManualPointID(e.target.value)} placeholder="ID (e.g., ST36)" className="flex-grow p-3 bg-slate-50 border border-slate-200 rounded-xl" />
-                            <input type="text" value={manualPointName} onChange={(e) => setManualPointName(e.target.value)} placeholder="Name (e.g., Zusanli)" className="flex-grow p-3 bg-slate-50 border border-slate-200 rounded-xl" />
-                            <button onClick={handleAddManualPoint} className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-5 rounded-xl transition self-stretch">Add</button>
-                        </div>
-                        {addPointError && <p className="text-red-500 text-xs mt-1 px-1">{addPointError}</p>}
-                    </div>
-
                     <div className="mb-4">
                         <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="finalNotes">Final Notes</label>
-                        <textarea id="finalNotes" value={finalNotes} onChange={(e) => setFinalNotes(e.target.value)} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={3} placeholder="Add any final observations..."></textarea>
+                        <textarea id="finalNotes" value={finalNotes} onChange={(e) => setFinalNotes(e.target.value)} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={4} placeholder="Add any final observations..."></textarea>
                     </div>
-
-                    <div className="flex justify-end items-center mt-auto pt-4">
-                        <div className="mr-4">{renderStatusMessage()}</div>
-                        {renderSaveButton()}
+                    <div className="mt-auto">
+                         {saveStatus === 'error' && <div className="text-red-600 text-xs mb-2 flex items-center"><XCircle size={14} className="mr-1" /> Failed to save.</div>}
+                         {saveStatus === 'success' && <div className="text-green-600 text-xs mb-2 flex items-center"><CheckCircle size={14} className="mr-1" /> Saved successfully.</div>}
+                        {saveStatus === 'success' ? 
+                            <button onClick={onFinish} className="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl transition">Back to Dashboard</button>
+                            :
+                            <button onClick={handleSave} disabled={saveStatus === 'saving' || stungPoints.length === 0} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg shadow-red-500/20 disabled:bg-slate-300 disabled:shadow-none">{saveStatus === 'saving' ? 'Saving...' : 'Save Final Treatment'}</button>
+                        }
                     </div>
                 </div>
             </div>

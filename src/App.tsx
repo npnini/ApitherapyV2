@@ -8,15 +8,16 @@ import PatientsDashboard from './components/PatientsDashboard';
 import PatientDetails from './components/PatientDetails';
 import Sidebar from './components/Sidebar';
 import ProtocolAdmin from './components/ProtocolAdmin';
+import PointsAdmin from './components/PointsAdmin';
 import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
-import { StingingPoint, Protocol } from './types/protocol';
+import { StingPoint, Protocol } from './types/protocol';
 
-type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'treatment_history' | 'user_details';
+type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -73,6 +74,7 @@ const App: React.FC = () => {
 
     const handleLogout = async () => { await signOut(auth); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
+    const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
@@ -147,7 +149,7 @@ const App: React.FC = () => {
         setCurrentView('treatment_execution');
     };
     
-    const handleSaveTreatment = async (stungPoints: StingingPoint[], finalNotes: string) => {
+    const handleSaveTreatment = async (stungPointIds: string[], finalNotes: string) => {
         if (!selectedPatient || !activeProtocol || !appUser) return;
         setSaveStatus('saving');
         try {
@@ -157,7 +159,7 @@ const App: React.FC = () => {
                 protocolName: activeProtocol.name,
                 patientReport: treatmentNotes.report,
                 vitals: `BP: ${treatmentNotes.bloodPressure}, HR: ${treatmentNotes.heartRate}`,
-                stungPoints: stungPoints, 
+                stungPoints: stungPointIds, 
                 finalNotes: finalNotes,
                 caretakerId: appUser.userId
             };
@@ -181,6 +183,7 @@ const App: React.FC = () => {
                     user={appUser} 
                     onLogout={handleLogout} 
                     onAdminClick={handleAdminClick} 
+                    onPointsAdminClick={handlePointsAdminClick} 
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard} 
                 />
@@ -199,6 +202,8 @@ const App: React.FC = () => {
                                 return selectedPatient && <TreatmentHistory patient={selectedPatient} onBack={handleBackToDashboard} />;
                             case 'admin_protocols':
                                 return <ProtocolAdmin />;
+                            case 'admin_points':
+                                return <PointsAdmin />;
                             default:
                                 return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} />;
                         }

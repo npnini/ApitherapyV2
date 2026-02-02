@@ -1,124 +1,144 @@
 
-import React, { Suspense, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Html, Capsule, Sphere } from '@react-three/drei';
+import React, { useState, useRef, Suspense, useEffect } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
-import { StingPoint, Protocol } from '../../types';
+import { APITHERAPY_PROTOCOLS } from '../data/apipunctureData';
+import { Protocol, StingPoint } from '../types/apipuncture';
+import { HumanModel } from './HumanModel';
+import StingPointMarker from './StingPointMarker';
+import { Target, Info, RotateCcw } from 'lucide-react';
 
-// Stylized Human Model Component (built with primitives)
-const StylizedHuman: React.FC = () => {
-    const material = <meshStandardMaterial color="#cccccc" transparent opacity={0.6} />;
-    return (
-        <group>
-            {/* Torso */}
-            <Capsule args={[0.25, 1, 2, 8]} position={[0, 0.5, 0]}>
-                {material}
-            </Capsule>
-            {/* Head */}
-            <Sphere args={[0.2, 32, 32]} position={[0, 1.45, 0]}>
-                {material}
-            </Sphere>
-            {/* Left Arm */}
-            <Capsule args={[0.08, 0.7, 2, 8]} position={[0.45, 0.6, 0]} rotation={[0, 0, -Math.PI / 9]}>
-                {material}
-            </Capsule>
-            {/* Right Arm */}
-            <Capsule args={[0.08, 0.7, 2, 8]} position={[-0.45, 0.6, 0]} rotation={[0, 0, Math.PI / 9]}>
-                {material}
-            </Capsule>
-            {/* Left Leg */}
-            <Capsule args={[0.1, 0.9, 2, 8]} position={[0.15, -0.5, 0]}>
-                {material}
-            </Capsule>
-            {/* Right Leg */}
-            <Capsule args={[0.1, 0.9, 2, 8]} position={[-0.15, -0.5, 0]}>
-                {material}
-            </Capsule>
-        </group>
-    );
+interface Interactive3DModelProps {
+  initialProtocolId?: string;
+  onPointClick?: (point: StingPoint) => void;
+  showSidebar?: boolean;
+}
+
+const Scene = ({ protocol, activePointId, isRolling, onPointSelect }: any) => {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((_, delta) => {
+    if (isRolling && groupRef.current) groupRef.current.rotation.y += delta * 0.4;
+  });
+
+  return (
+    <>
+      <PerspectiveCamera makeDefault position={[0, 1.2, 3.5]} fov={40} />
+      <OrbitControls enablePan={false} minDistance={1.2} maxDistance={5} target={[0, 1, 0]} />
+      <ambientLight intensity={1} />
+      <directionalLight position={[5, 5, 5]} intensity={1} />
+      <group ref={groupRef}>
+        <HumanModel />
+        {protocol?.points.map((p: StingPoint) => (
+          <StingPointMarker 
+            key={p.id} 
+            point={p} 
+            onClick={onPointSelect} 
+            isHighlighted={activePointId === p.id} 
+          />
+        ))}
+      </group>
+      <Environment preset="city" />
+      <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={10} blur={2} />
+    </>
+  );
 };
 
+const Interactive3DModel: React.FC<Interactive3DModelProps> = ({ 
+  initialProtocolId, 
+  onPointClick,
+  showSidebar = true 
+}) => {
+  const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
+  const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
+  const [isRolling, setIsRolling] = useState(true);
 
-// Point Component
-function Point({ point, isStung, onSelect, onDoubleClick }: { point: StingPoint, isStung: boolean, onSelect: () => void, onDoubleClick: () => void }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const vec = new THREE.Vector3(point.position.x, point.position.y, point.position.z);
-  
+  useEffect(() => {
+    if (initialProtocolId) {
+      const p = APITHERAPY_PROTOCOLS.find(x => x.id === initialProtocolId);
+      if (p) setSelectedProtocol(p);
+    }
+  }, [initialProtocolId]);
+
   return (
-    <mesh position={vec}>
-      <sphereGeometry args={[0.03, 16, 16]} />
-      <meshBasicMaterial color={isStung ? 'yellow' : isHovered ? 'orange' : 'red'} />
-      <Html>
-        <div 
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onClick={onSelect}
-          onDoubleClick={onDoubleClick}
-          style={{ 
-            cursor: 'pointer',
-            width: '20px',
-            height: '20px',
-            transform: 'translate(-50%, -50%)'
-          }} />
-      </Html>
-       {isHovered && (
-        <Html position={[0, 0.05, 0]}>
-          <div className="bg-slate-900 text-white text-xs rounded p-2 shadow-lg">
-            <p className="font-bold text-yellow-500">{point.name}</p>
-            <p>{point.explanation}</p>
+    <div className="flex h-full w-full bg-slate-50 overflow-hidden rounded-xl border border-slate-200">
+      {showSidebar && (
+        <div className="w-72 border-r border-slate-200 bg-white p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <Target className="w-3 h-3" /> Protocols
+          </h3>
+          <div className="flex flex-col gap-1.5">
+            {APITHERAPY_PROTOCOLS.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setSelectedProtocol(p)}
+                className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${
+                  selectedProtocol?.id === p.id 
+                    ? 'bg-red-600 border-red-700 text-white' 
+                    : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <div className="font-bold">{p.name}</div>
+              </button>
+            ))}
           </div>
-        </Html>
-      )}
-    </mesh>
-  );
-}
 
-// Main Component
-interface Interactive3DModelProps {
-  protocol: Protocol | null;
-  stungPoints: StingPoint[];
-  onPointSelected: (point: StingPoint) => void;
-}
-
-// Redefining protocol points with 3D positions to fit the new model
-const protocols3D: Protocol[] = [
-    { id: 'proto1', name: 'Protocol A: Anti-Inflammatory', points: [
-        { id: 'p1', name: 'LI4', explanation: 'Key anti-inflammatory point.', position: { x: 0.55, y: 0.2, z: 0.1 } }, // Hand
-        { id: 'p2', name: 'ST36', explanation: 'Boosts overall energy.', position: { x: 0.2, y: -0.6, z: 0.1 } }, // Lower Leg
-        { id: 'p3', name: 'GB20', explanation: 'Relieves neck tension.', position: { x: 0.1, y: 1.25, z: 0.1 } }, // Neck/Head
-      ]
-    },
-    { id: 'proto2', name: 'Protocol B: Nerve & Systemic Balance', points: [
-          { id: 'p4', name: 'PC6', explanation: 'Calms the nervous system.', position: { x: 0.5, y: 0.1, z: 0.1 } }, // Forearm
-          { id: 'p5', name: 'SP6', explanation: 'Balances multiple systems.', position: { x: 0.18, y: -0.9, z: 0.1 } }, // Ankle
-      ]
-    },
-];
-
-const Interactive3DModel: React.FC<Interactive3DModelProps> = ({ protocol, stungPoints, onPointSelected }) => {
-  const currentProtocol3D = protocol ? protocols3D.find(p => p.id === protocol.id) : null;
-
-  return (
-    <div className="w-full h-full bg-slate-100 rounded-3xl relative">
-      <Canvas camera={{ position: [0, 0, 3.5], fov: 50 }}>
-        <ambientLight intensity={0.8} />
-        <pointLight position={[10, 10, 10]} />
-        <Suspense fallback={null}>
-            <group position={[0, -0.5, 0]}>
-                <StylizedHuman />
-                {currentProtocol3D && currentProtocol3D.points.map(point => (
-                    <Point 
-                        key={point.id} 
-                        point={point} 
-                        isStung={stungPoints.some(sp => sp.id === point.id)}
-                        onSelect={() => { /* Single click can show info, handled by hover for now */ }}
-                        onDoubleClick={() => onPointSelected(point)}
-                    />
+          {selectedProtocol && (
+            <div className="mt-4">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">Points</h4>
+              <div className="flex flex-col gap-1">
+                {selectedProtocol.points.map(pt => (
+                  <div
+                    key={pt.id}
+                    onMouseEnter={() => setHoveredPointId(pt.id)}
+                    onMouseLeave={() => setHoveredPointId(null)}
+                    className={`flex items-center gap-2 p-2 rounded border text-[11px] transition-colors ${
+                      hoveredPointId === pt.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 border-slate-100 text-slate-500'
+                    }`}
+                  >
+                    <span className="font-black text-red-500">{pt.code}</span>
+                    <span className="truncate">{pt.label}</span>
+                  </div>
                 ))}
-            </group>
-        </Suspense>
-        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
-      </Canvas>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex-1 relative bg-white">
+        <div className="absolute top-4 right-4 z-10">
+          <button 
+            onClick={() => setIsRolling(!isRolling)}
+            className={`p-2 rounded-full shadow border transition-colors ${isRolling ? 'bg-red-50 text-red-500' : 'bg-white text-slate-400'}`}
+          >
+            <RotateCcw className={`w-5 h-5 ${isRolling ? 'animate-spin-slow' : ''}`} />
+          </button>
+        </div>
+        
+        <Canvas shadows>
+          <Suspense fallback={null}>
+            <Scene 
+              protocol={selectedProtocol} 
+              activePointId={hoveredPointId} 
+              isRolling={isRolling}
+              onPointSelect={(p: StingPoint) => {
+                if (onPointClick) onPointClick(p);
+                setHoveredPointId(p.id);
+              }}
+            />
+          </Suspense>
+        </Canvas>
+
+        {!selectedProtocol && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/80 backdrop-blur p-6 rounded-2xl border border-slate-100 shadow-xl text-center max-w-xs">
+              <Info className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-400 text-sm font-medium">Select a protocol to begin</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

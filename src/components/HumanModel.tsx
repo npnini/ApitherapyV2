@@ -3,8 +3,8 @@ import React, { useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Text, Float, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { TREATMENT_POINTS } from '../../constants';
-import { TreatmentPoint, Protocol } from '../../types';
+import { TREATMENT_POINTS } from '../constants';
+import { TreatmentPoint, Protocol } from '../types';
 
 // Fix: Defining Three.js elements as components to resolve JSX intrinsic element type errors (e.g., Property 'group' does not exist on type 'JSX.IntrinsicElements')
 const Group = 'group' as any;
@@ -46,7 +46,7 @@ const Point: React.FC<PointProps> = ({ point, isApplied, isRecommended, onClick 
         ref={meshRef}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
-        onClick={(e: ThreeEvent<MouseEvent>) => {
+        onClick={(e) => {
           e.stopPropagation();
           onClick(point.id);
         }}
