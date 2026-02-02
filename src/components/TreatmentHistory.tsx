@@ -1,10 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { PatientData } from '../types/patient';
-import { Treatment } from '../types/treatment';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { ChevronLeft, Calendar, Syringe, FileText, Activity } from 'lucide-react';
+import { ChevronLeft, Calendar, Syringe, FileText, Activity, MapPin } from 'lucide-react';
+
+// Define a more specific type for the treatment document read from Firestore
+interface TreatmentDoc {
+    id: string;
+    date: string;
+    protocolName: string;
+    patientReport?: string;
+    vitals?: string;
+    finalNotes?: string;
+    // The structure of stungPoints as it is stored in the database
+    stungPoints: Array<{
+        ID: string;
+        name: string;
+        quantity: number;
+    }>;
+}
 
 interface TreatmentHistoryProps {
     patient: PatientData;
@@ -12,7 +27,7 @@ interface TreatmentHistoryProps {
 }
 
 const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) => {
-    const [treatments, setTreatments] = useState<Treatment[]>([]);
+    const [treatments, setTreatments] = useState<TreatmentDoc[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -22,7 +37,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                 const treatmentsRef = collection(db, `patients/${patient.id}/treatments`);
                 const q = query(treatmentsRef, orderBy('date', 'desc'));
                 const querySnapshot = await getDocs(q);
-                const treatmentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Treatment);
+                const treatmentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as TreatmentDoc);
                 setTreatments(treatmentsData);
             } catch (error) {
                 console.error("Error fetching treatment history:", error);
@@ -30,7 +45,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
             setIsLoading(false);
         };
 
-        fetchTreatments();
+        if (patient.id) {
+            fetchTreatments();
+        }
     }, [patient.id]);
 
     return (
@@ -58,33 +75,30 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                                 <h3 className="font-bold text-lg text-slate-800">{treatment.protocolName}</h3>
                                 <div className="flex items-center gap-2 text-sm text-slate-500">
                                     <Calendar size={14} />
-                                    <span>{new Date(treatment.date).toLocaleDateString()}</span>
+                                    <span>{new Date(treatment.date).toLocaleString()}</span>
                                 </div>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                                <div>
-                                    <h4 className="font-bold text-slate-600 flex items-center gap-2 mb-2"><FileText size={14} /> Patient Report</h4>
-                                    <p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{treatment.patientReport}</p>
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-600 flex items-center gap-2 mb-2"><Activity size={14} /> Vitals</h4>
-                                    <p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{treatment.vitals}</p>
-                                </div>
+                                <InfoBlock title="Patient Report" icon={<FileText size={14} />} content={treatment.patientReport} />
+                                <InfoBlock title="Vitals" icon={<Activity size={14} />} content={treatment.vitals} />
                                 <div className="md:col-span-2">
                                     <h4 className="font-bold text-slate-600 flex items-center gap-2 mb-2"><Syringe size={14} /> Stung Points</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {treatment.stungPoints.map((point, index) => (
-                                            <span key={index} className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
-                                                {point.id} - {point.name} (Qty: {point.quantity})
-                                            </span>
+                                    <ul className="bg-slate-50 p-4 rounded-lg space-y-3">
+                                        {/* CORRECTED: Check if stungPoints exists and is an array */}
+                                        {Array.isArray(treatment.stungPoints) && treatment.stungPoints.map((point, index) => (
+                                            <li key={index} className="flex items-center justify-between text-slate-700">
+                                                <div className="flex items-center gap-3">
+                                                    <MapPin size={16} className="text-yellow-500" />
+                                                    {/* CORRECTED: Display both ID and name */}
+                                                    <span className="font-mono text-sm"><span className="font-semibold">{point.ID}</span> - {point.name}</span>
+                                                </div>
+                                                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Quantity: {point.quantity}</span>
+                                            </li>
                                         ))}
-                                    </div>
+                                    </ul>
                                 </div>
-                                 <div className="md:col-span-2">
-                                    <h4 className="font-bold text-slate-600 flex items-center gap-2 mb-2"><FileText size={14} /> Final Notes</h4>
-                                    <p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{treatment.finalNotes}</p>
-                                </div>
+                                <InfoBlock title="Final Notes" icon={<FileText size={14} />} content={treatment.finalNotes} />
                             </div>
                         </div>
                     ))}
@@ -93,5 +107,12 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
         </div>
     );
 };
+
+const InfoBlock = ({ title, icon, content }) => (
+    <div>
+        <h4 className="font-bold text-slate-600 flex items-center gap-2 mb-2">{icon} {title}</h4>
+        <p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{content || 'N/A'}</p>
+    </div>
+)
 
 export default TreatmentHistory;

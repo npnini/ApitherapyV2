@@ -57,10 +57,10 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
             <div className="p-4 border-t border-slate-800">
                 <div className="flex items-center mb-4">
                     <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold mr-3">
-                        {user.displayName?.charAt(0).toUpperCase() || 'A'}
+                        {user.fullName?.charAt(0).toUpperCase() || 'A'}
                     </div>
                     <div>
-                        <div className="font-bold">{user.displayName || 'Anonymous User'}</div>
+                        <div className="font-bold">{user.fullName || 'Anonymous User'}</div>
                         <div className="text-sm text-slate-400 capitalize">{user.role || 'User'}</div>
                     </div>
                 </div>

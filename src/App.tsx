@@ -13,8 +13,7 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
-import { Treatment } from './types/treatment';
-import { Protocol } from './types/protocol';
+import { StingingPoint, Protocol } from './types/protocol'; // Use StingingPoint
 
 type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin' | 'treatment_history' | 'user_details';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
@@ -33,15 +32,16 @@ const App: React.FC = () => {
         const userRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
-            return { ...userSnap.data(), userId: user.uid } as AppUser;
+            return { uid: user.uid, ...userSnap.data() } as AppUser;
         } else {
-            const newUser: AppUser = { userId: user.uid, email: user.email || '', fullName: user.displayName || 'No Name', mobile: '', role: 'caretaker' };
+            const newUser: AppUser = { uid: user.uid, userId: user.uid, email: user.email || '', fullName: user.displayName || 'New User', role: 'caretaker' };
             await setDoc(userRef, newUser);
             return newUser;
         }
     };
 
     const fetchInitialData = useCallback(async (user: AppUser) => {
+        if (!user || !user.userId) return;
         try {
             const q = query(collection(db, "patients"), where("caretakerId", "==", user.userId));
             const querySnapshot = await getDocs(q);
@@ -58,13 +58,12 @@ const App: React.FC = () => {
             if (user && user.email) {
                 const appUserData = await fetchUserData(user);
                 setAppUser(appUserData);
-                await fetchInitialData(appUserData);
+                if (appUserData) {
+                    await fetchInitialData(appUserData);
+                }
             } else {
                 setAppUser(null);
                 setPatients([]);
-                setSelectedPatient(null);
-                setActiveProtocol(null);
-                setCurrentView('dashboard');
             }
             setIsLoading(false);
         });
@@ -78,8 +77,9 @@ const App: React.FC = () => {
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
         setSaveStatus('saving');
-        const userRef = doc(db, 'users', appUser.userId);
-        await updateDoc(userRef, { ...updatedUser });
+        const userRef = doc(db, 'users', appUser.uid);
+        const { uid, ...userDataToSave } = updatedUser; // Exclude uid from the document data
+        await updateDoc(userRef, userDataToSave);
         setAppUser(updatedUser);
         setSaveStatus('idle');
         setCurrentView('dashboard');
@@ -92,7 +92,17 @@ const App: React.FC = () => {
 
     const handleAddPatient = () => {
         if (!appUser) return;
-        const newPatient: PatientData = { id: `p${Date.now()}`, fullName: '', age: 0, identityNumber: '', email: '', mobile: '', condition: '', severity: 'Mild', caretakerId: appUser.userId, lastTreatment: new Date().toISOString().split('T')[0] };
+        const newPatient: PatientData = { 
+            id: `p${Date.now()}`,
+            fullName: '', 
+            birthDate: '', 
+            identityNumber: '', 
+            email: '', 
+            mobile: '', 
+            condition: '', 
+            severity: 'Mild', 
+            caretakerId: appUser.userId, 
+        };
         setSelectedPatient(newPatient);
         setCurrentView('patient_details');
     };
@@ -136,7 +146,8 @@ const App: React.FC = () => {
         setCurrentView('treatment_execution');
     };
     
-    const handleSaveTreatment = async (stungPoints: Treatment[], finalNotes: string) => {
+    // CORRECTED: This function now accepts the correct data structure
+    const handleSaveTreatment = async (stungPoints: StingingPoint[], finalNotes: string) => {
         if (!selectedPatient || !activeProtocol || !appUser) return;
         setSaveStatus('saving');
         try {
@@ -146,7 +157,8 @@ const App: React.FC = () => {
                 protocolName: activeProtocol.name,
                 patientReport: treatmentNotes.report,
                 vitals: `BP: ${treatmentNotes.bloodPressure}, HR: ${treatmentNotes.heartRate}`,
-                stungPoints: stungPoints.map(p => ({ point: p.point, quantity: p.quantity, status: p.status })),
+                // CORRECTED: Save the array of stung point objects directly
+                stungPoints: stungPoints, 
                 finalNotes: finalNotes,
                 caretakerId: appUser.userId
             };
@@ -164,8 +176,6 @@ const App: React.FC = () => {
         if (isLoading) return <div className="flex justify-center items-center h-screen"><div>Loading...</div></div>;
         if (!appUser) return <Login />;
 
-        const isSaving = saveStatus === 'saving';
-
         return (
             <div className="flex min-h-screen bg-slate-50">
                 <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onUserDetailsClick={handleUserDetailsClick} />
@@ -175,7 +185,7 @@ const App: React.FC = () => {
                             case 'user_details':
                                 return <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />;
                             case 'patient_details':
-                                return selectedPatient && <PatientDetails patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} />;
+                                return selectedPatient && appUser && <PatientDetails user={appUser} patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} />;
                             case 'protocol_selection':
                                 return selectedPatient && <ProtocolSelection patient={selectedPatient} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} treatmentNotes={treatmentNotes} setTreatmentNotes={setTreatmentNotes} />;
                             case 'treatment_execution':

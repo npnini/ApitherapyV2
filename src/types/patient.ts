@@ -1,7 +1,7 @@
 export interface PatientData {
     id: string;
     fullName: string;
-    age: number;
+    birthDate: string; // Storing date as a string in ISO format (YYYY-MM-DD)
     identityNumber: string;
     email: string;
     mobile: string;

@@ -1,7 +1,9 @@
 export interface AppUser {
-    userId: string;
+    uid: string; // Firebase Authentication user ID
+    userId: string; // The custom, human-readable user ID
     email: string;
-    displayName: string;
-    photoURL: string;
-    role?: string; // Add role as an optional property
+    fullName: string;
+    photoURL?: string;
+    role?: 'admin' | 'caretaker' | 'user'; 
+    mobile?: string;
 }

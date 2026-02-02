@@ -26,23 +26,23 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="text-sm font-bold text-slate-500 uppercase" htmlFor="fullName">Full Name</label>
-                        <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" />
+                        <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" required />
                     </div>
                     <div>
                         <label className="text-sm font-bold text-slate-500 uppercase" htmlFor="email">Email</label>
-                        <p className="w-full p-3 mt-1 bg-slate-100 border border-slate-200 rounded-xl text-slate-600">{formData.email}</p>
+                        <p style={{ cursor: 'not-allowed' }} className="w-full p-3 mt-1 bg-slate-100 border border-slate-200 rounded-xl text-slate-600">{formData.email}</p>
                     </div>
                     <div>
                         <label className="text-sm font-bold text-slate-500 uppercase" htmlFor="mobile">Mobile</label>
-                        <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" />
+                        <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" required />
                     </div>
                     <div>
                         <label className="text-sm font-bold text-slate-500 uppercase" htmlFor="userId">User ID</label>
-                        <input id="userId" name="userId" type="text" value={formData.userId} onChange={handleChange} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" />
+                        <p style={{ cursor: 'not-allowed' }} className="w-full p-3 mt-1 bg-slate-100 border border-slate-200 rounded-xl text-slate-600">{formData.userId}</p>
                     </div>
                      <div>
                         <label className="text-sm font-bold text-slate-500 uppercase">Role</label>
-                        <p className="w-full p-3 mt-1 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 capitalize">{formData.role}</p>
+                        <p style={{ cursor: 'not-allowed' }} className="w-full p-3 mt-1 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 capitalize">{formData.role}</p>
                     </div>
                 </div>
                 <div className="flex justify-end mt-8 space-x-4">
