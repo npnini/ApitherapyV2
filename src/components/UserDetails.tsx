@@ -9,6 +9,7 @@ interface UserDetailsProps {
 
 const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
     const [formData, setFormData] = useState<AppUser>(user);
+    const [error, setError] = useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -16,6 +17,15 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
     };
 
     const handleSave = () => {
+        if (!formData.fullName.trim()) {
+            setError('Full name is required.');
+            return;
+        }
+        if (!formData.mobile.trim()) {
+            setError('Mobile number is required.');
+            return;
+        }
+        setError(null);
         onSave(formData);
     };
 
@@ -23,6 +33,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
         <div className="max-w-4xl mx-auto animate-fade-in">
             <h2 className="text-3xl font-black text-slate-900 tracking-tighter">My Profile</h2>
             <div className="mt-6 bg-white rounded-3xl p-8 border border-slate-100 shadow-lg">
+                {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm mb-4">{error}</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="text-sm font-bold text-slate-500 uppercase" htmlFor="fullName">Full Name</label>
