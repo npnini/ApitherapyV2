@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Html } from '@react-three/drei';
-import { StingPoint } from '../types';
+import { StingPoint } from '../types/apipuncture';
 
 interface StingPointMarkerProps {
   point: StingPoint;

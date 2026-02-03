@@ -3,8 +3,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Text, Float, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { TREATMENT_POINTS } from '../constants';
-import { TreatmentPoint, Protocol } from '../types';
+import { StingPoint, Protocol } from '../types/apipuncture';
 
 // Fix: Defining Three.js elements as components to resolve JSX intrinsic element type errors (e.g., Property 'group' does not exist on type 'JSX.IntrinsicElements')
 const Group = 'group' as any;
@@ -19,7 +18,7 @@ const PlaneGeometry = 'planeGeometry' as any;
 const GridHelper = 'gridHelper' as any;
 
 interface PointProps {
-  point: TreatmentPoint;
+  point: StingPoint;
   isApplied: boolean;
   isRecommended: boolean;
   onClick: (id: string) => void;
@@ -62,7 +61,7 @@ const Point: React.FC<PointProps> = ({ point, isApplied, isRecommended, onClick 
       {(hovered || isApplied) && (
         <Html distanceFactor={10}>
           <div className="bg-black/80 text-white px-2 py-1 rounded text-[10px] whitespace-nowrap pointer-events-none border border-white/20">
-            {point.name} {isApplied ? '✓' : ''}
+            {point.label} {isApplied ? '✓' : ''}
           </div>
         </Html>
       )}
@@ -153,12 +152,12 @@ const HumanModel: React.FC<ModelContainerProps> = ({ protocol, appliedPoints, to
 
         <Group position={[0, -0.5, 0]}>
           <StylizedHuman />
-          {TREATMENT_POINTS.map(pt => (
+          {protocol.points.map(pt => (
             <Point 
               key={pt.id} 
               point={pt} 
               isApplied={appliedPoints.includes(pt.id)}
-              isRecommended={protocol.recommendedPoints.includes(pt.id)}
+              isRecommended={protocol.points.some(p => p.id === pt.id)}
               onClick={togglePoint}
             />
           ))}
