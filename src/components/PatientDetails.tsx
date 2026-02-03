@@ -46,9 +46,11 @@ interface PatientDetailsProps {
   onSave: (patient: PatientData) => void;
   onBack: () => void;
   onStartTreatment: () => void;
+  saveStatus: 'idle' | 'saving' | 'success' | 'error';
+  errorMessage?: string;
 }
 
-const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, onBack, onStartTreatment }) => {
+const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, onBack, onStartTreatment, saveStatus, errorMessage }) => {
   const [formData, setFormData] = useState<PatientData>({ ...patient });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -143,6 +145,12 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
             </div>
         </div>
         
+        {saveStatus === 'error' && errorMessage && (
+            <div className="mt-4 text-red-600 bg-red-100 p-3 rounded-lg">
+                {errorMessage}
+            </div>
+        )}
+
         <div className="mt-8 flex justify-between items-center">
             <button type="button" onClick={onStartTreatment} className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-yellow-500 hover:bg-yellow-400 transition flex items-center gap-2">
                 <Plus size={16} />

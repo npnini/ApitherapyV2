@@ -6,9 +6,10 @@ service cloud.firestore {
     }
 
     match /patients/{patientId} {
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == resource.data.caretakerId;
+      allow read: if request.auth != null;
       allow create: if request.auth != null;
       allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == resource.data.caretakerId;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == resource.data.caretakerId;
 
       match /treatments/{treatmentId} {
         allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId;

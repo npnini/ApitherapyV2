@@ -29,6 +29,7 @@ const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+    const [errorMessage, setErrorMessage] = useState<string>('');
 
     const fetchUserData = async (user: User): Promise<AppUser> => {
         const userRef = doc(db, 'users', user.uid);
@@ -111,8 +112,34 @@ const App: React.FC = () => {
     };
     
     const handleSavePatient = async (updatedPatient: PatientData) => {
-        if(!appUser) return;
+        if (!appUser) return;
         setSaveStatus('saving');
+        setErrorMessage('');
+
+        const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", updatedPatient.identityNumber));
+        const emailQuery = query(collection(db, "patients"), where("email", "==", updatedPatient.email));
+
+        const identityQuerySnapshot = await getDocs(identityQuery);
+        const emailQuerySnapshot = await getDocs(emailQuery);
+
+        const identityClash = identityQuerySnapshot.docs.find(doc => doc.id !== updatedPatient.id);
+        if (identityClash) {
+            const errorMsg = `Error: A patient with identity number '${updatedPatient.identityNumber}' already exists.`;
+            console.error(errorMsg);
+            setErrorMessage(errorMsg);
+            setSaveStatus('error');
+            return;
+        }
+        
+        const emailClash = emailQuerySnapshot.docs.find(doc => doc.id !== updatedPatient.id);
+        if (emailClash) {
+            const errorMsg = `Error: A patient with email '${updatedPatient.email}' already exists.`;
+            console.error(errorMsg);
+            setErrorMessage(errorMsg);
+            setSaveStatus('error');
+            return;
+        }
+
         await setDoc(doc(db, "patients", updatedPatient.id), updatedPatient, { merge: true });
         await fetchInitialData(appUser);
         setSelectedPatient(null);
@@ -136,6 +163,7 @@ const App: React.FC = () => {
         setTreatmentNotes({ report: '', bloodPressure: '', heartRate: '' });
         setCurrentView('dashboard');
         setSaveStatus('idle');
+        setErrorMessage('');
     };
 
     const handleStartTreatmentFlow = () => {
@@ -203,7 +231,7 @@ const App: React.FC = () => {
                             case 'user_details':
                                 return <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />;
                             case 'patient_details':
-                                return selectedPatient && appUser && <PatientDetails user={appUser} patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} />;
+                                return selectedPatient && appUser && <PatientDetails user={appUser} patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} saveStatus={saveStatus} errorMessage={errorMessage} />;
                             case 'protocol_selection':
                                 return selectedPatient && <ProtocolSelection patient={selectedPatient} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} treatmentNotes={treatmentNotes} setTreatmentNotes={setTreatmentNotes} />;
                             case 'treatment_execution':
