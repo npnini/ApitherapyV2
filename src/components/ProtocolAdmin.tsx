@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { Protocol, StingingPoint } from '../types/protocol';
-import { StingPoint as AcuPoint } from '../types/apipuncture'; // To avoid naming conflict
-import { Trash2, Edit, Plus, X, Loader } from 'lucide-react';
+import { Protocol } from '../types/protocol';
+import { StingPoint as AcuPoint } from '../types/apipuncture'; 
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle } from 'lucide-react';
 
 // A type for the form state, where points are an array of strings (IDs)
 interface ProtocolFormState extends Omit<Protocol, 'points'> {
@@ -17,18 +17,20 @@ const ProtocolAdmin: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isFormLoading, setIsFormLoading] = useState<boolean>(false);
     const [editingProtocol, setEditingProtocol] = useState<Partial<ProtocolFormState> | null>(null);
+    const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
 
     const fetchProtocolsAndPoints = useCallback(async () => {
         setIsLoading(true);
         try {
             const protocolsCollection = collection(db, 'protocols');
             const protocolSnapshot = await getDocs(protocolsCollection);
-            const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol[]);
+            const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol).sort((a,b) => a.name.localeCompare(b.name));
             setProtocols(protocolsList);
 
             const pointsCollection = collection(db, 'acupuncture_points');
             const pointsSnapshot = await getDocs(pointsCollection);
-            const pointsList = pointsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AcuPoint));
+            const pointsList = pointsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AcuPoint)).sort((a,b) => a.code.localeCompare(b.code));
             setAllAcuPoints(pointsList);
 
         } catch (error) {
@@ -42,19 +44,52 @@ const ProtocolAdmin: React.FC = () => {
         fetchProtocolsAndPoints();
     }, [fetchProtocolsAndPoints]);
 
+    const validateProtocolForm = (protocol: Partial<ProtocolFormState>): boolean => {
+        if (!protocol.name?.trim()) {
+            setFormError('Protocol name is required.');
+            return false;
+        }
+        if (!protocol.description?.trim()) {
+            setFormError('Protocol description is required.');
+            return false;
+        }
+        if (!protocol.rationale?.trim()) {
+            setFormError('Protocol rationale is required.');
+            return false;
+        }
+        if (!protocol.points || protocol.points.length === 0) {
+            setFormError('At least one point must be selected.');
+            return false;
+        }
+
+        const isNewProtocol = !protocol.id;
+        if (isNewProtocol) {
+            const nameExists = protocols.some(p => p.name.toLowerCase() === protocol.name.trim().toLowerCase() && p.id !== protocol.id);
+            if (nameExists) {
+                setFormError('A protocol with this name already exists.');
+                return false;
+            }
+        }
+
+        setFormError(null);
+        return true;
+    }
+
     const handleSave = async () => {
-        if (!editingProtocol || !editingProtocol.name) {
-            alert('Protocol name is required.');
+        if (!editingProtocol) return;
+
+        if (!validateProtocolForm(editingProtocol)) {
             return;
         }
 
         setIsFormLoading(true);
+
         try {
             const protocolToSave: Omit<ProtocolFormState, 'id'> = {
-                name: editingProtocol.name || '',
-                description: editingProtocol.description || '',
-                rationale: editingProtocol.rationale || '',
-                points: editingProtocol.points || [],
+                name: editingProtocol.name!.trim(),
+                description: editingProtocol.description!.trim(),
+                rationale: editingProtocol.rationale!.trim(),
+                points: editingProtocol.points!,
             };
 
             if (editingProtocol.id) {
@@ -66,30 +101,37 @@ const ProtocolAdmin: React.FC = () => {
             setEditingProtocol(null);
             fetchProtocolsAndPoints(); 
         } catch (error) {
+            setFormError('Failed to save protocol.');
             console.error("Error saving protocol:", error);
-            alert('Failed to save protocol.');
         }
         setIsFormLoading(false);
     };
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this protocol?')) {
-            try {
-                await deleteDoc(doc(db, 'protocols', id));
-                fetchProtocolsAndPoints();
-            } catch (error) {
-                console.error("Error deleting protocol:", error);
-                alert('Failed to delete protocol.');
-            }
+    const confirmDelete = async () => {
+        if (!deletingProtocol) return;
+
+        setIsLoading(true);
+        try {
+            await deleteDoc(doc(db, 'protocols', deletingProtocol.id));
+            fetchProtocolsAndPoints();
+        } catch (error) {
+            console.error("Error deleting protocol:", error);
+            alert('Failed to delete protocol.');
         }
+        setIsLoading(false);
+        setDeletingProtocol(null);
     };
     
     const handleStartEditing = (proto: Protocol) => {
-        // Convert the full StingingPoint objects in the protocol to just their IDs for the form state.
-        // This handles legacy data as well as the new format.
-        const pointIds = (proto.points || []).map(p => typeof p === 'string' ? p : (p as StingingPoint).ID);
+        const pointIds = (proto.points || []).map(p => typeof p === 'string' ? p : (p as AcuPoint).id);
+        setFormError(null);
         setEditingProtocol({ ...proto, points: pointIds });
     };
+
+    const handleStartNew = () => {
+        setFormError(null);
+        setEditingProtocol({ name: '', description: '', rationale: '', points: [] });
+    }
 
     const renderProtocolForm = () => {
         if (!editingProtocol) return null;
@@ -106,8 +148,11 @@ const ProtocolAdmin: React.FC = () => {
         return (
              <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
                 <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-2xl m-4 transform transition-all">
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tighter mb-6">{editingProtocol.id ? 'Edit Protocol' : 'Add New Protocol'}</h2>
-                    {isFormLoading ? <div className="flex justify-center items-center"><Loader className="animate-spin" /></div> : (
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tighter mb-4">{editingProtocol.id ? 'Edit Protocol' : 'Add New Protocol'}</h2>
+                    
+                    {formError && <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm mb-4">{formError}</p>}
+
+                    {isFormLoading ? <div className="flex justify-center items-center h-64"><Loader className="animate-spin text-red-600" size={32} /></div> : (
                     <div className="space-y-4">
                         <input
                             type="text"
@@ -131,8 +176,8 @@ const ProtocolAdmin: React.FC = () => {
                         <div>
                             <h3 className="text-sm font-bold text-slate-600 mb-2">Select Points</h3>
                             <div className="max-h-60 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {allAcuPoints.sort((a,b) => a.code.localeCompare(b.code)).map(point => (
-                                    <label key={point.id} className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-colors text-sm ${ (editingProtocol.points || []).includes(point.id) ? 'bg-red-100 text-red-800' : 'bg-white hover:bg-slate-100'}`}>
+                                {allAcuPoints.map(point => (
+                                    <label key={point.id} className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-colors text-sm ${ (editingProtocol.points || []).includes(point.id) ? 'bg-red-100 text-red-800 font-semibold' : 'bg-white hover:bg-slate-100'}`}>
                                         <input
                                             type="checkbox"
                                             checked={(editingProtocol.points || []).includes(point.id)}
@@ -149,8 +194,8 @@ const ProtocolAdmin: React.FC = () => {
                     )}
                     <div className="flex justify-end space-x-3 mt-6">
                         <button onClick={() => setEditingProtocol(null)} className="font-bold text-slate-600 py-2 px-5">Cancel</button>
-                        <button onClick={handleSave} disabled={isFormLoading} className="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg shadow hover:bg-slate-900 transition disabled:bg-slate-400">
-                           {isFormLoading ? 'Saving...' : 'Save Protocol'}
+                        <button onClick={handleSave} disabled={isFormLoading} className="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg shadow hover:bg-slate-900 transition disabled:bg-slate-400 disabled:cursor-wait flex items-center">
+                           <Save size={16} className="mr-2"/> {isFormLoading ? 'Saving...' : 'Save Protocol'}
                         </button>
                     </div>
                 </div>
@@ -158,22 +203,46 @@ const ProtocolAdmin: React.FC = () => {
         );
     };
 
+    const renderDeleteConfirmation = () => {
+        if (!deletingProtocol) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md m-4">
+                    <div className='flex items-start'>
+                        <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10 mr-4">
+                           <AlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">Delete Protocol</h2>
+                            <p className="text-slate-600 mt-2">Are you sure you want to delete <span className="font-bold">{deletingProtocol.name}</span>? This action cannot be undone.</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button onClick={() => setDeletingProtocol(null)} className="font-bold text-slate-600 py-2 px-5 rounded-lg hover:bg-slate-100 transition">Cancel</button>
+                        <button onClick={confirmDelete} className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow hover:bg-red-700 transition">Confirm Delete</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="p-8 max-w-7xl mx-auto animate-fade-in">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Protocol Configuration</h1>
-                <button onClick={() => setEditingProtocol({ name: '', description: '', rationale: '', points: [] })} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center shadow-lg transition">
+                <button onClick={handleStartNew} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center shadow-lg transition">
                     <Plus size={18} className="mr-2"/>Add New Protocol
                 </button>
             </div>
 
-            {isLoading ? <p>Loading protocols...</p> : (
+            {isLoading ? <div className='flex justify-center items-center p-16'><Loader className='animate-spin text-red-600' size={40}/></div> : (
                 <div className="bg-white rounded-3xl shadow-lg border border-slate-100">
                     <ul className="divide-y divide-slate-100">
                         {protocols.length === 0 ? (
                             <p className="p-8 text-center text-slate-500">No protocols found. Click 'Add New Protocol' to start.</p>
                         ) : protocols.map(protocol => (
-                            <li key={protocol.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
+                            <li key={protocol.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
                                 <div>
                                     <p className="font-bold text-slate-800">{protocol.name}</p>
                                     <p className="text-sm text-slate-500 truncate max-w-xl">{protocol.description}</p>
@@ -181,7 +250,7 @@ const ProtocolAdmin: React.FC = () => {
                                 </div>
                                 <div className="flex space-x-4">
                                     <button onClick={() => handleStartEditing(protocol)} className="text-slate-600 hover:text-slate-900"><Edit size={18} /></button>
-                                    <button onClick={() => protocol.id && handleDelete(protocol.id)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
+                                    <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
                                 </div>
                             </li>
                         ))}
@@ -189,6 +258,7 @@ const ProtocolAdmin: React.FC = () => {
                 </div>
             )}
             {renderProtocolForm()}
+            {renderDeleteConfirmation()}
         </div>
     );
 };
