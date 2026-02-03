@@ -20,6 +20,8 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     const [isFinding, setIsFinding] = useState<boolean>(false);
     const [showFullList, setShowFullList] = useState(false);
 
+    const isFormValid = treatmentNotes.report.trim() !== '' && treatmentNotes.bloodPressure.trim() !== '' && treatmentNotes.heartRate.trim() !== '';
+
     useEffect(() => {
         const fetchProtocols = async () => {
             setIsLoading(true);
@@ -32,10 +34,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     }, []);
 
     const handleFindProtocol = async () => {
-        if (!treatmentNotes.report) {
-            alert("Please enter a patient report before finding protocols.");
-            return;
-        }
+        if (!isFormValid) return;
         setIsFinding(true);
         setShowFullList(false);
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -56,23 +55,23 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
 
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-lg">
                 <div className="mb-6">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="patientReport">Patient Report</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="patientReport">Patient Report *</label>
                     <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={5} placeholder="Describe the patient\'s current condition and reason for treatment..."></textarea>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="bloodPressure">Blood Pressure</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="bloodPressure">Blood Pressure *</label>
                         <input id="bloodPressure" type="text" value={treatmentNotes.bloodPressure} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, bloodPressure: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder="e.g., 120/80" />
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="heartRate">Heart Rate</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="heartRate">Heart Rate *</label>
                         <input id="heartRate" type="text" value={treatmentNotes.heartRate} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, heartRate: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder="e.g., 72 bpm" />
                     </div>
                 </div>
 
                 <div className="text-center mb-8">
-                    <button onClick={handleFindProtocol} disabled={isFinding || !treatmentNotes.report} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10 mx-auto disabled:bg-slate-200 disabled:shadow-none">
+                    <button onClick={handleFindProtocol} disabled={!isFormValid || isFinding} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10 mx-auto disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed">
                         {isFinding ? (
                             <>Finding Protocols...</>
                         ) : (
@@ -104,7 +103,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                 </div>
 
                 <div className="text-center">
-                     <button onClick={() => setShowFullList(!showFullList)} disabled={allProtocols.length === 0 && !isLoading} className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-slate-800/10 mx-auto disabled:bg-slate-200 disabled:shadow-none">
+                     <button onClick={() => setShowFullList(!showFullList)} disabled={!isFormValid || (allProtocols.length === 0 && !isLoading)} className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-slate-800/10 mx-auto disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed">
                         <List size={16} /> {showFullList ? 'Hide Full List' : 'Select from Full List'}
                     </button>
                 </div>
