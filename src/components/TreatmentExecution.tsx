@@ -38,9 +38,9 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
         setIsHydrating(true);
         setHydrationError(null);
         try {
-            const pointIds = protocol.points as unknown as string[];
+            const pointIds = (protocol as any).points as string[];
             if (!pointIds || pointIds.length === 0) {
-                setHydratedProtocol({ ...protocol, points: [] });
+                setHydratedProtocol({ ...(protocol as any), points: [] });
                 return;
             }
 
@@ -58,7 +58,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                 return { ...data, id: doc.id } as StingPoint;
             });
             
-            setHydratedProtocol({ ...protocol, points });
+            setHydratedProtocol({ ...(protocol as any), points });
 
         } catch (error) {
             console.error("Error hydrating protocol:", error);
@@ -127,7 +127,17 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
 
                 {/* Left Column: Protocol Points */}
                 <div className="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center"><List size={20} className="mr-2"/> Protocol Points</h3>
+                     <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center"><List size={20} className="mr-2"/> Protocol Points</h3>
+                        <label htmlFor="autorotate" className="flex items-center cursor-pointer">
+                            <span className="text-sm font-bold text-slate-600 mr-2">Auto-Rotate</span>
+                            <div className="relative">
+                                <input id="autorotate" type="checkbox" className="sr-only" checked={isRolling} onChange={() => setIsRolling(!isRolling)} />
+                                <div className={`block w-10 h-6 rounded-full ${isRolling ? 'bg-red-500' : 'bg-slate-300'}`}></div>
+                                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isRolling ? 'translate-x-full' : ''}`}></div>
+                            </div>
+                        </label>
+                    </div>
                     <p className="text-xs text-slate-500 mb-3">Hover to find, click to add.</p>
                     <div className="flex-grow space-y-2 overflow-y-auto pr-1">
                         {hydratedProtocol?.points.map(p => (
@@ -162,17 +172,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
 
                 {/* Right Column: Treatment Data */}
                 <div className="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col">
-                    <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center"><MousePointerClick size={20} className="mr-2"/>Treatment Data</h3>
-                        <label htmlFor="autorotate" className="flex items-center cursor-pointer">
-                            <span className="text-sm font-bold text-slate-600 mr-2">Auto-Rotate</span>
-                            <div className="relative">
-                                <input id="autorotate" type="checkbox" className="sr-only" checked={isRolling} onChange={() => setIsRolling(!isRolling)} />
-                                <div className={`block w-10 h-6 rounded-full ${isRolling ? 'bg-red-500' : 'bg-slate-300'}`}></div>
-                                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isRolling ? 'translate-x-full' : ''}`}></div>
-                            </div>
-                        </label>
-                    </div>
+                     <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center mb-2"><MousePointerClick size={20} className="mr-2"/>Treatment Data</h3>
                      <div className="flex-grow flex flex-col mb-4">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">Stung Points ({stungPoints.length})</label>
                         <div className="mt-1 p-3 min-h-[12rem] max-h-[12rem] overflow-y-auto bg-slate-50 border border-slate-200 rounded-xl text-sm space-y-2">
