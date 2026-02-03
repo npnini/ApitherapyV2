@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
 import PatientDetails from './components/PatientDetails';
@@ -15,7 +15,7 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
-import { StingPoint, Protocol } from './types/protocol';
+import { StingingPoint, Protocol } from './types/protocol';
 
 type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
@@ -36,7 +36,7 @@ const App: React.FC = () => {
         if (userSnap.exists()) {
             return { uid: user.uid, ...userSnap.data() } as AppUser;
         } else {
-            const newUser: AppUser = { uid: user.uid, userId: user.uid, email: user.email || '', fullName: user.displayName || 'New User', role: 'caretaker' };
+            const newUser: AppUser = { uid: user.uid, userId: user.uid, email: user.email || '', fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker' };
             await setDoc(userRef, newUser);
             return newUser;
         }
@@ -118,6 +118,16 @@ const App: React.FC = () => {
         setSelectedPatient(null);
         setCurrentView('dashboard');
         setSaveStatus('idle');
+    };
+
+    const handleDeletePatient = async (patientId: string) => {
+        if (!appUser) return;
+        try {
+            await deleteDoc(doc(db, "patients", patientId));
+            await fetchInitialData(appUser);
+        } catch (error) {
+            console.error("Error deleting patient:", error);
+        }
     };
 
     const handleBackToDashboard = () => {
@@ -205,7 +215,7 @@ const App: React.FC = () => {
                             case 'admin_points':
                                 return <PointsAdmin />;
                             default:
-                                return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} />;
+                                return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} onDeletePatient={handleDeletePatient} />;
                         }
                     })()}
                 </main>
