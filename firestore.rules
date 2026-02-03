@@ -12,11 +12,17 @@ service cloud.firestore {
       allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == resource.data.caretakerId;
 
       match /treatments/{treatmentId} {
-        allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId;
+        allow read: if request.auth != null && exists(/databases/$(database)/documents/patients/$(patientId));
+        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId;
       }
     }
 
     match /protocols/{protocolId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /acupuncture_points/{pointId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
