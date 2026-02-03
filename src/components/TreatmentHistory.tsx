@@ -4,7 +4,7 @@ import { PatientData } from '../types/patient';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { ChevronLeft, Calendar, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle } from 'lucide-react';
 
 // Stored data structure in Firestore
 interface StoredTreatmentDoc {
@@ -15,6 +15,7 @@ interface StoredTreatmentDoc {
     vitals?: string;
     finalNotes?: string;
     stungPoints: string[]; // This is an array of point IDs
+    caretakerId: string;
 }
 
 // Hydrated data structure for rendering
@@ -137,9 +138,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                         <div key={treatment.id} className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
                             <div className="flex justify-between items-start mb-6">
                                 <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{treatment.protocolName}</h2>
-                                <div className="flex items-center text-sm text-slate-500 gap-2">
-                                    <Calendar size={16} />
-                                    <span>{formatDate(treatment.date)}</span>
+                                <div className="text-right">
+                                    <div className="flex items-center justify-end text-sm text-slate-500 gap-2">
+                                        <Calendar size={16} />
+                                        <span>{formatDate(treatment.date)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-end text-xs text-slate-400 gap-2 mt-1">
+                                        <User size={14} />
+                                        <span>{treatment.caretakerId}</span>
+                                    </div>
                                 </div>
                             </div>
 
