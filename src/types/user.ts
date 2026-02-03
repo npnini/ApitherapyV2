@@ -3,7 +3,8 @@ export interface AppUser {
     userId: string; // The custom, human-readable user ID
     email: string;
     fullName: string;
+    displayName: string;
     photoURL?: string;
-    role?: 'admin' | 'caretaker' | 'user'; 
-    mobile?: string;
+    role: 'admin' | 'caretaker'; 
+    mobile: string;
 }

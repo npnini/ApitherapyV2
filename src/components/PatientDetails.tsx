@@ -28,9 +28,9 @@ const DateInput = ({ value, onChange, ...props }) => {
       />
       <Calendar size={18} className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 pointer-events-none" />
       <input
+          {...props} /* The fix is applied here */
           ref={dateInputRef}
           type="date"
-          name={props.name}
           value={value || ''}
           onChange={onChange}
           className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
@@ -50,10 +50,8 @@ interface PatientDetailsProps {
 
 const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, onBack, onStartTreatment }) => {
   const [formData, setFormData] = useState<PatientData>({ ...patient });
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // ***** THE CORRECT AND FINAL FIX *****
-  // The application logic ensures that the `user` prop is the caretaker of the `patient`.
-  // There is no need for a separate state or effect to fetch the name.
   const caretakerName = patient.caretakerId ? user.fullName : 'Not Assigned';
 
   const calculateAge = (birthDate: string): number | null => {
@@ -71,14 +69,34 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
 
   const age = calculateAge(formData.birthDate);
 
+  const validateForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = "Please enter a valid email address.";
+    }
+
+    if (!formData.birthDate) {
+        newErrors.birthDate = "Birth date is required.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    if (validateForm()) {
+        onSave(formData);
+    }
   };
 
   return (
@@ -91,7 +109,10 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
                 <InputField label="Full Name" id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} required />
-                <InputField label="Email Address" id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                <div>
+                    <InputField label="Email Address" id="email" name="email" type="email" value={formData.email} onChange={handleChange} />
+                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                </div>
                 <InputField label="Mobile Number" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} required />
                 <InputField label="Identity Number" id="identityNumber" name="identityNumber" value={formData.identityNumber} onChange={handleChange} required />
             </div>
@@ -114,8 +135,8 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
                         name="birthDate"
                         value={formData.birthDate || ''}
                         onChange={handleChange}
-                        required
                     />
+                    {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate}</p>}
                 </div>
                 <LockedField label="Age" value={age !== null ? `${age} years old` : 'N/A'} />
                 <LockedField label="Caretaker" value={caretakerName} />
