@@ -37,7 +37,7 @@ const Point: React.FC<PointProps> = ({ point, isApplied, isRecommended, onClick 
     }
   });
 
-  const color = isApplied ? '#22c55e' : (isRecommended ? '#ef4444' : '#94a3b8');
+  const color = isApplied ? '#22c55e' : (isRecommended ? '#ef4444' : '#3b82f6');
 
   // Fix: Replaced lowercase intrinsic tags with uppercase aliases to satisfy TypeScript checks
   return (
@@ -55,7 +55,7 @@ const Point: React.FC<PointProps> = ({ point, isApplied, isRecommended, onClick 
         <MeshStandardMaterial 
           color={color} 
           emissive={color} 
-          emissiveIntensity={hovered ? 2 : 0.5} 
+          emissiveIntensity={hovered ? 2.5 : 1} 
         />
       </Mesh>
       

@@ -20,9 +20,9 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({ point, onClick, isH
       >
         <sphereGeometry args={[isHighlighted ? 0.035 : 0.02, 16, 16]} />
         <meshStandardMaterial 
-          color={isHighlighted ? "#ff0000" : "#cbd5e1"} 
-          emissive={isHighlighted ? "#ff0000" : "#ffffff"}
-          emissiveIntensity={isHighlighted ? 2 : 0.2}
+          color={isHighlighted ? "#ff0000" : "#2563eb"} 
+          emissive={isHighlighted ? "#ff0000" : "#2563eb"}
+          emissiveIntensity={isHighlighted ? 2 : 0.8}
           transparent={!isHighlighted}
           opacity={isHighlighted ? 1 : 0.6}
         />
