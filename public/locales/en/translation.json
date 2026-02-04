@@ -30,5 +30,14 @@
   "delete_patient": "Delete Patient",
   "severe": "Severe",
   "moderate": "Moderate",
-  "mild": "Mild"
+  "mild": "Mild",
+  "full_name": "Full Name",
+  "email": "Email",
+  "mobile": "Mobile",
+  "username": "Username",
+  "role": "Role",
+  "back_to_dashboard": "Back to Dashboard",
+  "save_changes": "Save Changes",
+  "full_name_required": "Full name is required.",
+  "mobile_number_required": "Mobile number is required."
 }

@@ -30,5 +30,14 @@
   "delete_patient": "מחק מטופל",
   "severe": "חמור",
   "moderate": "בינוני",
-  "mild": "קל"
+  "mild": "קל",
+  "full_name": "שם מלא",
+  "email": "אימייל",
+  "mobile": "נייד",
+  "username": "שם משתמש",
+  "role": "תפקיד",
+  "back_to_dashboard": "חזור לדשבורד",
+  "save_changes": "שמור שינויים",
+  "full_name_required": "שם מלא הוא שדה חובה.",
+  "mobile_number_required": "מספר נייד הוא שדה חובה."
 }
