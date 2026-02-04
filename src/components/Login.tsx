@@ -2,8 +2,11 @@
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../firebase";
 import { Beaker } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
+  const { t, i18n } = useTranslation();
+
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -15,24 +18,30 @@ const Login = () => {
 
   return (
     <div className="w-full h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+        {/* Language Switcher */}
+        <div className="absolute top-4 right-4 flex space-x-4">
+            <button onClick={() => i18n.changeLanguage('en')} className={`px-3 py-1 rounded ${i18n.language.startsWith('en') ? 'bg-blue-500' : 'bg-slate-700'}`}>English</button>
+            <button onClick={() => i18n.changeLanguage('he')} className={`px-3 py-1 rounded ${i18n.language === 'he' ? 'bg-blue-500' : 'bg-slate-700'}`}>עברית</button>
+        </div>
+
         <div className="flex flex-col items-center p-8 rounded-2xl shadow-2xl bg-slate-800 border border-slate-700">
             <div className="flex items-center mb-6">
                 <Beaker size={36} className="text-yellow-400" />
-                <h1 className="ml-3 text-3xl font-bold tracking-tighter">APITherapy</h1>
+                <h1 className="ms-3 text-3xl font-bold tracking-tighter">APITherapy</h1>
             </div>
-            <p className="text-slate-300 mb-8">Welcome. Please sign in to continue.</p>
+            <p className="text-slate-300 mb-8">{t('welcome_please_signin')}</p>
             <button 
                 id="google-signin-button"
                 onClick={handleGoogleSignIn} 
                 className="flex items-center justify-center w-full px-6 py-3 bg-blue-600 rounded-lg font-semibold text-white hover:bg-blue-700 transition-colors"
             >
-                <svg className="w-5 h-5 mr-3" viewBox="0 0 48 48">
+                <svg className="w-5 h-5 me-3" viewBox="0 0 48 48">
                     <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
                     <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
                     <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
                     <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C43.021,36.25,44,30.2,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
                 </svg>
-                Sign In with Google
+                {t('login_with_google')}
             </button>
         </div>
     </div>

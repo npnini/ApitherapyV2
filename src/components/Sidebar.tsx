@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
     user: AppUser | null;
@@ -13,7 +14,9 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick }) => {
+    const { t, i18n } = useTranslation();
     const [configOpen, setConfigOpen] = useState(false);
+    const isRtl = i18n.language === 'he';
 
     if (!user) {
         return (
@@ -32,31 +35,31 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
             </div>
             <nav className="flex-grow p-4 space-y-2">
                 <button onClick={onUserDetailsClick} className="w-full flex items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
-                    <UserIcon size={18} className="mr-3" />
-                    <span>My Profile</span>
+                    <UserIcon size={18} className={isRtl ? "ml-3" : "mr-3"} />
+                    <span>{t('my_profile')}</span>
                 </button>
 
                 <button onClick={onPatientsClick} className="w-full flex items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
-                    <Users size={18} className="mr-3" />
-                    <span>Patients</span>
+                    <Users size={18} className={isRtl ? "ml-3" : "mr-3"} />
+                    <span>{t('patients')}</span>
                 </button>
 
                 {user.role === 'admin' && (
                     <div>
                         <button onClick={() => setConfigOpen(!configOpen)} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
                             <div className="flex items-center">
-                                <Shield size={18} className="mr-3" />
-                                <span>Configuration</span>
+                                <Shield size={18} className={isRtl ? "ml-3" : "mr-3"} />
+                                <span>{t('configuration')}</span>
                             </div>
                             <ChevronDown size={16} className={`transform transition-transform ${configOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {configOpen && (
-                            <div className="pl-8 mt-2 space-y-1">
-                                <button onClick={onAdminClick} className="w-full text-left p-2 rounded-lg hover:bg-slate-700 transition text-sm">
-                                    Protocol Configuration
+                            <div className={`${isRtl ? 'pr-8' : 'pl-8'} mt-2 space-y-1`}>
+                                <button onClick={onAdminClick} className={`w-full p-2 rounded-lg hover:bg-slate-700 transition text-sm ${isRtl ? 'text-right' : 'text-left'}`}>
+                                    {t('protocol_configuration')}
                                 </button>
-                                <button onClick={onPointsAdminClick} className="w-full text-left p-2 rounded-lg hover:bg-slate-700 transition text-sm">
-                                    Points Configuration
+                                <button onClick={onPointsAdminClick} className={`w-full p-2 rounded-lg hover:bg-slate-700 transition text-sm ${isRtl ? 'text-right' : 'text-left'}`}>
+                                    {t('points_configuration')}
                                 </button>
                             </div>
                         )}
@@ -65,17 +68,19 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
             </nav>
             <div className="p-4 border-t border-slate-800">
                 <div className="flex items-center mb-4">
-                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold mr-3">
-                        {user.fullName?.charAt(0).toUpperCase() || 'A'}
+                    <div className={isRtl ? "ml-3" : "mr-3"}>
+                        <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold">
+                            {user.fullName?.charAt(0).toUpperCase() || 'A'}
+                        </div>
                     </div>
                     <div>
-                        <div className="font-bold text-sm">{user.fullName || 'Anonymous User'}</div>
-                        <div className="text-xs text-slate-400 capitalize">{user.role || 'User'}</div>
+                        <div className="font-bold text-sm">{user.fullName || t('anonymous_user')}</div>
+                        <div className={`text-xs text-slate-400 capitalize ${isRtl ? 'text-right' : 'text-left'}`}>{user.role ? t(user.role) : t('user')}</div>
                     </div>
                 </div>
                 <button onClick={onLogout} className="w-full flex items-center justify-center p-3 rounded-xl bg-red-600 hover:bg-red-700 transition text-sm font-bold">
-                    <LogOut size={16} className="mr-2" />
-                    <span>Logout</span>
+                    <LogOut size={16} className={isRtl ? "ml-2" : "mr-2"} />
+                    <span>{t('logout')}</span>
                 </button>
             </div>
         </div>
