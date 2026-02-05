@@ -127,5 +127,6 @@
   "no_points_for_treatment": "לא נרשמו נקודות בטיפול זה.",
   "final_notes": "הערות סופיות",
   "no_notes": "אין הערות.",
-  "invalid_date": "תאריך לא חוקי"
+  "invalid_date": "תאריך לא חוקי",
+  "for_patient": "עבור מטופל"
 }

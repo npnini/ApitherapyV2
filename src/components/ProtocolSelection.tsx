@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PatientData } from '../types/patient';
 import { Protocol } from '../types/protocol';
-import { ChevronLeft, BrainCircuit, List } from 'lucide-react';
+import { ChevronLeft, BrainCircuit, List, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ProtocolSelectionProps {
     patient: PatientData;
@@ -14,6 +16,9 @@ interface ProtocolSelectionProps {
 }
 
 const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect, treatmentNotes, setTreatmentNotes }) => {
+    const { t, i18n } = useTranslation();
+    const isRtl = i18n.language === 'he';
+
     const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
     const [proposedProtocols, setProposedProtocols] = useState<Protocol[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -44,19 +49,23 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     };
 
     return (
-        <div className="max-w-4xl mx-auto animate-fade-in">
+        <div className="max-w-4xl mx-auto animate-fade-in" dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Start New Treatment</h2>
-                    <p className="text-slate-500">For patient: {patient.fullName}</p>
+                <div className="rtl:text-right">
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{t('start_new_treatment')}</h2>
+                    <p className="text-slate-500">{t('for_patient')}: {patient.fullName}</p>
                 </div>
-                <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition"><ChevronLeft size={16} /> Back to Dashboard</button>
+                <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition">
+                    {!isRtl && <ChevronLeft size={16} />}
+                    {t('back_to_dashboard')}
+                    {isRtl && <ChevronRight size={16} />}
+                </button>
             </div>
 
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-lg">
                 <div className="mb-6">
                     <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="patientReport">Patient Report *</label>
-                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={5} placeholder="Describe the patient\'s current condition and reason for treatment..."></textarea>
+                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={5} placeholder="Describe the patient's current condition and reason for treatment..."></textarea>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
