@@ -133,5 +133,12 @@
   "final_notes": "הערות סופיות",
   "no_notes": "אין הערות.",
   "invalid_date": "תאריך לא חוקי",
-  "for_patient": "עבור מטופל"
+  "for_patient": "עבור מטופל",
+  "find_suggested_protocols": "מצא פרוטוקולים מוצעים",
+  "finding_protocols": "מוצא פרוטוקולים...",
+  "ai_suggested_protocols": "פרוטוקולים מוצעים על ידי בינה מלאכותית",
+  "hide_full_list": "הסתר רשימה מלאה",
+  "select_from_full_list": "בחר מהרשימה המלאה",
+  "all_protocols": "כל הפרוטוקולים",
+  "or": "או"
 }

@@ -82,9 +82,9 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                 <div className="text-center mb-8">
                     <button onClick={handleFindProtocol} disabled={!isFormValid || isFinding} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10 mx-auto disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed">
                         {isFinding ? (
-                            <>Finding Protocols...</>
+                            <>{t('finding_protocols')}</>
                         ) : (
-                            <><BrainCircuit size={16} /> Find Suggested Protocols</>
+                            <><BrainCircuit size={16} /> {t('find_suggested_protocols')}</>
                         )}
                     </button>
                 </div>
@@ -93,7 +93,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                      <div className="text-center p-8 text-slate-500">Analyzing report and finding best protocols...</div>
                 ) : proposedProtocols.length > 0 && (
                     <div className="animate-fade-in">
-                        <h3 className="text-xl font-bold mb-4 text-center">AI Suggested Protocols</h3>
+                        <h3 className="text-xl font-bold mb-4 text-center">{t('ai_suggested_protocols')}</h3>
                         <div className="space-y-3 mb-8">
                             {proposedProtocols.map(p => (
                                 <div key={p.id} onClick={() => onProtocolSelect(p)} className="bg-slate-50 border-2 border-slate-200 hover:border-yellow-500 rounded-xl p-4 cursor-pointer transition-all">
@@ -107,19 +107,19 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                 
                 <div className="flex items-center gap-4 my-8">
                     <div className="flex-grow h-px bg-slate-200"></div>
-                    <span className="text-slate-400 font-semibold text-sm">OR</span>
+                    <span className="text-slate-400 font-semibold text-sm">{t('or')}</span>
                     <div className="flex-grow h-px bg-slate-200"></div>
                 </div>
 
                 <div className="text-center">
                      <button onClick={() => setShowFullList(!showFullList)} disabled={!isFormValid || (allProtocols.length === 0 && !isLoading)} className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-slate-800/10 mx-auto disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed">
-                        <List size={16} /> {showFullList ? 'Hide Full List' : 'Select from Full List'}
+                        <List size={16} /> {showFullList ? t('hide_full_list') : t('select_from_full_list')}
                     </button>
                 </div>
 
                 {showFullList && (
                      <div className="animate-fade-in mt-8">
-                        <h3 className="text-xl font-bold mb-4 text-center">All Protocols</h3>
+                        <h3 className="text-xl font-bold mb-4 text-center">{t('all_protocols')}</h3>
                         {isLoading ? (
                             <div className="text-center p-8 text-slate-500">Loading protocols...</div>
                         ) : allProtocols.length === 0 ? (
