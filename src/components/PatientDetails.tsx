@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PatientData } from '../types/patient';
 import { ChevronLeft, ChevronDown, Plus, Calendar } from 'lucide-react';
 import { AppUser } from '../types/user';
+import { useTranslation } from 'react-i18next';
 
 const formatDateForDisplay = (isoDate: string) => {
   if (!isoDate || !/\d{4}-\d{2}-\d{2}/.test(isoDate)) return '';
@@ -11,6 +12,7 @@ const formatDateForDisplay = (isoDate: string) => {
 };
 
 const DateInput = ({ value, onChange, ...props }) => {
+  const { t } = useTranslation();
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const handleContainerClick = () => {
@@ -23,7 +25,7 @@ const DateInput = ({ value, onChange, ...props }) => {
         type="text"
         value={formatDateForDisplay(value)}
         readOnly
-        placeholder="dd/mm/yyyy"
+        placeholder={t('dd/mm/yyyy')}
         className="w-full p-3 mt-1 bg-white border border-slate-200 rounded-xl cursor-pointer pr-10"
       />
       <Calendar size={18} className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 pointer-events-none" />
@@ -51,10 +53,11 @@ interface PatientDetailsProps {
 }
 
 const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, onBack, onStartTreatment, saveStatus, errorMessage }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<PatientData>({ ...patient });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const caretakerName = patient.caretakerId ? user.fullName : 'Not Assigned';
+  const caretakerName = patient.caretakerId ? user.fullName : t('not_assigned');
 
   const calculateAge = (birthDate: string): number | null => {
     if (!birthDate) return null;
@@ -75,11 +78,11 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        newErrors.email = "Please enter a valid email address.";
+        newErrors.email = t('valid_email_required');
     }
 
     if (!formData.birthDate) {
-        newErrors.birthDate = "Birth date is required.";
+        newErrors.birthDate = t('birth_date_required');
     }
 
     setErrors(newErrors);
@@ -104,34 +107,34 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-3xl p-8 shadow-lg border border-slate-100 animate-fade-in">
         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-black text-slate-800 tracking-tighter">Patient Information</h2>
-            <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition"><ChevronLeft size={16} /> Back</button>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tighter">{t('patient_information')}</h2>
+            <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition"><ChevronLeft size={16} /> {t('back')}</button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-                <InputField label="Full Name" id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} required />
+                <InputField label={t('full_name')} id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} required />
                 <div>
-                    <InputField label="Email Address" id="email" name="email" type="email" value={formData.email} onChange={handleChange} />
+                    <InputField label={t('email_address')} id="email" name="email" type="email" value={formData.email} onChange={handleChange} />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
-                <InputField label="Mobile Number" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} required />
-                <InputField label="Identity Number" id="identityNumber" name="identityNumber" value={formData.identityNumber} onChange={handleChange} required />
+                <InputField label={t('mobile_number')} id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} required />
+                <InputField label={t('identity_number')} id="identityNumber" name="identityNumber" value={formData.identityNumber} onChange={handleChange} required />
             </div>
 
             <div className="space-y-4">
-                <InputField label="Condition" id="condition" name="condition" value={formData.condition} onChange={handleChange} required />
+                <InputField label={t('condition')} id="condition" name="condition" value={formData.condition} onChange={handleChange} required />
                 <div className="relative">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="severity">Severity</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="severity">{t('severity')}</label>
                     <select id="severity" name="severity" value={formData.severity} onChange={handleChange} className="w-full p-3 mt-1 bg-white border border-slate-200 rounded-xl appearance-none" required>
-                        <option value="Mild">Mild</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Severe">Severe</option>
+                        <option value="Mild">{t('mild')}</option>
+                        <option value="Moderate">{t('moderate')}</option>
+                        <option value="Severe">{t('severe')}</option>
                     </select>
                     <ChevronDown size={16} className="absolute right-4 top-10 text-slate-400 pointer-events-none" />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="birthDate">Birth Date</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="birthDate">{t('birth_date')}</label>
                     <DateInput
                         id="birthDate"
                         name="birthDate"
@@ -140,8 +143,8 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
                     />
                     {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate}</p>}
                 </div>
-                <LockedField label="Age" value={age !== null ? `${age} years old` : 'N/A'} />
-                <LockedField label="Caretaker" value={caretakerName} />
+                <LockedField label={t('age')} value={age !== null ? age : t('not_available')} />
+                <LockedField label={t('caretaker')} value={caretakerName} />
             </div>
         </div>
         
@@ -154,11 +157,11 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
         <div className="mt-8 flex justify-between items-center">
             <button type="button" onClick={onStartTreatment} className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-yellow-500 hover:bg-yellow-400 transition flex items-center gap-2">
                 <Plus size={16} />
-                Start New Treatment
+                {t('start_new_treatment')}
             </button>
             <div className="flex gap-4">
-                <button type="button" onClick={onBack} className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
-                <button type="submit" className="px-8 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition">Save Changes</button>
+                <button type="button" onClick={onBack} className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">{t('cancel')}</button>
+                <button type="submit" className="px-8 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition">{t('save_changes')}</button>
             </div>
         </div>
     </form>
@@ -175,7 +178,7 @@ const InputField = ({ label, id, ...props }) => (
 const LockedField = ({ label, value }) => (
   <div>
     <label className="text-[10px] font-bold text-slate-500 uppercase">{label}</label>
-    <p style={{ cursor: 'not-allowed' }} className="font-mono text-sm p-3 mt-1 bg-slate-50 border border-slate-100 rounded-xl">{value || 'Not Assigned'}</p>
+    <p style={{ cursor: 'not-allowed' }} className="font-mono text-sm p-3 mt-1 bg-slate-50 border border-slate-100 rounded-xl">{value || t('not_assigned')}</p>
   </div>
 );
 

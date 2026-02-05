@@ -11,7 +11,7 @@
   "anonymous_user": "משתמש אנונימי",
   "user": "משתמש",
   "welcome": "ברוך הבא, {{displayName}}!",
-  "patient_hub_description": "המרכז שלך לניהול מטופלים.",
+  "patient_hub_description": "רשימת מטופלים",
   "add_new_patient": "הוסף מטופל חדש",
   "search_by_name_id_email": "חפש לפי שם, ת.ז. או אימייל...",
   "patient": "מטופל",
@@ -102,5 +102,17 @@
   "failed_to_delete_protocol": "נכשל במחיקת הפרוטוקול.",
   "no_protocols_found": "לא נמצאו פרוטוקולים.",
   "points_count": "{{count}} נקודות",
-  "id_number": "ת.ז.: {{identityNumber}}"
+  "id_number": "ת.ז.: {{identityNumber}}",
+  "patient_information": "פרטי מטופל",
+  "back": "חזור",
+  "mobile_number": "מספר נייד",
+  "identity_number": "מספר תעודת זהות",
+  "birth_date": "תאריך לידה",
+  "age": "גיל",
+  "not_available": "לא זמין",
+  "caretaker": "מטפל",
+  "not_assigned": "לא שויך",
+  "start_new_treatment": "התחל טיפול חדש",
+  "valid_email_required": "אנא הזן כתובת דוא''ל חוקית.",
+  "birth_date_required": "תאריך לידה הוא שדה חובה."
 }

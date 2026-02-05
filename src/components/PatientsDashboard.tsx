@@ -16,7 +16,7 @@ interface PatientsDashboardProps {
 }
 
 const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, onDeletePatient }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
 
@@ -40,13 +40,14 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const cancelDelete = () => {
     setPatientToDelete(null);
   };
+  
+  const headerCellStyle = `px-6 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider ${i18n.dir() === 'rtl' ? 'text-right' : 'text-left'}`;
 
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{t('welcome', { displayName: user.fullName || 'User' })}</h2>
-          <p className="text-slate-500">{t('patient_hub_description')}</p>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{t('patient_hub_description')}</h2>
         </div>
         <button onClick={onAddPatient} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10">
           <PlusCircle size={16} />
@@ -65,8 +66,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         />
       </div>
       
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm">
-        <div className="p-6 grid grid-cols-12 gap-4 font-black text-slate-400 text-xs uppercase tracking-widest border-b">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className={`grid grid-cols-12 gap-4 border-b bg-slate-50 ${headerCellStyle}`}>
             <div className="col-span-3">{t('patient')}</div>
             <div className="col-span-2">{t('contact')}</div>
             <div className="col-span-2">{t('condition')}</div>
