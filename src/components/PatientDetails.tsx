@@ -175,11 +175,14 @@ const InputField = ({ label, id, ...props }) => (
   </div>
 );
 
-const LockedField = ({ label, value }) => (
-  <div>
-    <label className="text-[10px] font-bold text-slate-500 uppercase">{label}</label>
-    <p style={{ cursor: 'not-allowed' }} className="font-mono text-sm p-3 mt-1 bg-slate-50 border border-slate-100 rounded-xl">{value || t('not_assigned')}</p>
-  </div>
-);
+const LockedField = ({ label, value }) => {
+  const { t } = useTranslation();
+  return (
+    <div>
+      <label className="text-[10px] font-bold text-slate-500 uppercase">{label}</label>
+      <p style={{ cursor: 'not-allowed' }} className="font-mono text-sm p-3 mt-1 bg-slate-50 border border-slate-100 rounded-xl">{value || t('not_assigned')}</p>
+    </div>
+  );
+};
 
 export default PatientDetails;
