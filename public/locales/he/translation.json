@@ -114,5 +114,18 @@
   "not_assigned": "לא שויך",
   "start_new_treatment": "התחל טיפול חדש",
   "valid_email_required": "אנא הזן כתובת דוא''ל חוקית.",
-  "birth_date_required": "תאריך לידה הוא שדה חובה."
+  "birth_date_required": "תאריך לידה הוא שדה חובה.",
+  "failed_to_load_treatment_history": "נכשל בטעינת היסטוריית הטיפולים.",
+  "loading_treatment_history": "טוען היסטוריית טיפולים...",
+  "error_title": "שגיאה",
+  "treatment_history_for": "היסטוריית טיפולים עבור {{patientName}}",
+  "no_treatments_recorded": "לא נרשמו טיפולים למטופל זה.",
+  "patient_report": "דיווח מטופל",
+  "not_provided": "לא סופק",
+  "vitals": "מדדים חיוניים",
+  "stung_points": "נקודות דיקור",
+  "no_points_for_treatment": "לא נרשמו נקודות בטיפול זה.",
+  "final_notes": "הערות סופיות",
+  "no_notes": "אין הערות.",
+  "invalid_date": "תאריך לא חוקי"
 }

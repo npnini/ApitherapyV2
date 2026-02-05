@@ -114,5 +114,18 @@
   "not_assigned": "Not Assigned",
   "start_new_treatment": "Start New Treatment",
   "valid_email_required": "Please enter a valid email address.",
-  "birth_date_required": "Birth date is required."
+  "birth_date_required": "Birth date is required.",
+  "failed_to_load_treatment_history": "Failed to load treatment history.",
+  "loading_treatment_history": "Loading Treatment History...",
+  "error_title": "Error",
+  "treatment_history_for": "Treatment History for {{patientName}}",
+  "no_treatments_recorded": "No treatments recorded for this patient.",
+  "patient_report": "Patient Report",
+  "not_provided": "Not provided",
+  "vitals": "Vitals",
+  "stung_points": "Stung Points",
+  "no_points_for_treatment": "No points were recorded for this treatment.",
+  "final_notes": "Final Notes",
+  "no_notes": "No notes.",
+  "invalid_date": "Invalid Date"
 }
