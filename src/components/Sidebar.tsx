@@ -11,9 +11,10 @@ interface SidebarProps {
     onUserDetailsClick: () => void;
     onPatientsClick: () => void;
     onPointsAdminClick: () => void; // New prop for points admin
+    onOnboardingTestClick: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick, onOnboardingTestClick }) => {
     const { t, i18n } = useTranslation();
     const [configOpen, setConfigOpen] = useState(false);
     const isRtl = i18n.language === 'he';
@@ -60,6 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
                                 </button>
                                 <button onClick={onPointsAdminClick} className={`w-full p-2 rounded-lg hover:bg-slate-700 transition text-sm ${isRtl ? 'text-right' : 'text-left'}`}>
                                     {t('points_configuration')}
+                                </button>
+                                <button onClick={onOnboardingTestClick} className={`w-full p-2 rounded-lg hover:bg-slate-700 transition text-sm ${isRtl ? 'text-right' : 'text-left'}`}>
+                                    {t('onboarding_test_page')}
                                 </button>
                             </div>
                         )}

@@ -66,5 +66,19 @@
   "savePoint": "Save Point",
   "x_axis": "X",
   "y_axis": "Y",
-  "z_axis": "Z"
+  "z_axis": "Z",
+  "caretaker_details_title": "Your Profile Details",
+  "caretaker_details_update_subtitle": "Update your information below.",
+  "caretaker_details_new_subtitle": "Please provide a few more details to set up your account.",
+  "email_address": "Email Address",
+  "nickname": "Nickname",
+  "nickname_placeholder": "e.g., DrJohn, ClinicA",
+  "full_name_placeholder": "Dr. John Smith",
+  "mobile_placeholder": "(123) 456-7890",
+  "save_and_continue": "Save & Continue",
+  "onboarding_test_page": "Onboarding Test Page",
+  "nickname_required": "Nickname is required.",
+  "nickname_taken": "This nickname is already taken. Please choose another one.",
+  "email_taken": "This email is already registered. Please use a different email.",
+  "mobile_taken": "This mobile number is already registered. Please use a different number."
 }

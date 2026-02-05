@@ -14,11 +14,12 @@ import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
+import CaretakerDetails from './components/CaretakerDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 
-type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details';
+type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -91,6 +92,7 @@ const App: React.FC = () => {
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
+    const handleOnboardingTestClick = () => { setCurrentView('onboarding_test'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
@@ -101,6 +103,13 @@ const App: React.FC = () => {
         setAppUser(updatedUser);
         setSaveStatus('idle');
         setCurrentView('dashboard');
+    };
+    
+    const handleSaveCaretakerDetails = (details: { userId: string; fullName: string; mobile: string; }) => {
+        // In a real scenario, you would save this data.
+        // For this test, we can just log it and go back to the dashboard.
+        console.log('Saved caretaker details:', details);
+        handleBackToDashboard();
     };
 
     const handleSelectPatient = (patient: PatientData) => {
@@ -247,6 +256,7 @@ const App: React.FC = () => {
                     onPointsAdminClick={handlePointsAdminClick} 
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard} 
+                    onOnboardingTestClick={handleOnboardingTestClick}
                 />
                 <main className="flex-grow p-4 md:p-8">
                     {(() => {
@@ -265,6 +275,17 @@ const App: React.FC = () => {
                                 return <ProtocolAdmin />;
                             case 'admin_points':
                                 return <PointsAdmin />;
+                            case 'onboarding_test':
+                                const sampleUser: AppUser = {
+                                    uid: 'test-uid',
+                                    userId: 'test-user-id',
+                                    email: 'test@example.com',
+                                    fullName: 'Test User',
+                                    displayName: 'Test User',
+                                    mobile: '123-456-7890',
+                                    role: 'caretaker'
+                                };
+                                return <CaretakerDetails user={sampleUser} onSave={handleSaveCaretakerDetails} />;
                             default:
                                 return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} onDeletePatient={handleDeletePatient} />;
                         }

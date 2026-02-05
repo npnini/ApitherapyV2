@@ -66,5 +66,19 @@
   "savePoint": "שמור נקודה",
   "x_axis": "X",
   "y_axis": "Y",
-  "z_axis": "Z"
+  "z_axis": "Z",
+  "caretaker_details_title": "פרטי הפרופיל שלך",
+  "caretaker_details_update_subtitle": "עדכן את המידע שלך למטה.",
+  "caretaker_details_new_subtitle": "אנא ספק מספר פרטים נוספים כדי להגדיר את חשבונך.",
+  "email_address": "כתובת אימייל",
+  "nickname": "שם קצר",
+  "nickname_placeholder": "לדוגמה, DrJohn, ClinicA",
+  "full_name_placeholder": "ד''ר יוחנן סמית",
+  "mobile_placeholder": "(123) 456-7890",
+  "save_and_continue": "שמור והמשך",
+  "onboarding_test_page": "דף בדיקת הרשמה",
+  "nickname_required": "נדרש שם קצר.",
+  "nickname_taken": "שם הקצר הזה כבר תפוס. אנא בחר שם אחר.",
+  "email_taken": "כתובת האימייל הזו כבר רשומה. אנא השתמש בכתובת אחרת.",
+  "mobile_taken": "מספר הנייד הזה כבר רשום. אנא השתמש במספר אחר."
 }
