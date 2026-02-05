@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, updateDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const PointsAdmin: React.FC = () => {
+    const { t, i18n } = useTranslation();
     const [points, setPoints] = useState<StingPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState<StingPoint | null>(null);
@@ -25,11 +27,11 @@ const PointsAdmin: React.FC = () => {
             fetchedPoints.sort((a, b) => a.code.localeCompare(b.code));
             setPoints(fetchedPoints);
         } catch (err) {
-            setError('Failed to fetch points. Please try again.');
+            setError(t('failedToFetchPoints'));
             console.error(err);
         }
         setIsLoading(false);
-    }, [pointsCollectionRef]);
+    }, [pointsCollectionRef, t]);
 
     useEffect(() => {
         fetchPoints();
@@ -37,22 +39,22 @@ const PointsAdmin: React.FC = () => {
 
     const validatePointForm = (point: StingPoint, isNew: boolean): boolean => {
         if (!point.code.trim()) {
-            setFormError('Point code is required.');
+            setFormError(t('pointCodeRequired'));
             return false;
         }
         if (!point.label.trim()) {
-            setFormError('Point label is required.');
+            setFormError(t('pointLabelRequired'));
             return false;
         }
         if (!point.description.trim()) {
-            setFormError('Point description is required.');
+            setFormError(t('pointDescriptionRequired'));
             return false;
         }
 
         if (isNew) {
             const codeExists = points.some(p => p.code.toLowerCase() === point.code.trim().toLowerCase());
             if (codeExists) {
-                setFormError(`A point with the code "${point.code.trim().toUpperCase()}" already exists.`);
+                setFormError(t('pointCodeExists', { code: point.code.trim().toUpperCase() }));
                 return false;
             }
         }
@@ -80,11 +82,9 @@ const PointsAdmin: React.FC = () => {
         
         try {
             if (isNewPoint) {
-                // For new points, the ID is the uppercased code
                 const newPointRef = doc(db, 'acupuncture_points', code);
                 await setDoc(newPointRef, dataToSave);
             } else {
-                // For existing points, use their original ID
                 const pointDoc = doc(db, 'acupuncture_points', pointToSave.id);
                 await updateDoc(pointDoc, dataToSave);
             }
@@ -92,7 +92,7 @@ const PointsAdmin: React.FC = () => {
             setIsEditing(null);
             fetchPoints();
         } catch (err) {
-            setFormError('Failed to save point. Please try again.');
+            setFormError(t('failedToSavePoint'));
             console.error(err);
         } finally {
             setIsSubmitting(false);
@@ -108,7 +108,7 @@ const PointsAdmin: React.FC = () => {
             await deleteDoc(pointDoc);
             fetchPoints();
         } catch (err) {
-            setError('Failed to delete point.');
+            setError(t('failedToDeletePoint'));
             console.error(err);
         } 
         setIsSubmitting(false);
@@ -120,10 +120,12 @@ const PointsAdmin: React.FC = () => {
         setFormError(null); 
     };
 
+    const headerCellStyle = `px-6 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider ${i18n.dir() === 'rtl' ? 'text-right' : 'text-left'}`;
+
     return (
         <div className="p-8 max-w-7xl mx-auto animate-fade-in">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Acupuncture Points</h1>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('acupuncturePoints')}</h1>
                 <div>
                     <button
                         onClick={() => {
@@ -132,7 +134,7 @@ const PointsAdmin: React.FC = () => {
                         }}
                         className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg flex items-center shadow-lg hover:bg-red-700 transition"
                     >
-                        <PlusCircle size={18} className="mr-2" /> Add New Point
+                        <PlusCircle size={18} className="mr-2" /> {t('addNewPoint')}
                     </button>
                 </div>
             </div>
@@ -146,7 +148,7 @@ const PointsAdmin: React.FC = () => {
                     onCancel={handleCancelEdit}
                     error={formError}
                     isSubmitting={isSubmitting}
-                    points={points} // Pass existing points for validation
+                    points={points}
                 />
             )}
 
@@ -158,14 +160,14 @@ const PointsAdmin: React.FC = () => {
                                <AlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-slate-900">Delete Point</h2>
-                                <p className="text-slate-600 mt-2">Are you sure you want to delete <span className="font-bold">{deletingPoint.code}</span>? This action cannot be undone.</p>
+                                <h2 className="text-xl font-bold text-slate-900">{t('deletePoint')}</h2>
+                                <p className="text-slate-600 mt-2">{t('deletePointConfirmation', { code: deletingPoint.code })}</p>
                             </div>
                         </div>
                         <div className="flex justify-end space-x-3 mt-6">
-                            <button onClick={() => setDeletingPoint(null)} disabled={isSubmitting} className="font-bold text-slate-600 py-2 px-5 rounded-lg hover:bg-slate-100 transition disabled:opacity-50">Cancel</button>
+                            <button onClick={() => setDeletingPoint(null)} disabled={isSubmitting} className="font-bold text-slate-600 py-2 px-5 rounded-lg hover:bg-slate-100 transition disabled:opacity-50">{t('cancel')}</button>
                             <button onClick={confirmDelete} disabled={isSubmitting} className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow hover:bg-red-700 transition disabled:bg-red-400 disabled:cursor-wait">
-                                {isSubmitting ? 'Deleting...' : 'Confirm Delete'}
+                                {isSubmitting ? t('deleting') : t('confirmDelete')}
                             </button>
                         </div>
                     </div>
@@ -177,12 +179,12 @@ const PointsAdmin: React.FC = () => {
                     <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Code</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Label</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Description</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Position (x, y, z)</th>
+                                <th scope="col" className={headerCellStyle}>{t('code')}</th>
+                                <th scope="col" className={headerCellStyle}>{t('label')}</th>
+                                <th scope="col" className={headerCellStyle}>{t('description')}</th>
+                                <th scope="col" className={headerCellStyle}>{t('position')}</th>
                                 <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only">Actions</span>
+                                    <span className="sr-only">{t('actions')}</span>
                                 </th>
                             </tr>
                         </thead>
@@ -190,7 +192,7 @@ const PointsAdmin: React.FC = () => {
                             {isLoading && !deletingPoint ? (
                                 <tr><td colSpan={5} className="text-center p-16"><Loader className='animate-spin text-red-600' size={32}/></td></tr>
                             ) : points.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center p-8 text-slate-500">No points found.</td></tr>
+                                <tr><td colSpan={5} className="text-center p-8 text-slate-500">{t('noPointsFound')}</td></tr>
                             ) : (
                                 points.map(point => (
                                     <tr key={point.id} className="hover:bg-slate-50">
@@ -224,6 +226,7 @@ interface EditPointFormProps {
 }
 
 const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, onCancel, error, isSubmitting }) => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState(point);
     const [localError, setLocalError] = useState<string | null>(null);
 
@@ -247,22 +250,21 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validation logic
         if (!formData.code.trim()) {
-            setLocalError("Point code is required."); return;
+            setLocalError(t("pointCodeRequired")); return;
         }
         if (!formData.label.trim()) {
-            setLocalError("Point label is required."); return;
+            setLocalError(t("pointLabelRequired")); return;
         }
         if (!formData.description.trim()) {
-            setLocalError("Description is required."); return;
+            setLocalError(t("descriptionRequired")); return;
         }
 
         const isNew = !point.id;
         if (isNew) {
             const codeExists = points.some(p => p.code.toLowerCase() === formData.code.trim().toLowerCase());
             if (codeExists) {
-                setLocalError(`A point with the code "${formData.code.trim().toUpperCase()}" already exists.`);
+                setLocalError(t('pointCodeExists', { code: formData.code.trim().toUpperCase() }));
                 return;
             }
         }
@@ -277,57 +279,78 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in-fast">
             <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-lg m-4">
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <h2 className="text-xl font-black text-slate-900 tracking-tighter mb-4">{isEditing ? 'Edit Point' : 'Add New Point'}</h2>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tighter mb-4">{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
                     
                     {(error || localError) && <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{error || localError}</p>}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input 
-                            type="text" 
-                            name="code" 
-                            value={formData.code} 
-                            onChange={handleChange} 
-                            placeholder="Code (e.g. ST36)" 
-                            className="p-3 bg-slate-100 border border-slate-200 rounded-xl disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed" 
-                            required 
-                            disabled={isEditing}
-                        />
-                        <input 
-                            type="text" 
-                            name="label" 
-                            value={formData.label} 
-                            onChange={handleChange} 
-                            placeholder="Label (e.g. Zusanli)" 
-                            className="p-3 bg-slate-100 border border-slate-200 rounded-xl" 
-                            required 
-                        />
+                        <div>
+                            <label htmlFor="code" className="text-sm font-bold text-slate-600">{t('code')}</label>
+                            <input 
+                                type="text" 
+                                id="code"
+                                name="code" 
+                                value={formData.code} 
+                                onChange={handleChange} 
+                                placeholder={t('codePlaceholder')} 
+                                className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed" 
+                                required 
+                                disabled={isEditing}
+                            />
+                        </div>
+                        <div>
+                             <label htmlFor="label" className="text-sm font-bold text-slate-600">{t('label')}</label>
+                            <input 
+                                type="text"
+                                id="label" 
+                                name="label" 
+                                value={formData.label} 
+                                onChange={handleChange} 
+                                placeholder={t('labelPlaceholder')} 
+                                className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" 
+                                required 
+                            />
+                        </div>
                     </div>
-                    <textarea 
-                        name="description" 
-                        value={formData.description} 
-                        onChange={handleChange} 
-                        placeholder="Description" 
-                        className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl" 
-                        rows={3}
-                        required
-                    ></textarea>
                     <div>
-                        <label className="text-sm font-bold text-slate-600">3D Position</label>
+                        <label htmlFor="description" className="text-sm font-bold text-slate-600">{t('description')}</label>
+                        <textarea 
+                            id="description"
+                            name="description" 
+                            value={formData.description} 
+                            onChange={handleChange} 
+                            placeholder={t('description')} 
+                            className="w-full mt-1 p-3 bg-slate-100 border border-slate-200 rounded-xl" 
+                            rows={3}
+                            required
+                        ></textarea>
+                    </div>
+                    <div>
+                        <label className="text-sm font-bold text-slate-600">{t('position3d')}</label>
                         <div className="grid grid-cols-3 gap-2 mt-1">
-                            <input type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder="X" className="p-3 bg-slate-100 border border-slate-200 rounded-xl" />
-                            <input type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder="Y" className="p-3 bg-slate-100 border border-slate-200 rounded-xl" />
-                            <input type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder="Z" className="p-3 bg-slate-100 border border-slate-200 rounded-xl" />
+                            <div>
+                                <label htmlFor="x" className="text-sm font-bold text-slate-600 pl-1">{t('x_axis')}</label>
+                                <input id="x" type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder={t('x_axis')} className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" />
+                            </div>
+                            <div>
+                                <label htmlFor="y" className="text-sm font-bold text-slate-600 pl-1">{t('y_axis')}</label>
+                                <input id="y" type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder={t('y_axis')} className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" />
+                            </div>
+                            <div>
+                                <label htmlFor="z" className="text-sm font-bold text-slate-600 pl-1">{t('z_axis')}</label>
+                                <input id="z" type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder={t('z_axis')} className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" />
+                            </div>
                         </div>
                     </div>
                     <div className="flex justify-end gap-3 pt-4">
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className="font-bold text-slate-600 py-2 px-5">Cancel</button>
+                        <button type="button" onClick={onCancel} disabled={isSubmitting} className="font-bold text-slate-600 py-2 px-5">{t('cancel')}</button>
                         <button 
                             type="submit" 
                             disabled={isSubmitting}
                             className="bg-slate-800 text-white font-bold py-2 px-5 rounded-lg flex items-center shadow hover:bg-slate-900 transition disabled:bg-slate-400 disabled:cursor-wait"
                         >
                             <Save size={16} className="mr-2" /> 
-                            {isSubmitting ? 'Saving...' : 'Save Point'}
+                            {isSubmitting ? t('saving') : t('savePoint')}
                         </button>
                     </div>
                 </form>
