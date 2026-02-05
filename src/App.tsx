@@ -248,7 +248,7 @@ const App: React.FC = () => {
         }
 
         return (
-            <div className="flex min-h-screen bg-slate-50">
+            <div className="flex h-screen bg-slate-50">
                 <Sidebar 
                     user={appUser} 
                     onLogout={handleLogout} 
@@ -258,7 +258,7 @@ const App: React.FC = () => {
                     onPatientsClick={handleBackToDashboard} 
                     onOnboardingTestClick={handleOnboardingTestClick}
                 />
-                <main className="flex-grow p-4 md:p-8">
+                <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {(() => {
                         switch (currentView) {
                             case 'user_details':

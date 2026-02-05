@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
 
     if (!user) {
         return (
-            <div className="w-64 bg-slate-900 text-white flex flex-col min-h-screen p-4">
+            <div className="w-64 bg-slate-900 text-white flex flex-col h-screen p-4">
                 <div className="flex-grow">
                     <h2 className="text-xl font-black tracking-tighter">APITHERAPYCARE</h2>
                 </div>
@@ -30,11 +30,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
     }
 
     return (
-        <div className="w-64 bg-slate-900 text-white flex flex-col min-h-screen">
+        <div className="w-64 bg-slate-900 text-white flex flex-col h-screen">
             <div className="p-4 border-b border-slate-800">
                 <h2 className="text-xl font-black tracking-tighter">APITHERAPYCARE</h2>
             </div>
-            <nav className="flex-grow p-4 space-y-2">
+            <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
                 <button onClick={onUserDetailsClick} className="w-full flex items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
                     <UserIcon size={18} className={isRtl ? "ml-3" : "mr-3"} />
                     <span>{t('my_profile')}</span>
