@@ -10,7 +10,7 @@
   "points_configuration": "תצורת נקודות",
   "anonymous_user": "משתמש אנונימי",
   "user": "משתמש",
-  "welcome": "ברוך הבא",
+  "welcome": "ברוך הבא, {{displayName}}!",
   "patient_hub_description": "המרכז שלך לניהול מטופלים.",
   "add_new_patient": "הוסף מטופל חדש",
   "search_by_name_id_email": "חפש לפי שם, ת.ז. או אימייל...",
@@ -101,5 +101,6 @@
   "delete_protocol_confirmation": "האם אתה בטוח שברצונך למחוק את הפרוטוקול '{{name}}'?",
   "failed_to_delete_protocol": "נכשל במחיקת הפרוטוקול.",
   "no_protocols_found": "לא נמצאו פרוטוקולים.",
-  "points_count": "{{count}} נקודות"
+  "points_count": "{{count}} נקודות",
+  "id_number": "ת.ז.: {{identityNumber}}"
 }

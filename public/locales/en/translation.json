@@ -10,7 +10,7 @@
   "points_configuration": "Points Configuration",
   "anonymous_user": "Anonymous User",
   "user": "User",
-  "welcome": "Welcome",
+  "welcome": "Welcome, {{displayName}}!",
   "patient_hub_description": "Your central hub for patient management.",
   "add_new_patient": "Add New Patient",
   "search_by_name_id_email": "Search by name, ID, or email...",
@@ -101,5 +101,6 @@
   "delete_protocol_confirmation": "Are you sure you want to delete the protocol '{{name}}'?",
   "failed_to_delete_protocol": "Failed to delete protocol.",
   "no_protocols_found": "No protocols found.",
-  "points_count": "{{count}} points"
+  "points_count": "{{count}} points",
+  "id_number": "ID: {{identityNumber}}"
 }
