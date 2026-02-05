@@ -64,18 +64,18 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
 
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-lg">
                 <div className="mb-6">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="patientReport">Patient Report *</label>
-                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={5} placeholder="Describe the patient's current condition and reason for treatment..."></textarea>
+                    <label className="text-base font-bold text-slate-500 uppercase" htmlFor="patientReport">{t('patient_report')} *</label>
+                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={5} placeholder={t('patient_report_placeholder')}></textarea>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="bloodPressure">Blood Pressure *</label>
-                        <input id="bloodPressure" type="text" value={treatmentNotes.bloodPressure} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, bloodPressure: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder="e.g., 120/80" />
+                        <label className="text-base font-bold text-slate-500 uppercase" htmlFor="bloodPressure">{t('blood_pressure')} *</label>
+                        <input id="bloodPressure" type="text" value={treatmentNotes.bloodPressure} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, bloodPressure: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder={t('blood_pressure_placeholder')} />
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="heartRate">Heart Rate *</label>
-                        <input id="heartRate" type="text" value={treatmentNotes.heartRate} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, heartRate: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder="e.g., 72 bpm" />
+                        <label className="text-base font-bold text-slate-500 uppercase" htmlFor="heartRate">{t('heart_rate')} *</label>
+                        <input id="heartRate" type="text" value={treatmentNotes.heartRate} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, heartRate: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder={t('heart_rate_placeholder')} />
                     </div>
                 </div>
 
