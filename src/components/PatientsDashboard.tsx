@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { PatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, Search, Mail, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
+import styles from './PatientsDashboard.module.css';
 
 interface PatientsDashboardProps {
   user: AppUser;
@@ -20,7 +20,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
 
-  const filteredPatients = patients.filter(p => 
+  const filteredPatients = patients.filter(p =>
     p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.identityNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -40,98 +40,108 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const cancelDelete = () => {
     setPatientToDelete(null);
   };
-  
-  const headerCellStyle = `px-6 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider ${i18n.dir() === 'rtl' ? 'text-right' : 'text-left'}`;
+
+  const getSeverityClass = (severity: 'Severe' | 'Moderate' | 'Mild') => {
+    switch (severity) {
+      case 'Severe':
+        return styles.severitySevere;
+      case 'Moderate':
+        return styles.severityModerate;
+      case 'Mild':
+      default:
+        return styles.severityMild;
+    }
+  };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex justify-between items-center">
+    <div className={styles.dashboardContainer}>
+      <div className={styles.header}>
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{t('patient_hub_description')}</h2>
+          <h2 className={styles.title}>{t('patient_list')}</h2>
         </div>
-        <button onClick={onAddPatient} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10">
+        <button onClick={onAddPatient} className={styles.addPatientButton}>
           <PlusCircle size={16} />
           {t('add_new_patient')}
         </button>
       </div>
 
-      <div className="relative">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input 
+      <div className={styles.searchContainer}>
+        <Search size={16} className={styles.searchIcon} />
+        <input
           type="text"
           placeholder={t('search_by_name_id_email')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          className={styles.searchInput}
         />
       </div>
-      
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className={`grid grid-cols-12 gap-4 border-b bg-slate-50 ${headerCellStyle}`}>
-            <div className="col-span-3">{t('patient')}</div>
-            <div className="col-span-2">{t('contact')}</div>
-            <div className="col-span-2">{t('condition')}</div>
-            <div>{t('severity')}</div>
-            <div>{t('last_treatment')}</div>
-            <div className="col-span-2 text-right pr-4"></div>
+
+      <div className={styles.tableContainer}>
+        <div className={styles.tableHeader}>
+            <div className={`${styles.headerCell} ${styles.headerCellCol3}`}>{t('patient')}</div>
+            <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('contact')}</div>
+            <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('condition')}</div>
+            <div className={styles.headerCell}>{t('severity')}</div>
+            <div className={styles.headerCell}>{t('last_treatment')}</div>
+            <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className={styles.tableBody}>
           {filteredPatients.length > 0 ? (
             filteredPatients.map(patient => (
-              <div key={patient.id} className="grid grid-cols-12 gap-4 items-center p-6 group">
-                <div className="col-span-3 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-500 text-xs">{patient.fullName.slice(0, 2)}</div>
+              <div key={patient.id} className={styles.tableRow}>
+                <div className={styles.patientInfo}>
+                  <div className={styles.patientAvatar}>{patient.fullName.slice(0, 2)}</div>
                   <div>
-                    <p className="font-bold text-slate-800 text-sm">{patient.fullName}</p>
-                    <p className="font-mono text-xs text-slate-500">{t('id_number', { identityNumber: patient.identityNumber })}</p>
+                    <p className={styles.patientName}>{patient.fullName}</p>
+                    <p className={styles.patientId}>{t('id_number', { identityNumber: patient.identityNumber })}</p>
                   </div>
                 </div>
-                <div className="col-span-2">
-                    <a href={`mailto:${patient.email}`} className="text-xs text-slate-600 hover:text-yellow-600 flex items-center gap-2">
+                <div className={styles.contactInfo}>
+                    <a href={`mailto:${patient.email}`} className={styles.contactLink}>
                       <Mail size={12}/> {patient.email}
                     </a>
-                    <p className="font-mono text-xs text-slate-500 pt-1">{patient.mobile}</p>
+                    <p className={styles.contactMobile}>{patient.mobile}</p>
                 </div>
-                <div className="col-span-2 text-xs font-bold text-slate-600 uppercase tracking-wider">{patient.condition}</div>
+                <div className={styles.conditionInfo}>{patient.condition}</div>
                 <div>
-                  <span className={`px-3 py-1 text-xs font-bold rounded-full ${patient.severity === 'Severe' ? 'bg-red-100 text-red-800' : patient.severity === 'Moderate' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.severity)}`}>
                     {t(patient.severity.toLowerCase())}
                   </span>
                 </div>
-                <div className="text-xs font-bold text-slate-500">{patient.lastTreatment ? patient.lastTreatment : t('no_treatments')}</div>
-                <div className="col-span-2 flex items-center justify-end gap-1">
-                    <button onClick={() => onUpdatePatient(patient)} className="p-2 text-slate-400 hover:text-slate-800 transition rounded-lg"><Edit size={14} /></button>
-                    <button onClick={() => onShowTreatments(patient)} className="p-2 text-slate-400 hover:text-slate-800 transition rounded-lg"><FileText size={14} /></button>
-                    {(!patient.lastTreatment || patient.lastTreatment === '') && 
-                      <button onClick={() => handleDeleteClick(patient)} className="p-2 text-slate-400 hover:text-red-500 transition rounded-lg"><Trash2 size={14} /></button>
+                <div className={styles.lastTreatment}>{patient.lastTreatment ? patient.lastTreatment : t('no_treatments')}</div>
+                <div className={styles.actionsContainer}>
+                    <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton}><Edit size={14} /></button>
+                    <button onClick={() => onShowTreatments(patient)} className={styles.actionButton}><FileText size={14} /></button>
+                    {(!patient.lastTreatment || patient.lastTreatment === '') &&
+                      <button onClick={() => handleDeleteClick(patient)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={14} /></button>
                     }
-                    <button onClick={() => onStartTreatment(patient)} className="bg-slate-900 text-white font-bold py-2 pl-3 pr-2 rounded-lg text-xs flex items-center gap-1.5 group-hover:bg-yellow-500 group-hover:text-slate-900 transition-all">
+                    <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
                       {t('start')} <ChevronRight size={14} />
                     </button>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center p-12 text-slate-500">
-              <UserIcon className="mx-auto mb-4" size={40} />
-              <h3 className="font-bold text-lg">{t('no_patients_found')}</h3>
-              <p className="text-sm">{t('no_patients_found_description')}</p>
+            <div className={styles.noPatientsContainer}>
+              <UserIcon className={styles.noPatientsIcon} size={40} />
+              <h3 className={styles.noPatientsTitle}>{t('no_patients_found')}</h3>
+              <p className={styles.noPatientsDescription}>{t('no_patients_found_description')}</p>
             </div>
           )}
         </div>
       </div>
 
       {patientToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full text-center">
-            <AlertTriangle className="mx-auto text-red-500" size={48} />
-            <h3 className="text-xl font-black text-slate-800 mt-4">{t('confirm_deletion')}</h3>
-            <p className="text-slate-500 mt-2">
-                <Trans i18nKey="confirm_deletion_description" components={[<span className="font-bold"></span>]} values={{ patientName: patientToDelete.fullName }}/>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <AlertTriangle className={styles.modalIcon} size={48} />
+            <h3 className={styles.modalTitle}>{t('confirm_deletion')}</h3>
+            <p className={styles.modalDescription}>
+                <Trans i18nKey="confirm_deletion_description" components={{ b: <b /> }} values={{ patientName: patientToDelete.fullName }}/>
             </p>
-            <div className="flex gap-4 mt-6">
-              <button onClick={cancelDelete} className="w-full py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">{t('cancel')}</button>
-              <button onClick={confirmDelete} className="w-full py-3 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition">{t('delete_patient')}</button>
+            <div className={styles.modalActions}>
+              <button onClick={cancelDelete} className={styles.modalCancelButton}>{t('cancel')}</button>
+              <button onClick={confirmDelete} className={styles.modalConfirmButton}>{t('delete_patient')}</button>
             </div>
           </div>
         </div>

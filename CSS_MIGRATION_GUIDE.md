@@ -24,78 +24,24 @@ Follow these steps for each component being migrated:
     *   **Crucially**, replace all hardcoded values and Tailwind utilities with the appropriate CSS variables from `src/globals.css`. For example, `background-color: #1e40af;` becomes `background-color: var(--color-primary);`.
     *   Use **logical properties** for layout and spacing to ensure proper RTL/LTR support (e.g., use `margin-inline-start` instead of `margin-left`, `padding-block-end` instead of `padding-bottom`).
 
-6.  **Button Styling Example:**
-    *   Buttons are a common element requiring consistent styling. Always use the global color variables for buttons.
-
-    *   **Primary Button (e.g., Save, Submit):**
-        ```css
-        .saveButton {
-            background-color: var(--color-primary);
-            color: var(--color-white);
-            font-weight: 700;
-            padding: 0.5rem 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            transition: background-color 0.2s;
-        }
-
-        .saveButton:hover {
-            /* Use a slightly darker shade for hover if not in globals */
-            background-color: #1a368a;
-        }
-
-        .saveButton:disabled {
-            background-color: var(--color-secondary);
-            cursor: wait;
-        }
-        ```
-
-    *   **Danger Button (e.g., Delete, Remove):**
-        ```css
-        .deleteButton {
-            background-color: var(--color-danger);
-            color: var(--color-white);
-            font-weight: 700;
-            padding: 0.5rem 1.25rem;
-            border-radius: var(--border-radius);
-            transition: background-color 0.2s;
-        }
-
-        .deleteButton:hover {
-             /* Use a slightly darker shade for hover if not in globals */
-            background-color: #dc2626;
-        }
-        ```
-
-    *   **Cancel/Secondary Button:**
-        ```css
-        .cancelButton {
-            font-weight: 700;
-            color: var(--color-text-muted);
-            padding: 0.5rem 1.25rem;
-            border-radius: var(--border-radius);
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-
-        .cancelButton:hover {
-            /* Consider adding a dedicated hover color to globals if used often */
-            background-color: #f1f5f9;
-        }
-        ```
-
-7.  **Refactor the React Component:**
+6.  **Refactor the React Component:**
     *   Open the component's `.tsx` file.
     *   Import the newly created CSS module at the top: `import styles from './[ComponentName].module.css';`.
     *   Replace all Tailwind `className` strings with the corresponding CSS module classes. For example, `className="flex items-center..."` becomes `className={styles.container}`.
     *   For conditional classes, use template literals: `className={`${styles.input} ${errors.nickname ? styles.inputError : ''}`}``.
 
-8.  **Verify No Tailwind Classes Remain:**
+7.  **Verify No Tailwind Classes Remain:**
     *   After refactoring the component, meticulously scan the `.tsx` file to confirm that all Tailwind utility classes have been removed from `className` attributes. The component should exclusively use classes from the imported CSS module (e.g., `className={styles.container}`).
 
-9.  **Review and Confirm:**
+8.  **Review and Confirm:**
     *   Present the full contents of both the new `[ComponentName].module.css` file and the modified `[ComponentName].tsx` file for user review.
     *   Do not write the files until you receive explicit approval (e.g., "Approve").
 
-10. **Apply Changes:**
+9.  **Apply Changes:**
     *   Once approved, use the appropriate tools to write the contents to `src/components/[ComponentName].module.css` and update `src/components/[ComponentName].tsx`.
+
+## Button Styling Conventions
+
+To ensure a consistent user experience, all buttons that trigger the creation of a new entity (e.g., "Add New Patient", "Add New Point") or a primary action (e.g., "Start") MUST use the primary action color.
+
+*   **Primary Action / "Add New" Buttons:** These buttons must use `var(--color-primary)` for their background color and `var(--color-white)` for the text color.
