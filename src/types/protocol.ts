@@ -8,5 +8,6 @@ export interface Protocol {
     id: string;
     name: string;
     description: string;
-    stingingPoints: StingingPoint[];
+    rationale: string; 
+    stingingPoints?: StingingPoint[];
 }

@@ -75,7 +75,10 @@
 
 .tableBody {
     background-color: white;
-    divide-y: #e5e7eb;
+}
+
+.tableRow + .tableRow {
+    border-top: 1px solid #e5e7eb;
 }
 
 .tableRow:hover {
