@@ -36,34 +36,32 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
     return (
         <div className={styles.container} dir={isRtl ? 'rtl' : 'ltr'}>
             <h2 className={styles.title}>{t('my_profile')}</h2>
-            <div className={styles.card}>
-                {error && <p className={styles.error}>{error}</p>}
-                <div className={styles.grid}>
-                    <div className={styles.field}>
-                        <label className={styles.label} htmlFor="fullName">{t('full_name')}</label>
-                        <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={styles.input} required />
-                    </div>
-                    <div className={styles.field}>
-                        <label className={styles.label} htmlFor="email">{t('email')}</label>
-                        <p className={styles.readOnlyField}>{formData.email}</p>
-                    </div>
-                    <div className={styles.field}>
-                        <label className={styles.label} htmlFor="mobile">{t('mobile')}</label>
-                        <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className={styles.input} required />
-                    </div>
-                    <div className={styles.field}>
-                        <label className={styles.label} htmlFor="userId">{t('username')}</label>
-                        <p className={styles.readOnlyField}>{formData.userId}</p>
-                    </div>
-                     <div className={styles.field}>
-                        <label className={styles.label}>{t('role')}</label>
-                        <p className={`${styles.readOnlyField} ${styles.capitalize}`}>{t(formData.role)}</p>
-                    </div>
+            {error && <p className={styles.error}>{error}</p>}
+            <div className={styles.grid}>
+                <div className={styles.field}>
+                    <label className={styles.label} htmlFor="fullName">{t('full_name')}</label>
+                    <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={styles.input} required />
                 </div>
-                <div className={styles.actions}>
-                    <button onClick={onBack} className={styles.backButton}>{t('back_to_dashboard')}</button>
-                    <button onClick={handleSave} className={styles.saveButton}>{t('save_changes')}</button>
+                <div className={styles.field}>
+                    <label className={styles.label} htmlFor="email">{t('email')}</label>
+                    <p className={styles.readOnlyField}>{formData.email}</p>
                 </div>
+                <div className={styles.field}>
+                    <label className={styles.label} htmlFor="mobile">{t('mobile')}</label>
+                    <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className={styles.input} required />
+                </div>
+                <div className={styles.field}>
+                    <label className={styles.label} htmlFor="userId">{t('username')}</label>
+                    <p className={styles.readOnlyField}>{formData.userId}</p>
+                </div>
+                 <div className={styles.field}>
+                    <label className={styles.label}>{t('role')}</label>
+                    <p className={`${styles.readOnlyField} ${styles.capitalize}`}>{t(formData.role)}</p>
+                </div>
+            </div>
+            <div className={styles.actions}>
+                <button onClick={onBack} className={styles.backButton}>{t('back_to_dashboard')}</button>
+                <button onClick={handleSave} className={styles.saveButton}>{t('save_changes')}</button>
             </div>
         </div>
     );
