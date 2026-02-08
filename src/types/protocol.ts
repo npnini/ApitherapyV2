@@ -4,6 +4,7 @@ export interface StingingPoint {
 }
 
 export interface Protocol {
+    points: any;
     id: string;
     name: string;
     description: string;

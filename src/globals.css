@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Assistant:wght@400;600;700&display=swap');
+
+
+:root {
+  /* FONTS */
+  --font-primary: 'Inter', 'Assistant', sans-serif;
+ 
+  /* COLORS */
+  --color-primary: #1e40af;
+  --color-secondary: #64748b;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-bg: #f8fafc;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-white: #ffffff;
+ 
+  /* TYPOGRAPHY (Fluid Scaling) */
+  --text-h1: clamp(24px, 5vw, 32px);
+  --text-h2: clamp(20px, 4vw, 26px);
+  --text-body: clamp(16px, 3vw, 18px);
+  --text-small: clamp(14px, 2.5vw, 16px);
+ 
+  /* SPACING */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+ 
+  /* BORDER */
+  --border-radius: 0.5rem;
+  --border-width: 1px;
+}
+
+
+/* BASE STYLES */
+body {
+  margin: 0;
+  font-family: var(--font-primary);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+
+/* RTL AUTOMATION (The Magic Section) */
+[dir="rtl"] {
+  line-height: 1.7; /* Hebrew needs more vertical space */
+
+  /* Increase smallest text size for better readability in Hebrew */
+  --text-small: clamp(15px, 2.7vw, 17px); /* Slightly larger for Hebrew */
+}
+
+
+/* Global Utilities using Logical Properties */
+.text-start { text-align: start; }
+.m-start { margin-inline-start: var(--space-md); }
+.p-start { padding-inline-start: var(--space-md); }
+
+
+/* Typography rules from your airules.md */
+h1 {
+  font-size: var(--text-h1);
+  color: var(--color-primary);
+}
+
+
+[dir="rtl"] h1 { font-weight: 700; } /* Hebrew Boldness Rule */
+
+
+label {
+  display: block;
+  font-size: var(--text-body);
+  margin-bottom: var(--space-xs);
+}
+
+
+[dir="rtl"] label {
+  font-weight: 600; /* Hebrew Label Rule */
+  font-size: var(--text-body); /* Match input text size for readability */
+}

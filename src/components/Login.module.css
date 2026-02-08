@@ -1,0 +1,90 @@
+.loginContainer {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #0f172a; /* Equivalent to bg-slate-900 */
+  color: var(--color-white);
+}
+
+.langSwitcher {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg); /* Use right for LTR, will be flipped by browser for RTL */
+  display: flex;
+  gap: var(--space-md);
+}
+
+.langButton {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--border-radius);
+  background-color: #334155; /* bg-slate-700 */
+  border: none;
+  color: var(--color-white);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.langButton.active {
+  background-color: var(--color-primary);
+}
+
+.loginBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xl);
+  border-radius: var(--border-radius);
+  background-color: #1e293b; /* bg-slate-800 */
+  border: var(--border-width) solid #334155; /* border-slate-700 */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.icon {
+  color: #facc15; /* text-yellow-400 */
+}
+
+.title {
+  margin-inline-start: var(--space-sm);
+  font-size: var(--text-h1);
+  font-weight: 700;
+  letter-spacing: -0.05em; /* tracking-tighter */
+}
+
+.subtitle {
+  color: #cbd5e1; /* text-slate-300 */
+  margin-bottom: var(--space-xl);
+}
+
+.googleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background-color: #2563eb; /* bg-blue-600 */
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  color: var(--color-white);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.googleButton:hover {
+  background-color: #1d4ed8; /* hover:bg-blue-700 */
+}
+
+.googleIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-inline-end: var(--space-sm);
+}
