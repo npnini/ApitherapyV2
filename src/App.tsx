@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { auth, db } from './firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
@@ -18,6 +18,7 @@ import CaretakerDetails from './components/CaretakerDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
+import { logout } from './services/authService';
 
 type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
@@ -88,7 +89,7 @@ const App: React.FC = () => {
         }
     }, [appUser, fetchInitialData]);
 
-    const handleLogout = async () => { await signOut(auth); };
+    const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };

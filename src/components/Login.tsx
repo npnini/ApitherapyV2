@@ -1,16 +1,14 @@
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from "../firebase";
-import { Beaker } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Beaker } from 'lucide-react';
+import { signInWithGoogle } from '../services/authService';
 import styles from './Login.module.css';
 
 const Login = () => {
   const { t, i18n } = useTranslation();
 
   const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithGoogle();
     } catch (error) {
       console.error("Firebase Popup Error:", error);
     }
