@@ -5,9 +5,10 @@ import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase
 import { StingPoint } from '../types/apipuncture';
 import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import styles from './PointsAdmin.module.css';
 
 const PointsAdmin: React.FC = () => {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const [points, setPoints] = useState<StingPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState<StingPoint | null>(null);
@@ -120,26 +121,24 @@ const PointsAdmin: React.FC = () => {
         setFormError(null); 
     };
 
-    const headerCellStyle = `px-6 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider ${i18n.dir() === 'rtl' ? 'text-right' : 'text-left'}`;
-
     return (
-        <div className="p-8 max-w-7xl mx-auto animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{t('acupuncturePoints')}</h1>
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <h1 className={styles.title}>{t('acupuncturePoints')}</h1>
                 <div>
                     <button
                         onClick={() => {
                             setFormError(null);
                             setIsEditing({ id: '', code: '', label: '', description: '', position: { x: 0, y: 0, z: 0 }});
                         }}
-                        className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg flex items-center shadow-lg hover:bg-red-700 transition"
+                        className={styles.addButton}
                     >
-                        <PlusCircle size={18} className="mr-2" /> {t('addNewPoint')}
+                        <PlusCircle size={18} className={styles.addButtonIcon} /> {t('addNewPoint')}
                     </button>
                 </div>
             </div>
 
-            {error && <p className="text-red-500 bg-red-100 p-3 rounded-lg mb-4 text-center">{error}</p>}
+            {error && <p className={styles.errorBox}>{error}</p>}
 
             {isEditing && (
                 <EditPointForm 
@@ -153,20 +152,20 @@ const PointsAdmin: React.FC = () => {
             )}
 
             {deletingPoint && (
-                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-                    <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md m-4">
-                        <div className='flex items-start'>
-                            <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10 mr-4">
-                               <AlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />
+                 <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <div className={styles.modalIconContainer}>
+                               <AlertTriangle className={styles.modalIcon} aria-hidden="true" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-slate-900">{t('deletePoint')}</h2>
-                                <p className="text-slate-600 mt-2">{t('deletePointConfirmation', { code: deletingPoint.code })}</p>
+                                <h2 className={styles.modalTitle}>{t('deletePoint')}</h2>
+                                <p className={styles.modalText}>{t('deletePointConfirmation', { code: deletingPoint.code })}</p>
                             </div>
                         </div>
-                        <div className="flex justify-end space-x-3 mt-6">
-                            <button onClick={() => setDeletingPoint(null)} disabled={isSubmitting} className="font-bold text-slate-600 py-2 px-5 rounded-lg hover:bg-slate-100 transition disabled:opacity-50">{t('cancel')}</button>
-                            <button onClick={confirmDelete} disabled={isSubmitting} className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow hover:bg-red-700 transition disabled:bg-red-400 disabled:cursor-wait">
+                        <div className={styles.modalActions}>
+                            <button onClick={() => setDeletingPoint(null)} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
+                            <button onClick={confirmDelete} disabled={isSubmitting} className={styles.confirmDeleteButton}>
                                 {isSubmitting ? t('deleting') : t('confirmDelete')}
                             </button>
                         </div>
@@ -174,35 +173,35 @@ const PointsAdmin: React.FC = () => {
                 </div>
             )}
 
-            <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
+            <div className={styles.tableContainer}>
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50">
+                    <table className={styles.table}>
+                        <thead className={styles.tableHeader}>
                             <tr>
-                                <th scope="col" className={headerCellStyle}>{t('code')}</th>
-                                <th scope="col" className={headerCellStyle}>{t('label')}</th>
-                                <th scope="col" className={headerCellStyle}>{t('description')}</th>
-                                <th scope="col" className={headerCellStyle}>{t('position')}</th>
+                                <th scope="col" className={styles.headerCell}>{t('code')}</th>
+                                <th scope="col" className={styles.headerCell}>{t('label')}</th>
+                                <th scope="col" className={styles.headerCell}>{t('description')}</th>
+                                <th scope="col" className={styles.headerCell}>{t('position')}</th>
                                 <th scope="col" className="relative px-6 py-3">
                                     <span className="sr-only">{t('actions')}</span>
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-slate-100">
+                        <tbody className={styles.tableBody}>
                             {isLoading && !deletingPoint ? (
-                                <tr><td colSpan={5} className="text-center p-16"><Loader className='animate-spin text-red-600' size={32}/></td></tr>
+                                <tr><td colSpan={5} className={styles.loaderCell}><Loader className={styles.loader} size={32}/></td></tr>
                             ) : points.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center p-8 text-slate-500">{t('noPointsFound')}</td></tr>
+                                <tr><td colSpan={5} className={styles.emptyCell}>{t('noPointsFound')}</td></tr>
                             ) : (
                                 points.map(point => (
-                                    <tr key={point.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">{point.code}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">{point.label}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate" title={point.description}>{point.description}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button onClick={() => { setFormError(null); setIsEditing(point);}} className="text-slate-600 hover:text-slate-900 mr-4"><Edit size={18}/></button>
-                                            <button onClick={() => setDeletingPoint(point)} className="text-red-500 hover:text-red-700"><Trash2 size={18}/></button>
+                                    <tr key={point.id} className={styles.tableRow}>
+                                        <td className={`${styles.cell} ${styles.codeCell}`}>{point.code}</td>
+                                        <td className={styles.cell}>{point.label}</td>
+                                        <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description}>{point.description}</td>
+                                        <td className={`${styles.cell} ${styles.positionCell}`}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
+                                        <td className={`${styles.cell} ${styles.actionsCell}`}>
+                                            <button onClick={() => { setFormError(null); setIsEditing(point);}} className={styles.actionButton}><Edit size={18}/></button>
+                                            <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18}/></button>
                                         </td>
                                     </tr>
                                 ))
@@ -276,80 +275,80 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
     const isEditing = !!formData.id;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in-fast">
-            <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-lg m-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <h2 className="text-xl font-black text-slate-900 tracking-tighter mb-4">{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
+        <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+                <form onSubmit={handleSubmit} className={styles.form}>
+                    <h2 className={styles.formTitle}>{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
                     
-                    {(error || localError) && <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{error || localError}</p>}
+                    {(error || localError) && <p className={styles.formError}>{error || localError}</p>}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
                         <div>
-                            <label htmlFor="code" className="text-sm font-bold text-slate-600">{t('code')}</label>
+                            <label htmlFor="code" className={styles.label}>{t('code')}</label>
                             <input 
                                 type="text" 
                                 id="code"
                                 name="code" 
                                 value={formData.code} 
                                 onChange={handleChange} 
-                                placeholder={t('codePlaceholder')} 
-                                className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed" 
+                                placeholder={t('codePlaceholder')}
+                                className={styles.input}
                                 required 
                                 disabled={isEditing}
                             />
                         </div>
                         <div>
-                             <label htmlFor="label" className="text-sm font-bold text-slate-600">{t('label')}</label>
+                             <label htmlFor="label" className={styles.label}>{t('label')}</label>
                             <input 
                                 type="text"
                                 id="label" 
                                 name="label" 
                                 value={formData.label} 
                                 onChange={handleChange} 
-                                placeholder={t('labelPlaceholder')} 
-                                className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" 
+                                placeholder={t('labelPlaceholder')}
+                                className={styles.input} 
                                 required 
                             />
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="description" className="text-sm font-bold text-slate-600">{t('description')}</label>
+                        <label htmlFor="description" className={styles.label}>{t('description')}</label>
                         <textarea 
                             id="description"
                             name="description" 
                             value={formData.description} 
                             onChange={handleChange} 
                             placeholder={t('description')} 
-                            className="w-full mt-1 p-3 bg-slate-100 border border-slate-200 rounded-xl" 
+                            className={styles.textarea}
                             rows={3}
                             required
                         ></textarea>
                     </div>
                     <div>
-                        <label className="text-sm font-bold text-slate-600">{t('position3d')}</label>
-                        <div className="grid grid-cols-3 gap-2 mt-1">
+                        <label className={styles.label}>{t('position3d')}</label>
+                        <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
                             <div>
-                                <label htmlFor="x" className="text-sm font-bold text-slate-600 pl-1">{t('x_axis')}</label>
-                                <input id="x" type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder={t('x_axis')} className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" />
+                                <label htmlFor="x" className={`${styles.label} pl-1`}>{t('x_axis')}</label>
+                                <input id="x" type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder="X" className={styles.input} />
                             </div>
                             <div>
-                                <label htmlFor="y" className="text-sm font-bold text-slate-600 pl-1">{t('y_axis')}</label>
-                                <input id="y" type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder={t('y_axis')} className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" />
+                                <label htmlFor="y" className={`${styles.label} pl-1`}>{t('y_axis')}</label>
+                                <input id="y" type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder="Y" className={styles.input} />
                             </div>
                             <div>
-                                <label htmlFor="z" className="text-sm font-bold text-slate-600 pl-1">{t('z_axis')}</label>
-                                <input id="z" type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder={t('z_axis')} className="p-3 w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl" />
+                                <label htmlFor="z" className={`${styles.label} pl-1`}>{t('z_axis')}</label>
+                                <input id="z" type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder="Z" className={styles.input} />
                             </div>
                         </div>
                     </div>
-                    <div className="flex justify-end gap-3 pt-4">
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className="font-bold text-slate-600 py-2 px-5">{t('cancel')}</button>
+                    <div className={styles.formActions}>
+                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
                         <button 
                             type="submit" 
                             disabled={isSubmitting}
-                            className="bg-slate-800 text-white font-bold py-2 px-5 rounded-lg flex items-center shadow hover:bg-slate-900 transition disabled:bg-slate-400 disabled:cursor-wait"
+                            className={styles.saveButton}
                         >
-                            <Save size={16} className="mr-2" /> 
+                            <Save size={16} className={styles.saveButtonIcon} /> 
                             {isSubmitting ? t('saving') : t('savePoint')}
                         </button>
                     </div>
