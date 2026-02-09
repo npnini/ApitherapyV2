@@ -183,7 +183,6 @@
 }
 
 .formLabel {
-    font-size: 0.875rem; /* 14px */
     font-weight: 700;
     color: var(--color-text-muted);
     margin-bottom: 0.25rem;
@@ -215,7 +214,7 @@
 }
 
 [dir="rtl"] .pointsSelectionContainer {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
 }
 
 @media (min-width: 768px) {

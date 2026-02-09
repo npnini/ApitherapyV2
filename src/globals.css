@@ -1,10 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Assistant:wght@400;600;700&display=swap');
 
-
 :root {
   /* FONTS */
   --font-primary: 'Inter', 'Assistant', sans-serif;
- 
+
   /* COLORS */
   --color-primary: #1e40af;
   --color-secondary: #64748b;
@@ -14,25 +13,43 @@
   --color-text: #1e293b;
   --color-text-muted: #64748b;
   --color-white: #ffffff;
- 
+  --color-border: #e2e8f0;
+  --color-background-input: #f8fafc;
+  --color-secondary-button-background: #e2e8f0;
+
   /* TYPOGRAPHY (Fluid Scaling) */
   --text-h1: clamp(24px, 5vw, 32px);
   --text-h2: clamp(20px, 4vw, 26px);
   --text-body: clamp(16px, 3vw, 18px);
   --text-small: clamp(14px, 2.5vw, 16px);
- 
+  --text-form-label: clamp(14px, 2.5vw, 16px);
+
   /* SPACING */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;
   --space-xl: 2rem;
- 
+
   /* BORDER */
   --border-radius: 0.5rem;
+  --border-radius-md: 0.375rem;
+  --border-radius-xl: 0.75rem;
   --border-width: 1px;
-}
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
+  /* Others */
+  --color-error: #dc2626;
+  --color-error-dark: #991b1b;
+  --color-error-light: #fef2f2;
+  --color-background-muted: #f1f5f9;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #475569;
+  --font-size-xl: 1.25rem;
+  --font-size-sm: 0.875rem;
+  --font-size-xs: 0.75rem;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
 
 /* BASE STYLES */
 body {
@@ -43,21 +60,19 @@ body {
   line-height: 1.5;
 }
 
-
 /* RTL AUTOMATION (The Magic Section) */
 [dir="rtl"] {
   line-height: 1.7; /* Hebrew needs more vertical space */
 
   /* Increase smallest text size for better readability in Hebrew */
   --text-small: clamp(15px, 2.7vw, 17px); /* Slightly larger for Hebrew */
+  --text-form-label: clamp(13px, 2.2vw, 14px);
 }
-
 
 /* Global Utilities using Logical Properties */
 .text-start { text-align: start; }
 .m-start { margin-inline-start: var(--space-md); }
 .p-start { padding-inline-start: var(--space-md); }
-
 
 /* Typography rules from your airules.md */
 h1 {
@@ -65,18 +80,19 @@ h1 {
   color: var(--color-primary);
 }
 
-
 [dir="rtl"] h1 { font-weight: 700; } /* Hebrew Boldness Rule */
-
 
 label {
   display: block;
-  font-size: var(--text-body);
+  font-size: var(--text-form-label);
   margin-bottom: var(--space-xs);
 }
 
-
 [dir="rtl"] label {
   font-weight: 600; /* Hebrew Label Rule */
-  font-size: var(--text-body); /* Match input text size for readability */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

@@ -328,15 +328,15 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                         <label className={styles.label}>{t('position3d')}</label>
                         <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
                             <div>
-                                <label htmlFor="x" className={`${styles.label} pl-1`}>{t('x_axis')}</label>
+                                <label htmlFor="x" className={styles.coordinateLabel}>{t('x_axis')}</label>
                                 <input id="x" type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder="X" className={styles.input} />
                             </div>
                             <div>
-                                <label htmlFor="y" className={`${styles.label} pl-1`}>{t('y_axis')}</label>
+                                <label htmlFor="y" className={styles.coordinateLabel}>{t('y_axis')}</label>
                                 <input id="y" type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder="Y" className={styles.input} />
                             </div>
                             <div>
-                                <label htmlFor="z" className={`${styles.label} pl-1`}>{t('z_axis')}</label>
+                                <label htmlFor="z" className={styles.coordinateLabel}>{t('z_axis')}</label>
                                 <input id="z" type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder="Z" className={styles.input} />
                             </div>
                         </div>

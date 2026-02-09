@@ -97,10 +97,6 @@
     grid-column: span 2;
 }
 
-.tableBody {
-    /* divide-y is handled by border-bottom on rows */
-}
-
 .tableRow {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
