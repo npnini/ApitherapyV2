@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { PatientData } from '../types/patient';
-import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, Search, Mail, Trash2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import styles from './PatientsDashboard.module.css';
 
@@ -116,7 +116,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                       <button onClick={() => handleDeleteClick(patient)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={14} /></button>
                     }
                     <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
-                      {t('start')} <ChevronRight size={14} />
+                      {t('start')}{' '}
+                      {i18n.dir() === 'rtl' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                     </button>
                 </div>
               </div>
