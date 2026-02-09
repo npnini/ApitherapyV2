@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -6,6 +5,7 @@ import { PatientData } from '../types/patient';
 import { Protocol } from '../types/protocol';
 import { ChevronLeft, BrainCircuit, List, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import styles from './ProtocolSelection.module.css';
 
 interface ProtocolSelectionProps {
     patient: PatientData;
@@ -17,7 +17,7 @@ interface ProtocolSelectionProps {
 
 const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect, treatmentNotes, setTreatmentNotes }) => {
     const { t, i18n } = useTranslation();
-    const isRtl = i18n.language === 'he';
+    const direction = i18n.dir();
 
     const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
     const [proposedProtocols, setProposedProtocols] = useState<Protocol[]>([]);
@@ -43,44 +43,51 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         setIsFinding(true);
         setShowFullList(false);
         await new Promise(resolve => setTimeout(resolve, 1500));
-        const mockProposals = allProtocols.slice(0, 3);
+        const mockProposals = allProtocols.slice(0, 2);
         setProposedProtocols(mockProposals);
         setIsFinding(false);
     };
 
+    const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
+
     return (
-        <div className="max-w-4xl mx-auto animate-fade-in" dir={isRtl ? 'rtl' : 'ltr'}>
-            <div className="flex justify-between items-center mb-6">
-                <div className="rtl:text-right">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{t('start_new_treatment')}</h2>
-                    <p className="text-slate-500">{t('for_patient')}: {patient.fullName}</p>
+        <div className={styles.container} dir={direction}>
+            <div className={styles.header}>
+                <div>
+                    <h2 className={styles.title}>{t('start_new_treatment')}</h2>
+                    <p className={styles.patientName}>{t('for_patient')}: {patient.fullName}</p>
                 </div>
-                <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition">
-                    {!isRtl && <ChevronLeft size={16} />}
+                <button onClick={onBack} className={styles.backButton}>
+                    <BackIcon size={16} />
                     {t('back_to_dashboard')}
-                    {isRtl && <ChevronRight size={16} />}
                 </button>
             </div>
 
-            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-lg">
-                <div className="mb-6">
-                    <label className="text-base font-bold text-slate-500 uppercase" htmlFor="patientReport">{t('patient_report')} *</label>
-                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={5} placeholder={t('patient_report_placeholder')}></textarea>
+            <div className={styles.formContainer}>
+                <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="patientReport">
+                        {t('patient_report')} <span className={styles.requiredAsterisk}>*</span>
+                    </label>
+                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className={styles.textarea} rows={5} placeholder={t('patient_report_placeholder')}></textarea>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className={styles.inputGrid}>
                     <div>
-                        <label className="text-base font-bold text-slate-500 uppercase" htmlFor="bloodPressure">{t('blood_pressure')} *</label>
-                        <input id="bloodPressure" type="text" value={treatmentNotes.bloodPressure} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, bloodPressure: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder={t('blood_pressure_placeholder')} />
+                        <label className={styles.label} htmlFor="bloodPressure">
+                            {t('blood_pressure')} <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="bloodPressure" type="text" value={treatmentNotes.bloodPressure} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, bloodPressure: e.target.value })} className={styles.input} placeholder={t('blood_pressure_placeholder')} />
                     </div>
                     <div>
-                        <label className="text-base font-bold text-slate-500 uppercase" htmlFor="heartRate">{t('heart_rate')} *</label>
-                        <input id="heartRate" type="text" value={treatmentNotes.heartRate} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, heartRate: e.target.value })} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" placeholder={t('heart_rate_placeholder')} />
+                        <label className={styles.label} htmlFor="heartRate">
+                            {t('heart_rate')} <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="heartRate" type="text" value={treatmentNotes.heartRate} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, heartRate: e.target.value })} className={styles.input} placeholder={t('heart_rate_placeholder')} />
                     </div>
                 </div>
 
-                <div className="text-center mb-8">
-                    <button onClick={handleFindProtocol} disabled={!isFormValid || isFinding} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-yellow-500/10 mx-auto disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed">
+                <div className={styles.buttonContainer}>
+                    <button onClick={handleFindProtocol} disabled={!isFormValid || isFinding} className={styles.findButton}>
                         {isFinding ? (
                             <>{t('finding_protocols')}</>
                         ) : (
@@ -89,46 +96,48 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                     </button>
                 </div>
 
-                {isFinding ? (
-                     <div className="text-center p-8 text-slate-500">Analyzing report and finding best protocols...</div>
-                ) : proposedProtocols.length > 0 && (
-                    <div className="animate-fade-in">
-                        <h3 className="text-xl font-bold mb-4 text-center">{t('ai_suggested_protocols')}</h3>
-                        <div className="space-y-3 mb-8">
+                {isFinding && (
+                     <div className={styles.loadingMessage}>Analyzing report and finding best protocols...</div>
+                )}
+                
+                {proposedProtocols.length > 0 && (
+                    <div className={styles.suggestionsContainer}>
+                        <h3 className={styles.suggestionsHeader}>{t('ai_suggested_protocols')}</h3>
+                        <div className={styles.protocolList}>
                             {proposedProtocols.map(p => (
-                                <div key={p.id} onClick={() => onProtocolSelect(p)} className="bg-slate-50 border-2 border-slate-200 hover:border-yellow-500 rounded-xl p-4 cursor-pointer transition-all">
-                                    <h4 className="font-bold text-slate-800">{p.name}</h4>
-                                    <p className="text-sm text-slate-600">{p.description}</p>
+                                <div key={p.id} onClick={() => onProtocolSelect(p)} className={styles.protocolItem}>
+                                    <h4 className={styles.protocolName}>{p.name}</h4>
+                                    <p className={styles.protocolDescription}>{p.description}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
                 
-                <div className="flex items-center gap-4 my-8">
-                    <div className="flex-grow h-px bg-slate-200"></div>
-                    <span className="text-slate-400 font-semibold text-sm">{t('or')}</span>
-                    <div className="flex-grow h-px bg-slate-200"></div>
+                <div className={styles.dividerContainer}>
+                    <div className={styles.divider}></div>
+                    <span className={styles.dividerText}>{t('or')}</span>
+                    <div className={styles.divider}></div>
                 </div>
 
-                <div className="text-center">
-                     <button onClick={() => setShowFullList(!showFullList)} disabled={!isFormValid || (allProtocols.length === 0 && !isLoading)} className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl transition flex items-center gap-2 shadow-lg shadow-slate-800/10 mx-auto disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed">
+                <div className={styles.fullListButtonContainer}>
+                     <button onClick={() => setShowFullList(!showFullList)} disabled={allProtocols.length === 0 && !isLoading} className={styles.fullListButton}>
                         <List size={16} /> {showFullList ? t('hide_full_list') : t('select_from_full_list')}
                     </button>
                 </div>
 
                 {showFullList && (
-                     <div className="animate-fade-in mt-8">
-                        <h3 className="text-xl font-bold mb-4 text-center">{t('all_protocols')}</h3>
+                     <div className={styles.fullProtocolsContainer}>
+                        <h3 className={styles.allProtocolsHeader}>{t('all_protocols')}</h3>
                         {isLoading ? (
-                            <div className="text-center p-8 text-slate-500">Loading protocols...</div>
+                            <div className={styles.loadingMessage}>Loading protocols...</div>
                         ) : allProtocols.length === 0 ? (
-                             <div className="text-center p-8 text-slate-500">No protocols found. Please add protocols in the admin section.</div>
+                             <div className={styles.loadingMessage}>No protocols found. Please add protocols in the admin section.</div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className={styles.fullProtocolGrid}>
                             {allProtocols.map(p => (
-                                    <div key={p.id} onClick={() => onProtocolSelect(p)} className="bg-white border-2 border-slate-200 hover:border-yellow-500 rounded-xl p-4 cursor-pointer transition-all">
-                                        <h4 className="font-bold text-slate-800">{p.name}</h4>
+                                    <div key={p.id} onClick={() => onProtocolSelect(p)} className={styles.fullProtocolItem}>
+                                        <h4 className={styles.protocolName}>{p.name}</h4>
                                     </div>
                                 ))}
                             </div>

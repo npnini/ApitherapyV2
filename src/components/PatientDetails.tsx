@@ -114,7 +114,7 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
             <div className={styles.inputGroup}>
                 <InputField label={t('full_name')} id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} required />
                 <div className={styles.fieldContainer}>
-                    <InputField label={t('email_address')} id="email" name="email" type="email" value={formData.email} onChange={handleChange} />
+                    <InputField label={t('email_address')} id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
                     {errors.email && <p className={styles.errorText}>{errors.email}</p>}
                 </div>
                 <InputField label={t('mobile_number')} id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} required />
@@ -123,11 +123,11 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
 
             <div className={styles.inputGroup}>
                 <div className={styles.fieldContainer}>
-                    <label className={styles.label} htmlFor="condition">{t('condition')}</label>
+                    <label className={styles.label} htmlFor="condition">{t('condition')} <span className={styles.requiredAsterisk}>*</span></label>
                     <textarea id="condition" name="condition" value={formData.condition} onChange={handleChange} className={styles.textarea} required />
                 </div>
                 <div className={styles.fieldContainer}>
-                    <label className={styles.label} htmlFor="severity">{t('severity')}</label>
+                    <label className={styles.label} htmlFor="severity">{t('severity')} <span className={styles.requiredAsterisk}>*</span></label>
                     <div className={styles.selectContainer}>
                         <select id="severity" name="severity" value={formData.severity} onChange={handleChange} className={styles.select} required>
                             <option value="Mild">{t('mild')}</option>
@@ -138,12 +138,13 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
                     </div>
                 </div>
                 <div className={styles.fieldContainer}>
-                    <label className={styles.label} htmlFor="birthDate">{t('birth_date')}</label>
+                    <label className={styles.label} htmlFor="birthDate">{t('birth_date')} <span className={styles.requiredAsterisk}>*</span></label>
                     <DateInput
                         id="birthDate"
                         name="birthDate"
                         value={formData.birthDate || ''}
                         onChange={handleChange}
+                        required
                     />
                     {errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>}
                 </div>
@@ -161,17 +162,20 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
         <div className={styles.footer}>
             <div className={styles.buttonGroup}>
                 <button type="button" onClick={onBack} className={`${styles.button} ${styles.cancelButton}`}>{t('cancel')}</button>
-                <button type="submit" className={`${styles.button} ${styles.saveButton}`}>{t('save_changes')}</button>
+                <button type="submit" className={`${styles.button} ${styles.saveButton}`}>{saveStatus === 'saving' ? t('saving') : t('save_changes')}</button>
             </div>
         </div>
     </form>
   );
 };
 
-const InputField = ({ label, id, ...props }) => (
+const InputField = ({ label, id, required, ...props }) => (
   <div className={styles.fieldContainer}>
-    <label className={styles.label} htmlFor={id}>{label}</label>
-    <input id={id} {...props} className={styles.input} />
+    <label className={styles.label} htmlFor={id}>
+        {label}
+        {required && <span className={styles.requiredAsterisk}>*</span>}
+    </label>
+    <input id={id} {...props} required={required} className={styles.input} />
   </div>
 );
 

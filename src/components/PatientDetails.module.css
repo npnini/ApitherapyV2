@@ -62,6 +62,11 @@
     margin-block-end: var(--space-xs);
 }
 
+.requiredAsterisk {
+    color: var(--color-error-dark, #b91c1c);
+    margin-inline-start: 4px;
+}
+
 .input, .select, .dateInputDisplay, .textarea {
     width: 100%;
     padding: var(--space-sm);

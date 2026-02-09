@@ -1,0 +1,231 @@
+/* src/components/ProtocolSelection.module.css */
+
+.container {
+    max-width: 56rem; /* 896px */
+    margin-inline: auto;
+    padding: 1rem;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header[dir="rtl"] {
+    text-align: right;
+}
+
+.title {
+    font-size: 1.875rem; /* text-3xl */
+    font-weight: 900; /* font-black */
+    color: #1e293b; /* slate-900 */
+    letter-spacing: -0.05em; /* tracking-tighter */
+}
+
+.patientName {
+    color: #64748b; /* slate-500 */
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #475569; /* slate-600 */
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.backButton:hover {
+    color: #1e293b; /* slate-900 */
+}
+
+.formContainer {
+    background-color: white;
+    border-radius: 1.5rem; /* rounded-3xl */
+    padding: 2rem;
+    border: 1px solid #f1f5f9; /* slate-100 */
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+}
+
+.formGroup {
+    margin-bottom: 1.5rem;
+}
+
+.label {
+    font-size: 1rem; /* text-base */
+    font-weight: 700;
+    color: #64748b; /* slate-500 */
+    text-transform: uppercase;
+    display: block;
+}
+
+.requiredAsterisk {
+    color: var(--color-error-dark, #b91c1c);
+}
+
+.textarea, .input {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.25rem;
+    background-color: var(--color-background-input, #f8fafc);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.75rem; /* rounded-xl */
+}
+
+.inputGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+    .inputGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.buttonContainer {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.findButton, .fullListButton {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-weight: 700;
+    padding: 0.75rem 2rem;
+    border-radius: 0.75rem;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(30 64 175 / 0.1), 0 2px 4px -2px rgb(30 64 175 / 0.1);
+    transition: opacity 0.2s;
+}
+
+.findButton:hover, .fullListButton:hover {
+    opacity: 0.9;
+}
+
+.findButton:disabled, .fullListButton:disabled {
+    background-color: #cbd5e1; /* slate-300 */
+    color: #64748b; /* slate-500 */
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.loadingMessage {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b; /* slate-500 */
+}
+
+.suggestionsContainer {
+    animation: fadeIn 0.5s;
+}
+
+.suggestionsHeader, .allProtocolsHeader {
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.protocolList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.protocolItem {
+    background-color: #f8fafc; /* slate-50 */
+    border: 2px solid #e2e8f0; /* slate-200 */
+    border-radius: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.protocolItem:hover {
+    border-color: #f59e0b; /* yellow-500 */
+}
+
+.protocolName {
+    font-weight: 700;
+    color: #334155; /* slate-800 */
+}
+
+.protocolDescription {
+    font-size: 0.875rem;
+    color: #475569; /* slate-600 */
+}
+
+.dividerContainer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.divider {
+    flex-grow: 1;
+    height: 1px;
+    background-color: #e2e8f0; /* slate-200 */
+}
+
+.dividerText {
+    color: #94a3b8; /* slate-400 */
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.fullListButtonContainer {
+    text-align: center;
+}
+
+
+.fullProtocolsContainer {
+    animation: fadeIn 0.5s;
+    margin-top: 2rem;
+}
+
+.fullProtocolGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .fullProtocolGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.fullProtocolItem {
+    background-color: white;
+    border: 2px solid #e2e8f0; /* slate-200 */
+    border-radius: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.fullProtocolItem:hover {
+    border-color: #f59e0b; /* yellow-500 */
+}
