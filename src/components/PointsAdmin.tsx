@@ -284,7 +284,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
 
                     <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
                         <div>
-                            <label htmlFor="code" className={styles.label}>{t('code')}</label>
+                            <label htmlFor="code" className={styles.label}>
+                                {t('code')}
+                                <span className={styles.requiredAsterisk}>*</span>
+                            </label>
                             <input 
                                 type="text" 
                                 id="code"
@@ -298,7 +301,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                             />
                         </div>
                         <div>
-                             <label htmlFor="label" className={styles.label}>{t('label')}</label>
+                             <label htmlFor="label" className={styles.label}>
+                                {t('label')}
+                                <span className={styles.requiredAsterisk}>*</span>
+                            </label>
                             <input 
                                 type="text"
                                 id="label" 
@@ -312,7 +318,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="description" className={styles.label}>{t('description')}</label>
+                        <label htmlFor="description" className={styles.label}>
+                            {t('description')}
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
                         <textarea 
                             id="description"
                             name="description" 
@@ -325,7 +334,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                         ></textarea>
                     </div>
                     <div>
-                        <label className={styles.label}>{t('position3d')}</label>
+                        <label className={styles.label}>
+                            {t('position3d')}
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
                         <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
                             <div>
                                 <label htmlFor="x" className={styles.coordinateLabel}>{t('x_axis')}</label>

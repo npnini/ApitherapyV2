@@ -29,6 +29,10 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
             setError(t('mobile_number_required'));
             return;
         }
+        if (!formData.userId || !formData.userId.trim()) {
+            setError(t('username_required'));
+            return;
+        }
         setError(null);
         onSave(formData);
     };
@@ -39,7 +43,10 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
             {error && <p className={styles.error}>{error}</p>}
             <div className={styles.grid}>
                 <div className={styles.field}>
-                    <label className={styles.label} htmlFor="fullName">{t('full_name')}</label>
+                    <label className={styles.label} htmlFor="fullName">
+                        {t('full_name')}
+                        <span className={styles.requiredAsterisk}>*</span>
+                    </label>
                     <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={styles.input} required />
                 </div>
                 <div className={styles.field}>
@@ -47,11 +54,17 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack }) => {
                     <p className={styles.readOnlyField}>{formData.email}</p>
                 </div>
                 <div className={styles.field}>
-                    <label className={styles.label} htmlFor="mobile">{t('mobile')}</label>
+                    <label className={styles.label} htmlFor="mobile">
+                        {t('mobile')}
+                        <span className={styles.requiredAsterisk}>*</span>
+                    </label>
                     <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className={styles.input} required />
                 </div>
                 <div className={styles.field}>
-                    <label className={styles.label} htmlFor="userId">{t('username')}</label>
+                    <label className={styles.label} htmlFor="userId">
+                        {t('username')}
+                        <span className={styles.requiredAsterisk}>*</span>
+                        </label>
                     <p className={styles.readOnlyField}>{formData.userId}</p>
                 </div>
                  <div className={styles.field}>

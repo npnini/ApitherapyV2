@@ -189,6 +189,11 @@
     display: block;
 }
 
+.requiredAsterisk {
+    color: var(--color-error-dark, #b91c1c);
+    margin-inline-start: 4px;
+}
+
 .formInput, .formTextarea {
     width: 100%;
     padding: 0.75rem;

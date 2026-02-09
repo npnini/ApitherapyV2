@@ -101,7 +101,10 @@ const CaretakerDetails: React.FC<CaretakerDetailsProps> = ({ user, onSave }) => 
         </div>
 
         <div className={styles.inputGroup}>
-          <label className={styles.label} htmlFor="fullName">{t('full_name')}</label>
+          <label className={styles.label} htmlFor="fullName">
+              {t('full_name')}
+              <span className={styles.requiredAsterisk}>*</span>
+            </label>
           <input
             id="fullName"
             type="text"
@@ -114,7 +117,10 @@ const CaretakerDetails: React.FC<CaretakerDetailsProps> = ({ user, onSave }) => 
         </div>
 
         <div className={styles.inputGroup}>
-          <label className={styles.label} htmlFor="mobile">{t('mobile')}</label>
+          <label className={styles.label} htmlFor="mobile">
+            {t('mobile')}
+            <span className={styles.requiredAsterisk}>*</span>
+            </label>
           <input
             id="mobile"
             type="text"

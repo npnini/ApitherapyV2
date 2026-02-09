@@ -286,6 +286,11 @@
     color: #374151;
 }
 
+.requiredAsterisk {
+    color: var(--color-error-dark, #b91c1c);
+    margin-inline-start: 4px;
+}
+
 .coordinateLabel {
     text-align: center;
     font-size: 0.75rem;

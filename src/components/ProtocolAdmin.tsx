@@ -56,10 +56,6 @@ const ProtocolAdmin: React.FC = () => {
             setFormError(t('protocol_description_required'));
             return false;
         }
-        if (!protocol.rationale?.trim()) {
-            setFormError(t('protocol_rationale_required'));
-            return false;
-        }
         if (!protocol.points || protocol.points.length === 0) {
             setFormError(t('at_least_one_point'));
             return false;
@@ -158,7 +154,10 @@ const ProtocolAdmin: React.FC = () => {
                     {isFormLoading ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
                     <div className={styles.formGrid}>
                         <div>
-                          <label htmlFor='protocolName' className={styles.formLabel}>{t('protocol_name')}</label>
+                          <label htmlFor='protocolName' className={styles.formLabel}>
+                            {t('protocol_name')}
+                            <span className={styles.requiredAsterisk}>*</span>
+                            </label>
                           <input
                               id='protocolName'
                               type="text"
@@ -169,7 +168,10 @@ const ProtocolAdmin: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label htmlFor='protocolDescription' className={styles.formLabel}>{t('protocol_description')}</label>
+                          <label htmlFor='protocolDescription' className={styles.formLabel}>
+                            {t('protocol_description')}
+                            <span className={styles.requiredAsterisk}>*</span>
+                            </label>
                           <textarea
                               id='protocolDescription'
                               placeholder={t('protocol_description_placeholder')}
@@ -189,7 +191,10 @@ const ProtocolAdmin: React.FC = () => {
                           />
                         </div>
                         <div>
-                            <h3 className={styles.formLabel}>{t('select_points')}</h3>
+                            <h3 className={styles.formLabel}>
+                                {t('select_points')}
+                                <span className={styles.requiredAsterisk}>*</span>
+                            </h3>
                             <div className={styles.pointsSelectionContainer}>
                                 {allAcuPoints.map(point => (
                                     <label key={point.id} className={`${styles.pointLabel} ${(editingProtocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
