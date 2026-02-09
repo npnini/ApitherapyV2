@@ -1,0 +1,31 @@
+/* TreatmentExecution.module.css */
+
+.notesTextarea {
+    background-color: var(--color-background-input);
+    border: 1px solid var(--color-border);
+    resize: vertical;
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.25rem;
+    border-radius: 0.75rem;
+}
+
+.saveButton {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-weight: bold;
+    padding: 0.75rem 2rem;
+    border-radius: 0.75rem;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+.saveButton:hover {
+    background-color: var(--color-primary-dark);
+}
+
+.saveButton:disabled {
+    background-color: var(--color-slate-300);
+    box-shadow: none;
+    cursor: not-allowed;
+}

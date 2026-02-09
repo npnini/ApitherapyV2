@@ -8,6 +8,7 @@ import { Protocol } from '../types/protocol';
 import { StingPoint } from '../types/apipuncture';
 import BodyScene from './BodyScene';
 import { AlertTriangle, CheckCircle, XCircle, Trash2, Loader, MousePointerClick, List } from 'lucide-react';
+import styles from './TreatmentExecution.module.css';
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
@@ -188,7 +189,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                     </div>
                     <div className="mb-4">
                         <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="finalNotes">Final Notes</label>
-                        <textarea id="finalNotes" value={finalNotes} onChange={(e) => setFinalNotes(e.target.value)} className="w-full p-3 mt-1 bg-slate-50 border border-slate-200 rounded-xl" rows={4} placeholder="Add any final observations..."></textarea>
+                        <textarea id="finalNotes" value={finalNotes} onChange={(e) => setFinalNotes(e.target.value)} className={styles.notesTextarea} rows={4} placeholder="Add any final observations..."></textarea>
                     </div>
                     <div className="mt-auto">
                          {saveStatus === 'error' && <div className="text-red-600 text-xs mb-2 flex items-center"><XCircle size={14} className="mr-1" /> Failed to save.</div>}
@@ -196,7 +197,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                         {saveStatus === 'success' ? 
                             <button onClick={onFinish} className="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl transition">Back to Dashboard</button>
                             :
-                            <button onClick={handleSave} disabled={saveStatus === 'saving' || stungPoints.length === 0} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg shadow-red-500/20 disabled:bg-slate-300 disabled:shadow-none">{saveStatus === 'saving' ? 'Saving...' : 'Save Final Treatment'}</button>
+                            <button onClick={handleSave} disabled={saveStatus === 'saving' || stungPoints.length === 0} className={styles.saveButton}>{saveStatus === 'saving' ? 'Saving...' : 'Save Final Treatment'}</button>
                         }
                     </div>
                 </div>
