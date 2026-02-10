@@ -139,5 +139,19 @@
   "hide_full_list": "הסתר רשימה מלאה",
   "select_from_full_list": "בחר מהרשימה המלאה",
   "all_protocols": "כל הפרוטוקולים",
-  "or": "או"
+  "or": "או",
+  "address": "כתובת",
+  "address_placeholder": "לדוגמה, רחוב הראשי 123, כלעיר",
+  "address_required": "כתובת היא שדה חובה.",
+  "city": "עיר",
+  "city_placeholder": "לדוגמה, כלעיר",
+  "city_required": "עיר היא שדה חובה.",
+  "country": "מדינה",
+  "country_placeholder": "לדוגמה, ישראל",
+  "country_required": "מדינה היא שדה חובה.",
+  "preferred_language": "שפה מועדפת",
+  "language_required": "שפה היא שדה חובה.",
+  "select_language": "בחר שפה",
+  "en": "אנגלית",
+  "he": "עברית"
 }

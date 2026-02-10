@@ -139,5 +139,19 @@
   "hide_full_list": "Hide Full List",
   "select_from_full_list": "Select from Full List",
   "all_protocols": "All Protocols",
-  "or": "OR"
+  "or": "OR",
+  "address": "Address",
+  "address_placeholder": "e.g., 123 Main St, Anytown",
+  "address_required": "Address is required.",
+  "city": "City",
+  "city_placeholder": "e.g., Anytown",
+  "city_required": "City is required.",
+  "country": "Country",
+  "country_placeholder": "e.g., USA",
+  "country_required": "Country is required.",
+  "preferred_language": "Preferred Language",
+  "language_required": "Language is required.",
+  "select_language": "Select a language",
+  "en": "English",
+  "he": "Hebrew"
 }

@@ -47,11 +47,12 @@ interface PatientDetailsProps {
   user: AppUser;
   onSave: (patient: PatientData) => void;
   onBack: () => void;
+  onStartTreatment: () => void;
   saveStatus: 'idle' | 'saving' | 'success' | 'error';
   errorMessage?: string;
 }
 
-const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, onBack, saveStatus, errorMessage }) => {
+const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, onBack, onStartTreatment, saveStatus, errorMessage }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<PatientData>({ ...patient });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -160,6 +161,7 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({ patient, user, onSave, 
         )}
 
         <div className={styles.footer}>
+             <button type="button" onClick={onStartTreatment} className={`${styles.button} ${styles.startButton}`}>{t('start_treatment')}</button>
             <div className={styles.buttonGroup}>
                 <button type="button" onClick={onBack} className={`${styles.button} ${styles.cancelButton}`}>{t('cancel')}</button>
                 <button type="submit" className={`${styles.button} ${styles.saveButton}`}>{saveStatus === 'saving' ? t('saving') : t('save_changes')}</button>

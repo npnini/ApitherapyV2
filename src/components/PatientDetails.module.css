@@ -149,7 +149,7 @@
 .footer {
     margin-block-start: var(--space-lg);
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -185,6 +185,11 @@
 
 .saveButton:hover {
     opacity: 0.9;
+}
+
+.startButton {
+    color: var(--color-white);
+    background-color: #22c55e;
 }
 
 .errorMessage {

@@ -7,4 +7,8 @@ export interface AppUser {
     photoURL?: string;
     role: 'admin' | 'caretaker'; 
     mobile: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    preferredLanguage?: string;
 }

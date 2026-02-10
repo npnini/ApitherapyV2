@@ -14,7 +14,6 @@ import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
-import CaretakerDetails from './components/CaretakerDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
@@ -48,6 +47,7 @@ const App: React.FC = () => {
         } else {
             const newUser: AppUser = { uid: user.uid, userId: user.uid, email: user.email || '', fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker' };
             await setDoc(userRef, newUser);
+            setCurrentView('onboarding_test'); // Redirect to onboarding
             return newUser;
         }
     };
@@ -93,7 +93,6 @@ const App: React.FC = () => {
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
-    const handleOnboardingTestClick = () => { setCurrentView('onboarding_test'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
@@ -102,15 +101,9 @@ const App: React.FC = () => {
         const { uid, ...userDataToSave } = updatedUser;
         await updateDoc(userRef, userDataToSave);
         setAppUser(updatedUser);
+        i18n.changeLanguage(updatedUser.preferredLanguage);
         setSaveStatus('idle');
         setCurrentView('dashboard');
-    };
-    
-    const handleSaveCaretakerDetails = (details: { userId: string; fullName: string; mobile: string; }) => {
-        // In a real scenario, you would save this data.
-        // For this test, we can just log it and go back to the dashboard.
-        console.log('Saved caretaker details:', details);
-        handleBackToDashboard();
     };
 
     const handleSelectPatient = (patient: PatientData) => {
@@ -257,13 +250,14 @@ const App: React.FC = () => {
                     onPointsAdminClick={handlePointsAdminClick} 
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard} 
-                    onOnboardingTestClick={handleOnboardingTestClick}
                 />
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {(() => {
                         switch (currentView) {
                             case 'user_details':
                                 return <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />;
+                            case 'onboarding_test':
+                                return <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />;
                             case 'patient_details':
                                 return selectedPatient && appUser && <PatientDetails user={appUser} patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} saveStatus={saveStatus} errorMessage={errorMessage} />;
                             case 'protocol_selection':
@@ -276,17 +270,6 @@ const App: React.FC = () => {
                                 return <ProtocolAdmin />;
                             case 'admin_points':
                                 return <PointsAdmin />;
-                            case 'onboarding_test':
-                                const sampleUser: AppUser = {
-                                    uid: 'test-uid',
-                                    userId: 'test-user-id',
-                                    email: 'test@example.com',
-                                    fullName: 'Test User',
-                                    displayName: 'Test User',
-                                    mobile: '123-456-7890',
-                                    role: 'caretaker'
-                                };
-                                return <CaretakerDetails user={sampleUser} onSave={handleSaveCaretakerDetails} />;
                             default:
                                 return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} onDeletePatient={handleDeletePatient} />;
                         }

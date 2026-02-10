@@ -4,7 +4,7 @@ import { signInWithGoogle } from '../services/authService';
 import styles from './Login.module.css';
 
 const Login = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const handleGoogleSignIn = async () => {
     try {
@@ -16,22 +16,6 @@ const Login = () => {
 
   return (
     <div className={styles.loginContainer}>
-        {/* Language Switcher */}
-        <div className={styles.langSwitcher}>
-            <button 
-                onClick={() => i18n.changeLanguage('en')} 
-                className={`${styles.langButton} ${i18n.language.startsWith('en') ? styles.active : ''}`}
-            >
-                English
-            </button>
-            <button 
-                onClick={() => i18n.changeLanguage('he')} 
-                className={`${styles.langButton} ${i18n.language === 'he' ? styles.active : ''}`}
-            >
-                עברית
-            </button>
-        </div>
-
         <div className={styles.loginBox}>
             <div className={styles.header}>
                 <Beaker size={36} className={styles.icon} />
