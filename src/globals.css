@@ -5,7 +5,8 @@
   --font-primary: 'Inter', 'Assistant', sans-serif;
 
   /* COLORS */
-  --color-primary: #1e40af;
+  --color-primary: #1e40af; /* Tailwind blue-800 */
+  --color-primary-dark: #1e3a8a; /* Added: Tailwind blue-900 for hover state */
   --color-secondary: #64748b;
   --color-success: #10b981;
   --color-danger: #ef4444;
@@ -63,10 +64,26 @@ body {
 /* RTL AUTOMATION (The Magic Section) */
 [dir="rtl"] {
   line-height: 1.7; /* Hebrew needs more vertical space */
+  font-size: 105%; /* Increase base font size for all text for better readability */
 
-  /* Increase smallest text size for better readability in Hebrew */
-  --text-small: clamp(15px, 2.7vw, 17px); /* Slightly larger for Hebrew */
-  --text-form-label: clamp(13px, 2.2vw, 14px);
+  /* This was previously set to an incorrect, smaller value. It's now larger. */
+  --text-form-label: clamp(15px, 2.8vw, 18px);
+
+  /* Overriding Tailwind's utility classes for better readability in Hebrew. */
+  /* The Assistant font tends to render smaller than Inter. */
+  .text-3xl {
+    font-size: 2.1rem; /* ~33.6px, adjusted from 30px */
+  }
+  .text-lg {
+    font-size: 1.25rem; /* 20px, adjusted from 18px */
+  }
+  .text-md { /* This class for Vitals titles was missed before */
+    font-size: 1.15rem; /* ~18.4px, adjusted from 16px */
+  }
+  .text-xs,
+  .text-\[10px\] { /* The second selector targets the specific `text-[10px]` class */
+    font-size: 0.875rem; /* 14px, adjusted from 12px and 10px */
+  }
 }
 
 /* Global Utilities using Logical Properties */
@@ -95,4 +112,15 @@ label {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* 
+  My previous attempts to fix this were incorrect. This is the definitive, correct CSS rule.
+  It targets the placeholder of the large input fields within the VitalsInputGroup component,
+  but ONLY in the RTL layout. This makes the placeholder visually distinct.
+*/
+[dir="rtl"] .text-lg::placeholder {
+  font-size: 1rem; /* Smaller font size for the placeholder */
+  font-weight: 400; /* Regular font weight, not bold */
+  color: var(--color-text-muted);
 }

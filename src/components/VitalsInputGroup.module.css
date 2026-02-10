@@ -1,0 +1,64 @@
+/* src/components/VitalsInputGroup.module.css */
+
+.container {
+    margin-bottom: 1.5rem;
+}
+
+.title {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.label {
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+
+.input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.25rem;
+    background-color: var(--color-background-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+}
+
+.inputWarning {
+    border-color: #f59e0b; /* A specific warning color, variable does not exist yet */
+}
+
+.warningText {
+    font-size: 0.75rem;
+    color: #f59e0b; /* A specific warning color, variable does not exist yet */
+    margin-top: 0.25rem;
+}
+
+/* 
+  This is the definitive fix for the placeholder font size issue in the Hebrew layout.
+  My previous attempts in globals.css failed because component-specific styles have higher precedence.
+  This rule specifically targets the placeholder for the input fields in this component when in RTL mode.
+  The :global() selector is necessary to pierce through CSS module scoping and check the dir attribute.
+*/
+:global([dir="rtl"]) .input::placeholder {
+  font-size: 1rem; /* Smaller, more appropriate font size for a placeholder */
+  font-weight: 400; /* Regular font weight, not bold */
+  color: var(--color-text-muted);
+}

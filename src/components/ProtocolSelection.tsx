@@ -1,21 +1,124 @@
+
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PatientData } from '../types/patient';
 import { Protocol } from '../types/protocol';
-import { ChevronLeft, BrainCircuit, List, ChevronRight } from 'lucide-react';
+import { VitalSigns } from '../types/treatmentSession';
+import { ChevronLeft, BrainCircuit, List, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './ProtocolSelection.module.css';
+import ConfirmationModal from './ConfirmationModal';
+
+// This sub-component was the source of the persistent system confirmation dialog.
+// It has been rewritten to use the custom ConfirmationModal component.
+interface VitalSignsInputProps {
+    label: string;
+    value: number | '';
+    onChange: (value: number | '') => void;
+    min: number;
+    max: number;
+    placeholder: string;
+}
+
+const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChange, min, max, placeholder }) => {
+    const { t } = useTranslation();
+    
+    // State to manage whether the input currently holds an out-of-range value that has been approved.
+    const [isWarningActive, setIsWarningActive] = useState(false);
+    // State to control the visibility of the confirmation modal.
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Handles user input as they type.
+    const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // When the user starts typing, we clear any existing warning state.
+        setIsWarningActive(false);
+        const val = e.target.value;
+        onChange(val === '' ? '' : Number(val));
+    };
+
+    // This function is triggered when the input field loses focus.
+    const handleBlur = () => {
+        const numericValue = Number(value);
+        if (value === '' || isNaN(numericValue)) {
+            setIsWarningActive(false); // No value means no warning.
+            return;
+        }
+
+        // The window.confirm call has been permanently removed and replaced with this modal logic.
+        if (numericValue < min || numericValue > max) {
+            // If the value is out of the specified range, open the custom modal.
+            setIsModalOpen(true);
+        } else {
+            // If the value is within range, ensure no warning is shown.
+            setIsWarningActive(false);
+        }
+    };
+    
+    // This function is triggered when a key is pressed in the input field.
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            // Blurring the input triggers the onBlur event.
+            e.currentTarget.blur();
+        }
+    };
+
+    // Called when the user clicks "Confirm" in the modal.
+    const handleConfirm = () => {
+        // The user has approved the out-of-range value.
+        // We activate the warning indicator and close the modal.
+        setIsWarningActive(true);
+        setIsModalOpen(false);
+    };
+
+    // Called when the user clicks "Cancel" in the modal.
+    const handleCancel = () => {
+        // The user has rejected the out-of-range value, so we clear the input.
+        onChange('');
+        setIsWarningActive(false);
+        setIsModalOpen(false);
+    };
+
+    return (
+        <div>
+            <ConfirmationModal
+                isOpen={isModalOpen}
+                title={t('value_out_of_range')}
+                message={t('approve_out_of_range')}
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
+            <label className={styles.label} htmlFor={label}>
+                {label} <span className={styles.requiredAsterisk}>*</span>
+            </label>
+            <input
+                id={label}
+                type="number"
+                value={value}
+                onChange={handleValueChange}
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                className={`${styles.input} ${isWarningActive ? styles.inputWarning : ''}`}
+                placeholder={placeholder}
+            />
+            {isWarningActive && (
+                <div className={styles.warningText}>
+                    <AlertTriangle size={14} className="inline-block mr-1" />
+                    {t('value_out_of_range')}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 interface ProtocolSelectionProps {
     patient: PatientData;
     onBack: () => void;
-    onProtocolSelect: (protocol: Protocol) => void;
-    treatmentNotes: { report: string; bloodPressure: string; heartRate: string };
-    setTreatmentNotes: (notes: { report: string; bloodPressure: string; heartRate: string }) => void;
+    onProtocolSelect: (protocol: Protocol, patientReport: string, preStingVitals: VitalSigns) => void;
 }
 
-const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect, treatmentNotes, setTreatmentNotes }) => {
+const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect }) => {
     const { t, i18n } = useTranslation();
     const direction = i18n.dir();
 
@@ -25,7 +128,15 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     const [isFinding, setIsFinding] = useState<boolean>(false);
     const [showFullList, setShowFullList] = useState(false);
 
-    const isFormValid = treatmentNotes.report.trim() !== '' && treatmentNotes.bloodPressure.trim() !== '' && treatmentNotes.heartRate.trim() !== '';
+    const [patientReport, setPatientReport] = useState('');
+    const [preStingVitals, setPreStingVitals] = useState<Partial<VitalSigns>>({});
+
+
+    const isFormValid =
+        patientReport.trim() !== '' &&
+        preStingVitals.systolic !== undefined &&
+        preStingVitals.diastolic !== undefined &&
+        preStingVitals.heartRate !== undefined;
 
     useEffect(() => {
         const fetchProtocols = async () => {
@@ -48,6 +159,15 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         setIsFinding(false);
     };
 
+    const handleProtocolSelect = (protocol: Protocol) => {
+        if (isFormValid) {
+            onProtocolSelect(protocol, patientReport, preStingVitals as VitalSigns);
+        } else {
+            // This can be replaced with a more user-friendly notification
+            alert("Please fill all required fields before selecting a protocol.");
+        }
+    };
+
     const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
 
     return (
@@ -68,22 +188,35 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                     <label className={styles.label} htmlFor="patientReport">
                         {t('patient_report')} <span className={styles.requiredAsterisk}>*</span>
                     </label>
-                    <textarea id="patientReport" value={treatmentNotes.report} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, report: e.target.value })} className={styles.textarea} rows={5} placeholder={t('patient_report_placeholder')}></textarea>
+                    <textarea id="patientReport" value={patientReport} onChange={(e) => setPatientReport(e.target.value)} className={styles.textarea} rows={5} placeholder={t('patient_report_placeholder')}></textarea>
                 </div>
 
+                <h3 className={styles.vitalsHeader}>{t('pre_stinging_measures')}</h3>
                 <div className={styles.inputGrid}>
-                    <div>
-                        <label className={styles.label} htmlFor="bloodPressure">
-                            {t('blood_pressure')} <span className={styles.requiredAsterisk}>*</span>
-                        </label>
-                        <input id="bloodPressure" type="text" value={treatmentNotes.bloodPressure} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, bloodPressure: e.target.value })} className={styles.input} placeholder={t('blood_pressure_placeholder')} />
-                    </div>
-                    <div>
-                        <label className={styles.label} htmlFor="heartRate">
-                            {t('heart_rate')} <span className={styles.requiredAsterisk}>*</span>
-                        </label>
-                        <input id="heartRate" type="text" value={treatmentNotes.heartRate} onChange={(e) => setTreatmentNotes({ ...treatmentNotes, heartRate: e.target.value })} className={styles.input} placeholder={t('heart_rate_placeholder')} />
-                    </div>
+                    <VitalSignsInput
+                        label={t('systolic')}
+                        value={preStingVitals.systolic ?? ''}
+                        onChange={(val) => setPreStingVitals(v => ({ ...v, systolic: val === '' ? undefined : Number(val) }))}
+                        min={90}
+                        max={140}
+                        placeholder={t('systolic_placeholder')}
+                    />
+                    <VitalSignsInput
+                        label={t('diastolic')}
+                        value={preStingVitals.diastolic ?? ''}
+                        onChange={(val) => setPreStingVitals(v => ({ ...v, diastolic: val === '' ? undefined : Number(val) }))}
+                        min={60}
+                        max={90}
+                        placeholder={t('diastolic_placeholder')}
+                    />
+                    <VitalSignsInput
+                        label={t('heart_rate')}
+                        value={preStingVitals.heartRate ?? ''}
+                        onChange={(val) => setPreStingVitals(v => ({ ...v, heartRate: val === '' ? undefined : Number(val) }))}
+                        min={40}
+                        max={100}
+                        placeholder={t('heart_rate_placeholder')}
+                    />
                 </div>
 
                 <div className={styles.buttonContainer}>
@@ -105,7 +238,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                         <h3 className={styles.suggestionsHeader}>{t('ai_suggested_protocols')}</h3>
                         <div className={styles.protocolList}>
                             {proposedProtocols.map(p => (
-                                <div key={p.id} onClick={() => onProtocolSelect(p)} className={styles.protocolItem}>
+                                <div key={p.id} onClick={() => handleProtocolSelect(p)} className={styles.protocolItem}>
                                     <h4 className={styles.protocolName}>{p.name}</h4>
                                     <p className={styles.protocolDescription}>{p.description}</p>
                                 </div>
@@ -134,10 +267,11 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                         ) : allProtocols.length === 0 ? (
                              <div className={styles.loadingMessage}>No protocols found. Please add protocols in the admin section.</div>
                         ) : (
-                            <div className={styles.fullProtocolGrid}>
+                            <div className={styles.protocolList}>
                             {allProtocols.map(p => (
-                                    <div key={p.id} onClick={() => onProtocolSelect(p)} className={styles.fullProtocolItem}>
+                                    <div key={p.id} onClick={() => handleProtocolSelect(p)} className={styles.protocolItem}>
                                         <h4 className={styles.protocolName}>{p.name}</h4>
+                                        <p className={styles.protocolDescription}>{p.description}</p>
                                     </div>
                                 ))}
                             </div>

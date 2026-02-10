@@ -285,3 +285,25 @@
     overflow-y: auto;
     border: 1px solid #e2e8f0; /* slate-200, inferred */
 }
+
+.vitalsBlock { 
+    background-color: #f8fafc; /* bg-slate-50 */
+    padding: 0.75rem; /* p-3 */
+    border-radius: 0.5rem; /* rounded-lg */
+    margin-top: 0.5rem; /* mt-2 */
+    border: 1px solid #e2e8f0; /* slate-200 */
+}
+
+.vitalsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem; /* gap-2 */
+    font-size: 0.875rem; /* text-sm */
+    color: #334155; /* slate-800 */
+    margin-top: 0.5rem;
+}
+
+.vitalsLabel {
+    font-weight: 600; /* font-semibold */
+    color: #64748b; /* slate-500 */
+}

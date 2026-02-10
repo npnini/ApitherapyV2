@@ -4,25 +4,83 @@ import { PatientData } from '../types/patient';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
+import { VitalSigns } from '../types/treatmentSession';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './TreatmentHistory.module.css';
 
-// Stored data structure in Firestore
+// Explicit type for documents stored in Firestore
 interface StoredTreatmentDoc {
     id: string;
-    date: string;
+    patientId: string;
+    protocolId: string;
     protocolName: string;
-    patientReport?: string;
-    vitals?: string;
-    finalNotes?: string;
-    stungPoints: string[]; // This is an array of point IDs
     caretakerId: string;
+    date: string;
+    patientReport: string;
+    preStingVitals?: Partial<VitalSigns>;
+    postStingVitals?: Partial<VitalSigns>;
+    finalVitals?: Partial<VitalSigns>;
+    stungPoints: string[];
+    finalNotes?: string;
+    vitals?: string; // For backward compatibility
 }
 
-// Hydrated data structure for rendering
-interface HydratedTreatment extends Omit<StoredTreatmentDoc, 'stungPoints'> {
+// Explicit type for the hydrated data used for rendering
+interface HydratedTreatment {
+    id: string;
+    patientId: string;
+    protocolId: string;
+    protocolName: string;
+    caretakerId: string;
+    date: string;
+    patientReport: string;
+    preStingVitals?: Partial<VitalSigns>;
+    postStingVitals?: Partial<VitalSigns>;
+    finalVitals?: Partial<VitalSigns>;
     stungPoints: StingPoint[];
+    finalNotes?: string;
+    vitals?: string; // For backward compatibility
+}
+
+interface VitalSignsDisplayProps {
+    title: string;
+    vitals: Partial<VitalSigns> | string | undefined;
+}
+
+const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) => {
+    const { t } = useTranslation();
+
+    if (!vitals) {
+        return null;
+    }
+
+    // Handle legacy string format
+    if (typeof vitals === 'string') {
+        return (
+            <div className={styles.vitalsBlock}>
+                <h4 className={styles.detailLabel}>{title}</h4>
+                <p className={styles.detailContentShort}>{vitals}</p>
+            </div>
+        );
+    }
+
+    const { systolic, diastolic, heartRate } = vitals;
+
+    if (systolic === undefined && diastolic === undefined && heartRate === undefined) {
+        return null;
+    }
+
+    return (
+        <div className={styles.vitalsBlock}>
+            <h4 className={styles.detailLabel}>{title}</h4>
+            <div className={styles.vitalsGrid}>
+                {systolic !== undefined && <div><span className={styles.vitalsLabel}>{t('systolic')}:</span> {systolic}</div>}
+                {diastolic !== undefined && <div><span className={styles.vitalsLabel}>{t('diastolic')}:</span> {diastolic}</div>}
+                {heartRate !== undefined && <div><span className={styles.vitalsLabel}>{t('heart_rate')}:</span> {heartRate}</div>}
+            </div>
+        </div>
+    )
 }
 
 interface TreatmentHistoryProps {
@@ -52,23 +110,18 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                 return acc;
             }, new Set<string>());
 
-            if (allPointIds.size === 0) {
-                setTreatments(rawTreatments.map(t => ({...t, stungPoints: []})));
-                setIsLoading(false);
-                return;
+            const pointsMap = new Map<string, StingPoint>();
+            if (allPointIds.size > 0) {
+                const pointPromises = Array.from(allPointIds).map(id => getDoc(doc(db, 'acupuncture_points', id)));
+                const pointDocs = await Promise.all(pointPromises);
+                pointDocs.forEach(doc => {
+                    if (doc.exists()) {
+                        pointsMap.set(doc.id, { id: doc.id, ...doc.data() } as StingPoint);
+                    }
+                });
             }
 
-            const pointPromises = Array.from(allPointIds).map(id => getDoc(doc(db, 'acupuncture_points', id)));
-            const pointDocs = await Promise.all(pointPromises);
-
-            const pointsMap = new Map<string, StingPoint>();
-            pointDocs.forEach(doc => {
-                if (doc.exists()) {
-                    pointsMap.set(doc.id, { id: doc.id, ...doc.data() } as StingPoint);
-                }
-            });
-
-            const hydratedTreatments = rawTreatments.map(treatment => {
+            const hydratedTreatments = rawTreatments.map((treatment): HydratedTreatment => {
                 const hydratedPoints = (Array.isArray(treatment.stungPoints) ? treatment.stungPoints : [])
                     .map(id => pointsMap.get(id))
                     .filter((p): p is StingPoint => p !== undefined);
@@ -168,7 +221,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                                         <Activity size={16} />
                                         {t('vitals')}
                                     </h3>
-                                    <p className={styles.detailContentShort}>{treatment.vitals || t('not_provided')}</p>
+                                    <VitalSignsDisplay title={t('pre_stinging_measures')} vitals={treatment.preStingVitals || treatment.vitals} />
+                                    <VitalSignsDisplay title={t('post_stinging_measures')} vitals={treatment.postStingVitals} />
+                                    <VitalSignsDisplay title={t('final_measures')} vitals={treatment.finalVitals} />
                                 </div>
                             </div>
                             

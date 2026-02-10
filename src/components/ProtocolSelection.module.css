@@ -93,7 +93,7 @@
 
 @media (min-width: 768px) {
     .inputGrid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
@@ -228,4 +228,24 @@
 
 .fullProtocolItem:hover {
     border-color: #f59e0b; /* yellow-500 */
+}
+
+.vitalsHeader {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #334155;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.inputWarning {
+    border-color: #f59e0b; /* warning color */
+}
+
+.warningText {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    margin-top: 0.25rem;
 }

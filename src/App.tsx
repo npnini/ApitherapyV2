@@ -17,6 +17,7 @@ import UserDetails from './components/UserDetails';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
+import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 
 type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test';
@@ -28,7 +29,7 @@ const App: React.FC = () => {
     const [patients, setPatients] = useState<PatientData[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
     const [activeProtocol, setActiveProtocol] = useState<Protocol | null>(null);
-    const [treatmentNotes, setTreatmentNotes] = useState<{report: string, bloodPressure: string, heartRate: string}>({ report: '', bloodPressure: '', heartRate: '' });
+    const [activeTreatmentSession, setActiveTreatmentSession] = useState<Partial<TreatmentSession> | null>(null);
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [authReady, setAuthReady] = useState<boolean>(false);
@@ -177,7 +178,7 @@ const App: React.FC = () => {
     const handleBackToDashboard = () => {
         setSelectedPatient(null);
         setActiveProtocol(null);
-        setTreatmentNotes({ report: '', bloodPressure: '', heartRate: '' });
+        setActiveTreatmentSession(null);
         setCurrentView('dashboard');
         setSaveStatus('idle');
         setErrorMessage('');
@@ -199,26 +200,35 @@ const App: React.FC = () => {
         setCurrentView('treatment_history');
     };
 
-    const handleProtocolSelection = (protocol: Protocol) => {
+    const handleProtocolSelection = (protocol: Protocol, patientReport: string, preStingVitals: VitalSigns) => {
+        if (!appUser || !selectedPatient) return;
+
         setActiveProtocol(protocol);
+        setActiveTreatmentSession({
+            patientId: selectedPatient.id,
+            date: new Date().toISOString(),
+            protocolId: protocol.id,
+            protocolName: protocol.name,
+            patientReport: patientReport,
+            preStingVitals: preStingVitals,
+            caretakerId: appUser.userId,
+        });
         setCurrentView('treatment_execution');
     };
     
-    const handleSaveTreatment = async (stungPointIds: string[], finalNotes: string) => {
-        if (!selectedPatient || !activeProtocol || !appUser) return;
+    const handleSaveTreatment = async (data: { stungPointIds: string[]; notes: string; postStingVitals?: Partial<VitalSigns>; finalVitals?: Partial<VitalSigns>; }) => {
+        if (!selectedPatient || !activeTreatmentSession) return;
         setSaveStatus('saving');
         try {
-            const treatmentRecord = {
-                date: new Date().toISOString(),
-                protocolId: activeProtocol.id,
-                protocolName: activeProtocol.name,
-                patientReport: treatmentNotes.report,
-                vitals: `BP: ${treatmentNotes.bloodPressure}, HR: ${treatmentNotes.heartRate}`,
-                stungPoints: stungPointIds, 
-                finalNotes: finalNotes,
-                caretakerId: appUser.userId
-            };
-            await addDoc(collection(db, `patients/${selectedPatient.id}/treatments`), treatmentRecord);
+            const finalTreatmentRecord: TreatmentSession = {
+                ...activeTreatmentSession,
+                stungPoints: data.stungPointIds,
+                postStingVitals: data.postStingVitals,
+                finalVitals: data.finalVitals,
+                finalNotes: data.notes,
+            } as TreatmentSession;
+
+            await addDoc(collection(db, `patients/${selectedPatient.id}/treatments`), finalTreatmentRecord);
             await setDoc(doc(db, "patients", selectedPatient.id), { lastTreatment: new Date().toISOString().split('T')[0] }, { merge: true });
             if(appUser) await fetchInitialData(appUser);
             setSaveStatus('success');
@@ -261,9 +271,18 @@ const App: React.FC = () => {
                             case 'patient_details':
                                 return selectedPatient && appUser && <PatientDetails user={appUser} patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} saveStatus={saveStatus} errorMessage={errorMessage} />;
                             case 'protocol_selection':
-                                return selectedPatient && <ProtocolSelection patient={selectedPatient} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} treatmentNotes={treatmentNotes} setTreatmentNotes={setTreatmentNotes} />;
+                                return selectedPatient && <ProtocolSelection patient={selectedPatient} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />;
                             case 'treatment_execution':
-                                return selectedPatient && activeProtocol && <TreatmentExecution patient={selectedPatient} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />;
+                                return selectedPatient && activeProtocol && activeTreatmentSession && (
+                                    <TreatmentExecution 
+                                        patient={selectedPatient} 
+                                        protocol={activeProtocol} 
+                                        onSave={handleSaveTreatment} 
+                                        onBack={() => setCurrentView('protocol_selection')} 
+                                        saveStatus={saveStatus} 
+                                        onFinish={handleBackToDashboard} 
+                                    />
+                                );
                             case 'treatment_history':
                                 return selectedPatient && <TreatmentHistory patient={selectedPatient} onBack={handleBackToDashboard} />;
                             case 'admin_protocols':

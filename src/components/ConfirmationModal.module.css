@@ -1,0 +1,98 @@
+/* src/components/ConfirmationModal.module.css */
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modalContent {
+    background: var(--color-white);
+    padding: 2rem; /* p-8 */
+    border-radius: 1.5rem; /* rounded-3xl */
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 28rem; /* max-w-md */
+    text-align: center;
+    border: 1px solid var(--color-border);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modalIcon {
+    margin-left: auto;
+    margin-right: auto;
+    /* This is a specific warning color, leaving as is for now as there's no global variable for it */
+    color: #f59e0b; /* yellow-400 */
+}
+
+.modalTitle {
+    margin-top: 1rem; /* mt-4 */
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 700; /* font-bold */
+    color: var(--color-text-primary);
+}
+
+.modalDescription {
+    margin-top: 0.5rem; /* mt-2 */
+    color: var(--color-text-secondary);
+    font-size: 0.875rem; /* text-sm */
+    line-height: 1.5;
+}
+
+.modalActions {
+    margin-top: 1.5rem; /* mt-6 */
+    display: flex;
+    justify-content: center;
+    gap: 1rem; /* gap-4 */
+}
+
+/* Updated to use global CSS variables for a consistent theme */
+.modalConfirmButton {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-weight: 700; /* font-bold */
+    padding: 0.625rem 1.5rem; /* py-2.5 px-6 */
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+
+.modalConfirmButton:hover {
+    filter: brightness(0.9);
+}
+
+/* Updated to use global CSS variables for a consistent theme */
+.modalCancelButton {
+    background-color: var(--color-secondary-button-background);
+    color: var(--color-text-secondary);
+    font-weight: 700; /* font-bold */
+    padding: 0.625rem 1.5rem; /* py-2.5 px-6 */
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+
+.modalCancelButton:hover {
+    filter: brightness(0.95);
+}
