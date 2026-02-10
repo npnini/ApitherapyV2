@@ -2,7 +2,7 @@
 // src/components/ApplicationSettings.tsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AppUser } from '../types/user';
 import { appConfigSchema, ConfigGroup, ConfigSetting } from '../config/appConfigSchema';
@@ -10,6 +10,11 @@ import styles from './ApplicationSettings.module.css';
 
 interface ApplicationSettingsProps {
     user: AppUser;
+}
+
+interface Protocol {
+    id: string;
+    name: string;
 }
 
 const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<string, any> => {
@@ -34,6 +39,7 @@ const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<s
 const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
     const [initialSettings, setInitialSettings] = useState<Record<string, any>>({});
     const [settings, setSettings] = useState<Record<string, any>>({});
+    const [protocols, setProtocols] = useState<Protocol[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,9 +52,16 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
     }, [settings, initialSettings]);
 
     useEffect(() => {
-        const fetchSettings = async () => {
+        const fetchSettingsAndProtocols = async () => {
             setIsLoading(true);
             try {
+                // Fetch protocols
+                const protocolsCollectionRef = collection(db, 'protocols');
+                const protocolDocs = await getDocs(protocolsCollectionRef);
+                const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+                setProtocols(fetchedProtocols);
+
+                // Fetch settings
                 const docSnap = await getDoc(configDocRef);
                 const defaults = getDefaultsFromSchema(appConfigSchema);
                 let mergedSettings = { ...defaults };
@@ -73,16 +86,19 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
             }
         };
 
-        fetchSettings();
+        fetchSettingsAndProtocols();
     }, []);
 
     const handleSettingChange = (path: string[], value: any) => {
-        setSaveSuccess(false); // Reset success message on new change
+        setSaveSuccess(false);
         setError(null);
         setSettings(prev => {
             const newSettings = JSON.parse(JSON.stringify(prev));
             let current = newSettings;
             for (let i = 0; i < path.length - 1; i++) {
+                if (!current[path[i]] || typeof current[path[i]] !== 'object') {
+                    current[path[i]] = {};
+                }
                 current = current[path[i]];
             }
             current[path[path.length - 1]] = value;
@@ -158,6 +174,19 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
                         value={typeof value === 'number' ? value : 0}
                         onChange={e => handleSettingChange(path, parseFloat(e.target.value) || 0)}
                     />
+                );
+                break;
+            case 'protocol':
+                control = (
+                    <select
+                        className={styles.input}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={e => handleSettingChange(path, e.target.value)}
+                    >
+                        {protocols.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
                 );
                 break;
             case 'string':

@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean';
+  type: 'string' | 'number' | 'boolean' | 'protocol';
   defaultValue: string | number | boolean;
 };
 
@@ -44,8 +44,8 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       },
       sensitivityProtocolIdentifier: {
         label: 'Sensitivity Protocol Identifier',
-        description: 'The unique ID or name of the protocol to be used for initial sensitivity testing.',
-        type: 'string',
+        description: 'The protocol to be used for initial sensitivity testing.',
+        type: 'protocol',
         defaultValue: 'sensitivity_protocol_v1',
       },
       enableAISuggestions: {
