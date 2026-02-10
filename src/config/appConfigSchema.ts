@@ -1,0 +1,59 @@
+
+// src/config/appConfigSchema.ts
+
+/**
+ * Represents the type definition for a single, atomic setting.
+ * Each setting will be rendered as a specific form control in the UI.
+ */
+export type ConfigSetting = {
+  label: string;
+  description: string;
+  type: 'string' | 'number' | 'boolean';
+  defaultValue: string | number | boolean;
+};
+
+/**
+ * Represents a group of settings. A group can contain individual settings
+ * or other nested groups, allowing for a hierarchical structure.
+ */
+export type ConfigGroup = {
+  label: string;
+  description: string;
+  children: { [key: string]: ConfigSetting | ConfigGroup };
+};
+
+/**
+ * The main application configuration schema.
+ *
+ * This object is read by the `ApplicationSettings` component to dynamically
+ * generate the settings form. To add, remove, or modify a setting,
+ * a developer only needs to update this schema. The UI will adapt automatically.
+ *
+ * The keys of this object serve as the keys in the saved Firestore document.
+ */
+export const appConfigSchema: { [key: string]: ConfigGroup } = {
+  treatmentSettings: {
+    label: 'Treatment Process',
+    description: 'Settings that control the logic and flow of patient treatments.',
+    children: {
+      initialSensitivityTestTreatments: {
+        label: 'Initial Sensitivity Test Treatments',
+        description: 'The number of initial treatments a new patient must undergo using the "Sensitivity Protocol" before other protocols can be used.',
+        type: 'number',
+        defaultValue: 3,
+      },
+      sensitivityProtocolIdentifier: {
+        label: 'Sensitivity Protocol Identifier',
+        description: 'The unique ID or name of the protocol to be used for initial sensitivity testing.',
+        type: 'string',
+        defaultValue: 'sensitivity_protocol_v1',
+      },
+      enableAISuggestions: {
+        label: 'Enable AI Suggestions',
+        description: 'If on, the system will suggest a treatment protocol based on patient data.',
+        type: 'boolean',
+        defaultValue: false,
+      },
+    },
+  },
+};

@@ -8,6 +8,7 @@
   "admin": "מנהל",
   "protocol_configuration": "תצורת פרוטוקול",
   "points_configuration": "תצורת נקודות",
+  "application_settings": "הגדרות מערכת",
   "anonymous_user": "משתמש אנונימי",
   "user": "משתמש",
   "welcome": "ברוך הבא, {{displayName}}!",

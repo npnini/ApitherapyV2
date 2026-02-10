@@ -1,30 +1,54 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isCaretaker() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caretaker';
+    }
+
+    function isAdmin() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users Collection
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && request.auth.uid == userId; // Allow users to edit their own data
     }
 
-    match /patients/{patientId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == resource.data.caretakerId;
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == resource.data.caretakerId;
-
-      match /treatments/{treatmentId} {
-        allow read: if request.auth != null && exists(/databases/$(database)/documents/patients/$(patientId));
-        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userId == get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId;
-      }
+    // Points Collection
+    match /points/{pointId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAdmin();
     }
 
+    // Protocols Collection
     match /protocols/{protocolId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAdmin();
     }
 
-    match /acupuncture_points/{pointId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Patients Collection
+    match /patients/{patientId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isCaretaker() || isAdmin();
+        // Treatments Subcollection
+        match /treatments/{treatmentId} {
+            allow read: if isAuthenticated(); // Caretakers should be able to read their patients' history
+            allow create, update, delete: if isCaretaker() || isAdmin();
+        }
+    }
+    
+    // Application Configuration Collection
+    match /app_config/{configId} {
+        allow read: if isAuthenticated(); // Allow any authenticated user to read the configuration
+        allow write: if isAdmin(); // Only admins can modify the configuration
     }
   }
 }

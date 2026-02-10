@@ -1,0 +1,188 @@
+
+/* src/components/ApplicationSettings.module.css */
+
+.container {
+    padding: var(--space-lg);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    height: 100%;
+    overflow-y: auto;
+}
+
+.title {
+    font-size: var(--font-size-xxl);
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-block-end: var(--space-lg);
+    border-block-end: 1px solid var(--color-border);
+    padding-block-end: var(--space-md);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+}
+
+.group {
+    border: 1px solid var(--color-border);
+    padding: var(--space-lg);
+    border-radius: var(--border-radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.nestedGroup {
+    border: none;
+    border-inline-start: 3px solid var(--color-border);
+    padding: var(--space-md);
+    padding-inline-start: var(--space-lg);
+    border-radius: var(--border-radius-sm);
+    margin-inline-start: var(--space-md);
+}
+
+.groupLabel {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    padding-inline: var(--space-sm);
+}
+
+.groupDescription {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-block-start: calc(-1 * var(--space-md)); /* Pull it closer to the legend */
+}
+
+.setting {
+    display: grid;
+    grid-template-areas:
+        "label control"
+        "desc control";
+    grid-template-columns: 1fr auto;
+    gap: var(--space-xs) var(--space-lg);
+    align-items: center;
+}
+
+.settingLabel {
+    grid-area: label;
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    text-align: start;
+}
+
+.settingDescription {
+    grid-area: desc;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    text-align: start;
+}
+
+.input {
+    grid-area: control;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--color-background-input);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    width: 250px;
+}
+
+/* Toggle Switch for Booleans */
+.toggleSwitch {
+    grid-area: control;
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    justify-self: end;
+}
+
+.toggleSwitch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-secondary-button-background);
+    transition: .4s;
+    border-radius: 28px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--color-primary);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--color-primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+
+/* Actions */
+.actions {
+    margin-block-start: var(--space-xl);
+    padding-block-start: var(--space-lg);
+    border-block-start: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center; /* Center items vertically */
+    gap: var(--space-md);
+}
+
+.errorMessage {
+    color: var(--color-error);
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+.successMessage {
+    color: var(--color-success);
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+.saveButton {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--border-radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.saveButton:disabled {
+    background-color: var(--color-secondary-button-background);
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.saveButton:hover:not(:disabled) {
+     background-color: var(--color-primary-dark);
+}

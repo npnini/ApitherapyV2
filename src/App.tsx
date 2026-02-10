@@ -14,13 +14,14 @@ import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
+import ApplicationSettings from './components/ApplicationSettings';
 import { PatientData } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 
-type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test';
+type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -93,6 +94,7 @@ const App: React.FC = () => {
     const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
+    const handleAppSettingsClick = () => { setCurrentView('app_settings'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
@@ -259,7 +261,8 @@ const App: React.FC = () => {
                     onAdminClick={handleAdminClick} 
                     onPointsAdminClick={handlePointsAdminClick} 
                     onUserDetailsClick={handleUserDetailsClick}
-                    onPatientsClick={handleBackToDashboard} 
+                    onPatientsClick={handleBackToDashboard}
+                    onAppSettingsClick={handleAppSettingsClick}
                 />
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {(() => {
@@ -289,6 +292,8 @@ const App: React.FC = () => {
                                 return <ProtocolAdmin />;
                             case 'admin_points':
                                 return <PointsAdmin />;
+                            case 'app_settings':
+                                return <ApplicationSettings user={appUser} />;
                             default:
                                 return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} onDeletePatient={handleDeletePatient} />;
                         }

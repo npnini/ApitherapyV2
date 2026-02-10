@@ -8,6 +8,7 @@
   "admin": "Admin",
   "protocol_configuration": "Protocol Configuration",
   "points_configuration": "Points Configuration",
+  "application_settings": "Application Settings",
   "anonymous_user": "Anonymous User",
   "user": "User",
   "welcome": "Welcome, {{displayName}}!",

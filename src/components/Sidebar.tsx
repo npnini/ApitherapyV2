@@ -10,10 +10,11 @@ interface SidebarProps {
     onAdminClick: () => void; 
     onUserDetailsClick: () => void;
     onPatientsClick: () => void;
-    onPointsAdminClick: () => void; // New prop for points admin
+    onPointsAdminClick: () => void; 
+    onAppSettingsClick: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick, onAppSettingsClick }) => {
     const { t, i18n } = useTranslation();
     const [configOpen, setConfigOpen] = useState(false);
     const isRtl = i18n.language === 'he';
@@ -55,11 +56,15 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
                         </button>
                         {configOpen && (
                             <div className={`${isRtl ? 'pr-8' : 'pl-8'} mt-2 space-y-1`}>
-                                <button onClick={onAdminClick} className={`w-full p-2 rounded-lg hover:bg-slate-700 transition text-sm ${isRtl ? 'text-right' : 'text-left'}`}>
-                                    {t('protocol_configuration')}
+                                <button onClick={onAppSettingsClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                    <Settings size={16} className={isRtl ? "ml-2" : "mr-2"} />
+                                    <span className="whitespace-nowrap">{t('application_settings')}</span>
                                 </button>
-                                <button onClick={onPointsAdminClick} className={`w-full p-2 rounded-lg hover:bg-slate-700 transition text-sm ${isRtl ? 'text-right' : 'text-left'}`}>
-                                    {t('points_configuration')}
+                                <button onClick={onAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <span className="whitespace-nowrap">{t('protocol_configuration')}</span>
+                                </button>
+                                <button onClick={onPointsAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <span className="whitespace-nowrap">{t('points_configuration')}</span>
                                 </button>
                             </div>
                         )}
