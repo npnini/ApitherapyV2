@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader } from 'lucide-react';
@@ -9,6 +10,7 @@ import styles from './PointsAdmin.module.css';
 
 const PointsAdmin: React.FC = () => {
     const { t } = useTranslation();
+    const [user, setUser] = useState<User | null>(null);
     const [points, setPoints] = useState<StingPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState<StingPoint | null>(null);
@@ -19,7 +21,23 @@ const PointsAdmin: React.FC = () => {
 
     const pointsCollectionRef = React.useMemo(() => collection(db, 'acupuncture_points'), []);
 
+    useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            if (!currentUser) {
+                setIsLoading(false);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     const fetchPoints = useCallback(async () => {
+        if (!user) {
+            setPoints([]);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         try {
@@ -32,7 +50,7 @@ const PointsAdmin: React.FC = () => {
             console.error(err);
         }
         setIsLoading(false);
-    }, [pointsCollectionRef, t]);
+    }, [user, pointsCollectionRef, t]);
 
     useEffect(() => {
         fetchPoints();
@@ -188,10 +206,10 @@ const PointsAdmin: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className={styles.tableBody}>
-                            {isLoading && !deletingPoint ? (
+                            {isLoading ? (
                                 <tr><td colSpan={5} className={styles.loaderCell}><Loader className={styles.loader} size={32}/></td></tr>
                             ) : points.length === 0 ? (
-                                <tr><td colSpan={5} className={styles.emptyCell}>{t('noPointsFound')}</td></tr>
+                                <tr><td colSpan={5} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noPointsFound')}</td></tr>
                             ) : (
                                 points.map(point => (
                                     <tr key={point.id} className={styles.tableRow}>

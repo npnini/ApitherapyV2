@@ -23,7 +23,7 @@ service cloud.firestore {
     }
 
     // Points Collection
-    match /points/{pointId} {
+    match /acupuncture_points/{pointId} {
         allow read: if isAuthenticated();
         allow create, update, delete: if isAdmin();
     }
@@ -38,10 +38,18 @@ service cloud.firestore {
     match /patients/{patientId} {
         allow read: if isAuthenticated();
         allow create, update, delete: if isCaretaker() || isAdmin();
-        // Treatments Subcollection
-        match /treatments/{treatmentId} {
-            allow read: if isAuthenticated(); // Caretakers should be able to read their patients' history
-            allow create, update, delete: if isCaretaker() || isAdmin();
+
+        // Medical Records Subcollection
+        match /medical_records/{recordId} {
+            // Enforce that the document ID MUST be 'patient_level_data'
+            allow read: if isAuthenticated() && recordId == 'patient_level_data';
+            allow create, update, delete: if (isCaretaker() || isAdmin()) && recordId == 'patient_level_data';
+
+            // Treatments Subcollection (nested under the validated medical record)
+            match /treatments/{treatmentId} {
+                allow read: if isAuthenticated();
+                allow create, update, delete: if isCaretaker() || isAdmin();
+            }
         }
     }
     

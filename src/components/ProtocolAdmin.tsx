@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
@@ -15,6 +16,7 @@ interface ProtocolFormState extends Omit<Protocol, 'points'> {
 
 const ProtocolAdmin: React.FC = () => {
     const { t } = useTranslation();
+    const [user, setUser] = useState<User | null>(null);
     const [protocols, setProtocols] = useState<Protocol[]>([]);
     const [allAcuPoints, setAllAcuPoints] = useState<AcuPoint[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -23,25 +25,41 @@ const ProtocolAdmin: React.FC = () => {
     const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
 
+    useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
     const fetchProtocolsAndPoints = useCallback(async () => {
+        if (!user) {
+            setIsLoading(false);
+            setProtocols([]);
+            setAllAcuPoints([]);
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const protocolsCollection = collection(db, 'protocols');
-            const protocolSnapshot = await getDocs(protocolsCollection);
+            const [protocolSnapshot, pointsSnapshot] = await Promise.all([
+                getDocs(collection(db, 'protocols')),
+                getDocs(collection(db, 'acupuncture_points'))
+            ]);
+
             const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol).sort((a,b) => a.name.localeCompare(b.name));
             setProtocols(protocolsList);
 
-            const pointsCollection = collection(db, 'acupuncture_points');
-            const pointsSnapshot = await getDocs(pointsCollection);
             const pointsList = pointsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AcuPoint)).sort((a,b) => a.code.localeCompare(b.code));
             setAllAcuPoints(pointsList);
 
         } catch (error) {
             console.error("Error fetching data:", error);
-            alert('Could not fetch data.');
+            setFormError(t('could_not_fetch_data'));
         }
         setIsLoading(false);
-    }, []);
+    }, [user, t]);
 
     useEffect(() => {
         fetchProtocolsAndPoints();
@@ -115,7 +133,7 @@ const ProtocolAdmin: React.FC = () => {
             fetchProtocolsAndPoints();
         } catch (error) {
             console.error("Error deleting protocol:", error);
-            alert(t('failed_to_delete_protocol'));
+            setFormError(t('failed_to_delete_protocol'));
         }
         setIsLoading(false);
         setDeletingProtocol(null);
@@ -259,7 +277,7 @@ const ProtocolAdmin: React.FC = () => {
             {isLoading ? <div className={styles.loaderContainer}><Loader className={styles.loader} size={40}/></div> : (
                 <div className={styles.protocolListContainer}>
                     <ul className={styles.protocolList}>
-                        {protocols.length === 0 ? (
+                        {protocols.length === 0 && !isLoading ? (
                             <p className={styles.emptyList}>{t('no_protocols_found')}</p>
                         ) : protocols.map(protocol => (
                             <li key={protocol.id} className={styles.protocolItem}>

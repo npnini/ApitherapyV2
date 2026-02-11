@@ -98,7 +98,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
         setIsLoading(true);
         setError(null);
         try {
-            const treatmentsRef = collection(db, `patients/${patient.id}/treatments`);
+            const treatmentsRef = collection(db, `patients/${patient.id}/medical_records/patient_level_data/treatments`);
             const q = query(treatmentsRef, orderBy("date", "desc"));
             const querySnapshot = await getDocs(q);
             const rawTreatments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StoredTreatmentDoc));

@@ -1,3 +1,9 @@
+export interface MedicalRecord {
+    condition: string;
+    severity: 'Mild' | 'Moderate' | 'Severe';
+    lastTreatment?: string;
+}
+
 export interface PatientData {
     id: string;
     fullName: string;
@@ -5,8 +11,6 @@ export interface PatientData {
     identityNumber: string;
     email: string;
     mobile: string;
-    condition: string;
-    severity: 'Mild' | 'Moderate' | 'Severe';
     caretakerId: string;
-    lastTreatment?: string;
+    medicalRecord: MedicalRecord;
 }

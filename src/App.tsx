@@ -6,7 +6,8 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
-import PatientDetails from './components/PatientDetails';
+import PatientPIIDetails from './components/PatientPIIDetails';
+import PatientMedicalRecord from './components/PatientMedicalRecord';
 import Sidebar from './components/Sidebar';
 import ProtocolAdmin from './components/ProtocolAdmin';
 import PointsAdmin from './components/PointsAdmin';
@@ -15,20 +16,20 @@ import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
-import { PatientData } from './types/patient';
+import { PatientData, MedicalRecord } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 
-type View = 'dashboard' | 'patient_details' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
+type View = 'dashboard' | 'patient_pii_details' | 'patient_medical_record' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
     const { i18n } = useTranslation();
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<PatientData[]>([]);
-    const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
+    const [selectedPatient, setSelectedPatient] = useState<Partial<PatientData> | null>(null);
     const [activeProtocol, setActiveProtocol] = useState<Protocol | null>(null);
     const [activeTreatmentSession, setActiveTreatmentSession] = useState<Partial<TreatmentSession> | null>(null);
     const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -49,7 +50,7 @@ const App: React.FC = () => {
         } else {
             const newUser: AppUser = { uid: user.uid, userId: user.uid, email: user.email || '', fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker' };
             await setDoc(userRef, newUser);
-            setCurrentView('onboarding_test'); // Redirect to onboarding
+            setCurrentView('onboarding_test');
             return newUser;
         }
     };
@@ -60,7 +61,20 @@ const App: React.FC = () => {
         try {
             const q = query(collection(db, "patients"), where("caretakerId", "==", user.userId));
             const querySnapshot = await getDocs(q);
-            const patientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PatientData));
+
+            const patientDataPromises = querySnapshot.docs.map(async (patientDoc) => {
+                const patientPii = { id: patientDoc.id, ...patientDoc.data() };
+                const medicalRecordRef = doc(db, `patients/${patientDoc.id}/medical_records`, 'patient_level_data');
+                const medicalRecordSnap = await getDoc(medicalRecordRef);
+
+                if (medicalRecordSnap.exists()) {
+                    return { ...patientPii, medicalRecord: medicalRecordSnap.data() } as PatientData;
+                } else {
+                    return patientPii as PatientData;
+                }
+            });
+
+            const patientsData = await Promise.all(patientDataPromises);
             setPatients(patientsData);
         } catch (error) {
             console.error("Error fetching patient data:", error);
@@ -69,7 +83,6 @@ const App: React.FC = () => {
         }
     }, []);
 
-    // Effect 1: Handle Authentication State
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
             if (user) {
@@ -84,7 +97,6 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    // Effect 2: Fetch Data when User is Authenticated
     useEffect(() => {
         if (appUser) {
             fetchInitialData(appUser);
@@ -109,71 +121,83 @@ const App: React.FC = () => {
         setCurrentView('dashboard');
     };
 
-    const handleSelectPatient = (patient: PatientData) => {
+    const handleUpdatePatient = (patient: PatientData) => {
         setSelectedPatient(patient);
-        setCurrentView('patient_details');
+        setCurrentView('patient_pii_details');
     };
 
     const handleAddPatient = () => {
         if (!appUser) return;
-        const newPatient: PatientData = { 
+        const newPatient: Partial<PatientData> = { 
             id: `p${Date.now()}`,
             fullName: '', 
             birthDate: '', 
             identityNumber: '', 
             email: '', 
             mobile: '', 
-            condition: '', 
-            severity: 'Mild', 
-            caretakerId: appUser.userId, 
+            medicalRecord: { condition: '', severity: 'Mild' },
+            caretakerId: appUser.userId,
         };
         setSelectedPatient(newPatient);
-        setCurrentView('patient_details');
+        setCurrentView('patient_pii_details');
+    };
+
+    const handleNextFromPII = (piiData: Partial<PatientData>) => {
+        setSelectedPatient(prev => ({ ...prev, ...piiData }));
+        setCurrentView('patient_medical_record');
     };
     
-    const handleSavePatient = async (updatedPatient: PatientData) => {
-        if (!appUser) return;
+    const handleSavePatient = async (medicalData: MedicalRecord) => {
+        if (!appUser || !selectedPatient || !selectedPatient.id) return;
         setSaveStatus('saving');
         setErrorMessage('');
 
-        const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", updatedPatient.identityNumber));
-        const emailQuery = query(collection(db, "patients"), where("email", "==", updatedPatient.email));
+        const finalPatientData = { ...selectedPatient, medicalRecord: medicalData } as PatientData;
 
-        const identityQuerySnapshot = await getDocs(identityQuery);
-        const emailQuerySnapshot = await getDocs(emailQuery);
+        try {
+            const { id, fullName, birthDate, identityNumber, email, mobile, caretakerId, medicalRecord } = finalPatientData;
 
-        const identityClash = identityQuerySnapshot.docs.find(doc => doc.id !== updatedPatient.id);
-        if (identityClash) {
-            const errorMsg = `Error: A patient with identity number '${updatedPatient.identityNumber}' already exists.`;
-            console.error(errorMsg);
-            setErrorMessage(errorMsg);
+            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber));
+            const emailQuery = query(collection(db, "patients"), where("email", "==", email));
+            const [identitySnapshot, emailSnapshot] = await Promise.all([getDocs(identityQuery), getDocs(emailQuery)]);
+
+            if (identitySnapshot.docs.some(doc => doc.id !== id)) {
+                throw new Error(`A patient with identity number '${identityNumber}' already exists.`);
+            }
+            if (emailSnapshot.docs.some(doc => doc.id !== id)) {
+                throw new Error(`A patient with email '${email}' already exists.`);
+            }
+
+            const patientPii = { fullName, birthDate, identityNumber, email, mobile, caretakerId };
+            const patientMedical = { condition: medicalRecord.condition, severity: medicalRecord.severity };
+
+            const patientDocRef = doc(db, "patients", id);
+            const medicalRecordRef = doc(db, `patients/${id}/medical_records`, 'patient_level_data');
+
+            await setDoc(patientDocRef, patientPii, { merge: true });
+            await setDoc(medicalRecordRef, patientMedical, { merge: true });
+            
+            await fetchInitialData(appUser);
+            handleBackToDashboard();
+
+        } catch (error) {
+            console.error("Error saving patient data:", error);
+            const errorMessage = error instanceof Error ? error.message : "Failed to save patient data.";
+            setErrorMessage(errorMessage);
             setSaveStatus('error');
-            return;
         }
-        
-        const emailClash = emailQuerySnapshot.docs.find(doc => doc.id !== updatedPatient.id);
-        if (emailClash) {
-            const errorMsg = `Error: A patient with email '${updatedPatient.email}' already exists.`;
-            console.error(errorMsg);
-            setErrorMessage(errorMsg);
-            setSaveStatus('error');
-            return;
-        }
-
-        await setDoc(doc(db, "patients", updatedPatient.id), updatedPatient, { merge: true });
-        if(appUser) await fetchInitialData(appUser);
-        setSelectedPatient(null);
-        setCurrentView('dashboard');
-        setSaveStatus('idle');
     };
 
     const handleDeletePatient = async (patientId: string) => {
         if (!appUser) return;
+        setSaveStatus('saving');
         try {
             await deleteDoc(doc(db, "patients", patientId));
-            if(appUser) await fetchInitialData(appUser);
+            await fetchInitialData(appUser);
         } catch (error) {
             console.error("Error deleting patient:", error);
+        } finally {
+            setSaveStatus('idle');
         }
     };
 
@@ -186,13 +210,7 @@ const App: React.FC = () => {
         setErrorMessage('');
     };
 
-    const handleStartTreatmentFlow = () => {
-        if (selectedPatient) {
-            setCurrentView('protocol_selection');
-        }
-    };
-
-    const handleStartTreatmentFromDashboard = (patient: PatientData) => {
+    const handleStartTreatmentFlow = (patient: PatientData) => {
         setSelectedPatient(patient);
         setCurrentView('protocol_selection');
     };
@@ -204,7 +222,6 @@ const App: React.FC = () => {
 
     const handleProtocolSelection = (protocol: Protocol, patientReport: string, preStingVitals: VitalSigns) => {
         if (!appUser || !selectedPatient) return;
-
         setActiveProtocol(protocol);
         setActiveTreatmentSession({
             patientId: selectedPatient.id,
@@ -219,7 +236,7 @@ const App: React.FC = () => {
     };
     
     const handleSaveTreatment = async (data: { stungPointIds: string[]; notes: string; postStingVitals?: Partial<VitalSigns>; finalVitals?: Partial<VitalSigns>; }) => {
-        if (!selectedPatient || !activeTreatmentSession) return;
+        if (!selectedPatient || !selectedPatient.id || !activeTreatmentSession) return;
         setSaveStatus('saving');
         try {
             const finalTreatmentRecord: TreatmentSession = {
@@ -230,9 +247,13 @@ const App: React.FC = () => {
                 finalNotes: data.notes,
             } as TreatmentSession;
 
-            await addDoc(collection(db, `patients/${selectedPatient.id}/treatments`), finalTreatmentRecord);
-            await setDoc(doc(db, "patients", selectedPatient.id), { lastTreatment: new Date().toISOString().split('T')[0] }, { merge: true });
-            if(appUser) await fetchInitialData(appUser);
+            const treatmentsCollectionRef = collection(db, `patients/${selectedPatient.id}/medical_records/patient_level_data/treatments`);
+            await addDoc(treatmentsCollectionRef, finalTreatmentRecord);
+
+            const medicalRecordRef = doc(db, `patients/${selectedPatient.id}/medical_records`, 'patient_level_data');
+            await setDoc(medicalRecordRef, { lastTreatment: new Date().toISOString().split('T')[0] }, { merge: true });
+
+            await fetchInitialData(appUser!);
             setSaveStatus('success');
         } catch (error) {
             console.error("Error saving new treatment:", error);
@@ -241,29 +262,13 @@ const App: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (!authReady) {
-            return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
-        }
-        
-        if (!appUser) {
-            return <Login />;
-        }
-
-        if (isLoading) {
-            return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
-        }
+        if (!authReady) return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
+        if (!appUser) return <Login />;
+        if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
 
         return (
             <div className="flex h-screen bg-slate-50">
-                <Sidebar 
-                    user={appUser} 
-                    onLogout={handleLogout} 
-                    onAdminClick={handleAdminClick} 
-                    onPointsAdminClick={handlePointsAdminClick} 
-                    onUserDetailsClick={handleUserDetailsClick}
-                    onPatientsClick={handleBackToDashboard}
-                    onAppSettingsClick={handleAppSettingsClick}
-                />
+                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} />
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {(() => {
                         switch (currentView) {
@@ -271,23 +276,18 @@ const App: React.FC = () => {
                                 return <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />;
                             case 'onboarding_test':
                                 return <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />;
-                            case 'patient_details':
-                                return selectedPatient && appUser && <PatientDetails user={appUser} patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} onStartTreatment={handleStartTreatmentFlow} saveStatus={saveStatus} errorMessage={errorMessage} />;
+                            case 'patient_pii_details':
+                                return selectedPatient && <PatientPIIDetails patient={selectedPatient} onNext={handleNextFromPII} onBack={handleBackToDashboard} errorMessage={errorMessage} />;
+                            case 'patient_medical_record':
+                                return selectedPatient && <PatientMedicalRecord medicalRecord={selectedPatient.medicalRecord as MedicalRecord} onSave={handleSavePatient} onBack={() => setCurrentView('patient_pii_details')} isSaving={saveStatus === 'saving'} />;
                             case 'protocol_selection':
-                                return selectedPatient && <ProtocolSelection patient={selectedPatient} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />;
+                                return selectedPatient && <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />;
                             case 'treatment_execution':
                                 return selectedPatient && activeProtocol && activeTreatmentSession && (
-                                    <TreatmentExecution 
-                                        patient={selectedPatient} 
-                                        protocol={activeProtocol} 
-                                        onSave={handleSaveTreatment} 
-                                        onBack={() => setCurrentView('protocol_selection')} 
-                                        saveStatus={saveStatus} 
-                                        onFinish={handleBackToDashboard} 
-                                    />
+                                    <TreatmentExecution patient={selectedPatient as PatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
                                 );
                             case 'treatment_history':
-                                return selectedPatient && <TreatmentHistory patient={selectedPatient} onBack={handleBackToDashboard} />;
+                                return selectedPatient && <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />;
                             case 'admin_protocols':
                                 return <ProtocolAdmin />;
                             case 'admin_points':
@@ -295,7 +295,7 @@ const App: React.FC = () => {
                             case 'app_settings':
                                 return <ApplicationSettings user={appUser} />;
                             default:
-                                return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleSelectPatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFromDashboard} onDeletePatient={handleDeletePatient} />;
+                                return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />;
                         }
                     })()}
                 </main>

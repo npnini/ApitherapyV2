@@ -14,7 +14,7 @@ echo "Building the application..."
 npm run build
 
 # 3. Deploy to Firebase Hosting
-echo "Deploying to Firebase Hosting..."
-firebase deploy --only hosting
+echo "Deploying to Firebase Hosting (Development Environment)..."
+firebase deploy --only hosting --project apitherapyv2
 
 echo "Deployment successful!"

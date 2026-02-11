@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { db } from '../firebase';
 import { PatientData } from '../types/patient';
 import { Protocol } from '../types/protocol';
@@ -24,56 +25,41 @@ interface VitalSignsInputProps {
 const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChange, min, max, placeholder }) => {
     const { t } = useTranslation();
     
-    // State to manage whether the input currently holds an out-of-range value that has been approved.
     const [isWarningActive, setIsWarningActive] = useState(false);
-    // State to control the visibility of the confirmation modal.
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Handles user input as they type.
     const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // When the user starts typing, we clear any existing warning state.
         setIsWarningActive(false);
         const val = e.target.value;
         onChange(val === '' ? '' : Number(val));
     };
 
-    // This function is triggered when the input field loses focus.
     const handleBlur = () => {
         const numericValue = Number(value);
         if (value === '' || isNaN(numericValue)) {
-            setIsWarningActive(false); // No value means no warning.
+            setIsWarningActive(false);
             return;
         }
 
-        // The window.confirm call has been permanently removed and replaced with this modal logic.
         if (numericValue < min || numericValue > max) {
-            // If the value is out of the specified range, open the custom modal.
             setIsModalOpen(true);
         } else {
-            // If the value is within range, ensure no warning is shown.
             setIsWarningActive(false);
         }
     };
     
-    // This function is triggered when a key is pressed in the input field.
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-            // Blurring the input triggers the onBlur event.
             e.currentTarget.blur();
         }
     };
 
-    // Called when the user clicks "Confirm" in the modal.
     const handleConfirm = () => {
-        // The user has approved the out-of-range value.
-        // We activate the warning indicator and close the modal.
         setIsWarningActive(true);
         setIsModalOpen(false);
     };
 
-    // Called when the user clicks "Cancel" in the modal.
     const handleCancel = () => {
-        // The user has rejected the out-of-range value, so we clear the input.
         onChange('');
         setIsWarningActive(false);
         setIsModalOpen(false);
@@ -122,15 +108,15 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     const { t, i18n } = useTranslation();
     const direction = i18n.dir();
 
+    const [user, setUser] = useState<User | null>(null);
     const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
     const [proposedProtocols, setProposedProtocols] = useState<Protocol[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
     const [isFinding, setIsFinding] = useState<boolean>(false);
     const [showFullList, setShowFullList] = useState(false);
 
     const [patientReport, setPatientReport] = useState('');
     const [preStingVitals, setPreStingVitals] = useState<Partial<VitalSigns>>({});
-
 
     const isFormValid =
         patientReport.trim() !== '' &&
@@ -139,15 +125,34 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         preStingVitals.heartRate !== undefined;
 
     useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
         const fetchProtocols = async () => {
+            if (!user) {
+                // If there is no user, do not fetch. We can also clear old data.
+                setAllProtocols([]);
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
-            const protocolSnapshot = await getDocs(collection(db, 'protocols'));
-            const protocolsData = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol));
-            setAllProtocols(protocolsData);
+            try {
+                const protocolSnapshot = await getDocs(collection(db, 'protocols'));
+                const protocolsData = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol));
+                setAllProtocols(protocolsData);
+            } catch (error) {
+                console.error("Error fetching protocols: ", error); // Log error for debugging
+                // Optionally set an error state to show a message to the user
+            }
             setIsLoading(false);
         };
         fetchProtocols();
-    }, []);
+    }, [user]); // This effect depends on the user state
 
     const handleFindProtocol = async () => {
         if (!isFormValid) return;
@@ -163,7 +168,6 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         if (isFormValid) {
             onProtocolSelect(protocol, patientReport, preStingVitals as VitalSigns);
         } else {
-            // This can be replaced with a more user-friendly notification
             alert("Please fill all required fields before selecting a protocol.");
         }
     };

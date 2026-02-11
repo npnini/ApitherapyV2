@@ -1,24 +1,29 @@
+
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { PatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import styles from './PatientsDashboard.module.css';
+import AddEditPatientModal from './AddEditPatientModal';
 
 interface PatientsDashboardProps {
   user: AppUser;
   patients: PatientData[];
-  onAddPatient: () => void;
   onStartTreatment: (patient: PatientData) => void;
-  onUpdatePatient: (patient: PatientData) => void;
+  onUpdatePatient: (patient: PatientData) => void; 
+  onAddPatient: (patient: PatientData) => void; 
   onShowTreatments: (patient: PatientData) => void;
   onDeletePatient: (patientId: string) => void;
+  isSaving: boolean;
 }
 
-const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, onDeletePatient }) => {
+const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, onDeletePatient, isSaving }) => {
   const { t, i18n } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [patientToEdit, setPatientToEdit] = useState<PatientData | null>(null);
 
   const filteredPatients = patients.filter(p =>
     p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,40 +31,42 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDeleteClick = (patient: PatientData) => {
-    setPatientToDelete(patient);
-  };
-
+  const handleDeleteClick = (patient: PatientData) => setPatientToDelete(patient);
   const confirmDelete = () => {
     if (patientToDelete) {
       onDeletePatient(patientToDelete.id);
       setPatientToDelete(null);
     }
   };
+  const cancelDelete = () => setPatientToDelete(null);
 
-  const cancelDelete = () => {
-    setPatientToDelete(null);
+  const handleAddPatientClick = () => {
+    setPatientToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditPatientClick = (patient: PatientData) => {
+    setPatientToEdit(patient);
+    setIsModalOpen(true);
+  };
+
+  const handleSavePatient = (patientData: PatientData) => {
+    if (patientToEdit) {
+      onUpdatePatient({ ...patientToEdit, ...patientData });
+    } else {
+      onAddPatient(patientData);
+    }
   };
 
   const getSeverityClass = (severity: 'Severe' | 'Moderate' | 'Mild') => {
-    switch (severity) {
-      case 'Severe':
-        return styles.severitySevere;
-      case 'Moderate':
-        return styles.severityModerate;
-      case 'Mild':
-      default:
-        return styles.severityMild;
-    }
+    return styles[`severity${severity}`];
   };
 
   return (
     <div className={styles.dashboardContainer}>
       <div className={styles.header}>
-        <div>
-          <h2 className={styles.title}>{t('patient_list')}</h2>
-        </div>
-        <button onClick={onAddPatient} className={styles.addPatientButton}>
+        <h2 className={styles.title}>{t('patients')}</h2>
+        <button onClick={handleAddPatientClick} className={styles.addPatientButton}>
           <PlusCircle size={16} />
           {t('add_new_patient')}
         </button>
@@ -69,7 +76,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         <Search size={16} className={styles.searchIcon} />
         <input
           type="text"
-          placeholder={t('search_by_name_id_email')}
+          placeholder={t('search_patients')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className={styles.searchInput}
@@ -78,45 +85,43 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
 
       <div className={styles.tableContainer}>
         <div className={styles.tableHeader}>
-            <div className={`${styles.headerCell} ${styles.headerCellCol3}`}>{t('patient')}</div>
-            <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('contact')}</div>
-            <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('condition')}</div>
-            <div className={styles.headerCell}>{t('severity')}</div>
-            <div className={styles.headerCell}>{t('last_treatment')}</div>
-            <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
+          <div className={`${styles.headerCell} ${styles.headerCellCol3}`}>{t('patient')}</div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('contact')}</div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('condition')}</div>
+          <div className={styles.headerCell}>{t('severity')}</div>
+          <div className={styles.headerCell}>{t('last_treatment')}</div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
         </div>
         <div className={styles.tableBody}>
           {filteredPatients.length > 0 ? (
             filteredPatients.map(patient => (
               <div key={patient.id} className={styles.tableRow}>
                 <div className={styles.patientInfo}>
-                  <div className={styles.patientAvatar}>{patient.fullName.slice(0, 2)}</div>
+                  <div className={styles.patientAvatar}>{patient.fullName.slice(0, 2).toUpperCase()}</div>
                   <div>
                     <p className={styles.patientName}>{patient.fullName}</p>
-                    <p className={styles.patientId}>{t('id_number', { identityNumber: patient.identityNumber })}</p>
+                    <p className={styles.patientId}>{t('identity_number')}: {patient.identityNumber}</p>
                   </div>
                 </div>
                 <div className={styles.contactInfo}>
-                    <a href={`mailto:${patient.email}`} className={styles.contactLink}>
-                      <Mail size={12}/> {patient.email}
-                    </a>
-                    <p className={styles.contactMobile}>{patient.mobile}</p>
+                  <a href={`mailto:${patient.email}`} className={styles.contactLink}><Mail size={12}/> {patient.email}</a>
+                  <p className={styles.contactMobile}>{patient.mobile}</p>
                 </div>
-                <div className={styles.conditionInfo}>{patient.condition}</div>
+                <div className={styles.conditionInfo}>{patient.medicalRecord.condition}</div>
                 <div>
-                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.severity)}`}>
-                    {t(patient.severity.toLowerCase())}
+                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.medicalRecord.severity)}`}>
+                    {t(patient.medicalRecord.severity.toLowerCase())}
                   </span>
                 </div>
-                <div className={styles.lastTreatment}>{patient.lastTreatment ? patient.lastTreatment : t('no_treatments')}</div>
+                <div className={styles.lastTreatment}>{patient.medicalRecord.lastTreatment ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString() : t('no_treatments_found')}</div>
                 <div className={styles.actionsContainer}>
-                    <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton}><Edit size={14} /></button>
-                    <button onClick={() => onShowTreatments(patient)} className={styles.actionButton}><FileText size={14} /></button>
-                    {(!patient.lastTreatment || patient.lastTreatment === '') &&
-                      <button onClick={() => handleDeleteClick(patient)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={14} /></button>
+                    <button onClick={() => handleEditPatientClick(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
+                    <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={t('view_history')}><FileText size={14} /></button>
+                    {(!patient.medicalRecord.lastTreatment) &&
+                      <button onClick={() => handleDeleteClick(patient)} className={`${styles.actionButton} ${styles.deleteButton}`} title={t('delete_patient')}><Trash2 size={14} /></button>
                     }
                     <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
-                      {t('start')}{' '}
+                      {t('start_new_treatment')}{' '}
                       {i18n.dir() === 'rtl' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                     </button>
                 </div>
@@ -126,7 +131,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
             <div className={styles.noPatientsContainer}>
               <UserIcon className={styles.noPatientsIcon} size={40} />
               <h3 className={styles.noPatientsTitle}>{t('no_patients_found')}</h3>
-              <p className={styles.noPatientsDescription}>{t('no_patients_found_description')}</p>
+              <p className={styles.noPatientsDescription}>{t('get_started_by_adding_a_new_patient')}</p>
             </div>
           )}
         </div>
@@ -136,17 +141,25 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <AlertTriangle className={styles.modalIcon} size={48} />
-            <h3 className={styles.modalTitle}>{t('confirm_deletion')}</h3>
+            <h3 className={styles.modalTitle}>{t('are_you_sure_delete_patient')}</h3>
             <p className={styles.modalDescription}>
-                <Trans i18nKey="confirm_deletion_description" components={{ b: <b /> }} values={{ patientName: patientToDelete.fullName }}/>
+                <Trans i18nKey="this_action_is_irreversible" components={{ b: <b /> }} values={{ patientName: patientToDelete.fullName }}/>
             </p>
             <div className={styles.modalActions}>
               <button onClick={cancelDelete} className={styles.modalCancelButton}>{t('cancel')}</button>
-              <button onClick={confirmDelete} className={styles.modalConfirmButton}>{t('delete_patient')}</button>
+              <button onClick={confirmDelete} className={styles.modalConfirmButton}>{t('delete')}</button>
             </div>
           </div>
         </div>
       )}
+
+      <AddEditPatientModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        patientToEdit={patientToEdit}
+        onSave={handleSavePatient}
+        isSaving={isSaving}
+      />
     </div>
   );
 };
