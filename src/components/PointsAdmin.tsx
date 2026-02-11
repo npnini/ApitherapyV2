@@ -4,9 +4,10 @@ import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './PointsAdmin.module.css';
+import { uploadFile, deleteFile } from '../services/storageService';
 
 const PointsAdmin: React.FC = () => {
     const { t } = useTranslation();
@@ -18,6 +19,8 @@ const PointsAdmin: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+    const [isProcessingFile, setIsProcessingFile] = useState(false);
 
     const pointsCollectionRef = React.useMemo(() => collection(db, 'acupuncture_points'), []);
 
@@ -89,17 +92,30 @@ const PointsAdmin: React.FC = () => {
         }
 
         setIsSubmitting(true);
+        let documentUrl = pointToSave.documentUrl;
 
-        const code = pointToSave.code.trim().toUpperCase();
-
-        const dataToSave = {
-            code,
-            label: pointToSave.label.trim(),
-            description: pointToSave.description.trim(),
-            position: pointToSave.position,
-        };
-        
         try {
+            if (fileToUpload) {
+                // If there's an existing document, delete it first.
+                if (documentUrl) {
+                    await deleteFile(documentUrl);
+                }
+                documentUrl = await uploadFile(fileToUpload, 'Points');
+            }
+
+            const code = pointToSave.code.trim().toUpperCase();
+
+            const dataToSave: any = {
+                code,
+                label: pointToSave.label.trim(),
+                description: pointToSave.description.trim(),
+                position: pointToSave.position,
+            };
+
+            if (documentUrl) {
+                dataToSave.documentUrl = documentUrl;
+            }
+            
             if (isNewPoint) {
                 const newPointRef = doc(db, 'acupuncture_points', code);
                 await setDoc(newPointRef, dataToSave);
@@ -109,6 +125,7 @@ const PointsAdmin: React.FC = () => {
             }
             
             setIsEditing(null);
+            setFileToUpload(null);
             fetchPoints();
         } catch (err) {
             setFormError(t('failedToSavePoint'));
@@ -123,6 +140,11 @@ const PointsAdmin: React.FC = () => {
 
         setIsSubmitting(true);
         try {
+            // Delete the document from storage if it exists
+            if (deletingPoint.documentUrl) {
+                await deleteFile(deletingPoint.documentUrl);
+            }
+
             const pointDoc = doc(db, 'acupuncture_points', deletingPoint.id);
             await deleteDoc(pointDoc);
             fetchPoints();
@@ -134,8 +156,28 @@ const PointsAdmin: React.FC = () => {
         setDeletingPoint(null);
     };
 
+    const handleFileDelete = async (point: StingPoint) => {
+        if (!point.documentUrl) return;
+
+        setIsProcessingFile(true);
+        setFormError(null);
+        try {
+            await deleteFile(point.documentUrl);
+            const pointDoc = doc(db, 'acupuncture_points', point.id);
+            await updateDoc(pointDoc, { documentUrl: null });
+
+            setIsEditing(prev => prev ? { ...prev, documentUrl: undefined } : null);
+            fetchPoints(); 
+        } catch (error) {
+            setFormError('Failed to delete the document.');
+        } finally {
+            setIsProcessingFile(false);
+        }
+    };
+    
     const handleCancelEdit = () => {
         setIsEditing(null);
+        setFileToUpload(null);
         setFormError(null); 
     };
 
@@ -164,8 +206,10 @@ const PointsAdmin: React.FC = () => {
                     onSave={handleSave} 
                     onCancel={handleCancelEdit}
                     error={formError}
-                    isSubmitting={isSubmitting}
+                    isSubmitting={isSubmitting || isProcessingFile}
                     points={points}
+                    onFileChange={(file) => setFileToUpload(file)}
+                    onFileDelete={handleFileDelete}
                 />
             )}
 
@@ -200,6 +244,7 @@ const PointsAdmin: React.FC = () => {
                                 <th scope="col" className={styles.headerCell}>{t('label')}</th>
                                 <th scope="col" className={styles.headerCell}>{t('description')}</th>
                                 <th scope="col" className={styles.headerCell}>{t('position')}</th>
+                                <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}>{t('document')}</th>
                                 <th scope="col" className="relative px-6 py-3">
                                     <span className="sr-only">{t('actions')}</span>
                                 </th>
@@ -207,9 +252,9 @@ const PointsAdmin: React.FC = () => {
                         </thead>
                         <tbody className={styles.tableBody}>
                             {isLoading ? (
-                                <tr><td colSpan={5} className={styles.loaderCell}><Loader className={styles.loader} size={32}/></td></tr>
+                                <tr><td colSpan={6} className={styles.loaderCell}><Loader className={styles.loader} size={32}/></td></tr>
                             ) : points.length === 0 ? (
-                                <tr><td colSpan={5} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noPointsFound')}</td></tr>
+                                <tr><td colSpan={6} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noPointsFound')}</td></tr>
                             ) : (
                                 points.map(point => (
                                     <tr key={point.id} className={styles.tableRow}>
@@ -217,8 +262,15 @@ const PointsAdmin: React.FC = () => {
                                         <td className={styles.cell}>{point.label}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description}>{point.description}</td>
                                         <td className={`${styles.cell} ${styles.positionCell}`}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
+                                        <td className={`${styles.cell} ${styles.documentCell}`}>
+                                            {point.documentUrl && (
+                                                <a href={point.documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                                    <FileCheck2 size={18}/>
+                                                </a>
+                                            )}
+                                        </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                            <button onClick={() => { setFormError(null); setIsEditing(point);}} className={styles.actionButton}><Edit size={18}/></button>
+                                            <button onClick={() => { setFormError(null); setFileToUpload(null); setIsEditing(point);}} className={styles.actionButton}><Edit size={18}/></button>
                                             <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18}/></button>
                                         </td>
                                     </tr>
@@ -240,16 +292,29 @@ interface EditPointFormProps {
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
+    onFileChange: (file: File | null) => void;
+    onFileDelete: (point: StingPoint) => void;
 }
 
-const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, onCancel, error, isSubmitting }) => {
+const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, onCancel, error, isSubmitting, onFileChange, onFileDelete }) => {
     const { t } = useTranslation();
     const [formData, setFormData] = useState(point);
     const [localError, setLocalError] = useState<string | null>(null);
+    const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setFormData(point);
+        setSelectedFileName(null);
     }, [point]);
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files ? e.target.files[0] : null;
+        if (file) {
+            setSelectedFileName(file.name);
+            onFileChange(file);
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -294,14 +359,16 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
 
     return (
         <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
+            <div className={styles.modalContent} style={{maxWidth: '600px'}}>
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <h2 className={styles.formTitle}>{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
                     
                     {(error || localError) && <p className={styles.formError}>{error || localError}</p>}
 
+                    {/* Form fields grid */}
                     <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
-                        <div>
+                        {/* ... other fields ... */}
+                         <div>
                             <label htmlFor="code" className={styles.label}>
                                 {t('code')}
                                 <span className={styles.requiredAsterisk}>*</span>
@@ -335,7 +402,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                             />
                         </div>
                     </div>
-                    <div>
+                     <div>
                         <label htmlFor="description" className={styles.label}>
                             {t('description')}
                             <span className={styles.requiredAsterisk}>*</span>
@@ -351,7 +418,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                             required
                         ></textarea>
                     </div>
-                    <div>
+                     <div>
                         <label className={styles.label}>
                             {t('position3d')}
                             <span className={styles.requiredAsterisk}>*</span>
@@ -371,6 +438,60 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                             </div>
                         </div>
                     </div>
+
+                    {/* Document management section */}
+                    <div className={styles.documentSection}>
+                        <label className={styles.label}>{t('pointDocument')}</label>
+
+                        {!formData.documentUrl && !selectedFileName && (
+                            <p className={styles.noDocument}>{t('noDocumentAttached')}</p>
+                        )}
+                        {selectedFileName && (
+                            <p className={styles.fileName}>{t('selectedFile', 'Selected file')}: {selectedFileName}</p>
+                        )}
+
+                        <div className={styles.documentButtonRow}>
+                            {formData.documentUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => window.open(formData.documentUrl, '_blank')}
+                                    className={`${styles.documentActionButton} ${styles.documentViewButton}`}
+                                    disabled={isSubmitting}
+                                >
+                                    <FileDown size={16} /> {t('viewDocument')}
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
+                                disabled={isSubmitting}
+                            >
+                                <FileUp size={16} />
+                                {formData.documentUrl ? t('replaceDocument') : t('uploadDocument')}
+                            </button>
+                            <input
+                                type="file"
+                                id="file-upload"
+                                ref={fileInputRef}
+                                className={styles.fileInput}
+                                accept=".pdf,.doc,.docx,.jpg,.png"
+                            />
+
+                            {formData.documentUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => onFileDelete(formData)}
+                                    disabled={isSubmitting}
+                                    className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
+                                >
+                                    <XSquare size={16} /> {t('deleteDocument')}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    
                     <div className={styles.formActions}>
                         <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
                         <button 

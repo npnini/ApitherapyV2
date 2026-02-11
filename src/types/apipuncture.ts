@@ -11,6 +11,7 @@ export interface StingPoint {
   label: string;
   description: string;
   position: Vector3Pos;
+  documentUrl?: string;
 }
 
 export interface Protocol {
