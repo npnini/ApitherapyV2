@@ -77,5 +77,17 @@
     "savePoint": "Save Point",
     "points_configuration": "Points Configuration",
     "protocol_configuration": "Protocol Configuration",
-    "application_settings": "Application Settings"
+    "application_settings": "Application Settings",
+    "add_new_protocol": "Add New Protocol",
+    "save_protocol": "Save Protocol",
+    "protocol_document": "Protocol Document",
+    "no_document_attached": "No document attached",
+    "upload_document": "Upload Document",
+    "replace_document": "Replace Document",
+    "delete_document": "Delete Document",
+    "view_document": "View Document",
+    "selected_file": "Selected file",
+    "protocol_name_placeholder": "e.g., 'Migraine Relief Protocol'",
+    "protocol_description_placeholder": "e.g., 'A protocol for treating acute migraine headaches.'",
+    "protocol_rationale_placeholder": "e.g., 'This protocol is based on traditional points for clearing wind and alleviating pain.'"
 }

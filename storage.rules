@@ -5,5 +5,9 @@ service firebase.storage {
     match /Points/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
+    // Allow any authenticated user to read and write to the Protocols folder
+    match /Protocols/{allPaths=**} {
+        allow read, write: if request.auth != null;
+    }
   }
 }

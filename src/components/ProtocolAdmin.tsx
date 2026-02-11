@@ -1,13 +1,15 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
-import { Trash2, Edit, Plus, Loader, Save, AlertTriangle } from 'lucide-react';
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, FileCheck2, XSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './ProtocolAdmin.module.css';
+import { uploadFile, deleteFile } from '../services/storageService';
+
 
 // A type for the form state, where points are an array of strings (IDs)
 interface ProtocolFormState extends Omit<Protocol, 'points'> {
@@ -24,6 +26,9 @@ const ProtocolAdmin: React.FC = () => {
     const [editingProtocol, setEditingProtocol] = useState<Partial<ProtocolFormState> | null>(null);
     const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         const auth = getAuth();
@@ -81,7 +86,7 @@ const ProtocolAdmin: React.FC = () => {
 
         const isNewProtocol = !protocol.id;
         if (isNewProtocol) {
-            const nameExists = protocols.some(p => p.name.toLowerCase() === protocol.name.trim().toLowerCase() && p.id !== protocol.id);
+            const nameExists = protocols.some(p => p.name.toLowerCase() === protocol.name!.trim().toLowerCase() && p.id !== protocol.id);
             if (nameExists) {
                 setFormError(t('protocol_name_exists'));
                 return false;
@@ -102,11 +107,25 @@ const ProtocolAdmin: React.FC = () => {
         setIsFormLoading(true);
 
         try {
-            const protocolToSave: Omit<ProtocolFormState, 'id'> = {
+            let documentUrl = editingProtocol.documentUrl;
+            if (fileToDelete) {
+                await deleteFile(fileToDelete);
+                documentUrl = undefined;
+            }
+
+            if (fileToUpload) {
+                if (documentUrl) {
+                    await deleteFile(documentUrl);
+                }
+                documentUrl = await uploadFile(fileToUpload, 'Protocols');
+            }
+
+            const protocolToSave: any = {
                 name: editingProtocol.name!.trim(),
                 description: editingProtocol.description!.trim(),
                 rationale: editingProtocol.rationale!.trim(),
                 points: editingProtocol.points!,
+                documentUrl: documentUrl || null,
             };
 
             if (editingProtocol.id) {
@@ -116,12 +135,16 @@ const ProtocolAdmin: React.FC = () => {
                 await addDoc(collection(db, 'protocols'), protocolToSave);
             }
             setEditingProtocol(null);
-            fetchProtocolsAndPoints(); 
+            setFileToUpload(null);
+            setFileToDelete(null);
+            setIsDirty(false);
+            fetchProtocolsAndPoints();
         } catch (error) {
             setFormError(t('failed_to_save_protocol'));
             console.error("Error saving protocol:", error);
+        } finally {
+            setIsFormLoading(false);
         }
-        setIsFormLoading(false);
     };
 
     const confirmDelete = async () => {
@@ -129,140 +152,53 @@ const ProtocolAdmin: React.FC = () => {
 
         setIsLoading(true);
         try {
+            if (deletingProtocol.documentUrl) {
+                await deleteFile(deletingProtocol.documentUrl);
+            }
             await deleteDoc(doc(db, 'protocols', deletingProtocol.id));
             fetchProtocolsAndPoints();
         } catch (error) {
             console.error("Error deleting protocol:", error);
             setFormError(t('failed_to_delete_protocol'));
+        } finally {
+            setIsLoading(false);
+            setDeletingProtocol(null);
         }
-        setIsLoading(false);
-        setDeletingProtocol(null);
     };
+
+    const handleFileDelete = (protocol: Partial<ProtocolFormState>) => {
+        if (!protocol.documentUrl) return;
+        setFileToDelete(protocol.documentUrl);
+        onUpdate({ ...protocol, documentUrl: undefined });
+    };
+
+    const onUpdate = (protocol: Partial<ProtocolFormState>) => {
+        setEditingProtocol(protocol);
+        setIsDirty(true);
+    }
     
     const handleStartEditing = (proto: Protocol) => {
-        const pointIds = (proto.points || []).map(p => typeof p === 'string' ? p : (p as AcuPoint).id);
+        const pointIds = (proto.points || []).map((p: AcuPoint | string) => typeof p === 'string' ? p : (p as AcuPoint).id);
         setFormError(null);
+        setFileToUpload(null);
+        setFileToDelete(null);
+        setIsDirty(false);
         setEditingProtocol({ ...proto, points: pointIds });
     };
 
     const handleStartNew = () => {
         setFormError(null);
+        setFileToUpload(null);
+        setFileToDelete(null);
+        setIsDirty(false);
         setEditingProtocol({ name: '', description: '', rationale: '', points: [] });
     }
 
-    const renderProtocolForm = () => {
-        if (!editingProtocol) return null;
-        
-        const handlePointSelection = (pointId: string) => {
-            const currentPoints = editingProtocol.points || [];
-            const newPoints =
-                currentPoints.includes(pointId)
-                    ? currentPoints.filter(id => id !== pointId)
-                    : [...currentPoints, pointId];
-            setEditingProtocol({ ...editingProtocol, points: newPoints });
-        };
-
-        return (
-             <div className={styles.modalOverlay}>
-                <div className={styles.modalContent}>
-                    <h2 className={styles.modalTitle}>{editingProtocol.id ? t('edit_protocol') : t('add_new_protocol') }</h2>
-                    
-                    {formError && <p className={styles.formError}>{formError}</p>}
-
-                    {isFormLoading ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
-                    <div className={styles.formGrid}>
-                        <div>
-                          <label htmlFor='protocolName' className={styles.formLabel}>
-                            {t('protocol_name')}
-                            <span className={styles.requiredAsterisk}>*</span>
-                            </label>
-                          <input
-                              id='protocolName'
-                              type="text"
-                              placeholder={t('protocol_name_placeholder')}
-                              value={editingProtocol.name || ''}
-                              onChange={(e) => setEditingProtocol({ ...editingProtocol, name: e.target.value })}
-                              className={styles.formInput}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor='protocolDescription' className={styles.formLabel}>
-                            {t('protocol_description')}
-                            <span className={styles.requiredAsterisk}>*</span>
-                            </label>
-                          <textarea
-                              id='protocolDescription'
-                              placeholder={t('protocol_description_placeholder')}
-                              value={editingProtocol.description || ''}
-                              onChange={(e) => setEditingProtocol({ ...editingProtocol, description: e.target.value })}
-                              className={styles.formTextarea}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
-                          <textarea
-                              id='protocolRationale'
-                              placeholder={t('protocol_rationale_placeholder')}
-                              value={editingProtocol.rationale || ''}
-                              onChange={(e) => setEditingProtocol({ ...editingProtocol, rationale: e.target.value })}
-                              className={styles.formTextarea}
-                          />
-                        </div>
-                        <div>
-                            <h3 className={styles.formLabel}>
-                                {t('select_points')}
-                                <span className={styles.requiredAsterisk}>*</span>
-                            </h3>
-                            <div className={styles.pointsSelectionContainer}>
-                                {allAcuPoints.map(point => (
-                                    <label key={point.id} className={`${styles.pointLabel} ${(editingProtocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={(editingProtocol.points || []).includes(point.id)}
-                                            onChange={() => handlePointSelection(point.id)}
-                                            className={styles.pointCheckbox}
-                                        />
-                                        <span className={styles.pointCode}>{point.code}</span>
-                                        <span className={styles.pointLabelText}>{point.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    )}
-                    <div className={styles.modalActions}>
-                        <button onClick={() => setEditingProtocol(null)} className={styles.cancelButton}>{t('cancel')}</button>
-                        <button onClick={handleSave} disabled={isFormLoading} className={styles.saveButton}>
-                           <Save size={16} className={styles.saveButtonIcon}/> {isFormLoading ? t('saving') : t('save_protocol')}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const renderDeleteConfirmation = () => {
-        if (!deletingProtocol) return null;
-
-        return (
-            <div className={styles.modalOverlay}>
-                <div className={styles.deleteModalContent}>
-                    <div className={styles.deleteModalHeader}>
-                        <div className={styles.deleteModalIconContainer}>
-                           <AlertTriangle className={styles.deleteModalIcon} aria-hidden="true" />
-                        </div>
-                        <div>
-                            <h2 className={styles.deleteModalTitle}>{t('delete_protocol')}</h2>
-                            <p className={styles.deleteModalText}>{t('delete_protocol_confirmation', { name: deletingProtocol.name })}</p>
-                        </div>
-                    </div>
-                    <div className={styles.deleteModalActions}>
-                        <button onClick={() => setDeletingProtocol(null)} className={styles.deleteCancelButton}>{t('cancel')}</button>
-                        <button onClick={confirmDelete} className={styles.confirmDeleteButton}>{t('confirm_delete')}</button>
-                    </div>
-                </div>
-            </div>
-        )
+    const onCancel = () => {
+        setEditingProtocol(null);
+        setFileToUpload(null);
+        setFileToDelete(null);
+        setIsDirty(false);
     }
 
     return (
@@ -273,32 +209,275 @@ const ProtocolAdmin: React.FC = () => {
                     <Plus size={18} className={styles.addButtonIcon}/>{t('add_new_protocol')}
                 </button>
             </div>
+            {formError && <p className={styles.errorBox}>{formError}</p>}
 
             {isLoading ? <div className={styles.loaderContainer}><Loader className={styles.loader} size={40}/></div> : (
                 <div className={styles.protocolListContainer}>
-                    <ul className={styles.protocolList}>
-                        {protocols.length === 0 && !isLoading ? (
-                            <p className={styles.emptyList}>{t('no_protocols_found')}</p>
-                        ) : protocols.map(protocol => (
-                            <li key={protocol.id} className={styles.protocolItem}>
-                                <div>
-                                    <p className={styles.protocolName}>{protocol.name}</p>
-                                    <p className={styles.protocolDescription}>{protocol.description}</p>
-                                    <p className={styles.protocolPoints}>{t('points_count', { count: (protocol.points || []).length })}</p>
-                                </div>
-                                <div className={styles.actionButtons}>
-                                    <button onClick={() => handleStartEditing(protocol)} className={styles.editButton}><Edit size={18} /></button>
-                                    <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={styles.deleteButton}><Trash2 size={18} /></button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+                     <table className={styles.table}>
+                        <thead className={styles.tableHeader}>
+                            <tr>
+                                <th scope="col" className={styles.headerCell}>{t('protocol_name')}</th>
+                                <th scope="col" className={styles.headerCell}>{t('description')}</th>
+                                <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}>{t('document')}</th>
+                                <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
+                                    {t('actions')}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className={styles.tableBody}>
+                            {protocols.length === 0 ? (
+                                <tr><td colSpan={4} className={styles.emptyCell}>{t('no_protocols_found')}</td></tr>
+                            ) : protocols.map(protocol => (
+                                <tr key={protocol.id} className={styles.tableRow}>
+                                    <td className={`${styles.cell} ${styles.protocolName}`}>{protocol.name}</td>
+                                    <td className={styles.cell}>{protocol.description}</td>
+                                    <td className={`${styles.cell} ${styles.documentCell}`}>
+                                        {protocol.documentUrl && (
+                                            <a href={protocol.documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                                <FileCheck2 size={18}/>
+                                            </a>
+                                        )}
+                                    </td>
+                                    <td className={`${styles.cell} ${styles.actionsCell}`}>
+                                        <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
+                                        <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
-            {renderProtocolForm()}
-            {renderDeleteConfirmation()}
+
+            {editingProtocol && <EditProtocolForm
+                protocol={editingProtocol}
+                allAcuPoints={allAcuPoints}
+                onSave={handleSave}
+                onCancel={onCancel}
+                onUpdate={onUpdate}
+                error={formError}
+                isSubmitting={isFormLoading}
+                onFileChange={(file) => {
+                    setFileToUpload(file);
+                    setIsDirty(true);
+                }}
+                onFileDelete={handleFileDelete}
+                isDirty={isDirty}
+            />}
+
+            {deletingProtocol && <DeleteConfirmationModal
+                protocol={deletingProtocol}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeletingProtocol(null)}
+                isSubmitting={isLoading}
+            />}
         </div>
     );
 };
+
+interface EditProtocolFormProps {
+    protocol: Partial<ProtocolFormState>;
+    allAcuPoints: AcuPoint[];
+    onSave: () => void;
+    onCancel: () => void;
+    onUpdate: (protocol: Partial<ProtocolFormState>) => void;
+    error: string | null;
+    isSubmitting: boolean;
+    onFileChange: (file: File | null) => void;
+    onFileDelete: (protocol: Partial<ProtocolFormState>) => void;
+    isDirty: boolean;
+}
+
+const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty }) => {
+    const { t } = useTranslation();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
+    const handlePointSelection = (pointId: string) => {
+        const currentPoints = protocol.points || [];
+        const newPoints =
+            currentPoints.includes(pointId)
+                ? currentPoints.filter(id => id !== pointId)
+                : [...currentPoints, pointId];
+        onUpdate({ ...protocol, points: newPoints });
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files ? e.target.files[0] : null;
+        if (file) {
+            setSelectedFileName(file.name);
+            onFileChange(file);
+        } else {
+            setSelectedFileName(null);
+            onFileChange(null);
+        }
+    };
+
+    return (
+        <div className={styles.modalOverlay}>
+           <div className={styles.modalContent}>
+               <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol') }</h2>
+               
+               {error && <p className={styles.formError}>{error}</p>}
+
+               {isSubmitting && !error ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
+               <div className={styles.formGrid}>
+                   <div>
+                     <label htmlFor='protocolName' className={styles.formLabel}>
+                       {t('protocol_name')}
+                       <span className={styles.requiredAsterisk}>*</span>
+                       </label>
+                     <input
+                         id='protocolName'
+                         type="text"
+                         placeholder={t('protocol_name_placeholder')}
+                         value={protocol.name || ''}
+                         onChange={(e) => onUpdate({ ...protocol, name: e.target.value })}
+                         className={styles.formInput}
+                     />
+                   </div>
+                   <div>
+                     <label htmlFor='protocolDescription' className={styles.formLabel}>
+                       {t('protocol_description')}
+                       <span className={styles.requiredAsterisk}>*</span>
+                       </label>
+                     <textarea
+                         id='protocolDescription'
+                         placeholder={t('protocol_description_placeholder')}
+                         value={protocol.description || ''}
+                         onChange={(e) => onUpdate({ ...protocol, description: e.target.value })}
+                         className={styles.formTextarea}
+                     />
+                   </div>
+                   <div>
+                     <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
+                     <textarea
+                         id='protocolRationale'
+                         placeholder={t('protocol_rationale_placeholder')}
+                         value={protocol.rationale || ''}
+                         onChange={(e) => onUpdate({ ...protocol, rationale: e.target.value })}
+                         className={styles.formTextarea}
+                     />
+                   </div>
+                   <div>
+                       <h3 className={styles.formLabel}>
+                           {t('select_points')}
+                           <span className={styles.requiredAsterisk}>*</span>
+                       </h3>
+                       <div className={styles.pointsSelectionContainer}>
+                           {allAcuPoints.map(point => (
+                               <label key={point.id} className={`${styles.pointLabel} ${(protocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
+                                   <input
+                                       type="checkbox"
+                                       checked={(protocol.points || []).includes(point.id)}
+                                       onChange={() => handlePointSelection(point.id)}
+                                       className={styles.pointCheckbox}
+                                   />
+                                   <span className={styles.pointCode}>{point.code}</span>
+                                   <span className={styles.pointLabelText}>{point.label}</span>
+                               </label>
+                           ))}
+                       </div>
+                   </div>
+
+                    {/* Document Management Section */}
+                    <div className={styles.documentSection}>
+                        <label className={styles.formLabel}>{t('protocol_document')}</label>
+
+                        {!protocol.documentUrl && !selectedFileName && (
+                            <p className={styles.noDocument}>{t('no_document_attached')}</p>
+                        )}
+
+                        {selectedFileName && (
+                             <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
+                        )}
+
+                        <div className={styles.documentButtonRow}>
+                            {protocol.documentUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => window.open(protocol.documentUrl, '_blank')}
+                                    className={`${styles.documentActionButton} ${styles.documentViewButton}`}
+                                    disabled={isSubmitting}
+                                >
+                                    <FileDown size={16} /> {t('view_document')}
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
+                                disabled={isSubmitting}
+                            >
+                                <FileUp size={16} /> 
+                                {protocol.documentUrl ? t('replace_document') : t('upload_document')}
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className={styles.fileInput}
+                                accept=".pdf,.doc,.docx,.jpg,.png"
+                            />
+
+                            {protocol.documentUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => onFileDelete(protocol)}
+                                    disabled={isSubmitting}
+                                    className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
+                                >
+                                    <XSquare size={16} /> {t('delete_document')}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+               </div>
+               )}
+               <div className={styles.modalActions}>
+                   <button onClick={onCancel} className={styles.cancelButton}>{t('cancel')}</button>
+                   <button onClick={onSave} disabled={isSubmitting || !isDirty} className={!isDirty || isSubmitting ? styles.saveButtonDisabled : styles.saveButton}>
+                      <Save size={16} className={styles.saveButtonIcon}/> {isSubmitting ? t('saving') : t('save_protocol')}
+                   </button>
+               </div>
+           </div>
+       </div>
+    );
+}
+
+interface DeleteConfirmationModalProps {
+    protocol: Protocol;
+    onConfirm: () => void;
+    onCancel: () => void;
+    isSubmitting: boolean;
+}
+
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ protocol, onConfirm, onCancel, isSubmitting }) => {
+    const { t } = useTranslation();
+    return (
+        <div className={styles.modalOverlay}>
+            <div className={styles.deleteModalContent}>
+                <div className={styles.deleteModalHeader}>
+                    <div className={styles.deleteModalIconContainer}>
+                       <AlertTriangle className={styles.deleteModalIcon} aria-hidden="true" />
+                    </div>
+                    <div>
+                        <h2 className={styles.deleteModalTitle}>{t('delete_protocol')}</h2>
+                        <p className={styles.deleteModalText}>{t('delete_protocol_confirmation', { name: protocol.name })}</p>
+                    </div>
+                </div>
+                <div className={styles.deleteModalActions}>
+                    <button onClick={onCancel} className={styles.deleteCancelButton} disabled={isSubmitting}>{t('cancel')}</button>
+                    <button onClick={onConfirm} className={styles.confirmDeleteButton} disabled={isSubmitting}>
+                        {isSubmitting ? t('deleting') : t('confirm_delete')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 
 export default ProtocolAdmin;

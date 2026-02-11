@@ -186,5 +186,19 @@
   "ensure_points_exist": "אנא ודא שכל הנקודות בפרוטוקול קיימות במסד הנתונים ושיש להן נתוני קואורדינטות תקינים.",
   "patient_pii_details": "פרטים אישיים של המטופל",
   "patient_medical_record": "תיק רפואי של המטופל",
-  "save_patient": "שמור מטופל"
+  "save_patient": "שמור מטופל",
+  "protocol_document": "מסמך פרוטוקול",
+  "no_document_attached": "לא צורף מסמך",
+  "upload_document": "העלאת מסמך",
+  "replace_document": "החלפת מסמך",
+  "delete_document": "מחיקת מסמך",
+  "view_document": "הצגת מסמך",
+  "selected_file": "קובץ שנבחר",
+  "pointDocument": "מסמך נקודה",
+  "noDocumentAttached": "לא צורף מסמך",
+  "uploadDocument": "העלה מסמך",
+  "replaceDocument": "החלף מסמך",
+  "deleteDocument": "מחק מסמך",
+  "viewDocument": "הצג מסמך",
+  "document": "מסמך"
 }
