@@ -71,5 +71,11 @@
     "preferred_language": "Preferred Language",
     "back_to_dashboard": "Back to Dashboard",
     "en": "English",
-    "he": "Hebrew"
+    "he": "Hebrew",
+    "addNewPoint": "Add New Point",
+    "editPoint": "Edit Point",
+    "savePoint": "Save Point",
+    "points_configuration": "Points Configuration",
+    "protocol_configuration": "Protocol Configuration",
+    "application_settings": "Application Settings"
 }
