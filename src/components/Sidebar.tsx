@@ -12,10 +12,11 @@ interface SidebarProps {
     onPatientsClick: () => void;
     onPointsAdminClick: () => void; 
     onMeasuresAdminClick: () => void;
+    onProblemsAdminClick: () => void;
     onAppSettingsClick: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick, onMeasuresAdminClick, onAppSettingsClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick, onMeasuresAdminClick, onProblemsAdminClick, onAppSettingsClick }) => {
     const { t, i18n } = useTranslation();
     const [configOpen, setConfigOpen] = useState(false);
     const isRtl = i18n.language === 'he';
@@ -69,6 +70,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
                                 </button>
                                 <button onClick={onMeasuresAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
                                      <span className="whitespace-nowrap">{t('measure_configuration')}</span>
+                                </button>
+                                <button onClick={onProblemsAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <span className="whitespace-nowrap">{t('problem_configuration')}</span>
                                 </button>
                             </div>
                         )}

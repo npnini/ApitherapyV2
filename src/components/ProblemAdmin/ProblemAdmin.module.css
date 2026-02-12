@@ -1,0 +1,12 @@
+
+.container {
+    padding: 2rem;
+}
+
+.title {
+    font-size: 1.875rem; /* 30px */
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.025em;
+    margin-bottom: 2rem;
+}

@@ -41,6 +41,12 @@ service cloud.firestore {
         allow create, update, delete: if isAdmin();
     }
 
+    // Problems Collection
+    match /problems/{problemId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAdmin();
+    }
+
     // Patients Collection
     match /patients/{patientId} {
         allow read: if isAuthenticated();

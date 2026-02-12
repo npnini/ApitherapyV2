@@ -1,0 +1,97 @@
+
+.container {
+    padding: 2rem;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.backButton {
+    padding: 0.5rem 1rem;
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.backButton:hover {
+    background-color: #f3f4f6;
+}
+
+.title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.editButton {
+    padding: 0.6rem 1.2rem;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.editButton:hover {
+    background-color: #059669;
+}
+
+.section {
+    margin-top: 1.5rem;
+}
+
+.sectionTitle {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+}
+
+.description {
+    font-size: 1rem;
+    color: #4b5563;
+    line-height: 1.6;
+    white-space: pre-wrap; /* Preserves formatting */
+}
+
+.protocolList, .measureList {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.listItem {
+    background-color: #eef2ff;
+    color: #4338ca;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px; /* Pill shape */
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Styling for the DocumentManager section */
+.documentManagerContainer {
+    margin-top: 2rem;
+}
+

@@ -12,6 +12,7 @@ import Sidebar from './components/Sidebar';
 import ProtocolAdmin from './components/ProtocolAdmin';
 import PointsAdmin from './components/PointsAdmin';
 import MeasureAdmin from './components/MeasureAdmin/MeasureAdmin';
+import ProblemAdmin from './components/ProblemAdmin/ProblemAdmin';
 import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
@@ -23,7 +24,7 @@ import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 
-type View = 'dashboard' | 'patient_pii_details' | 'patient_medical_record' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
+type View = 'dashboard' | 'patient_pii_details' | 'patient_medical_record' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -108,6 +109,7 @@ const App: React.FC = () => {
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleMeasuresAdminClick = () => { setCurrentView('admin_measures'); };
+    const handleProblemsAdminClick = () => { setCurrentView('admin_problems'); };
     const handleAppSettingsClick = () => { setCurrentView('app_settings'); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
 
@@ -270,7 +272,7 @@ const App: React.FC = () => {
 
         return (
             <div className="flex h-screen bg-slate-50">
-                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} />
+                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} />
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {(() => {
                         switch (currentView) {
@@ -296,6 +298,8 @@ const App: React.FC = () => {
                                 return <PointsAdmin />;
                             case 'admin_measures':
                                 return <MeasureAdmin />;
+                            case 'admin_problems':
+                                return <ProblemAdmin />;
                             case 'app_settings':
                                 return <ApplicationSettings user={appUser} />;
                             default:
