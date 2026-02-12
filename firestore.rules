@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -24,6 +25,12 @@ service cloud.firestore {
 
     // Points Collection
     match /acupuncture_points/{pointId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAdmin();
+    }
+
+    // Measures Collection
+    match /measures/{measureId} {
         allow read: if isAuthenticated();
         allow create, update, delete: if isAdmin();
     }
