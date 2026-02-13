@@ -6,8 +6,6 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
-import PatientPIIDetails from './components/PatientPIIDetails';
-import PatientMedicalRecord from './components/PatientMedicalRecord';
 import Sidebar from './components/Sidebar';
 import ProtocolAdmin from './components/ProtocolAdmin';
 import PointsAdmin from './components/PointsAdmin';
@@ -23,8 +21,10 @@ import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
+import PatientIntake from './components/PatientIntake/PatientIntake';
+import './globals.css';
 
-type View = 'dashboard' | 'patient_pii_details' | 'patient_medical_record' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -65,7 +65,10 @@ const App: React.FC = () => {
             const querySnapshot = await getDocs(q);
 
             const patientDataPromises = querySnapshot.docs.map(async (patientDoc) => {
-                const patientPii = { id: patientDoc.id, ...patientDoc.data() };
+                const data = patientDoc.data();
+                const fullName = data.fullName || `${data.firstName} ${data.lastName}`.trim();
+                const patientPii = { id: patientDoc.id, ...data, fullName };
+                
                 const medicalRecordRef = doc(db, `patients/${patientDoc.id}/medical_records`, 'patient_level_data');
                 const medicalRecordSnap = await getDoc(medicalRecordRef);
 
@@ -127,13 +130,15 @@ const App: React.FC = () => {
 
     const handleUpdatePatient = (patient: PatientData) => {
         setSelectedPatient(patient);
-        setCurrentView('patient_pii_details');
+        setCurrentView('patient_intake');
     };
 
     const handleAddPatient = () => {
         if (!appUser) return;
         const newPatient: Partial<PatientData> = { 
             id: `p${Date.now()}`,
+            firstName: '',
+            lastName: '',
             fullName: '', 
             birthDate: '', 
             identityNumber: '', 
@@ -143,43 +148,37 @@ const App: React.FC = () => {
             caretakerId: appUser.userId,
         };
         setSelectedPatient(newPatient);
-        setCurrentView('patient_pii_details');
+        setCurrentView('patient_intake');
     };
 
-    const handleNextFromPII = (piiData: Partial<PatientData>) => {
-        setSelectedPatient(prev => ({ ...prev, ...piiData }));
-        setCurrentView('patient_medical_record');
-    };
-    
-    const handleSavePatient = async (medicalData: MedicalRecord) => {
-        if (!appUser || !selectedPatient || !selectedPatient.id) return;
+    const handleSavePatient = async (patientData: PatientData) => {
+        if (!appUser || !patientData.id) return;
         setSaveStatus('saving');
         setErrorMessage('');
 
-        const finalPatientData = { ...selectedPatient, medicalRecord: medicalData } as PatientData;
-
         try {
-            const { id, fullName, birthDate, identityNumber, email, mobile, caretakerId, medicalRecord } = finalPatientData;
+            const { id, medicalRecord, ...patientPii } = patientData;
+            const fullName = `${patientPii.firstName} ${patientPii.lastName}`.trim();
+            const piiToSave = { ...patientPii, fullName, caretakerId: appUser.userId };
 
-            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber));
-            const emailQuery = query(collection(db, "patients"), where("email", "==", email));
+            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", piiToSave.identityNumber));
+            const emailQuery = query(collection(db, "patients"), where("email", "==", piiToSave.email));
             const [identitySnapshot, emailSnapshot] = await Promise.all([getDocs(identityQuery), getDocs(emailQuery)]);
 
             if (identitySnapshot.docs.some(doc => doc.id !== id)) {
-                throw new Error(`A patient with identity number '${identityNumber}' already exists.`);
+                throw new Error(`A patient with identity number '${piiToSave.identityNumber}' already exists.`);
             }
             if (emailSnapshot.docs.some(doc => doc.id !== id)) {
-                throw new Error(`A patient with email '${email}' already exists.`);
+                throw new Error(`A patient with email '${piiToSave.email}' already exists.`);
             }
-
-            const patientPii = { fullName, birthDate, identityNumber, email, mobile, caretakerId };
-            const patientMedical = { condition: medicalRecord.condition, severity: medicalRecord.severity };
 
             const patientDocRef = doc(db, "patients", id);
             const medicalRecordRef = doc(db, `patients/${id}/medical_records`, 'patient_level_data');
 
-            await setDoc(patientDocRef, patientPii, { merge: true });
-            await setDoc(medicalRecordRef, patientMedical, { merge: true });
+            await setDoc(patientDocRef, piiToSave, { merge: true });
+            if (medicalRecord) {
+                await setDoc(medicalRecordRef, medicalRecord, { merge: true });
+            }
             
             await fetchInitialData(appUser);
             handleBackToDashboard();
@@ -266,50 +265,52 @@ const App: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (!authReady) return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
-        if (!appUser) return <Login />;
-        if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
+    if (!authReady) return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
+    if (!appUser) return <Login />;
+    if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
 
-        return (
-            <div className="flex h-screen bg-slate-50">
-                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} />
-                <main className="flex-grow p-4 md:p-8 overflow-y-auto">
-                    {(() => {
-                        switch (currentView) {
-                            case 'user_details':
-                                return <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />;
-                            case 'onboarding_test':
-                                return <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />;
-                            case 'patient_pii_details':
-                                return selectedPatient && <PatientPIIDetails patient={selectedPatient} onNext={handleNextFromPII} onBack={handleBackToDashboard} errorMessage={errorMessage} />;
-                            case 'patient_medical_record':
-                                return selectedPatient && <PatientMedicalRecord medicalRecord={selectedPatient.medicalRecord as MedicalRecord} onSave={handleSavePatient} onBack={() => setCurrentView('patient_pii_details')} isSaving={saveStatus === 'saving'} />;
-                            case 'protocol_selection':
-                                return selectedPatient && <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />;
-                            case 'treatment_execution':
-                                return selectedPatient && activeProtocol && activeTreatmentSession && (
-                                    <TreatmentExecution patient={selectedPatient as PatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
-                                );
-                            case 'treatment_history':
-                                return selectedPatient && <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />;
-                            case 'admin_protocols':
-                                return <ProtocolAdmin />;
-                            case 'admin_points':
-                                return <PointsAdmin />;
-                            case 'admin_measures':
-                                return <MeasureAdmin />;
-                            case 'admin_problems':
-                                return <ProblemAdmin />;
-                            case 'app_settings':
-                                return <ApplicationSettings user={appUser} />;
-                            default:
-                                return <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />;
-                        }
-                    })()}
-                </main>
-            </div>
-        );
-    };
+    const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
+    const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
+
+    return (
+        <div className="flex h-screen bg-slate-50">
+            <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} />
+            <main className="flex-grow p-4 md:p-8 overflow-y-auto">
+                {
+                    isDashboardView ? 
+                        <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
+                    : currentView === 'user_details' ?
+                        <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />
+                    : currentView === 'onboarding_test' ?
+                        <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />
+                    : currentView === 'treatment_execution' && selectedPatient && activeProtocol && activeTreatmentSession ?
+                        <TreatmentExecution patient={selectedPatient as PatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
+                    : currentView === 'admin_protocols' ?
+                        <ProtocolAdmin />
+                    : currentView === 'admin_points' ?
+                        <PointsAdmin />
+                    : currentView === 'admin_measures' ?
+                        <MeasureAdmin />
+                    : currentView === 'admin_problems' ?
+                        <ProblemAdmin />
+                    : currentView === 'app_settings' ?
+                        <ApplicationSettings user={appUser} />
+                    : null
+                }
+
+                {currentView === 'patient_intake' && selectedPatient && 
+                    <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} isSaving={saveStatus === 'saving'} errorMessage={errorMessage} />
+                }
+                {currentView === 'protocol_selection' && selectedPatient && 
+                    <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />
+                }
+                {currentView === 'treatment_history' && selectedPatient && 
+                    <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />
+                }
+            </main>
+        </div>
+    );
+};
 
     return <>{renderContent()}</>;
 };

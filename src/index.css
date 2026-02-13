@@ -1,1 +1,38 @@
-@import url('./globals.css');
+:root {
+    --color-primary-main: #3B82F6;
+    --color-primary-dark: #2563EB;
+    --color-primary-light: #60A5FA;
+    --color-primary-contrast: #FFFFFF;
+
+    --color-secondary-main: #10B981;
+    --color-secondary-dark: #059669;
+    --color-secondary-light: #34D399;
+    --color-secondary-contrast: #FFFFFF;
+
+    --color-background-primary: #FFFFFF;
+    --color-background-secondary: #F3F4F6;
+    --color-background-header: #374151;
+
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-text-light: #9CA3AF;
+    --color-text-contrast: #FFFFFF;
+
+    --color-error-main: #EF4444;
+    --color-success-main: #10B981;
+    --color-white: #FFFFFF;
+    --color-black: #000000;
+
+    --font-family-main: 'Inter', sans-serif;
+
+    --spacing-unit: 8px;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-family-main);
+    background-color: var(--color-background-secondary);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}

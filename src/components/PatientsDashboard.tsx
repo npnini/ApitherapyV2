@@ -5,14 +5,13 @@ import { PatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import styles from './PatientsDashboard.module.css';
-import AddEditPatientModal from './AddEditPatientModal';
 
 interface PatientsDashboardProps {
   user: AppUser;
   patients: PatientData[];
   onStartTreatment: (patient: PatientData) => void;
   onUpdatePatient: (patient: PatientData) => void; 
-  onAddPatient: (patient: PatientData) => void; 
+  onAddPatient: () => void; 
   onShowTreatments: (patient: PatientData) => void;
   onDeletePatient: (patientId: string) => void;
   isSaving: boolean;
@@ -22,11 +21,11 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const { t, i18n } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [patientToEdit, setPatientToEdit] = useState<PatientData | null>(null);
+
+  const getFullName = (patient: PatientData) => patient.fullName;
 
   const filteredPatients = patients.filter(p =>
-    p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    getFullName(p).toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.identityNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -40,25 +39,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   };
   const cancelDelete = () => setPatientToDelete(null);
 
-  const handleAddPatientClick = () => {
-    setPatientToEdit(null);
-    setIsModalOpen(true);
-  };
-
-  const handleEditPatientClick = (patient: PatientData) => {
-    setPatientToEdit(patient);
-    setIsModalOpen(true);
-  };
-
-  const handleSavePatient = (patientData: PatientData) => {
-    if (patientToEdit) {
-      onUpdatePatient({ ...patientToEdit, ...patientData });
-    } else {
-      onAddPatient(patientData);
-    }
-  };
-
-  const getSeverityClass = (severity: 'Severe' | 'Moderate' | 'Mild') => {
+  const getSeverityClass = (severity?: 'Severe' | 'Moderate' | 'Mild') => {
+    if (!severity) return '';
     return styles[`severity${severity}`];
   };
 
@@ -66,7 +48,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     <div className={styles.dashboardContainer}>
       <div className={styles.header}>
         <h2 className={styles.title}>{t('patients')}</h2>
-        <button onClick={handleAddPatientClick} className={styles.addPatientButton}>
+        <button onClick={onAddPatient} className={styles.addPatientButton}>
           <PlusCircle size={16} />
           {t('add_new_patient')}
         </button>
@@ -97,9 +79,9 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
             filteredPatients.map(patient => (
               <div key={patient.id} className={styles.tableRow}>
                 <div className={styles.patientInfo}>
-                  <div className={styles.patientAvatar}>{patient.fullName.slice(0, 2).toUpperCase()}</div>
+                  <div className={styles.patientAvatar}>{getFullName(patient).slice(0, 2).toUpperCase()}</div>
                   <div>
-                    <p className={styles.patientName}>{patient.fullName}</p>
+                    <p className={styles.patientName}>{getFullName(patient)}</p>
                     <p className={styles.patientId}>{t('identity_number')}: {patient.identityNumber}</p>
                   </div>
                 </div>
@@ -107,17 +89,17 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <a href={`mailto:${patient.email}`} className={styles.contactLink}><Mail size={12}/> {patient.email}</a>
                   <p className={styles.contactMobile}>{patient.mobile}</p>
                 </div>
-                <div className={styles.conditionInfo}>{patient.medicalRecord.condition}</div>
+                <div className={styles.conditionInfo}>{patient.medicalRecord?.condition}</div>
                 <div>
-                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.medicalRecord.severity)}`}>
-                    {t(patient.medicalRecord.severity.toLowerCase())}
+                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.medicalRecord?.severity)}`}>
+                    {patient.medicalRecord?.severity ? t(patient.medicalRecord.severity.toLowerCase()) : ''}
                   </span>
                 </div>
-                <div className={styles.lastTreatment}>{patient.medicalRecord.lastTreatment ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString() : t('no_treatments_found')}</div>
+                <div className={styles.lastTreatment}>{patient.medicalRecord?.lastTreatment ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString() : t('no_treatments_found')}</div>
                 <div className={styles.actionsContainer}>
-                    <button onClick={() => handleEditPatientClick(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
+                    <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
                     <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={t('view_history')}><FileText size={14} /></button>
-                    {(!patient.medicalRecord.lastTreatment) &&
+                    {(!patient.medicalRecord?.lastTreatment) &&
                       <button onClick={() => handleDeleteClick(patient)} className={`${styles.actionButton} ${styles.deleteButton}`} title={t('delete_patient')}><Trash2 size={14} /></button>
                     }
                     <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
@@ -143,7 +125,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
             <AlertTriangle className={styles.modalIcon} size={48} />
             <h3 className={styles.modalTitle}>{t('are_you_sure_delete_patient')}</h3>
             <p className={styles.modalDescription}>
-                <Trans i18nKey="this_action_is_irreversible" components={{ b: <b /> }} values={{ patientName: patientToDelete.fullName }}/>
+                <Trans i18nKey="this_action_is_irreversible" components={{ b: <b /> }} values={{ patientName: getFullName(patientToDelete) }}/>
             </p>
             <div className={styles.modalActions}>
               <button onClick={cancelDelete} className={styles.modalCancelButton}>{t('cancel')}</button>
@@ -152,14 +134,6 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
           </div>
         </div>
       )}
-
-      <AddEditPatientModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        patientToEdit={patientToEdit}
-        onSave={handleSavePatient}
-        isSaving={isSaving}
-      />
     </div>
   );
 };

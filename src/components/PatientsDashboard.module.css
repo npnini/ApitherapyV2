@@ -30,7 +30,7 @@
 }
 
 .addPatientButton:hover {
-    background-color: #1e3a8a;
+    background-color: var(--color-primary-dark);
 }
 
 .searchContainer {

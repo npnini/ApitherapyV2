@@ -1,0 +1,96 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fullWidth {
+  grid-column: span 2;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.input, .textarea, .select {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background-color: var(--color-background-input);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.buttonGroup {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.button {
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.updateButton {
+  background-color: var(--color-background-primary);
+  color: var(--color-primary);
+  border-color: var(--color-border-light);
+}
+
+.updateButton:hover {
+    background-color: var(--color-background-secondary);
+}
+
+.nextButton {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.nextButton:hover {
+  background-color: var(--color-primary);
+}
+
+.previousButton {
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    border: none;
+}
+
+.previousButton:hover {
+    background-color: var(--color-background-secondary);
+}
