@@ -1,0 +1,106 @@
+.label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.input, .select, .textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: #f9fafb;
+    color: #1f2937;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.durationContainer {
+    display: flex;
+    gap: 1rem;
+}
+
+.conditionalInput {
+    grid-column: span 2;
+    margin-top: 0.5rem;
+}
+
+.textarea {
+    min-height: 60px;
+    resize: vertical;
+}
+
+.gynecologySection {
+  background-color: #f3f4f6;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.declarationSection {
+  background-color: #1f2937;
+  color: #fff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.declarationSection h2 {
+    color: #fff;
+}
+
+.declarationSection ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.consentLabel {
+    color: #000;
+}
+
+.signatureBox {
+  position: relative;
+  background-color: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 0.5rem;
+  height: 100px;
+  margin-top: 1rem;
+}
+
+.signaturePlaceholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    cursor: pointer;
+    height: 100%;
+}
+
+.signatureBox.signed {
+    border-style: solid;
+    border-color: #3b82f6;
+}
+
+.signatureImage {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.clearSignatureButton {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.7);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0.25rem;
+}

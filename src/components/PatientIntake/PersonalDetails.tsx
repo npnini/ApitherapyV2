@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { PatientData } from '../../types/patient';
 import { useTranslation } from 'react-i18next';
 import styles from './PersonalDetails.module.css';
-import { User, Mail, Phone, Calendar, Briefcase, Home, ArrowRight, Save } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Briefcase, Home, ArrowRight, ArrowLeft, Save } from 'lucide-react';
 
 interface PersonalDetailsProps {
   patientData: Partial<PatientData>;
@@ -111,8 +110,10 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
 
       <div className={styles.footer}>
         <div className={styles.buttonGroup}>
-            <button type="button" onClick={() => {}} className={`${styles.button} ${styles.updateButton}`}><Save size={16} />{t('update')}</button>
-            <button type="button" onClick={handleNext} className={`${styles.button} ${styles.nextButton}`}><ArrowRight size={16} />{t('next_step')}</button>
+          <button type="button" onClick={onBack} className={`${styles.button} ${styles.previousButton}`}><ArrowLeft size={16} />{t('back')}</button>
+        </div>
+        <div className={styles.buttonGroup}>
+            <button type="button" onClick={handleNext} className={`${styles.button} ${styles.nextButton}`}>{t('next_step')}<ArrowRight size={16} /></button>
         </div>
       </div>
     </div>

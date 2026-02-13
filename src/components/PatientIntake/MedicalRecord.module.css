@@ -86,11 +86,10 @@
 }
 
 .previousButton {
-    background-color: transparent;
+    background-color: var(--color-background-secondary);
     color: var(--color-text-secondary);
-    border: none;
 }
 
 .previousButton:hover {
-    background-color: var(--color-background-secondary);
+    background-color: var(--color-border-light);
 }

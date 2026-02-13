@@ -51,7 +51,7 @@
 
 .footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding-top: 1.5rem;
   margin-top: 1.5rem;
   border-top: 1px solid var(--color-border-light);
@@ -91,11 +91,10 @@
 }
 
 .previousButton {
-    background-color: transparent;
-    color: var(--color-text-secondary);
-    border: none;
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-secondary);
 }
 
 .previousButton:hover {
-    background-color: var(--color-background-secondary);
+  background-color: var(--color-border-light);
 }

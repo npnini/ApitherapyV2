@@ -1,15 +1,47 @@
 export interface QuestionnaireData {
-    q1?: boolean;
-    q2?: boolean;
-    q3?: boolean;
-    comments?: string;
+    imbalanceDuration?: number;
+    imbalanceDurationUnit?: 'W' | 'M';
+    takingMedications?: boolean;
+    medicationNames?: string;
+    histamineSensitivity?: boolean;
+    sufferFromAllergies?: boolean;
+    allergies?: string;
+    heartDisease?: boolean;
+    liverDisease?: boolean;
+    kidneyDisease?: boolean;
+    steroidMedication?: boolean;
+    steroidMedicationNames?: string;
+    diabetes?: boolean;
+    asthma?: boolean;
+    highBloodPressure?: boolean;
+    lymphNodeInflammation?: boolean;
+    pastTuberculosis?: boolean;
+    pastSyphilis?: boolean;
+    pastGonorrhea?: boolean;
+    medicalSupervision?: boolean;
+    psychiatricSupervision?: boolean;
+    pastSurgery?: boolean;
+    plannedSurgery?: boolean;
+    birthControlPills?: boolean;
+    regularMenstrualCycle?: boolean;
+    menstrualPain?: boolean;
+    currentlyPregnant?: boolean;
+    problemOrigin?: string;
+    diet?: string;
+    otherConditions?: string;
+    aspirin?: boolean;
+    betaBlockers?: boolean;
+    stungByBee?: boolean;
+    beeStingDetails?: string;
+    consent?: boolean;
+    signature?: string;
 }
 
 export interface MedicalRecord {
     condition?: string;
     severity?: 'Mild' | 'Moderate' | 'Severe';
     lastTreatment?: string;
-    questionnaire?: QuestionnaireData;
+    questionnaire?: Partial<QuestionnaireData>;
 }
 
 export interface PatientData {
@@ -17,7 +49,7 @@ export interface PatientData {
     firstName: string;
     lastName: string;
     fullName: string;
-    birthDate: string; // Storing date as a string in ISO format (YYYY-MM-DD)
+    birthDate: string; 
     age: string;
     profession: string;
     address: string;
