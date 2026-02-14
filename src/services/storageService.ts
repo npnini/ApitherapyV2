@@ -1,7 +1,10 @@
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getFirestore, collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { app } from '../firebase';
+import { Treatment } from '../types/treatment';
 
 const storage = getStorage(app);
+const db = getFirestore(app);
 
 /**
  * Uploads a file to Firebase Storage.
@@ -42,5 +45,31 @@ export const deleteFile = async (fileUrl: string): Promise<void> => {
         } else {
             throw new Error('Failed to delete the file.');
         }
+    }
+};
+
+/**
+ * Fetches all treatments for a specific patient, ordered by date.
+ * @param patientId The ID of the patient.
+ * @returns A promise that resolves to an array of treatments.
+ */
+export const getTreatmentsByPatientId = async (patientId: string): Promise<Treatment[]> => {
+    if (!patientId) {
+        throw new Error("Patient ID is required to fetch treatments.");
+    }
+
+    const treatmentsRef = collection(db, 'patients', patientId, 'medical_records', 'patient_level_data', 'treatments');
+    const q = query(treatmentsRef, orderBy("date", "desc"));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        const treatments: Treatment[] = [];
+        querySnapshot.forEach((doc) => {
+            treatments.push({ id: doc.id, ...doc.data() } as Treatment);
+        });
+        return treatments;
+    } catch (error) {
+        console.error("Error fetching treatments:", error);
+        throw new Error('Failed to fetch treatments.');
     }
 };

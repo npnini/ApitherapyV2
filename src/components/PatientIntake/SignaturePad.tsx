@@ -8,36 +8,32 @@ interface SignaturePadProps {
 }
 
 const SignaturePad: React.FC<SignaturePadProps> = ({ onSave }) => {
+  const sigPad = useRef<SignatureCanvas>(null);
   const { t } = useTranslation();
-  const sigCanvas = useRef<SignatureCanvas>(null);
 
-  const clearSignature = () => {
-    sigCanvas.current?.clear();
+  const clear = () => {
+    sigPad.current?.clear();
   };
 
-  const saveSignature = () => {
-    if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-      onSave(sigCanvas.current.toDataURL());
+  const save = () => {
+    if (sigPad.current) {
+      onSave(sigPad.current.toDataURL());
     }
   };
 
   return (
     <div className={styles.signatureContainer}>
-      <div className={styles.signaturePad}>
         <SignatureCanvas
-          ref={sigCanvas}
-          penColor="black"
-          canvasProps={{ className: styles.signatureCanvas }}
+            ref={sigPad}
+            penColor='black'
+            canvasProps={{ className: styles.signatureCanvas }}
+            minWidth={0.5}
+            maxWidth={1.5}
         />
-      </div>
-      <div className={styles.signatureButtons}>
-        <button type="button" onClick={clearSignature} className={styles.button}>
-          {t('clear')}
-        </button>
-        <button type="button" onClick={saveSignature} className={styles.button}>
-          {t('save_signature')}
-        </button>
-      </div>
+        <div className={styles.signatureButtons}>
+            <button type="button" onClick={clear} className={styles.button}>{t('clear')}</button>
+            <button type="button" onClick={save} className={styles.button}>{t('save_signature')}</button>
+        </div>
     </div>
   );
 };

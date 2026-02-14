@@ -1,71 +1,134 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Heart } from 'lucide-react';
+import { PatientData } from '../../types/patient';
 import styles from './Questionnaire.module.css';
-import stepStyles from './Step.module.css';
+import { ChevronDown } from 'lucide-react';
 
 interface Step2Props {
-  patientData: any;
-  handleInputChange: (field: string, value: any) => void;
+    data: Partial<PatientData>;
+    setData: (data: Partial<PatientData>) => void;
+    hasAttemptedSubmit: boolean;
 }
 
-const Step2: React.FC<Step2Props> = ({ patientData, handleInputChange }) => {
+const Step2: React.FC<Step2Props> = ({ data, setData, hasAttemptedSubmit }) => {
   const { t } = useTranslation();
 
+  const handleMedicalRecordChange = (field: string, value: any) => {
+    setData({
+        ...data,
+        medicalRecord: {
+            ...data.medicalRecord,
+            [field]: value,
+        },
+    });
+  };
+
+  const handleQuestionnaireChange = (field: string, value: any) => {
+    setData({
+        ...data,
+        medicalRecord: {
+            ...data.medicalRecord,
+            questionnaire: {
+                ...data.medicalRecord?.questionnaire,
+                [field]: value,
+            },
+        },
+    });
+  };
+
+  const medicalConditions = [
+    'heartDisease',
+    'liverDisease',
+    'kidneyDisease',
+    'diabetes',
+    'asthma',
+    'highBloodPressure',
+    'lymphNodeInflammation'
+  ];
+
+  // Defensively ensure medicalRecord and questionnaire objects exist to prevent crashes
+  const medicalRecord = data.medicalRecord || {};
+  const questionnaire = medicalRecord.questionnaire || {};
+
   return (
-    <div className={styles.formStep}>
-      <div className={styles.formGroup}>
-        <h2><Heart size={20} /> {t('medical_conditions')}</h2>
-        <div className={styles.checkboxGrid}>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.heartDisease || false} onChange={(e) => handleInputChange('heartDisease', e.target.checked)} />
-            {t('heart_disease')}
-          </label>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.liverDisease || false} onChange={(e) => handleInputChange('liverDisease', e.target.checked)} />
-            {t('liver_disease')}
-          </label>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.kidneyDisease || false} onChange={(e) => handleInputChange('kidneyDisease', e.target.checked)} />
-            {t('kidney_disease')}
-          </label>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.diabetes || false} onChange={(e) => handleInputChange('diabetes', e.target.checked)} />
-            {t('diabetes')}
-          </label>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.asthma || false} onChange={(e) => handleInputChange('asthma', e.target.checked)} />
-            {t('asthma')}
-          </label>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.highBloodPressure || false} onChange={(e) => handleInputChange('highBloodPressure', e.target.checked)} />
-            {t('high_blood_pressure')}
-          </label>
-          <label className={styles.checkboxOption}>
-            <input type="checkbox" checked={patientData.medicalRecord?.questionnaire?.lymphNodeInflammation || false} onChange={(e) => handleInputChange('lymphNodeInflammation', e.target.checked)} />
-            {t('inflammation_of_lymph_nodes')}
-          </label>
+    <div className={styles.formGrid}>
+        <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
+            <label htmlFor="condition" className={styles.fieldLabel}>{t('condition')}</label>
+            <textarea
+                id="condition"
+                className={styles.textarea}
+                value={medicalRecord.condition || ''}
+                onChange={(e) => handleMedicalRecordChange('condition', e.target.value)}
+                placeholder={t('condition_placeholder')}
+            />
+        </div>
+
+        <div className={styles.fieldGroup}>
+            <label htmlFor="severity" className={styles.fieldLabel}>{t('severity')}</label>
+            <div className={styles.selectContainer}>
+                <select
+                    id="severity"
+                    className={styles.select}
+                    value={medicalRecord.severity || 'Mild'}
+                    onChange={(e) => handleMedicalRecordChange('severity', e.target.value)}
+                >
+                    <option value="Low">{t('low')}</option>
+                    <option value="Mild">{t('mild')}</option>
+                    <option value="Moderate">{t('moderate')}</option>
+                    <option value="Severe">{t('severe')}</option>
+                </select>
+                <ChevronDown size={16} className={styles.selectIcon} />
+            </div>
+        </div>
+
+        <div className={styles.fieldGroup}>
+            <label htmlFor="lastTreatment" className={styles.fieldLabel}>{t('last_treatment')}</label>
+            <input
+                id="lastTreatment"
+                type="text"
+                className={styles.input}
+                value={medicalRecord.lastTreatment ? new Date(medicalRecord.lastTreatment).toLocaleDateString() : t('n_a')}
+                readOnly
+            />
+        </div>
+
+
+      <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
+        <label className={styles.fieldLabel}>{t('medical_conditions_label')}</label>
+        <div className={styles.radioGroup} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            {medicalConditions.map(condition => (
+                <label key={condition} className={styles.checkboxLabel}>
+                    <input
+                        type="checkbox"
+                        checked={questionnaire[condition] || false}
+                        onChange={(e) => handleQuestionnaireChange(condition, e.target.checked)}
+                    />
+                    {t(condition.replace(/([A-Z])/g, '_$1').toLowerCase())}
+                </label>
+            ))}
         </div>
       </div>
 
-      <div className={styles.formGroup}>
-        <label className={styles.checkboxOption}>
+      <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
+        <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
-            checked={patientData.medicalRecord?.questionnaire?.steroidMedication || false}
-            onChange={(e) => handleInputChange('steroidMedication', e.target.checked)}
+            checked={questionnaire.steroidMedication || false}
+            onChange={(e) => handleQuestionnaireChange('steroidMedication', e.target.checked)}
           />
           {t('are_you_taking_steroid_medication')}
         </label>
-        {patientData.medicalRecord?.questionnaire?.steroidMedication && (
-          <div className={stepStyles.conditionalInput}>
+        {questionnaire.steroidMedication && (
+          <div className={styles.fieldGroup} style={{ marginTop: '0.5rem' }}>
             <input
               type="text"
-              className={stepStyles.input}
-              value={patientData.medicalRecord?.questionnaire?.steroidMedicationNames || ''}
-              onChange={(e) => handleInputChange('steroidMedicationNames', e.target.value)}
-              placeholder={t('steroid_medication_names')}
+              className={`${styles.input} ${hasAttemptedSubmit && !questionnaire.steroidMedicationNames ? styles.errorBorder : ''}`}
+              value={questionnaire.steroidMedicationNames || ''}
+              onChange={(e) => handleQuestionnaireChange('steroidMedicationNames', e.target.value)}
+              placeholder={t('steroid_medication_names_placeholder')}
+              required
             />
+            {hasAttemptedSubmit && !questionnaire.steroidMedicationNames && <div className={styles.error}>{t('steroid_medication_names_required')}</div>}
           </div>
         )}
       </div>

@@ -1,4 +1,6 @@
 export interface QuestionnaireData {
+    mainComplaint?: string;
+    symptoms?: string;
     imbalanceDuration?: number;
     imbalanceDurationUnit?: 'W' | 'M';
     takingMedications?: boolean;

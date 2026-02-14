@@ -49,6 +49,11 @@
   font-size: 0.8rem;
 }
 
+.required {
+  color: var(--color-error);
+  margin-left: 0.25rem;
+}
+
 .footer {
   display: flex;
   justify-content: space-between;
@@ -75,6 +80,11 @@
   gap: 0.5rem;
 }
 
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .updateButton {
   background-color: var(--color-background-primary);
   color: var(--color-primary);
@@ -83,6 +93,15 @@
 
 .updateButton:hover {
     background-color: var(--color-background-secondary);
+}
+
+.updateButtonActive {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.updateButtonActive:hover {
+  background-color: var(--color-primary-dark);
 }
 
 .nextButton {

@@ -1,163 +1,179 @@
 .questionnaireContainer {
-  max-width: 800px;
-  margin: 1rem auto;
-  background-color: #fff;
-  border-radius: 1rem;
-  padding: 1rem 2.5rem 2rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 .stepIndicator {
-  margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
 }
 
 .stepLabel {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #f59e0b;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
 }
 
 .progressContainer {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .progressBar {
-  width: 100%;
-  background-color: #e5e7eb;
-  border-radius: 9999px;
-  height: 0.5rem;
-  overflow: hidden;
+    flex-grow: 1;
+    height: 8px;
+    background-color: var(--color-background-secondary);
+    border-radius: 4px;
+    overflow: hidden;
 }
 
 .progress {
-  background-color: #f59e0b;
-  height: 100%;
-  border-radius: 9999px;
-  transition: width 0.3s ease-in-out;
+    height: 100%;
+    background-color: var(--color-primary);
+    transition: width 0.3s ease-in-out;
 }
 
 .progressPercentage {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280;
-}
-
-.warning {
-  background-color: #fef9c3;
-  border: 1px solid #fde68a;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #ca8a04;
-  margin-bottom: 2rem;
-}
-
-.formStep {
-  animation: fadeIn 0.5s;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.formGroup {
-  margin-bottom: 1.5rem;
-}
-
-.formGroup h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.checkboxGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-}
-
-.checkboxOption {
-  display: flex;
-  align-items: center;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.checkboxOption:has(input:checked) {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
-}
-
-.checkboxOption input[type="checkbox"] {
-  margin-right: 0.75rem;
-  accent-color: #3b82f6;
-  width: 1rem;
-  height: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
 }
 
 .navigation {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.mainActions {
+    display: flex;
+    gap: 0.75rem;
 }
 
 .navButton {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 1rem;
+    font-weight: 600;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .backButton {
-  background-color: var(--color-background-secondary);
-  color: var(--color-text-secondary);
+    background-color: var(--color-background-secondary);
+    color: var(--color-text-secondary);
 }
 
 .backButton:hover {
-  background-color: var(--color-border-light);
+    background-color: var(--color-border-light);
 }
 
-.continueButton {
+.updateButton {
+  background-color: var(--color-background-primary);
+  color: var(--color-primary);
+  border-color: var(--color-border-light);
+}
+
+.updateButton:hover {
+    background-color: var(--color-background-secondary);
+}
+
+.updateButtonActive {
   background-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-white);
 }
 
-.continueButton:hover {
+.updateButtonActive:hover {
   background-color: var(--color-primary-dark);
 }
 
-.completeButton {
-  background-color: #d1d5db;
-  color: #4b5563;
-  width: 100%;
+.continueButton, .completeButton {
+    background-color: var(--color-primary);
+    color: var(--color-white);
 }
 
-.completeButton:not(:disabled) {
-  background-color: #2563eb;
-  color: #fff;
+.continueButton:hover, .completeButton:hover {
+    background-color: var(--color-primary-dark);
+}
+
+/* Added styles for validation */
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+.fieldGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fieldLabel {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.required {
+    color: var(--color-error);
+    margin-left: 0.25rem;
+}
+
+.input, .textarea, .select, .radioGroup {
+    width: 100%;
+}
+
+.input, .textarea, .select {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: var(--color-background-input);
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+}
+
+.radioGroup {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 0.75rem;
+}
+
+.radioLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.error {
+    color: var(--color-error);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
 }

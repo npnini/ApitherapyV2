@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { auth, db } from './firebase';
@@ -66,16 +65,15 @@ const App: React.FC = () => {
 
             const patientDataPromises = querySnapshot.docs.map(async (patientDoc) => {
                 const data = patientDoc.data();
-                const fullName = data.fullName || `${data.firstName} ${data.lastName}`.trim();
-                const patientPii = { id: patientDoc.id, ...data, fullName };
+                const patientPii = { id: patientDoc.id, ...data };
                 
                 const medicalRecordRef = doc(db, `patients/${patientDoc.id}/medical_records`, 'patient_level_data');
                 const medicalRecordSnap = await getDoc(medicalRecordRef);
 
                 if (medicalRecordSnap.exists()) {
-                    return { ...patientPii, medicalRecord: medicalRecordSnap.data() } as PatientData;
+                    return { ...patientPii, medicalRecord: medicalRecordSnap.data() as MedicalRecord };
                 } else {
-                    return patientPii as PatientData;
+                    return { ...patientPii, medicalRecord: { condition: '', severity: 'Mild' } } as PatientData;
                 }
             });
 
@@ -135,15 +133,12 @@ const App: React.FC = () => {
 
     const handleAddPatient = () => {
         if (!appUser) return;
-        const newPatient: Partial<PatientData> = { 
-            id: `p${Date.now()}`,
-            firstName: '',
-            lastName: '',
-            fullName: '', 
-            birthDate: '', 
-            identityNumber: '', 
-            email: '', 
-            mobile: '', 
+        const newPatient: Partial<PatientData> = {
+            fullName: '',
+            birthDate: '',
+            identityNumber: '',
+            email: '',
+            mobile: '',
             medicalRecord: { condition: '', severity: 'Mild' },
             caretakerId: appUser.userId,
         };
@@ -151,37 +146,61 @@ const App: React.FC = () => {
         setCurrentView('patient_intake');
     };
 
-    const handleSavePatient = async (patientData: PatientData) => {
-        if (!appUser || !patientData.id) return;
+    const handleSavePatient = async (patientData: PatientData, closeModal: boolean = true) => {
+        if (!appUser) return;
         setSaveStatus('saving');
         setErrorMessage('');
 
         try {
-            const { id, medicalRecord, ...patientPii } = patientData;
-            const fullName = `${patientPii.firstName} ${patientPii.lastName}`.trim();
-            const piiToSave = { ...patientPii, fullName, caretakerId: appUser.userId };
+            const isNewPatient = !patientData.id;
+            let patientId = patientData.id;
+
+            const { medicalRecord, ...patientPii } = patientData;
+            const piiToSave = { ...patientPii, caretakerId: appUser.userId };
+            delete (piiToSave as any).id;
 
             const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", piiToSave.identityNumber));
             const emailQuery = query(collection(db, "patients"), where("email", "==", piiToSave.email));
             const [identitySnapshot, emailSnapshot] = await Promise.all([getDocs(identityQuery), getDocs(emailQuery)]);
 
-            if (identitySnapshot.docs.some(doc => doc.id !== id)) {
-                throw new Error(`A patient with identity number '${piiToSave.identityNumber}' already exists.`);
-            }
-            if (emailSnapshot.docs.some(doc => doc.id !== id)) {
-                throw new Error(`A patient with email '${piiToSave.email}' already exists.`);
+            if (isNewPatient) {
+                if (!identitySnapshot.empty) {
+                    throw new Error(`A patient with identity number '${piiToSave.identityNumber}' already exists.`);
+                }
+                if (piiToSave.email && !emailSnapshot.empty) {
+                    throw new Error(`A patient with email '${piiToSave.email}' already exists.`);
+                }
+            } else {
+                if (identitySnapshot.docs.some(doc => doc.id !== patientId)) {
+                    throw new Error(`A patient with identity number '${piiToSave.identityNumber}' already exists.`);
+                }
+                if (piiToSave.email && emailSnapshot.docs.some(doc => doc.id !== patientId)) {
+                    throw new Error(`A patient with email '${piiToSave.email}' already exists.`);
+                }
             }
 
-            const patientDocRef = doc(db, "patients", id);
-            const medicalRecordRef = doc(db, `patients/${id}/medical_records`, 'patient_level_data');
+            if (isNewPatient) {
+                const newPatientRef = await addDoc(collection(db, "patients"), piiToSave);
+                patientId = newPatientRef.id;
+            } else {
+                const patientDocRef = doc(db, "patients", patientId!);
+                await setDoc(patientDocRef, piiToSave, { merge: true });
+            }
 
-            await setDoc(patientDocRef, piiToSave, { merge: true });
             if (medicalRecord) {
+                const medicalRecordRef = doc(db, `patients/${patientId}/medical_records`, 'patient_level_data');
                 await setDoc(medicalRecordRef, medicalRecord, { merge: true });
             }
-            
+
             await fetchInitialData(appUser);
-            handleBackToDashboard();
+            if (closeModal) {
+                handleBackToDashboard();
+            } else {
+                const updatedPatient = { ...patientData, id: patientId };
+                setSelectedPatient(updatedPatient);
+                setSaveStatus('success');
+                setTimeout(() => setSaveStatus('idle'), 2000); // Reset after 2 seconds
+            }
 
         } catch (error) {
             console.error("Error saving patient data:", error);
@@ -299,7 +318,7 @@ const App: React.FC = () => {
                 }
 
                 {currentView === 'patient_intake' && selectedPatient && 
-                    <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} isSaving={saveStatus === 'saving'} errorMessage={errorMessage} />
+                    <PatientIntake patient={selectedPatient} onSave={(patientData) => handleSavePatient(patientData)} onBack={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
                 }
                 {currentView === 'protocol_selection' && selectedPatient && 
                     <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />

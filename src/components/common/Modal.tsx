@@ -19,13 +19,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, subtitl
         <button onClick={onClose} className={styles.closeButton}>
           <X size={24} />
         </button>
-        {(title || subtitle) && (
-          <div className={styles.modalHeader}>
-            {title && <h2 className={styles.modalTitle}>{title}</h2>}
-            {subtitle && <p className={styles.modalSubtitle}>{subtitle}</p>}
-          </div>
-        )}
-        {children}
+        <div className={styles.modalHeader}>
+          {title && <h2 className={styles.modalTitle}>{title}</h2>}
+          {subtitle && <p className={styles.modalSubtitle}>{subtitle}</p>}
+        </div>
+        <div className={styles.modalBody}>{children}</div>
       </div>
     </div>
   );
