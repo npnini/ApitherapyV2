@@ -99,9 +99,14 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                 <div className={styles.actionsContainer}>
                     <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
                     <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={t('view_history')}><FileText size={14} /></button>
-                    {(!patient.medicalRecord?.lastTreatment) &&
-                      <button onClick={() => handleDeleteClick(patient)} className={`${styles.actionButton} ${styles.deleteButton}`} title={t('delete_patient')}><Trash2 size={14} /></button>
-                    }
+                    <button
+                        onClick={() => handleDeleteClick(patient)}
+                        className={`${styles.actionButton} ${styles.deleteButton}`}
+                        style={{ visibility: patient.medicalRecord?.lastTreatment ? 'hidden' : 'visible' }}
+                        disabled={!!patient.medicalRecord?.lastTreatment}
+                        title={t('delete_patient')}>
+                        <Trash2 size={14} />
+                    </button>
                     <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
                       {t('start_new_treatment')}{' '}
                       {i18n.dir() === 'rtl' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}

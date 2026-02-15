@@ -106,31 +106,28 @@ const Step2: React.FC<Step2Props> = ({ data, setData, hasAttemptedSubmit }) => {
                     {t(condition.replace(/([A-Z])/g, '_$1').toLowerCase())}
                 </label>
             ))}
+            <label className={styles.checkboxLabel}>
+                <input
+                type="checkbox"
+                checked={questionnaire.steroidMedication || false}
+                onChange={(e) => handleQuestionnaireChange('steroidMedication', e.target.checked)}
+                />
+                {t('are_you_taking_steroid_medication')}
+            </label>
+            {questionnaire.steroidMedication && (
+            <div style={{ marginLeft: '1.8rem', marginTop: '0.5rem' }}>
+                <input
+                type="text"
+                className={`${styles.input} ${hasAttemptedSubmit && !questionnaire.steroidMedicationNames ? styles.errorBorder : ''}`}
+                value={questionnaire.steroidMedicationNames || ''}
+                onChange={(e) => handleQuestionnaireChange('steroidMedicationNames', e.target.value)}
+                placeholder={t('steroid_medication_names_placeholder')}
+                required
+                />
+                {hasAttemptedSubmit && !questionnaire.steroidMedicationNames && <div className={styles.error}>{t('steroid_medication_names_required')}</div>}
+            </div>
+            )}
         </div>
-      </div>
-
-      <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
-        <label className={styles.checkboxLabel}>
-          <input
-            type="checkbox"
-            checked={questionnaire.steroidMedication || false}
-            onChange={(e) => handleQuestionnaireChange('steroidMedication', e.target.checked)}
-          />
-          {t('are_you_taking_steroid_medication')}
-        </label>
-        {questionnaire.steroidMedication && (
-          <div className={styles.fieldGroup} style={{ marginTop: '0.5rem' }}>
-            <input
-              type="text"
-              className={`${styles.input} ${hasAttemptedSubmit && !questionnaire.steroidMedicationNames ? styles.errorBorder : ''}`}
-              value={questionnaire.steroidMedicationNames || ''}
-              onChange={(e) => handleQuestionnaireChange('steroidMedicationNames', e.target.value)}
-              placeholder={t('steroid_medication_names_placeholder')}
-              required
-            />
-            {hasAttemptedSubmit && !questionnaire.steroidMedicationNames && <div className={styles.error}>{t('steroid_medication_names_required')}</div>}
-          </div>
-        )}
       </div>
     </div>
   );
