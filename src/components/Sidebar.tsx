@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
@@ -13,10 +13,11 @@ interface SidebarProps {
     onPointsAdminClick: () => void; 
     onMeasuresAdminClick: () => void;
     onProblemsAdminClick: () => void;
+    onQuestionnaireAdminClick: () => void;
     onAppSettingsClick: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick, onMeasuresAdminClick, onProblemsAdminClick, onAppSettingsClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserDetailsClick, onPatientsClick, onPointsAdminClick, onMeasuresAdminClick, onProblemsAdminClick, onQuestionnaireAdminClick, onAppSettingsClick }) => {
     const { t, i18n } = useTranslation();
     const [configOpen, setConfigOpen] = useState(false);
     const isRtl = i18n.language === 'he';
@@ -63,16 +64,24 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
                                     <span className="whitespace-nowrap">{t('application_settings')}</span>
                                 </button>
                                 <button onClick={onAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <FileText size={16} className={isRtl ? "ml-2" : "mr-2"} />
                                      <span className="whitespace-nowrap">{t('protocol_configuration')}</span>
                                 </button>
                                 <button onClick={onPointsAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <MapPin size={16} className={isRtl ? "ml-2" : "mr-2"} />
                                      <span className="whitespace-nowrap">{t('points_configuration')}</span>
                                 </button>
                                 <button onClick={onMeasuresAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <Ruler size={16} className={isRtl ? "ml-2" : "mr-2"} />
                                      <span className="whitespace-nowrap">{t('measure_configuration')}</span>
                                 </button>
                                 <button onClick={onProblemsAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <Bug size={16} className={isRtl ? "ml-2" : "mr-2"} />
                                      <span className="whitespace-nowrap">{t('problem_configuration')}</span>
+                                </button>
+                                <button onClick={onQuestionnaireAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
+                                     <ListChecks size={16} className={isRtl ? "ml-2" : "mr-2"} />
+                                     <span className="whitespace-nowrap">{t('questionnaire_configuration')}</span>
                                 </button>
                             </div>
                         )}

@@ -1,21 +1,32 @@
 
-// src/components/ApplicationSettings.tsx
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AppUser } from '../types/user';
 import { appConfigSchema, ConfigGroup, ConfigSetting } from '../config/appConfigSchema';
 import styles from './ApplicationSettings.module.css';
+import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 
 interface ApplicationSettingsProps {
     user: AppUser;
+    onClose: () => void; // Added for modal control
 }
 
 interface Protocol {
     id: string;
     name: string;
 }
+
+const allLanguages: ShuttleItem[] = [
+    { id: 'en', name: 'English' },
+    { id: 'es', name: 'Spanish' },
+    { id: 'fr', name: 'French' },
+    { id: 'de', name: 'German' },
+    { id: 'he', name: 'Hebrew' },
+    { id: 'ar', name: 'Arabic' },
+    { id: 'zh', name: 'Chinese' },
+    { id: 'ru', name: 'Russian' },
+];
 
 const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<string, any> => {
     const defaults: Record<string, any> = {};
@@ -36,7 +47,7 @@ const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<s
     return defaults;
 };
 
-const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
+const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose }) => {
     const [initialSettings, setInitialSettings] = useState<Record<string, any>>({});
     const [settings, setSettings] = useState<Record<string, any>>({});
     const [protocols, setProtocols] = useState<Protocol[]>([]);
@@ -55,13 +66,11 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
         const fetchSettingsAndProtocols = async () => {
             setIsLoading(true);
             try {
-                // Fetch protocols
                 const protocolsCollectionRef = collection(db, 'protocols');
                 const protocolDocs = await getDocs(protocolsCollectionRef);
                 const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
                 setProtocols(fetchedProtocols);
 
-                // Fetch settings
                 const docSnap = await getDoc(configDocRef);
                 const defaults = getDefaultsFromSchema(appConfigSchema);
                 let mergedSettings = { ...defaults };
@@ -116,7 +125,10 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
             await setDoc(configDocRef, settings, { merge: true });
             setInitialSettings(settings); // Update the baseline to the new saved state
             setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000); // Hide success message after 3 seconds
+            setTimeout(() => {
+                setSaveSuccess(false);
+                onClose(); // Close modal on success
+            }, 1500); 
         } catch (err) {
             setError('Failed to save settings. You must be an administrator to perform this action.');
             console.error(err);
@@ -125,7 +137,6 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
         }
     };
 
-    // Recursive renderer
     const renderGroup = (group: ConfigGroup, path: string[]) => {
         return Object.entries(group.children).map(([key, item]) => {
             const currentPath = [...path, key];
@@ -154,6 +165,25 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
 
         let control;
         switch (setting.type) {
+            case 'languages':
+                const selectedLanguageCodes = Array.isArray(value) ? value : [];
+                const selectedLanguageItems = allLanguages.filter(lang => selectedLanguageCodes.includes(lang.id));
+                
+                control = (
+                    <div className={styles.control}> 
+                        <ShuttleSelector
+                            availableItems={allLanguages}
+                            selectedItems={selectedLanguageItems}
+                            onSelectionChange={(newSelection: ShuttleItem[]) => {
+                                const newLangCodes = newSelection.map(item => item.id);
+                                handleSettingChange(path, newLangCodes);
+                            }}
+                            availableTitle="Available Languages"
+                            selectedTitle="Supported Languages"
+                        />
+                    </div>
+                );
+                break;
             case 'boolean':
                 control = (
                     <label className={styles.toggleSwitch}>
@@ -203,7 +233,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
         }
 
         return (
-            <div key={key} className={styles.setting}>
+            <div key={key} className={styles.setting} data-type={setting.type}>
                 <label htmlFor={key} className={styles.settingLabel}>
                     {setting.label}
                 </label>
@@ -219,8 +249,6 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
 
     return (
         <div className={styles.container}>
-            <h1 className={styles.title}>Application Settings</h1>
-            {/* <p>Current user role: {user.role}</p> */}
             <div className={styles.form}>
                 {Object.entries(appConfigSchema).map(([key, group]) => (
                     <fieldset key={key} className={styles.group}>
@@ -229,13 +257,16 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user }) => {
                         {renderGroup(group, [key])}
                     </fieldset>
                 ))}
-                 <div className={styles.actions}>
-                    {saveSuccess && <span className={styles.successMessage}>Changes saved successfully!</span>}
-                    {error && <p className={styles.errorMessage}>{error}</p>}
-                    <button onClick={handleSave} disabled={!areSettingsChanged || isSaving} className={styles.saveButton}>
-                        {isSaving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                </div>
+            </div>
+            <div className={styles.actions}>
+                {error && <p className={styles.errorMessage}>{error}</p>}
+                {saveSuccess && <span className={styles.successMessage}>Settings saved!</span>}
+                <button onClick={onClose} className={`${styles.button} ${styles.cancelButton}`}>
+                    Cancel
+                </button>
+                <button onClick={handleSave} disabled={!areSettingsChanged || isSaving} className={`${styles.button} ${styles.saveButton}`}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
             </div>
         </div>
     );

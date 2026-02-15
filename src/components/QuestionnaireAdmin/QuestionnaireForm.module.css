@@ -1,0 +1,245 @@
+
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+}
+
+.modalContent {
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    width: 100%;
+    max-width: 64rem;
+    margin: 1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.modalHeaderBar {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.headerTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.headerDetails {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 1rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.formError {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    margin: 0 2rem;
+}
+
+.scrollableArea {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 1rem 2rem;
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+    background: white;
+}
+
+.cancelButton,
+.saveButton {
+    font-weight: 700;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cancelButton {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.saveButton {
+    background-color: var(--color-primary);
+    color: white;
+    border: 1px solid transparent;
+}
+
+/* Table Styles */
+.questionTable {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    table-layout: fixed;
+}
+
+.questionTable th,
+.questionTable td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #e5e7eb;
+    word-wrap: break-word;
+}
+
+.questionTable th {
+    background-color: #f9fafb;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+}
+
+/* Define stable column widths */
+.questionTable th:first-child { width: 40px; }
+.questionTable th:nth-child(2) { width: auto; } /* Name will take remaining space */
+.questionTable th:nth-child(3) { width: 25%; } /* Type */
+.questionTable th:nth-child(4) { width: 20%; } /* Actions */
+
+.dragHandle {
+    cursor: grab;
+    color: #9ca3af;
+}
+
+.dragHandle:active {
+    cursor: grabbing;
+}
+
+.tableInput {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+.tableInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.actionsHeader,
+.actionsCell {
+    text-align: right;
+}
+
+.addButton {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+.removeButton,
+.expandButton {
+    color: #4b5563;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.removeButton:hover {
+    color: #ef4444;
+}
+
+/* Translations Section */
+.translationsCell {
+    padding: 0 !important;
+    background-color: #f9fafb;
+}
+
+.translationsContainer {
+    padding: 1.5rem;
+}
+
+.translationsHeader {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 1rem;
+}
+
+.translationRow {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.languageSelector {
+    flex-shrink: 0;
+    width: 120px;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+}
+
+.translationInput {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+}
+
+/* RTL Specific Styles */
+:global([dir="rtl"]) .questionTable th,
+:global([dir="rtl"]) .questionTable td {
+    text-align: right;
+}
+
+:global([dir="rtl"]) .formActions {
+    justify-content: flex-start;
+}
+
+:global([dir="rtl"]) .translationsHeader {
+    text-align: right;
+}
+
+:global([dir="rtl"]) .actionsHeader,
+:global([dir="rtl"]) .actionsCell {
+    text-align: left;
+}

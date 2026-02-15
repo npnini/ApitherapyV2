@@ -8,8 +8,8 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol';
-  defaultValue: string | number | boolean;
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages';
+  defaultValue: string | number | boolean | string[];
 };
 
 /**
@@ -53,6 +53,18 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'If on, the system will suggest a treatment protocol based on patient data.',
         type: 'boolean',
         defaultValue: false,
+      },
+    },
+  },
+  languageSettings: {
+    label: 'Languages',
+    description: 'Configure the languages supported by the application.',
+    children: {
+      supportedLanguages: {
+        label: 'Supported Languages',
+        description: 'Choose the languages your application will support.',
+        type: 'languages',
+        defaultValue: ['en'],
       },
     },
   },

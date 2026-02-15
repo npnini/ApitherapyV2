@@ -34,6 +34,12 @@ service cloud.firestore {
         allow create, update, delete: if isAdmin();
     }
 
+     // Questionnaire Collection
+    match /questionnaires/{questionnaireId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAdmin();
+    }
+
     // Protocols Collection
     match /protocols/{protocolId} {
         allow read: if isAuthenticated();

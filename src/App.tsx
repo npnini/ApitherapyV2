@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { auth, db } from './firebase';
@@ -10,6 +11,7 @@ import ProtocolAdmin from './components/ProtocolAdmin';
 import PointsAdmin from './components/PointsAdmin';
 import MeasureAdmin from './components/MeasureAdmin/MeasureAdmin';
 import ProblemAdmin from './components/ProblemAdmin/ProblemAdmin';
+import QuestionnaireAdmin from './components/QuestionnaireAdmin/QuestionnaireAdmin';
 import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
@@ -21,9 +23,10 @@ import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 import PatientIntake from './components/PatientIntake/PatientIntake';
+import Modal from './components/common/Modal'; // Import Modal
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'app_settings';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'treatment_history' | 'user_details' | 'onboarding_test'; // Removed 'app_settings'
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -38,6 +41,7 @@ const App: React.FC = () => {
     const [authReady, setAuthReady] = useState<boolean>(false);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string>('');
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // New state for modal
 
     useEffect(() => {
         document.documentElement.dir = i18n.language === 'he' ? 'rtl' : 'ltr';
@@ -71,7 +75,7 @@ const App: React.FC = () => {
                 const medicalRecordSnap = await getDoc(medicalRecordRef);
 
                 if (medicalRecordSnap.exists()) {
-                    return { ...patientPii, medicalRecord: medicalRecordSnap.data() as MedicalRecord };
+                    return { ...patientPii, medicalRecord: medicalRecordSnap.data() as MedicalRecord } as PatientData;
                 } else {
                     return { ...patientPii, medicalRecord: { condition: '', severity: 'Mild' } } as PatientData;
                 }
@@ -111,7 +115,8 @@ const App: React.FC = () => {
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleMeasuresAdminClick = () => { setCurrentView('admin_measures'); };
     const handleProblemsAdminClick = () => { setCurrentView('admin_problems'); };
-    const handleAppSettingsClick = () => { setCurrentView('app_settings'); };
+    const handleQuestionnaireAdminClick = () => { setCurrentView('admin_questionnaires'); };
+    const handleAppSettingsClick = () => { setIsSettingsModalOpen(true); }; // Open modal
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
@@ -292,8 +297,8 @@ const App: React.FC = () => {
     const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
 
     return (
-        <div className="flex h-screen bg-slate-50">
-            <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} />
+        <div className="flex h-screen">
+            <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} onQuestionnaireAdminClick={handleQuestionnaireAdminClick} />
             <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                 {
                     isDashboardView ? 
@@ -312,8 +317,8 @@ const App: React.FC = () => {
                         <MeasureAdmin />
                     : currentView === 'admin_problems' ?
                         <ProblemAdmin />
-                    : currentView === 'app_settings' ?
-                        <ApplicationSettings user={appUser} />
+                    : currentView === 'admin_questionnaires' ?
+                        <QuestionnaireAdmin />
                     : null
                 }
 
@@ -326,6 +331,18 @@ const App: React.FC = () => {
                 {currentView === 'treatment_history' && selectedPatient && 
                     <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />
                 }
+
+                {/* Render settings as a modal */}
+                {appUser && isSettingsModalOpen && (
+                    <Modal
+                        isOpen={isSettingsModalOpen}
+                        onClose={() => setIsSettingsModalOpen(false)}
+                        title="Application Settings"
+                    >
+                        <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
+                    </Modal>
+                )}
+
             </main>
         </div>
     );
