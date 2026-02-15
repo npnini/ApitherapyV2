@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Questionnaire, Question, QuestionTranslation } from '../../types/questionnaire';
+import { Questionnaire, Question } from '../../types/questionnaire';
 import { useTranslation } from 'react-i18next';
 import { Save, X, Plus, Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import styles from './QuestionnaireForm.module.css';
@@ -160,7 +160,15 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
     );
 };
 
-const DraggableQuestionRow = ({ question, onQuestionChange, onTranslationChange, onRemove, supportedLanguages }) => {
+interface DraggableQuestionRowProps {
+    question: Question;
+    onQuestionChange: (name: string, field: keyof Question, value: any) => void;
+    onTranslationChange: (questionName: string, langIndex: number, language: string, text: string) => void;
+    onRemove: (name: string) => void;
+    supportedLanguages: string[];
+}
+
+const DraggableQuestionRow: React.FC<DraggableQuestionRowProps> = ({ question, onQuestionChange, onTranslationChange, onRemove, supportedLanguages }) => {
     const { t } = useTranslation();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: question.name });
     const style = { transform: CSS.Transform.toString(transform), transition };
@@ -211,7 +219,12 @@ const DraggableQuestionRow = ({ question, onQuestionChange, onTranslationChange,
     );
 };
 
-const EditableTableCell = ({ value, onChange }) => {
+interface EditableTableCellProps {
+    value: string;
+    onChange: (value: string) => void;
+}
+
+const EditableTableCell: React.FC<EditableTableCellProps> = ({ value, onChange }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(value);
 
