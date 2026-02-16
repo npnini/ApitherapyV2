@@ -145,6 +145,7 @@
 "patient_medical_record": "שלב 2: תיק רפואי",
 "valid_email_required": "כתובת אימייל חוקית היא שדה חובה",
 "identity_number_required": "מספר תעודת זהות הוא שדה חובה",
+"identity_number_display": "מספר זהות: {{identityNumber}}",
 "birth_date_required": "תאריך לידה הוא שדה חובה",
 "mobile_number": "מספר נייד",
 "email_address": "כתובת אימייל",
@@ -318,5 +319,8 @@
     "addNew": "הוסף חדש",
     "domain": "תחום",
     "questions": "שאלות",
-    "noQuestionnairesFound": "לא נמצאו שאלונים."
+    "noQuestionnairesFound": "לא נמצאו שאלונים.",
+    "complete_submission": "השלמת הגשה",
+    "legal_confirmation_signature": "הצהרה והסכמה",
+    "legal_confirmation_text": "אני מאשר/ת שכל מה שמילאתי בשאלון המצורף אמת. ידוע לי שהטיפול בארס הדבורים הינו ניסיוני ואינו מחליף כל טיפול, אבחון, המלצה והנחייה מרופא. ידוע לי שאינני אלרגי לארס דבורות ושבחרתי על דעת עצמי ומרצוני להשתתף בטיפול שכזה"
 }

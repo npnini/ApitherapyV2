@@ -1,0 +1,46 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .consentSection {
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+  }
+  
+  .consentTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  
+  .consentText {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  
+  .signatureSection {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .signaturePadWrapper {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 24px;
+    position: relative;
+  }
+  
+  .signaturePadLabel {
+    position: absolute;
+    top: -12px;
+    left: 16px;
+    background-color: #ffffff;
+    padding: 0 8px;
+    font-weight: 600;
+    color: #4b5563;
+  }
+  

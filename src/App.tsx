@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
 import Sidebar from './components/Sidebar';
@@ -17,16 +16,16 @@ import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
-import { PatientData, MedicalRecord } from './types/patient';
+import { PatientData, MedicalRecord, QuestionnaireResponse } from './types/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 import PatientIntake from './components/PatientIntake/PatientIntake';
-import Modal from './components/common/Modal'; // Import Modal
+import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'treatment_history' | 'user_details' | 'onboarding_test'; // Removed 'app_settings'
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'treatment_history' | 'user_details' | 'onboarding_test';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const App: React.FC = () => {
@@ -41,7 +40,7 @@ const App: React.FC = () => {
     const [authReady, setAuthReady] = useState<boolean>(false);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string>('');
-    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // New state for modal
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
     useEffect(() => {
         document.documentElement.dir = i18n.language === 'he' ? 'rtl' : 'ltr';
@@ -70,15 +69,26 @@ const App: React.FC = () => {
             const patientDataPromises = querySnapshot.docs.map(async (patientDoc) => {
                 const data = patientDoc.data();
                 const patientPii = { id: patientDoc.id, ...data };
-                
+
                 const medicalRecordRef = doc(db, `patients/${patientDoc.id}/medical_records`, 'patient_level_data');
-                const medicalRecordSnap = await getDoc(medicalRecordRef);
+                const questionnaireDocRef = doc(db, `patients/${patientDoc.id}/medical_records/patient_level_data/questionnaire_responses`, 'apitherapy');
+
+                const [medicalRecordSnap, questionnaireDocSnap]: [DocumentSnapshot<DocumentData>, DocumentSnapshot<DocumentData>] = await Promise.all([
+                    getDoc(medicalRecordRef),
+                    getDoc(questionnaireDocRef)
+                ]);
+                
+                let medicalData: Partial<MedicalRecord & QuestionnaireResponse> = {};
 
                 if (medicalRecordSnap.exists()) {
-                    return { ...patientPii, medicalRecord: medicalRecordSnap.data() as MedicalRecord } as PatientData;
-                } else {
-                    return { ...patientPii, medicalRecord: { condition: '', severity: 'Mild' } } as PatientData;
+                    medicalData = { ...medicalData, ...medicalRecordSnap.data() };
                 }
+
+                if (questionnaireDocSnap.exists()) {
+                    medicalData = { ...medicalData, ...questionnaireDocSnap.data() };
+                }
+
+                return { ...patientPii, medicalRecord: medicalData } as PatientData;
             });
 
             const patientsData = await Promise.all(patientDataPromises);
@@ -116,7 +126,7 @@ const App: React.FC = () => {
     const handleMeasuresAdminClick = () => { setCurrentView('admin_measures'); };
     const handleProblemsAdminClick = () => { setCurrentView('admin_problems'); };
     const handleQuestionnaireAdminClick = () => { setCurrentView('admin_questionnaires'); };
-    const handleAppSettingsClick = () => { setIsSettingsModalOpen(true); }; // Open modal
+    const handleAppSettingsClick = () => { setIsSettingsModalOpen(true); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
@@ -144,7 +154,7 @@ const App: React.FC = () => {
             identityNumber: '',
             email: '',
             mobile: '',
-            medicalRecord: { condition: '', severity: 'Mild' },
+            medicalRecord: {},
             caretakerId: appUser.userId,
         };
         setSelectedPatient(newPatient);
@@ -159,42 +169,78 @@ const App: React.FC = () => {
         try {
             const isNewPatient = !patientData.id;
             let patientId = patientData.id;
+            const now = new Date();
 
             const { medicalRecord, ...patientPii } = patientData;
-            const piiToSave = { ...patientPii, caretakerId: appUser.userId };
-            delete (piiToSave as any).id;
+            let piiToSave: Omit<PatientData, 'id' | 'medicalRecord'> & { dateCreated?: Date; lastUpdated?: Date } = { 
+                ...patientPii, 
+                caretakerId: appUser.userId,
+                lastUpdated: now,
+            };
 
-            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", piiToSave.identityNumber));
-            const emailQuery = query(collection(db, "patients"), where("email", "==", piiToSave.email));
-            const [identitySnapshot, emailSnapshot] = await Promise.all([getDocs(identityQuery), getDocs(emailQuery)]);
+            delete (piiToSave as any).id;
+            delete (piiToSave as any).age; // Ensure calculated age is not saved
+
+            const identityNumber = piiToSave.identityNumber;
+            const email = piiToSave.email;
+
+            if (identityNumber === undefined) {
+                throw new Error("Identity Number cannot be undefined.");
+            }
+
+            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber));
+            const emailQuery = email ? query(collection(db, "patients"), where("email", "==", email)) : null;
+
+            const [identitySnapshot, emailSnapshot] = await Promise.all([
+                getDocs(identityQuery),
+                emailQuery ? getDocs(emailQuery) : Promise.resolve({ empty: true, docs: [] })
+            ]);
 
             if (isNewPatient) {
                 if (!identitySnapshot.empty) {
-                    throw new Error(`A patient with identity number '${piiToSave.identityNumber}' already exists.`);
+                    throw new Error(`A patient with identity number '${identityNumber}' already exists.`);
                 }
-                if (piiToSave.email && !emailSnapshot.empty) {
-                    throw new Error(`A patient with email '${piiToSave.email}' already exists.`);
+                if (email && !emailSnapshot.empty) {
+                    throw new Error(`A patient with email '${email}' already exists.`);
                 }
             } else {
                 if (identitySnapshot.docs.some(doc => doc.id !== patientId)) {
-                    throw new Error(`A patient with identity number '${piiToSave.identityNumber}' already exists.`);
+                    throw new Error(`A patient with identity number '${identityNumber}' already exists.`);
                 }
-                if (piiToSave.email && emailSnapshot.docs.some(doc => doc.id !== patientId)) {
-                    throw new Error(`A patient with email '${piiToSave.email}' already exists.`);
+                if (email && emailSnapshot.docs.some(doc => doc.id !== patientId)) {
+                    throw new Error(`A patient with email '${email}' already exists.`);
                 }
             }
 
             if (isNewPatient) {
-                const newPatientRef = await addDoc(collection(db, "patients"), piiToSave);
+                piiToSave.dateCreated = now;
+                const newPatientRef = await addDoc(collection(db, "patients"), piiToSave as DocumentData);
                 patientId = newPatientRef.id;
             } else {
                 const patientDocRef = doc(db, "patients", patientId!);
-                await setDoc(patientDocRef, piiToSave, { merge: true });
+                await setDoc(patientDocRef, piiToSave as DocumentData, { merge: true });
             }
 
             if (medicalRecord) {
-                const medicalRecordRef = doc(db, `patients/${patientId}/medical_records`, 'patient_level_data');
-                await setDoc(medicalRecordRef, medicalRecord, { merge: true });
+                const { signature, domain, version, ...questionnaireAnswers } = medicalRecord;
+                
+                const recordToSave: Partial<MedicalRecord> = {};
+                if (signature) recordToSave.signature = signature;
+                if (Object.keys(recordToSave).length > 0) {
+                    const medicalRecordRef = doc(db, `patients/${patientId}/medical_records`, 'patient_level_data');
+                    await setDoc(medicalRecordRef, recordToSave, { merge: true });
+                }
+
+                if (domain) {
+                    const questionnaireToSave: QuestionnaireResponse = {
+                        domain,
+                        version: version || 1, // Fallback for version
+                        dateUpdated: now,
+                        ...questionnaireAnswers
+                    };
+                    const questionnaireRef = doc(db, `patients/${patientId}/medical_records/patient_level_data/questionnaire_responses`, domain);
+                    await setDoc(questionnaireRef, questionnaireToSave, { merge: true });
+                }
             }
 
             await fetchInitialData(appUser);
@@ -204,7 +250,7 @@ const App: React.FC = () => {
                 const updatedPatient = { ...patientData, id: patientId };
                 setSelectedPatient(updatedPatient);
                 setSaveStatus('success');
-                setTimeout(() => setSaveStatus('idle'), 2000); // Reset after 2 seconds
+                setTimeout(() => setSaveStatus('idle'), 2000);
             }
 
         } catch (error) {
@@ -332,7 +378,6 @@ const App: React.FC = () => {
                     <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />
                 }
 
-                {/* Render settings as a modal */}
                 {appUser && isSettingsModalOpen && (
                     <Modal
                         isOpen={isSettingsModalOpen}

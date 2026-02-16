@@ -1,24 +1,20 @@
-.patientIntakeContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.pageContent {
-  background-color: var(--color-background-primary);
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
 }
 
-.errorMessage {
-  color: var(--color-danger);
-  background-color: var(--color-danger-background);
-  border: 1px solid var(--color-danger-border);
-  padding: 1rem;
-  border-radius: 0.25rem;
-  text-align: center;
-}
-
-/* We no longer need the full-page header styles as the modal has its own header */
-.header,
-.title {
-  display: none;
+.domainInfo {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: #d1d5db; /* Lighter text for the info */
 }

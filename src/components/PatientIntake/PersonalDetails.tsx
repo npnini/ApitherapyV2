@@ -1,167 +1,85 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { PatientData } from '../../types/patient';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PatientData } from '../../types/patient';
 import styles from './PersonalDetails.module.css';
-import { User, Mail, Phone, Calendar, Briefcase, Home, ArrowRight, ArrowLeft, Save } from 'lucide-react';
-
-type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 interface PersonalDetailsProps {
-  patientData: Partial<PatientData>;
-  onDataChange: (data: Partial<PatientData>) => void;
-  onNext: () => void;
-  onBack: () => void;
-  onUpdate: () => void;
-  saveStatus: SaveStatus;
+    patientData: Partial<PatientData>;
+    onDataChange: (data: Partial<PatientData>) => void;
 }
 
-const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataChange, onNext, onBack, onUpdate, saveStatus }) => {
-  const { t } = useTranslation();
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [isModified, setIsModified] = useState(false);
-  const [isFormValid, setIsFormValid] = useState(false);
+const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataChange }) => {
+    const { t } = useTranslation();
+    const [age, setAge] = useState<string>('');
 
-  useEffect(() => {
-    setIsModified(false);
-  }, [patientData.id]);
+    useEffect(() => {
+        if (patientData.birthDate) {
+            const birthDate = new Date(patientData.birthDate);
+            const today = new Date();
+            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                calculatedAge--;
+            }
+            setAge(calculatedAge >= 0 ? calculatedAge.toString() : '');
+        } else {
+            setAge('');
+        }
+    }, [patientData.birthDate]);
 
-  useEffect(() => {
-    if (saveStatus === 'success') {
-      setIsModified(false);
-    }
-  }, [saveStatus]);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        onDataChange({ ...patientData, [name]: value });
+    };
 
-  const calculateAge = useCallback((birthDate: string) => {
-    if (!birthDate) return '';
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDifference = today.getMonth() - birth.getMonth();
-    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age.toString();
-  }, []);
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { value } = e.target;
+        onDataChange({ ...patientData, birthDate: value });
+    };
 
-  const age = calculateAge(patientData.birthDate || '');
+    return (
+        <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label htmlFor="fullName" className={styles.label}>{t('full_name')} <span className="text-red-500">*</span></label>
+                <input type="text" id="fullName" name="fullName" value={patientData.fullName || ''} onChange={handleChange} className={styles.input} required />
+            </div>
 
-  const validateForm = useCallback(() => {
-    const newErrors: { [key: string]: string } = {};
-    if (!patientData.fullName) newErrors.fullName = t('full_name_required');
-    if (!patientData.email) newErrors.email = t('email_required');
-    else if (!/^\S+@\S+\.\S+$/.test(patientData.email)) newErrors.email = t('valid_email_required');
-    if (!patientData.mobile) newErrors.mobile = t('mobile_required');
-    if (!patientData.birthDate) newErrors.birthDate = t('birth_date_required');
-    if (!patientData.profession) newErrors.profession = t('profession_required');
-    if (!patientData.address) newErrors.address = t('address_required');
-    setErrors(newErrors);
-    setIsFormValid(Object.keys(newErrors).length === 0);
-  }, [patientData, t]);
+            <div>
+                <label htmlFor="identityNumber" className={styles.label}>{t('identity_number')} <span className="text-red-500">*</span></label>
+                <input type="text" id="identityNumber" name="identityNumber" value={patientData.identityNumber || ''} onChange={handleChange} className={styles.input} required />
+            </div>
 
-  useEffect(() => {
-    validateForm();
-  }, [patientData, validateForm]);
+            <div>
+                <label htmlFor="email" className={styles.label}>{t('email')} <span className="text-red-500">*</span></label>
+                <input type="email" id="email" name="email" value={patientData.email || ''} onChange={handleChange} className={styles.input} required />
+            </div>
 
-  useEffect(() => {
-    if (age !== patientData.age) {
-      onDataChange({ age: age });
-    }
-  }, [age, patientData.age, onDataChange]);
+            <div>
+                <label htmlFor="mobile" className={styles.label}>{t('mobile')} <span className="text-red-500">*</span></label>
+                <input type="tel" id="mobile" name="mobile" value={patientData.mobile || ''} onChange={handleChange} className={styles.input} required />
+            </div>
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    onDataChange({ [name]: value });
-    setIsModified(true);
-  };
+            <div>
+                <label htmlFor="birthDate" className={styles.label}>{t('birth_date')} <span className="text-red-500">*</span></label>
+                <input type="date" id="birthDate" name="birthDate" value={patientData.birthDate || ''} onChange={handleDateChange} className={styles.input} required />
+            </div>
 
-  const handleNext = () => {
-    if (isFormValid) {
-      onNext();
-    }
-  };
+            <div>
+                <label htmlFor="age" className={styles.label}>{t('age')}</label>
+                <input type="text" id="age" name="age" value={age} className={styles.input} disabled />
+            </div>
 
-  const handleUpdateClick = () => {
-    if (isFormValid) {
-        onUpdate();
-    }
-  };
-
-  const isSaving = saveStatus === 'saving';
-  const showUpdate = patientData.id;
-  const canUpdate = isModified && !isSaving && isFormValid;
-
-  return (
-    <div className={styles.container}>
-      <div className={`${styles.formRow} ${styles.fullWidth}`}>
-        <div className={`${styles.section} ${styles.fullWidth}`}>
-          <label className={styles.label} htmlFor='fullName'><User size={16} />{t('full_name')}<span className={styles.required}>*</span></label>
-          <input id='fullName' name='fullName' value={patientData.fullName || ''} onChange={handleChange} className={styles.input} required />
-          {errors.fullName && <div className={styles.error}>{errors.fullName}</div>}
-        </div>
-      </div>
-
-      <div className={styles.formRow}>
-        <div className={styles.section}>
-          <label className={styles.label} htmlFor='email'><Mail size={16} />{t('email')}<span className={styles.required}>*</span></label>
-          <input id='email' name='email' type='email' value={patientData.email || ''} onChange={handleChange} className={styles.input} required />
-          {errors.email && <div className={styles.error}>{errors.email}</div>}
-        </div>
-        <div className={styles.section}>
-          <label className={styles.label} htmlFor='mobile'><Phone size={16} />{t('mobile')}<span className={styles.required}>*</span></label>
-          <input id='mobile' name='mobile' type='tel' value={patientData.mobile || ''} onChange={handleChange} className={styles.input} required />
-          {errors.mobile && <div className={styles.error}>{errors.mobile}</div>}
-        </div>
-      </div>
-
-      <div className={styles.formRow}>
-        <div className={styles.section}>
-          <label className={styles.label} htmlFor='birthDate'><Calendar size={16} />{t('birth_date')}<span className={styles.required}>*</span></label>
-          <input id='birthDate' name='birthDate' type='date' value={patientData.birthDate || ''} onChange={handleChange} className={styles.input} required />
-          {errors.birthDate && <div className={styles.error}>{errors.birthDate}</div>}
-        </div>
-        <div className={styles.section}>
-          <label className={styles.label} htmlFor='age'><User size={16} />{t('age')}</label>
-          <input id='age' name='age' value={age} className={styles.input} readOnly />
-        </div>
-      </div>
-
-      <div className={styles.formRow}>
-          <div className={styles.section}>
-            <label className={styles.label} htmlFor='profession'><Briefcase size={16} />{t('profession')}<span className={styles.required}>*</span></label>
-            <input id='profession' name='profession' value={patientData.profession || ''} onChange={handleChange} className={styles.input} required />
-            {errors.profession && <div className={styles.error}>{errors.profession}</div>}
-          </div>
-      </div>
-
-      <div className={`${styles.formRow} ${styles.fullWidth}`}>
-        <div className={`${styles.section} ${styles.fullWidth}`}>
-          <label className={styles.label} htmlFor='address'><Home size={16} />{t('address')}<span className={styles.required}>*</span></label>
-          <textarea id='address' name='address' value={patientData.address || ''} onChange={handleChange} className={styles.textarea} rows={3} required></textarea>
-          {errors.address && <div className={styles.error}>{errors.address}</div>}
-        </div>
-      </div>
-
-      <div className={styles.footer}>
-        <div className={styles.buttonGroup}>
-          <button type="button" onClick={onBack} className={`${styles.button} ${styles.previousButton}`}><ArrowLeft size={16} />{t('back')}</button>
-        </div>
-        <div className={styles.buttonGroup}>
-        {showUpdate && (
-            <button
-              type="button"
-              onClick={handleUpdateClick}
-              className={`${styles.button} ${styles.updateButton} ${canUpdate ? styles.updateButtonActive : ''}`}
-              disabled={!canUpdate}
-            >
-              <Save size={16} />
-              {isSaving ? t('saving') : t('update')}
-            </button>
-          )}
-          <button type="button" onClick={handleNext} className={`${styles.button} ${styles.nextButton}`} disabled={!isFormValid}>{t('next_step')}<ArrowRight size={16} /></button>
-        </div>
-      </div>
-    </div>
-  );
+            <div className="md:col-span-2">
+                <label htmlFor="profession" className={styles.label}>{t('profession')} <span className="text-red-500">*</span></label>
+                <input type="text" id="profession" name="profession" value={patientData.profession || ''} onChange={handleChange} className={styles.input} required />
+            </div>
+            
+            <div className="md:col-span-2">
+                <label htmlFor="address" className={styles.label}>{t('address')} <span className="text-red-500">*</span></label>
+                <textarea id="address" name="address" value={patientData.address || ''} onChange={handleChange} className={styles.textarea} required />
+            </div>
+        </form>
+    );
 };
 
 export default PersonalDetails;

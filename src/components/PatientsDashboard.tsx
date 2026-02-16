@@ -82,7 +82,9 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <div className={styles.patientAvatar}>{getFullName(patient).slice(0, 2).toUpperCase()}</div>
                   <div>
                     <p className={styles.patientName}>{getFullName(patient)}</p>
-                    <p className={styles.patientId}>{t('identity_number')}: {patient.identityNumber}</p>
+                    <p className={styles.patientId}>
+                      {t('identity_number_display', { identityNumber: patient.identityNumber })}
+                    </p>
                   </div>
                 </div>
                 <div className={styles.contactInfo}>

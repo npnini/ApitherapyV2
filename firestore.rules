@@ -3,78 +3,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isCaretaker() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caretaker';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caretaker';
     }
 
     function isAdmin() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users Collection
     match /users/{userId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated() && request.auth.uid == userId; // Allow users to edit their own data
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Points Collection
     match /acupuncture_points/{pointId} {
-        allow read: if isAuthenticated();
-        allow create, update, delete: if isAdmin();
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
     }
 
-    // Measures Collection
+    match /protocols/{protocolId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     match /measures/{measureId} {
         allow read: if isAuthenticated();
-        allow create, update, delete: if isAdmin();
+        allow write: if isAdmin();
     }
 
-     // Questionnaire Collection
-    match /questionnaires/{questionnaireId} {
-        allow read: if isAuthenticated();
-        allow create, update, delete: if isAdmin();
-    }
-
-    // Protocols Collection
-    match /protocols/{protocolId} {
-        allow read: if isAuthenticated();
-        allow create, update, delete: if isAdmin();
-    }
-
-    // Problems Collection
     match /problems/{problemId} {
         allow read: if isAuthenticated();
-        allow create, update, delete: if isAdmin();
+        allow write: if isAdmin();
     }
 
-    // Patients Collection
+    match /questionnaires/{questionnaireId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     match /patients/{patientId} {
+      allow read: if isAuthenticated();
+      allow write: if isCaretaker() || isAdmin();
+
+      match /medical_records/{recordId} {
         allow read: if isAuthenticated();
-        allow create, update, delete: if isCaretaker() || isAdmin();
+        allow create, update, delete: if (isCaretaker() || isAdmin());
 
-        // Medical Records Subcollection
-        match /medical_records/{recordId} {
-            // Enforce that the document ID MUST be 'patient_level_data'
-            allow read: if isAuthenticated() && recordId == 'patient_level_data';
-            allow create, update, delete: if (isCaretaker() || isAdmin()) && recordId == 'patient_level_data';
-
-            // Treatments Subcollection (nested under the validated medical record)
-            match /treatments/{treatmentId} {
-                allow read: if isAuthenticated();
-                allow create, update, delete: if isCaretaker() || isAdmin();
-            }
+        match /treatments/{treatmentId} {
+          allow read: if isAuthenticated();
+          allow create, update, delete: if isCaretaker() || isAdmin();
         }
+
+        match /questionnaire_responses/{responseId} {
+          allow read: if isAuthenticated();
+          allow create, update, delete: if isCaretaker() || isAdmin();
+        }
+      }
     }
-    
-    // Application Configuration Collection
+
     match /app_config/{configId} {
-        allow read: if isAuthenticated(); // Allow any authenticated user to read the configuration
-        allow write: if isAdmin(); // Only admins can modify the configuration
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

@@ -42,8 +42,8 @@ const QuestionnaireList: React.FC<QuestionnaireListProps> = ({ questionnaires, i
                             <td className={styles.cell}>{q.versionNumber}</td>
                             <td className={styles.cell}>{q.questions.length}</td>
                             <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                <button onClick={() => onClone(q)} className={styles.actionButton} title={t('clone')}><Copy size={18} /></button>
                                 <button onClick={() => onEdit(q)} className={styles.actionButton} title={t('edit')}><Edit size={18} /></button>
+                                <button onClick={() => onClone(q)} className={styles.actionButton} title={t('clone')}><Copy size={18} /></button>
                                 <button onClick={() => onDelete(q)} className={`${styles.actionButton} ${styles.deleteButton}`} title={t('delete')}><Trash2 size={18} /></button>
                             </td>
                         </tr>
