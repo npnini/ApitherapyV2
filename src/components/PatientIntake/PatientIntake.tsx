@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import PersonalDetails from './PersonalDetails';
 import QuestionnaireStep from './QuestionnaireStep';
-import Signature from './Signature'; // Corrected import path
 import { PatientData } from '../../types/patient';
 import styles from './PatientIntake.module.css';
 
@@ -36,7 +35,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
     const [patientData, setPatientData] = useState<Partial<PatientData>>(initializePatientData(patient));
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-    const totalSteps = 3;
+    const totalSteps = 2; // Reduced to 2 steps
 
     useEffect(() => {
         setPatientData(initializePatientData(patient));
@@ -47,8 +46,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
             case 1:
                 return !!(patientData.fullName && patientData.identityNumber && patientData.email && patientData.mobile && patientData.birthDate && patientData.profession && patientData.address);
             case 2:
-                return true; 
-            case 3:
+                // Step 2 now includes the signature
                 return !!patientData.medicalRecord?.signature;
             default:
                 return true;
@@ -62,7 +60,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
                 setCurrentStep(currentStep + 1);
             }
         }
-    }, [currentStep, isStepValid]);
+    }, [currentStep, isStepValid, totalSteps]);
 
     const handleBack = () => {
         setHasAttemptedSubmit(false);
@@ -91,12 +89,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
             case 1:
                 return <PersonalDetails patientData={patientData} onDataChange={handleDataChange} />;
             case 2:
+                // No more signature step, it's part of the questionnaire now
                 return <QuestionnaireStep 
                             patientData={patientData} 
                             onDataChange={handleDataChange}
                         />;
-            case 3:
-                return <Signature onSave={(signature) => handleDataChange({ ...patientData, medicalRecord: { ...patientData.medicalRecord, signature }})} signature={patientData.medicalRecord?.signature} />
             default:
                 return <div>{t('unknown_step')}</div>;
         }
@@ -119,6 +116,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
                     </div>
                 </div>
 
+                {/* This outer div handles the external scroll for the whole modal content */}
                 <div className="p-6 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                     {renderStep()}
                 </div>

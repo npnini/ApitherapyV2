@@ -4,6 +4,7 @@ import { PatientData, MedicalRecord as MedicalRecordType } from '../../types/pat
 import styles from './QuestionnaireStep.module.css';
 import { getQuestionnaire } from '../../firebase/questionnaire';
 import { Questionnaire } from '../../types/questionnaire';
+import SignaturePad from './SignaturePad'; // Import SignaturePad
 
 interface QuestionnaireStepProps {
   patientData: Partial<PatientData>;
@@ -52,6 +53,11 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
     onDataChange({ ...patientData, medicalRecord: updatedMedicalRecord as MedicalRecordType });
   };
 
+  const handleSignatureSave = (signature: string) => {
+    const updatedMedicalRecord = { ...patientData.medicalRecord, signature };
+    onDataChange({ ...patientData, medicalRecord: updatedMedicalRecord as MedicalRecordType });
+  }
+
   const renderQuestion = (question: any) => {
     const translation = question.translations.find((t: any) => t.language === i18n.language) || question.translations.find((t: any) => t.language === 'en');
     const answer = patientData.medicalRecord?.[question.name as keyof MedicalRecordType];
@@ -99,12 +105,25 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
       </div>
 
       {questionnaire && (
-        <div className={styles.questionsContainer}>
+        <div className={styles.questionsScrollableContainer}>
             <div className={styles.questionsGrid}>
                 {questionnaire.questions.sort((a, b) => a.order - b.order).map(renderQuestion)}
             </div>
         </div>
       )}
+
+      <div className={styles.signatureSection}>
+        <div className={styles.consentSection}>
+          <h3 className={styles.consentTitle}>{t('legal_confirmation_signature')}</h3>
+          <p className={styles.consentText}>
+            {t('legal_confirmation_text')}
+          </p>
+        </div>
+        <fieldset className={styles.signaturePadWrapper}>
+          <legend className={styles.signaturePadLabel}>{t('patient_signature')}</legend>
+          <SignaturePad onSave={handleSignatureSave} initialSignature={patientData.medicalRecord?.signature} />
+        </fieldset>
+      </div>
     </div>
   );
 };
