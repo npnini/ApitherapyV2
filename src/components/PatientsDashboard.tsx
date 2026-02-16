@@ -39,9 +39,10 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   };
   const cancelDelete = () => setPatientToDelete(null);
 
-  const getSeverityClass = (severity?: 'Severe' | 'Moderate' | 'Mild') => {
+  const getSeverityClass = (severity?: 'mild' | 'moderate' | 'severe') => {
     if (!severity) return '';
-    return styles[`severity${severity}`];
+    const capitalizedSeverity = severity.charAt(0).toUpperCase() + severity.slice(1);
+    return styles[`severity${capitalizedSeverity}`];
   };
 
   return (
@@ -91,21 +92,21 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <a href={`mailto:${patient.email}`} className={styles.contactLink}><Mail size={12}/> {patient.email}</a>
                   <p className={styles.contactMobile}>{patient.mobile}</p>
                 </div>
-                <div className={styles.conditionInfo}>{patient.medicalRecord?.condition}</div>
+                <div className={styles.conditionInfo}>{patient.medicalRecord?.patient_level_data?.condition}</div>
                 <div>
-                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.medicalRecord?.severity)}`}>
-                    {patient.medicalRecord?.severity ? t(patient.medicalRecord.severity.toLowerCase()) : ''}
+                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.medicalRecord?.patient_level_data?.severity)}`}>
+                    {patient.medicalRecord?.patient_level_data?.severity ? t(patient.medicalRecord.patient_level_data.severity) : ''}
                   </span>
                 </div>
-                <div className={styles.lastTreatment}>{patient.medicalRecord?.lastTreatment ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString() : t('no_treatments_found')}</div>
+                <div className={styles.lastTreatment}>{patient.medicalRecord?.patient_level_data?.lastTreatment ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString() : t('no_treatments_found')}</div>
                 <div className={styles.actionsContainer}>
                     <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
                     <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={t('view_history')}><FileText size={14} /></button>
                     <button
                         onClick={() => handleDeleteClick(patient)}
                         className={`${styles.actionButton} ${styles.deleteButton}`}
-                        style={{ visibility: patient.medicalRecord?.lastTreatment ? 'hidden' : 'visible' }}
-                        disabled={!!patient.medicalRecord?.lastTreatment}
+                        style={{ visibility: patient.medicalRecord?.patient_level_data?.lastTreatment ? 'hidden' : 'visible' }}
+                        disabled={!!patient.medicalRecord?.patient_level_data?.lastTreatment}
                         title={t('delete_patient')}>
                         <Trash2 size={14} />
                     </button>

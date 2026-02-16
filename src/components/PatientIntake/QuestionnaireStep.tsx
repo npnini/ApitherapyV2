@@ -1,15 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PatientData, MedicalRecord as MedicalRecordType } from '../../types/patient';
+import { PatientData, QuestionnaireResponse as QuestionnaireResponseType } from '../../types/patient';
 import styles from './QuestionnaireStep.module.css';
 import { getQuestionnaire } from '../../firebase/questionnaire';
-import { Questionnaire } from '../../types/questionnaire';
-import SignaturePad from './SignaturePad'; // Import SignaturePad
+import { Questionnaire, Question } from '../../types/questionnaire';
+import SignaturePad from './SignaturePad';
 
 interface QuestionnaireStepProps {
   patientData: Partial<PatientData>;
   onDataChange: (data: Partial<PatientData>) => void;
 }
+
+interface AutosizedTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+
+const AutosizedTextarea: React.FC<AutosizedTextareaProps> = (props) => {
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+    useLayoutEffect(() => {
+        const textArea = textAreaRef.current;
+        if (textArea) {
+            textArea.style.height = '1px';
+            textArea.style.height = textArea.scrollHeight + 'px';
+        }
+    }, [props.value]);
+
+    return <textarea {...props} ref={textAreaRef} rows={1} />;
+};
+
 
 const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDataChange }) => {
   const { t, i18n } = useTranslation();
@@ -21,12 +38,12 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
       const q = await getQuestionnaire("apitherapy");
       setQuestionnaire(q);
       if (q) {
-        const updatedMedicalRecord = { 
-            ...patientData.medicalRecord, 
+        const updatedQuestionnaireResponse = { 
+            ...patientData.questionnaireResponse, 
             domain: q.domain, 
             version: q.versionNumber
         };
-        onDataChange({ ...patientData, medicalRecord: updatedMedicalRecord as MedicalRecordType });
+        onDataChange({ ...patientData, questionnaireResponse: updatedQuestionnaireResponse as QuestionnaireResponseType });
       }
       setIsLoading(false);
     };
@@ -49,35 +66,48 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
       finalValue = value;
     }
 
-    const updatedMedicalRecord = { ...patientData.medicalRecord, [name]: finalValue };
-    onDataChange({ ...patientData, medicalRecord: updatedMedicalRecord as MedicalRecordType });
+    const updatedQuestionnaireResponse = { ...patientData.questionnaireResponse, [name]: finalValue };
+    onDataChange({ ...patientData, questionnaireResponse: updatedQuestionnaireResponse as QuestionnaireResponseType });
   };
 
   const handleSignatureSave = (signature: string) => {
-    const updatedMedicalRecord = { ...patientData.medicalRecord, signature };
-    onDataChange({ ...patientData, medicalRecord: updatedMedicalRecord as MedicalRecordType });
+    const updatedQuestionnaireResponse = { ...patientData.questionnaireResponse, signature };
+    onDataChange({ ...patientData, questionnaireResponse: updatedQuestionnaireResponse as QuestionnaireResponseType });
   }
 
-  const renderQuestion = (question: any) => {
-    const translation = question.translations.find((t: any) => t.language === i18n.language) || question.translations.find((t: any) => t.language === 'en');
-    const answer = patientData.medicalRecord?.[question.name as keyof MedicalRecordType];
+  const renderQuestion = (question: Question) => {
+    const translation = question.translations.find((t) => t.language === i18n.language) || question.translations.find((t) => t.language === 'en');
+    const answer = patientData.questionnaireResponse?.[question.name as keyof QuestionnaireResponseType] ?? '';
 
     return (
       <div key={question.name} className={styles.questionRow}>
         {question.type === 'boolean' && (
           <input type="checkbox" name={question.name} onChange={handleChange} checked={!!answer} />
         )}
-        <label className={styles.questionLabel}>{translation.text}</label>
-        {(question.type === 'string' || question.type === 'text' || question.type === 'number') && (
-          <div className={styles.inputWrapper}>
-            {(question.type === 'string' || question.type === 'text') && (
-              <input type="text" name={question.name} onChange={handleChange} value={answer ?? ''} className={styles.input} />
+        <label className={styles.label}>
+            {translation?.text || question.name}
+            {question.required && <span className={styles.requiredAsterisk}>*</span>}
+        </label>
+        <div className={styles.inputWrapper}>
+            {question.type === 'string' && (
+                <AutosizedTextarea name={question.name} onChange={handleChange} value={answer} className={styles.textarea} />
+            )}
+            {question.type === 'text' && (
+                <AutosizedTextarea name={question.name} onChange={handleChange} value={answer} className={styles.textarea} />
             )}
             {question.type === 'number' && (
-              <input type="number" name={question.name} onChange={handleChange} value={answer ?? ''} className={styles.input} />
+              <input type="number" name={question.name} onChange={handleChange} value={answer} className={styles.input} />
             )}
-          </div>
-        )}
+            {question.type === 'select' && question.options && (
+                <select name={question.name} value={answer} onChange={handleChange} className={styles.select}>
+                    {(!answer) && <option value="">{t('please_select')}</option>}
+                    {question.options.map(op => {
+                        const optionTranslation = op.translations[i18n.language] || op.translations['en'];
+                        return <option key={op.value} value={op.value}>{optionTranslation}</option>;
+                    })}
+                </select>
+            )}
+        </div>
       </div>
     );
   };
@@ -88,22 +118,6 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
 
   return (
     <div className={styles.container}>
-      <div className={styles.formRow}>
-        <div className={styles.section}>
-          <label className={styles.label} htmlFor="condition">{t('condition')}</label>
-          <textarea id="condition" name="condition" className={styles.textarea} value={patientData.medicalRecord?.condition || ''} onChange={handleChange} />
-        </div>
-        <div className={styles.section}>
-          <label className={styles.label} htmlFor="severity">{t('severity')}</label>
-          <select id="severity" name="severity" className={styles.select} value={patientData.medicalRecord?.severity || ''} onChange={handleChange}>
-            {patientData.medicalRecord?.severity ? null : <option value="">{t('select_severity')}</option>}
-            <option value="mild">{t('mild')}</option>
-            <option value="moderate">{t('moderate')}</option>
-            <option value="severe">{t('severe')}</option>
-          </select>
-        </div>
-      </div>
-
       {questionnaire && (
         <div className={styles.questionsScrollableContainer}>
             <div className={styles.questionsGrid}>
@@ -121,7 +135,7 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
         </div>
         <fieldset className={styles.signaturePadWrapper}>
           <legend className={styles.signaturePadLabel}>{t('patient_signature')}</legend>
-          <SignaturePad onSave={handleSignatureSave} initialSignature={patientData.medicalRecord?.signature} />
+          <SignaturePad onSave={handleSignatureSave} initialSignature={patientData.questionnaireResponse?.signature} />
         </fieldset>
       </div>
     </div>

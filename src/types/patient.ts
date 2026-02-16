@@ -1,12 +1,17 @@
 export interface MedicalRecord {
-    signature?: string;
+    patient_level_data?: {
+        condition?: string;
+        severity?: 'mild' | 'moderate' | 'severe';
+        lastTreatment?: string;
+    }
 }
 
 export interface QuestionnaireResponse {
-    domain: string;
-    version: number;
-    dateUpdated: Date;
-    [key: string]: any; 
+    domain?: string;
+    version?: number;
+    dateUpdated?: Date;
+    signature?: string;
+    [key: string]: any; // for answers
 }
 
 export interface PatientData {
@@ -21,5 +26,6 @@ export interface PatientData {
     caretakerId: string;
     dateCreated?: Date;
     lastUpdated?: Date;
-    medicalRecord?: Partial<MedicalRecord & QuestionnaireResponse>;
+    medicalRecord?: Partial<MedicalRecord>;
+    questionnaireResponse?: Partial<QuestionnaireResponse>;
 }

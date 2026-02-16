@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase';
-import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { Questionnaire } from '../../types/questionnaire';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import QuestionnaireList from './QuestionnaireList';
 import QuestionnaireForm from './QuestionnaireForm';
 import styles from './QuestionnaireAdmin.module.css';
+import { saveQuestionnaire } from '../../firebase/questionnaire';
 
 const QuestionnaireAdmin: React.FC = () => {
     const { t } = useTranslation();
@@ -60,17 +61,13 @@ const QuestionnaireAdmin: React.FC = () => {
         fetchData();
     }, [fetchData]);
 
-    const handleSave = async (itemToSave: Questionnaire) => {
+    const handleSave = async (itemToSave: Partial<Questionnaire>) => {
         setIsSubmitting(true);
+        setFormError(null);
         try {
-            const { id, ...data } = itemToSave;
-            if (id && questionnaires.some(q => q.id === id)) { // Check if it's an existing doc
-                await updateDoc(doc(db, 'questionnaires', id), data);
-            } else {
-                await addDoc(collectionRef, data);
-            }
+            await saveQuestionnaire(itemToSave);
             setIsEditing(null);
-            fetchData();
+            await fetchData();
         } catch (err) {
             setFormError(t('failedToSaveItem'));
             console.error(err);

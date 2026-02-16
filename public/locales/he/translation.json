@@ -159,6 +159,7 @@
 "severe": "חמור",
 "back": "חזור",
 "patient_signature": "חתימת המטופל",
+"save_signature": "שמור חתימה",
 "save_patient": "שמור מטופל",
 "treatment_history_for": "היסטוריית טיפולים עבור {{patientName}}",
 "loading_treatment_history": "טוען היסטוריית טיפולים...",

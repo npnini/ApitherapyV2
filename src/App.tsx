@@ -78,17 +78,10 @@ const App: React.FC = () => {
                     getDoc(questionnaireDocRef)
                 ]);
                 
-                let medicalData: Partial<MedicalRecord & QuestionnaireResponse> = {};
+                const medicalRecord = medicalRecordSnap.exists() ? medicalRecordSnap.data() as MedicalRecord : {};
+                const questionnaireResponse = questionnaireDocSnap.exists() ? questionnaireDocSnap.data() as QuestionnaireResponse : {};
 
-                if (medicalRecordSnap.exists()) {
-                    medicalData = { ...medicalData, ...medicalRecordSnap.data() };
-                }
-
-                if (questionnaireDocSnap.exists()) {
-                    medicalData = { ...medicalData, ...questionnaireDocSnap.data() };
-                }
-
-                return { ...patientPii, medicalRecord: medicalData } as PatientData;
+                return { ...patientPii, medicalRecord, questionnaireResponse } as PatientData;
             });
 
             const patientsData = await Promise.all(patientDataPromises);
@@ -155,6 +148,7 @@ const App: React.FC = () => {
             email: '',
             mobile: '',
             medicalRecord: {},
+            questionnaireResponse: {},
             caretakerId: appUser.userId,
         };
         setSelectedPatient(newPatient);
@@ -171,8 +165,8 @@ const App: React.FC = () => {
             let patientId = patientData.id;
             const now = new Date();
 
-            const { medicalRecord, ...patientPii } = patientData;
-            let piiToSave: Omit<PatientData, 'id' | 'medicalRecord'> & { dateCreated?: Date; lastUpdated?: Date } = { 
+            const { medicalRecord, questionnaireResponse, ...patientPii } = patientData;
+            let piiToSave: Omit<PatientData, 'id' | 'medicalRecord' | 'questionnaireResponse'> & { dateCreated?: Date; lastUpdated?: Date } = { 
                 ...patientPii, 
                 caretakerId: appUser.userId,
                 lastUpdated: now,
@@ -184,8 +178,8 @@ const App: React.FC = () => {
             const identityNumber = piiToSave.identityNumber;
             const email = piiToSave.email;
 
-            if (identityNumber === undefined) {
-                throw new Error("Identity Number cannot be undefined.");
+            if (!identityNumber) {
+                throw new Error("Identity Number cannot be empty.");
             }
 
             const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber));
@@ -222,24 +216,15 @@ const App: React.FC = () => {
             }
 
             if (medicalRecord) {
-                const { signature, domain, version, ...questionnaireAnswers } = medicalRecord;
-                
-                const recordToSave: Partial<MedicalRecord> = {};
-                if (signature) recordToSave.signature = signature;
-                if (Object.keys(recordToSave).length > 0) {
-                    const medicalRecordRef = doc(db, `patients/${patientId}/medical_records`, 'patient_level_data');
-                    await setDoc(medicalRecordRef, recordToSave, { merge: true });
-                }
+                const medicalRecordRef = doc(db, `patients/${patientId}/medical_records`, 'patient_level_data');
+                await setDoc(medicalRecordRef, medicalRecord, { merge: true });
+            }
 
+            if (questionnaireResponse) {
+                const { domain, ...restOfResponse } = questionnaireResponse;
                 if (domain) {
-                    const questionnaireToSave: QuestionnaireResponse = {
-                        domain,
-                        version: version || 1, // Fallback for version
-                        dateUpdated: now,
-                        ...questionnaireAnswers
-                    };
                     const questionnaireRef = doc(db, `patients/${patientId}/medical_records/patient_level_data/questionnaire_responses`, domain);
-                    await setDoc(questionnaireRef, questionnaireToSave, { merge: true });
+                    await setDoc(questionnaireRef, { ...restOfResponse, dateUpdated: now }, { merge: true });
                 }
             }
 
@@ -369,7 +354,7 @@ const App: React.FC = () => {
                 }
 
                 {currentView === 'patient_intake' && selectedPatient && 
-                    <PatientIntake patient={selectedPatient} onSave={(patientData) => handleSavePatient(patientData)} onBack={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
+                    <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
                 }
                 {currentView === 'protocol_selection' && selectedPatient && 
                     <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />

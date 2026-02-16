@@ -29,6 +29,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
             profession: p.profession ?? '',
             address: p.address ?? '',
             medicalRecord: p.medicalRecord ?? {},
+            questionnaireResponse: p.questionnaireResponse ?? {},
         };
     };
 
@@ -47,7 +48,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({ patient, onSave, onUpdate
                 return !!(patientData.fullName && patientData.identityNumber && patientData.email && patientData.mobile && patientData.birthDate && patientData.profession && patientData.address);
             case 2:
                 // Step 2 now includes the signature
-                return !!patientData.medicalRecord?.signature;
+                return !!patientData.questionnaireResponse?.signature;
             default:
                 return true;
         }
