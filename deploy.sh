@@ -6,6 +6,7 @@ set -e
 # 1. DELETE THE CACHE
 # This removes the .firebase folder to prevent "ghost" files during deploy.
 echo "Clearing Firebase CLI cache..."
+rm -rf dist/
 rm -rf .firebase/
 
 # 2. BUILD
