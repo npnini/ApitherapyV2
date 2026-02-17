@@ -158,5 +158,10 @@
   "missing_information": "Missing Information",
   "fill_required_fields_error": "Please fill all required fields before selecting a protocol.",
   "confirm": "Confirm",
-  "add_new_protocol": "Add New Protocol"
+  "add_new_protocol": "Add New Protocol",
+  "edit_protocol": "Edit Protocol",
+  "acupuncturePoints": "Acupuncture Points",
+  "addNewPoint": "Add New Point",
+  "create_new_problem": "Create New Problem",
+  "search_placeholder_name": "Search problem name"
 }

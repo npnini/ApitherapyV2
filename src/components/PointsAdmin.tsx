@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
@@ -379,137 +379,138 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
 
     return (
         <div className={styles.modalOverlay}>
-            <div className={styles.modalContent} style={{maxWidth: '600px'}}>
-                <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.modalContent}>
+                <div className={styles.formHeader}>
                     <h2 className={styles.formTitle}>{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
-                    
-                    {(error || localError) && <p className={styles.formError}>{error || localError}</p>}
+                    <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
+                </div>
+                <form onSubmit={handleSubmit} className={styles.form}>
+                    <div className={styles.scrollableArea}>
+                        {(error || localError) && <p className={styles.formError}>{error || localError}</p>}
 
-                    {/* Form fields grid */}
-                    <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
-                        {/* ... other fields ... */}
-                         <div>
-                            <label htmlFor="code" className={styles.label}>
-                                {t('code')}
-                                <span className={styles.requiredAsterisk}>*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="code"
-                                name="code" 
-                                value={formData.code} 
-                                onChange={handleChange} 
-                                placeholder={t('codePlaceholder')}
-                                className={styles.input}
-                                required 
-                                disabled={isEditing}
-                            />
+                        <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
+                            <div>
+                                <label htmlFor="code" className={styles.label}>
+                                    {t('code')}
+                                    <span className={styles.requiredAsterisk}>*</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="code"
+                                    name="code" 
+                                    value={formData.code} 
+                                    onChange={handleChange} 
+                                    placeholder={t('codePlaceholder')}
+                                    className={styles.input}
+                                    required 
+                                    disabled={isEditing}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="label" className={styles.label}>
+                                    {t('label')}
+                                    <span className={styles.requiredAsterisk}>*</span>
+                                </label>
+                                <input 
+                                    type="text"
+                                    id="label" 
+                                    name="label" 
+                                    value={formData.label} 
+                                    onChange={handleChange} 
+                                    placeholder={t('labelPlaceholder')}
+                                    className={styles.input} 
+                                    required 
+                                />
+                            </div>
                         </div>
                         <div>
-                             <label htmlFor="label" className={styles.label}>
-                                {t('label')}
+                            <label htmlFor="description" className={styles.label}>
+                                {t('description')}
                                 <span className={styles.requiredAsterisk}>*</span>
                             </label>
-                            <input 
-                                type="text"
-                                id="label" 
-                                name="label" 
-                                value={formData.label} 
+                            <textarea 
+                                id="description"
+                                name="description" 
+                                value={formData.description} 
                                 onChange={handleChange} 
-                                placeholder={t('labelPlaceholder')}
-                                className={styles.input} 
-                                required 
-                            />
+                                placeholder={t('description')} 
+                                className={styles.textarea}
+                                rows={3}
+                                required
+                            ></textarea>
                         </div>
-                    </div>
-                     <div>
-                        <label htmlFor="description" className={styles.label}>
-                            {t('description')}
-                            <span className={styles.requiredAsterisk}>*</span>
-                        </label>
-                        <textarea 
-                            id="description"
-                            name="description" 
-                            value={formData.description} 
-                            onChange={handleChange} 
-                            placeholder={t('description')} 
-                            className={styles.textarea}
-                            rows={3}
-                            required
-                        ></textarea>
-                    </div>
-                     <div>
-                        <label className={styles.label}>
-                            {t('position3d')}
-                            <span className={styles.requiredAsterisk}>*</span>
-                        </label>
-                        <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
-                            <div>
-                                <label htmlFor="x" className={styles.coordinateLabel}>{t('x_axis')}</label>
-                                <input id="x" type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder="X" className={styles.input} />
-                            </div>
-                            <div>
-                                <label htmlFor="y" className={styles.coordinateLabel}>{t('y_axis')}</label>
-                                <input id="y" type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder="Y" className={styles.input} />
-                            </div>
-                            <div>
-                                <label htmlFor="z" className={styles.coordinateLabel}>{t('z_axis')}</label>
-                                <input id="z" type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder="Z" className={styles.input} />
+                        <div>
+                            <label className={styles.label}>
+                                {t('position3d')}
+                                <span className={styles.requiredAsterisk}>*</span>
+                            </label>
+                            <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
+                                <div>
+                                    <label htmlFor="x" className={styles.coordinateLabel}>{t('x_axis')}</label>
+                                    <input id="x" type="number" name="x" step="0.01" value={formData.position.x} onChange={handlePosChange} placeholder="X" className={styles.input} />
+                                </div>
+                                <div>
+                                    <label htmlFor="y" className={styles.coordinateLabel}>{t('y_axis')}</label>
+                                    <input id="y" type="number" name="y" step="0.01" value={formData.position.y} onChange={handlePosChange} placeholder="Y" className={styles.input} />
+                                </div>
+                                <div>
+                                    <label htmlFor="z" className={styles.coordinateLabel}>{t('z_axis')}</label>
+                                    <input id="z" type="number" name="z" step="0.01" value={formData.position.z} onChange={handlePosChange} placeholder="Z" className={styles.input} />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Document management section */}
-                    <div className={styles.documentSection}>
-                        <label className={styles.label}>{t('pointDocument')}</label>
+                        <div className={styles.documentSection}>
+                            <label className={styles.label}>{t('pointDocument')}</label>
 
-                        {!formData.documentUrl && !selectedFileName && (
-                            <p className={styles.noDocument}>{t('noDocumentAttached')}</p>
-                        )}
-                        {selectedFileName && (
-                            <p className={styles.fileName}>{t('selectedFile', 'Selected file')}: {selectedFileName}</p>
-                        )}
-
-                        <div className={styles.documentButtonRow}>
-                            {formData.documentUrl && (
-                                <button
-                                    type="button"
-                                    onClick={() => window.open(formData.documentUrl, '_blank')}
-                                    className={`${styles.documentActionButton} ${styles.documentViewButton}`}
-                                    disabled={isSubmitting}
-                                >
-                                    <FileDown size={16} /> {t('viewDocument')}
-                                </button>
+                            {!formData.documentUrl && !selectedFileName && (
+                                <p className={styles.noDocument}>{t('noDocumentAttached')}</p>
+                            )}
+                            {selectedFileName && (
+                                <p className={styles.fileName}>{t('selectedFile', 'Selected file')}: {selectedFileName}</p>
                             )}
 
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
-                                disabled={isSubmitting}
-                            >
-                                <FileUp size={16} />
-                                {formData.documentUrl ? t('replaceDocument') : t('uploadDocument')}
-                            </button>
-                            <input
-                                type="file"
-                                id="file-upload"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className={styles.fileInput}
-                                accept=".pdf,.doc,.docx,.jpg,.png"
-                            />
+                            <div className={styles.documentButtonRow}>
+                                {formData.documentUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(formData.documentUrl, '_blank')}
+                                        className={`${styles.documentActionButton} ${styles.documentViewButton}`}
+                                        disabled={isSubmitting}
+                                    >
+                                        <FileDown size={16} /> {t('viewDocument')}
+                                    </button>
+                                )}
 
-                            {formData.documentUrl && (
                                 <button
                                     type="button"
-                                    onClick={() => onFileDelete(formData)}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
                                     disabled={isSubmitting}
-                                    className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
                                 >
-                                    <XSquare size={16} /> {t('deleteDocument')}
+                                    <FileUp size={16} />
+                                    {formData.documentUrl ? t('replaceDocument') : t('uploadDocument')}
                                 </button>
-                            )}
+                                <input
+                                    type="file"
+                                    id="file-upload"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className={styles.fileInput}
+                                    accept=".pdf,.doc,.docx,.jpg,.png"
+                                />
+
+                                {formData.documentUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onFileDelete(formData)}
+                                        disabled={isSubmitting}
+                                        className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
+                                    >
+                                        <XSquare size={16} /> {t('deleteDocument')}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                     
@@ -518,9 +519,9 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, points, onSave, on
                         <button 
                             type="submit" 
                             disabled={isSubmitting || !isDirty}
-                            className={isSubmitting || !isDirty ? styles.saveButtonDisabled : styles.saveButton}
+                            className={styles.saveButton}
                         >
-                            <Save size={16} className={styles.saveButtonIcon} /> 
+                            <Save size={16} /> 
                             {isSubmitting ? t('saving') : t('savePoint')}
                         </button>
                     </div>

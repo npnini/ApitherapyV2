@@ -87,7 +87,10 @@
 
 .tableBody {
     background-color: #ffffff;
-    divide-y: 1px solid #e5e7eb;
+}
+
+.tableBody tr:not(:last-child) {
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .tableRow:hover {
@@ -163,14 +166,29 @@
     max-height: 90vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+}
+
+.formHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: var(--color-primary);
+    color: var(--color-white);
 }
 
 .formTitle {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #111827;
-    margin-bottom: 1.5rem;
-    padding: 1.5rem 2rem 0;
+    color: var(--color-white);
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    color: var(--color-white);
+    cursor: pointer;
 }
 
 .formError {
@@ -178,7 +196,7 @@
     color: #b91c1c;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
-    margin: 0 2rem 1rem;
+    margin: 1rem 2rem;
 }
 
 .formGrid {
@@ -304,6 +322,7 @@
     padding: 1.5rem 2rem;
     border-top: 1px solid #e5e7eb;
     background: white;
+    flex-shrink: 0;
 }
 
 .cancelButton,
@@ -327,11 +346,6 @@
 
 .saveButton:disabled {
     background-color: #9e9e9e;
-    cursor: not-allowed;
-}
-
-.saveButtonDisabled {
-    background-color: #9ca3af;
     cursor: not-allowed;
 }
 

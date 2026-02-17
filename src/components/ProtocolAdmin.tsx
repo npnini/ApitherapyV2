@@ -5,7 +5,7 @@ import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
-import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, FileCheck2, XSquare } from 'lucide-react';
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, FileCheck2, XSquare, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
@@ -316,12 +316,15 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
     return (
         <div className={styles.modalOverlay}>
            <div className={styles.modalContent}>
-                <div className={styles.formTitleContainer}>
+                <div className={styles.formHeader}>
                     <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol') }</h2>
+                    <button onClick={onCancel} className={styles.closeButton}>
+                        <X size={24} />
+                    </button>
                 </div>
-                {error && <p className={styles.formError}>{error}</p>}
-                <div className={styles.formGrid}>
-                    {isSubmitting ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
+               {error && <p className={styles.formError}>{error}</p>}
+               <div className={styles.formGrid}>
+                   {isSubmitting ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
                     <>
                         <div>
                             <label htmlFor='protocolName' className={styles.formLabel}>

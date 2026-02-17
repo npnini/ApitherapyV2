@@ -4,10 +4,10 @@ import { db } from '../../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc } from 'firebase/firestore';
 import { Measure, MeasureType } from '../../types/measure';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import styles from '../PointsAdmin.module.css';
-import formStyles from './MeasureForm.module.css';
+import styles from '../PointsAdmin.module.css'; // General table styles
+import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 
 const MeasureAdmin: React.FC = () => {
@@ -448,17 +448,19 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
 
     return (
         <div className={styles.modalOverlay}>
-             <div className={styles.modalContent} style={{maxWidth: '600px', display: 'flex', flexDirection: 'column', maxHeight: '90vh'}}>
-                <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden'}}>
+            <div className={formStyles.modalContent}>
+                 <div className={formStyles.formHeader}>
+                    <h2 className={formStyles.formTitle}>{isEditing ? t('editMeasure') : t('addNewMeasure')}</h2>
+                    <button onClick={onCancel} className={formStyles.closeButton}><X size={24} /></button>
+                </div>
+                <form onSubmit={handleSubmit} className={formStyles.form}>
                     <div className={formStyles.scrollableArea}>
-                        <h2 className={styles.formTitle}>{isEditing ? t('editMeasure') : t('addNewMeasure')}</h2>
-                        
-                        {(error || localError) && <p className={styles.formError}>{error || localError}</p>}
+                        {(error || localError) && <p className={formStyles.formError}>{error || localError}</p>}
 
                         <div>
-                            <label htmlFor="name" className={styles.label}>
+                            <label htmlFor="name" className={formStyles.label}>
                                 {t('name')}
-                                <span className={styles.requiredAsterisk}>*</span>
+                                <span className={formStyles.requiredAsterisk}>*</span>
                             </label>
                             <input 
                                 type="text" 
@@ -467,16 +469,16 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                 value={formData.name} 
                                 onChange={handleChange} 
                                 placeholder={t('namePlaceholder')}
-                                className={styles.input}
+                                className={formStyles.input}
                                 required 
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="type" className={styles.label}>
+                            <label htmlFor="type" className={formStyles.label}>
                                 {t('type')}
                             </label>
-                            <select id="type" name="type" value={formData.type} onChange={handleChange} className={styles.input}>
+                            <select id="type" name="type" value={formData.type} onChange={handleChange} className={formStyles.select}>
                                 <option value="Category">{t('category')}</option>
                                 <option value="Scale">{t('scale')}</option>
                             </select>
@@ -484,26 +486,26 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
 
                         {formData.type === 'Category' && (
                             <div>
-                                <label className={styles.label}>{t('categories')}</label>
-                                <div className={styles.categoryInputContainer}>
+                                <label className={formStyles.label}>{t('categories')}</label>
+                                <div className={formStyles.categoryInputContainer}>
                                     <input 
                                         type="text" 
                                         value={categoryInput} 
                                         onChange={(e) => setCategoryInput(e.target.value)} 
                                         placeholder={t('addCategoryPlaceholder')}
-                                        className={styles.input}
+                                        className={formStyles.input}
                                     />
-                                    <button type="button" onClick={handleAddCategory} className={styles.addButton} style={{marginLeft: '8px'}}>{editingCategory ? t('update') : t('add')}</button>
+                                    <button type="button" onClick={handleAddCategory} className={`${styles.addButton} ${formStyles.addButton}`}>{editingCategory ? t('update') : t('add')}</button>
                                 </div>
-                                <div className={styles.categoryList}>
+                                <div className={formStyles.categoryList}>
                                     {formData.categories?.map(cat => (
-                                        <div key={cat} className={styles.categoryTag} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div key={cat} className={formStyles.categoryTag}>
                                             <span>{cat}</span>
                                             <div>
-                                                <button type="button" title={`Edit ${cat}`} onClick={() => handleEditCategory(cat)} className={styles.actionButton} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                <button type="button" title={`Edit ${cat}`} onClick={() => handleEditCategory(cat)} className={formStyles.actionButton}>
                                                     <Edit size={16} />
                                                 </button>
-                                                <button type="button" title={`Remove ${cat}`} onClick={() => handleRemoveCategory(cat)} className={styles.actionButton} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '8px' }}>
+                                                <button type="button" title={`Remove ${cat}`} onClick={() => handleRemoveCategory(cat)} className={formStyles.actionButton}>
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -514,34 +516,34 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         )}
 
                         {formData.type === 'Scale' && (
-                            <div className={styles.scaleContainer}>
+                            <div className={formStyles.scaleContainer}>
                                 <div>
-                                    <label htmlFor="min" className={styles.label}>{t('minimum')}</label>
+                                    <label htmlFor="min" className={formStyles.label}>{t('minimum')}</label>
                                     <input 
                                         type="number" 
                                         id="min"
                                         name="min" 
                                         value={formData.scale?.min ?? ''} 
                                         onChange={handleScaleChange} 
-                                        className={styles.input} 
+                                        className={formStyles.input} 
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="max" className={styles.label}>{t('maximum')}</label>
+                                    <label htmlFor="max" className={formStyles.label}>{t('maximum')}</label>
                                     <input 
                                         type="number" 
                                         id="max"
                                         name="max" 
                                         value={formData.scale?.max ?? ''} 
                                         onChange={handleScaleChange} 
-                                        className={styles.input} 
+                                        className={formStyles.input} 
                                     />
                                 </div>
                             </div>
                         )}
 
                         <div>
-                            <label htmlFor="description" className={styles.label}>
+                            <label htmlFor="description" className={formStyles.label}>
                                 {t('description')}
                             </label>
                             <textarea 
@@ -550,28 +552,28 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                 value={formData.description} 
                                 onChange={handleChange} 
                                 placeholder={t('descriptionPlaceholder')}
-                                className={styles.textarea}
+                                className={formStyles.textarea}
                                 rows={3}
                             ></textarea>
                         </div>
 
                         {/* Document management section */}
-                        <div className={styles.documentSection}>
-                            <label className={styles.label}>{t('measureDocument')}</label>
+                        <div className={formStyles.documentSection}>
+                            <label className={formStyles.label}>{t('measureDocument')}</label>
 
                             {!formData.documentUrl && !selectedFileName && (
-                                <p className={styles.noDocument}>{t('noDocumentAttached')}</p>
+                                <p className={formStyles.noDocument}>{t('noDocumentAttached')}</p>
                             )}
                             {selectedFileName && (
-                                <p className={styles.fileName}>{t('selectedFile', 'Selected file')}: {selectedFileName}</p>
+                                <p className={formStyles.fileName}>{t('selectedFile', 'Selected file')}: {selectedFileName}</p>
                             )}
 
-                            <div className={styles.documentButtonRow}>
+                            <div className={formStyles.documentButtonRow}>
                                 {formData.documentUrl && (
                                     <button
                                         type="button"
                                         onClick={() => window.open(formData.documentUrl, '_blank')}
-                                        className={`${styles.documentActionButton} ${styles.documentViewButton}`}
+                                        className={`${formStyles.documentActionButton} ${formStyles.documentViewButton}`}
                                         disabled={isSubmitting}
                                     >
                                         <FileDown size={16} /> {t('viewDocument')}
@@ -581,7 +583,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
+                                    className={`${formStyles.documentActionButton} ${formStyles.documentUploadButton}`}
                                     disabled={isSubmitting}
                                 >
                                     <FileUp size={16} />
@@ -592,7 +594,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     id="file-upload"
                                     ref={fileInputRef}
                                     onChange={handleFileChange}
-                                    className={styles.fileInput}
+                                    className={formStyles.fileInput}
                                     accept=".pdf,.doc,.docx,.jpg,.png"
                                 />
 
@@ -601,7 +603,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                         type="button"
                                         onClick={() => onFileDelete(formData)}
                                         disabled={isSubmitting}
-                                        className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
+                                        className={`${formStyles.documentActionButton} ${formStyles.documentDeleteButton}`}
                                     >
                                         <XSquare size={16} /> {t('deleteDocument')}
                                     </button>
