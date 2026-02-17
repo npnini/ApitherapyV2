@@ -316,130 +316,131 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
     return (
         <div className={styles.modalOverlay}>
            <div className={styles.modalContent}>
-               <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol') }</h2>
-               
-               {error && <p className={styles.formError}>{error}</p>}
-
-               {isSubmitting && !error ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
-               <div className={styles.formGrid}>
-                   <div>
-                     <label htmlFor='protocolName' className={styles.formLabel}>
-                       {t('protocol_name')}
-                       <span className={styles.requiredAsterisk}>*</span>
-                       </label>
-                     <input
-                         id='protocolName'
-                         type="text"
-                         placeholder={t('protocol_name_placeholder')}
-                         value={protocol.name || ''}
-                         onChange={(e) => onUpdate({ ...protocol, name: e.target.value })}
-                         className={styles.formInput}
-                     />
-                   </div>
-                   <div>
-                     <label htmlFor='protocolDescription' className={styles.formLabel}>
-                       {t('protocol_description')}
-                       <span className={styles.requiredAsterisk}>*</span>
-                       </label>
-                     <textarea
-                         id='protocolDescription'
-                         placeholder={t('protocol_description_placeholder')}
-                         value={protocol.description || ''}
-                         onChange={(e) => onUpdate({ ...protocol, description: e.target.value })}
-                         className={styles.formTextarea}
-                     />
-                   </div>
-                   <div>
-                     <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
-                     <textarea
-                         id='protocolRationale'
-                         placeholder={t('protocol_rationale_placeholder')}
-                         value={protocol.rationale || ''}
-                         onChange={(e) => onUpdate({ ...protocol, rationale: e.target.value })}
-                         className={styles.formTextarea}
-                     />
-                   </div>
-                   <div>
-                       <h3 className={styles.formLabel}>
-                           {t('select_points')}
-                           <span className={styles.requiredAsterisk}>*</span>
-                       </h3>
-                       <div className={styles.pointsSelectionContainer}>
-                           {allAcuPoints.map(point => (
-                               <label key={point.id} className={`${styles.pointLabel} ${(protocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
-                                   <input
-                                       type="checkbox"
-                                       checked={(protocol.points || []).includes(point.id)}
-                                       onChange={() => handlePointSelection(point.id)}
-                                       className={styles.pointCheckbox}
-                                   />
-                                   <span className={styles.pointCode}>{point.code}</span>
-                                   <span className={styles.pointLabelText}>{point.label}</span>
-                               </label>
-                           ))}
-                       </div>
-                   </div>
-
-                    {/* Document Management Section */}
-                    <div className={styles.documentSection}>
-                        <label className={styles.formLabel}>{t('protocol_document')}</label>
-
-                        {!protocol.documentUrl && !selectedFileName && (
-                            <p className={styles.noDocument}>{t('no_document_attached')}</p>
-                        )}
-
-                        {selectedFileName && (
-                             <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
-                        )}
-
-                        <div className={styles.documentButtonRow}>
-                            {protocol.documentUrl && (
-                                <button
-                                    type="button"
-                                    onClick={() => window.open(protocol.documentUrl, '_blank')}
-                                    className={`${styles.documentActionButton} ${styles.documentViewButton}`}
-                                    disabled={isSubmitting}
-                                >
-                                    <FileDown size={16} /> {t('view_document')}
-                                </button>
-                            )}
-
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
-                                disabled={isSubmitting}
-                            >
-                                <FileUp size={16} /> 
-                                {protocol.documentUrl ? t('replace_document') : t('upload_document')}
-                            </button>
+                <div className={styles.formTitleContainer}>
+                    <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol') }</h2>
+                </div>
+                {error && <p className={styles.formError}>{error}</p>}
+                <div className={styles.formGrid}>
+                    {isSubmitting ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
+                    <>
+                        <div>
+                            <label htmlFor='protocolName' className={styles.formLabel}>
+                            {t('protocol_name')}
+                            <span className={styles.requiredAsterisk}>*</span>
+                            </label>
                             <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className={styles.fileInput}
-                                accept=".pdf,.doc,.docx,.jpg,.png"
+                                id='protocolName'
+                                type="text"
+                                placeholder={t('protocol_name_placeholder')}
+                                value={protocol.name || ''}
+                                onChange={(e) => onUpdate({ ...protocol, name: e.target.value })}
+                                className={styles.formInput}
                             />
+                        </div>
+                        <div>
+                            <label htmlFor='protocolDescription' className={styles.formLabel}>
+                            {t('protocol_description')}
+                            <span className={styles.requiredAsterisk}>*</span>
+                            </label>
+                            <textarea
+                                id='protocolDescription'
+                                placeholder={t('protocol_description_placeholder')}
+                                value={protocol.description || ''}
+                                onChange={(e) => onUpdate({ ...protocol, description: e.target.value })}
+                                className={styles.formTextarea}
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
+                            <textarea
+                                id='protocolRationale'
+                                placeholder={t('protocol_rationale_placeholder')}
+                                value={protocol.rationale || ''}
+                                onChange={(e) => onUpdate({ ...protocol, rationale: e.target.value })}
+                                className={styles.formTextarea}
+                            />
+                        </div>
+                        <div>
+                            <h3 className={styles.formLabel}>
+                                {t('select_points')}
+                                <span className={styles.requiredAsterisk}>*</span>
+                            </h3>
+                            <div className={styles.pointsSelectionContainer}>
+                                {allAcuPoints.map(point => (
+                                    <label key={point.id} className={`${styles.pointLabel} ${(protocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={(protocol.points || []).includes(point.id)}
+                                            onChange={() => handlePointSelection(point.id)}
+                                            className={styles.pointCheckbox}
+                                        />
+                                        <span className={styles.pointCode}>{point.code}</span>
+                                        <span className={styles.pointLabelText}>{point.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
 
-                            {protocol.documentUrl && (
+                        {/* Document Management Section */}
+                        <div className={styles.documentSection}>
+                            <label className={styles.formLabel}>{t('protocol_document')}</label>
+
+                            {!protocol.documentUrl && !selectedFileName && (
+                                <p className={styles.noDocument}>{t('no_document_attached')}</p>
+                            )}
+
+                            {selectedFileName && (
+                                <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
+                            )}
+
+                            <div className={styles.documentButtonRow}>
+                                {protocol.documentUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(protocol.documentUrl, '_blank')}
+                                        className={`${styles.documentActionButton} ${styles.documentViewButton}`}
+                                        disabled={isSubmitting}
+                                    >
+                                        <FileDown size={16} /> {t('view_document')}
+                                    </button>
+                                )}
+
                                 <button
                                     type="button"
-                                    onClick={() => onFileDelete(protocol)}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
                                     disabled={isSubmitting}
-                                    className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
                                 >
-                                    <XSquare size={16} /> {t('delete_document')}
+                                    <FileUp size={16} /> 
+                                    {protocol.documentUrl ? t('replace_document') : t('upload_document')}
                                 </button>
-                            )}
-                        </div>
-                    </div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className={styles.fileInput}
+                                    accept=".pdf,.doc,.docx,.jpg,.png"
+                                />
 
-               </div>
-               )}
+                                {protocol.documentUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onFileDelete(protocol)}
+                                        disabled={isSubmitting}
+                                        className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
+                                    >
+                                        <XSquare size={16} /> {t('delete_document')}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                    )}
+                </div>
                <div className={styles.modalActions}>
                    <button onClick={onCancel} className={styles.cancelButton}>{t('cancel')}</button>
-                   <button onClick={onSave} disabled={isSubmitting || !isDirty} className={!isDirty || isSubmitting ? styles.saveButtonDisabled : styles.saveButton}>
-                      <Save size={16} className={styles.saveButtonIcon}/> {isSubmitting ? t('saving') : t('save_protocol')}
+                   <button onClick={onSave} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
+                      <Save size={16} /> {isSubmitting ? t('saving') : t('save_protocol')}
                    </button>
                </div>
            </div>

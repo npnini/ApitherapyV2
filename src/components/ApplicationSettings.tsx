@@ -1,18 +1,24 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AppUser } from '../types/user';
 import { appConfigSchema, ConfigGroup, ConfigSetting } from '../config/appConfigSchema';
 import styles from './ApplicationSettings.module.css';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
+import { Question, Questionnaire } from '../types/questionnaire';
 
 interface ApplicationSettingsProps {
     user: AppUser;
-    onClose: () => void; // Added for modal control
+    onClose: () => void; 
 }
 
 interface Protocol {
+    id: string;
+    name: string;
+}
+
+interface QuestionnaireQuestion {
     id: string;
     name: string;
 }
@@ -51,6 +57,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const [initialSettings, setInitialSettings] = useState<Record<string, any>>({});
     const [settings, setSettings] = useState<Record<string, any>>({});
     const [protocols, setProtocols] = useState<Protocol[]>([]);
+    const [questionnaireQuestions, setQuestionnaireQuestions] = useState<QuestionnaireQuestion[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -98,19 +105,73 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         fetchSettingsAndProtocols();
     }, []);
 
+    useEffect(() => {
+        const fetchQuestionnaire = async () => {
+            const domain = settings.patientDashboard?.domain;
+            if (!domain) {
+                setQuestionnaireQuestions([]);
+                return;
+            }
+
+            try {
+                // This query does NOT use orderBy, and will not require an index.
+                const q = query(
+                    collection(db, 'questionnaires'),
+                    where('domain', '==', domain)
+                );
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    setQuestionnaireQuestions([]);
+                    return;
+                }
+
+                // The sorting is done here, on the client-side.
+                const questionnaires = querySnapshot.docs.map(doc => doc.data() as Questionnaire);
+                questionnaires.sort((a, b) => b.versionNumber - a.versionNumber);
+                const latestQuestionnaire = questionnaires[0];
+
+                if (latestQuestionnaire && latestQuestionnaire.questions && Array.isArray(latestQuestionnaire.questions)) {
+                    const questions = latestQuestionnaire.questions.map((q: Question) => ({
+                        id: q.name,
+                        name: q.name,
+                    }));
+                    setQuestionnaireQuestions(questions);
+                } else {
+                    setQuestionnaireQuestions([]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch questionnaire:", err);
+                setQuestionnaireQuestions([]);
+            }
+        };
+
+        if (settings.patientDashboard) {
+            fetchQuestionnaire();
+        }
+    }, [settings.patientDashboard?.domain]);
+
     const handleSettingChange = (path: string[], value: any) => {
         setSaveSuccess(false);
         setError(null);
         setSettings(prev => {
             const newSettings = JSON.parse(JSON.stringify(prev));
-            let current = newSettings;
+    
+            let parentObject = newSettings;
             for (let i = 0; i < path.length - 1; i++) {
-                if (!current[path[i]] || typeof current[path[i]] !== 'object') {
-                    current[path[i]] = {};
+                if (!parentObject[path[i]]) {
+                    parentObject[path[i]] = {};
                 }
-                current = current[path[i]];
+                parentObject = parentObject[path[i]];
             }
-            current[path[path.length - 1]] = value;
+    
+            parentObject[path[path.length - 1]] = value;
+    
+            if (path.join('.') === 'patientDashboard.domain') {
+                newSettings.patientDashboard.conditionQuestion = '';
+                newSettings.patientDashboard.severityQuestion = '';
+            }
+    
             return newSettings;
         });
     };
@@ -123,11 +184,11 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
         try {
             await setDoc(configDocRef, settings, { merge: true });
-            setInitialSettings(settings); // Update the baseline to the new saved state
+            setInitialSettings(settings); 
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
-                onClose(); // Close modal on success
+                onClose();
             }, 1500); 
         } catch (err) {
             setError('Failed to save settings. You must be an administrator to perform this action.');
@@ -215,6 +276,21 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     >
                         {protocols.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                );
+                break;
+            case 'question':
+                control = (
+                    <select
+                        className={styles.input}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={e => handleSettingChange(path, e.target.value)}
+                        disabled={!settings.patientDashboard?.domain || questionnaireQuestions.length === 0}
+                    >
+                        <option value="">-- Select a Question --</option>
+                        {questionnaireQuestions.map(q => (
+                            <option key={q.id} value={q.id}>{q.name}</option>
                         ))}
                     </select>
                 );

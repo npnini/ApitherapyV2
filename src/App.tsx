@@ -41,10 +41,22 @@ const App: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+    const [appConfig, setAppConfig] = useState<any>(null);
 
     useEffect(() => {
         document.documentElement.dir = i18n.language === 'he' ? 'rtl' : 'ltr';
     }, [i18n.language]);
+
+    useEffect(() => {
+        const fetchAppConfig = async () => {
+            const configDocRef = doc(db, 'app_config', 'main');
+            const configDocSnap = await getDoc(configDocRef);
+            if (configDocSnap.exists()) {
+                setAppConfig(configDocSnap.data());
+            }
+        };
+        fetchAppConfig();
+    }, [isSettingsModalOpen]);
 
     const fetchUserData = async (user: User): Promise<AppUser> => {
         const userRef = doc(db, 'users', user.uid);
@@ -60,28 +72,53 @@ const App: React.FC = () => {
     };
 
     const fetchInitialData = useCallback(async (user: AppUser) => {
-        if (!user || !user.userId) return;
+        if (!user || !user.userId || !appConfig) return;
         setIsLoading(true);
         try {
-            const q = query(collection(db, "patients"), where("caretakerId", "==", user.userId));
-            const querySnapshot = await getDocs(q);
+            const patientQuery = query(collection(db, "patients"), where("caretakerId", "==", user.userId));
+            const patientQuerySnapshot = await getDocs(patientQuery);
 
-            const patientDataPromises = querySnapshot.docs.map(async (patientDoc) => {
-                const data = patientDoc.data();
-                const patientPii = { id: patientDoc.id, ...data };
+            const domain = appConfig.patientDashboard?.domain;
+            const conditionKey = appConfig.patientDashboard?.conditionQuestion;
+            const severityKey = appConfig.patientDashboard?.severityQuestion;
+
+            const patientDataPromises = patientQuerySnapshot.docs.map(async (patientDoc) => {
+                const patientPii = { id: patientDoc.id, ...patientDoc.data() };
+
+                let condition = 'N/A';
+                let severity = 'N/A';
+                let questionnaireResponse: QuestionnaireResponse = {};
+
+                if (domain) {
+                    const questionnaireResponseRef = doc(db, `patients/${patientDoc.id}/medical_records/patient_level_data/questionnaire_responses`, domain);
+                    const questionnaireResponseSnap = await getDoc(questionnaireResponseRef);
+                    if (questionnaireResponseSnap.exists()) {
+                        questionnaireResponse = questionnaireResponseSnap.data();
+                        if (conditionKey && questionnaireResponse[conditionKey]) {
+                            condition = questionnaireResponse[conditionKey];
+                        }
+                        if (severityKey && questionnaireResponse[severityKey]) {
+                            severity = questionnaireResponse[severityKey];
+                        }
+                    }
+                }
 
                 const medicalRecordRef = doc(db, `patients/${patientDoc.id}/medical_records`, 'patient_level_data');
-                const questionnaireDocRef = doc(db, `patients/${patientDoc.id}/medical_records/patient_level_data/questionnaire_responses`, 'apitherapy');
+                const medicalRecordSnap = await getDoc(medicalRecordRef);
+                const patientLevelData = medicalRecordSnap.exists() ? medicalRecordSnap.data() : {};
 
-                const [medicalRecordSnap, questionnaireDocSnap]: [DocumentSnapshot<DocumentData>, DocumentSnapshot<DocumentData>] = await Promise.all([
-                    getDoc(medicalRecordRef),
-                    getDoc(questionnaireDocRef)
-                ]);
-                
-                const medicalRecord = medicalRecordSnap.exists() ? medicalRecordSnap.data() as MedicalRecord : {};
-                const questionnaireResponse = questionnaireDocSnap.exists() ? questionnaireDocSnap.data() as QuestionnaireResponse : {};
+                patientLevelData.condition = condition;
+                patientLevelData.severity = severity;
 
-                return { ...patientPii, medicalRecord, questionnaireResponse } as PatientData;
+                const medicalRecord: MedicalRecord = {
+                    patient_level_data: patientLevelData
+                };
+
+                return {
+                    ...patientPii,
+                    medicalRecord,
+                    questionnaireResponse,
+                } as PatientData;
             });
 
             const patientsData = await Promise.all(patientDataPromises);
@@ -91,7 +128,7 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [appConfig]);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
@@ -108,10 +145,10 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (appUser) {
+        if (appUser && appConfig) {
             fetchInitialData(appUser);
         }
-    }, [appUser, fetchInitialData]);
+    }, [appUser, appConfig, fetchInitialData]);
 
     const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
@@ -147,7 +184,7 @@ const App: React.FC = () => {
             identityNumber: '',
             email: '',
             mobile: '',
-            medicalRecord: {},
+            medicalRecord: { patient_level_data: {} },
             questionnaireResponse: {},
             caretakerId: appUser.userId,
         };
@@ -173,7 +210,7 @@ const App: React.FC = () => {
             };
 
             delete (piiToSave as any).id;
-            delete (piiToSave as any).age; // Ensure calculated age is not saved
+            delete (piiToSave as any).age;
 
             const identityNumber = piiToSave.identityNumber;
             const email = piiToSave.email;
@@ -215,9 +252,10 @@ const App: React.FC = () => {
                 await setDoc(patientDocRef, piiToSave as DocumentData, { merge: true });
             }
 
-            if (medicalRecord) {
+            if (medicalRecord && medicalRecord.patient_level_data) {
+                const { condition, severity, ...restOfPatientLevelData } = medicalRecord.patient_level_data;
                 const medicalRecordRef = doc(db, `patients/${patientId}/medical_records`, 'patient_level_data');
-                await setDoc(medicalRecordRef, medicalRecord, { merge: true });
+                await setDoc(medicalRecordRef, restOfPatientLevelData, { merge: true });
             }
 
             if (questionnaireResponse) {

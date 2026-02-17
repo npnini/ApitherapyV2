@@ -157,5 +157,6 @@
   "approve_out_of_range": "The value you entered is outside the recommended range. Do you want to approve it anyway?",
   "missing_information": "Missing Information",
   "fill_required_fields_error": "Please fill all required fields before selecting a protocol.",
-  "confirm": "Confirm"
+  "confirm": "Confirm",
+  "add_new_protocol": "Add New Protocol"
 }

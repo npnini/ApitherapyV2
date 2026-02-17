@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question';
   defaultValue: string | number | boolean | string[];
 };
 
@@ -65,6 +65,30 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'Choose the languages your application will support.',
         type: 'languages',
         defaultValue: ['en'],
+      },
+    },
+  },
+  patientDashboard: {
+    label: 'Patient Dashboard',
+    description: 'Settings related to the patient dashboard.',
+    children: {
+      domain: {
+        label: 'Domain',
+        description: 'The domain for which the questionnaires are retrieved.',
+        type: 'string',
+        defaultValue: 'apitherapy',
+      },
+      conditionQuestion: {
+        label: 'Condition Question Identifier',
+        description: 'Select the question that represents the patient\'s condition.',
+        type: 'question',
+        defaultValue: '',
+      },
+      severityQuestion: {
+        label: 'Severity Question Identifier',
+        description: 'Select the question that represents the severity of the patient\'s condition.',
+        type: 'question',
+        defaultValue: '',
       },
     },
   },

@@ -1,348 +1,379 @@
-
 .dashboardContainer {
-    animation: fadeIn 0.5s ease-in-out;
+    background-color: var(--neutral-color-50, #f8f9fa);
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 24px;
 }
 
 .title {
-    font-size: 1.875rem; /* 30px */
-    font-weight: 900;
-    letter-spacing: -0.05em;
-    color: var(--color-text-primary);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--neutral-color-900, #212529);
 }
 
 .addPatientButton {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    font-weight: 700;
-    padding: 0.75rem 1.5rem; /* 12px 24px */
-    border-radius: 0.75rem; /* 12px */
     display: flex;
     align-items: center;
-    gap: 0.5rem; /* 8px */
-    box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.1), 0 2px 4px -1px rgba(30, 64, 175, 0.06);
+    gap: 8px;
+    background-color: var(--primary-color-600, #007bff);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .addPatientButton:hover {
-    background-color: var(--color-primary-dark);
+    background-color: var(--primary-color-700, #0056b3);
 }
 
 .searchContainer {
     position: relative;
-    margin-top: 2rem;
-    margin-bottom: 2rem;
+    margin-bottom: 24px;
 }
 
 .searchIcon {
     position: absolute;
-    left: 1rem; /* 16px */
     top: 50%;
     transform: translateY(-50%);
-    color: var(--color-text-muted);
+    color: var(--neutral-color-400, #ced4da);
+}
+
+[dir="ltr"] .searchIcon {
+    left: 16px;
+}
+
+[dir="rtl"] .searchIcon {
+    right: 16px;
 }
 
 .searchInput {
     width: 100%;
-    padding-inline-start: 3rem; /* 48px */
-    padding-inline-end: 1rem; /* 16px */
-    padding-top: 1rem; /* 16px */
-    padding-bottom: 1rem; /* 16px */
-    background-color: var(--color-white);
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem; /* 12px */
+    padding: 12px 48px;
+    border: 1px solid var(--neutral-color-200, #e9ecef);
+    border-radius: 8px;
+    background-color: white;
+    font-size: 14px;
+    color: var(--neutral-color-700, #495057);
 }
 
-.searchInput:focus {
-    outline: none;
-    --ring-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--ring-color);
+.searchInput::placeholder {
+    color: var(--neutral-color-400, #ced4da);
 }
 
 .tableContainer {
-    background-color: var(--color-white);
-    border-radius: 1.5rem; /* 24px */
-    border: 1px solid #f1f5f9; /* slate-100 */
-    box-shadow: var(--shadow-sm);
-    overflow: hidden;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid var(--neutral-color-200, #e9ecef);
 }
 
 .tableHeader {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 1rem; /* 16px */
-    border-bottom: 1px solid #f1f5f9; /* slate-100 */
-    background-color: #f8fafc; /* slate-50 */
-    padding: 0.75rem 1.5rem;
-    font-size: 0.875rem; /* 14px */
-    font-weight: 700;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    display: flex;
+    padding: 12px 24px;
+    background-color: var(--neutral-color-50, #f8f9fa);
+    border-bottom: 1px solid var(--neutral-color-200, #e9ecef);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    gap: 16px;
 }
 
 .headerCell {
-    text-align: start;
+    flex: 1 1 0%;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--neutral-color-500, #adb5bd);
+    text-transform: uppercase;
+}
+
+.headerCellCol2 {
+    flex: 2 1 0%;
 }
 
 .headerCellCol3 {
-    grid-column: span 3;
+    flex: 3 1 0%;
 }
-.headerCellCol2 {
-    grid-column: span 2;
+
+.tableBody {
+    display: flex;
+    flex-direction: column;
 }
 
 .tableRow {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 1rem; /* 16px */
+    display: flex;
     align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid #f1f5f9; /* slate-100 */
-}
-.tableRow:last-child {
-    border-bottom: none;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--neutral-color-200, #e9ecef);
+    gap: 16px;
 }
 
-.tableRow:hover {
-    background-color: #f8fafc; /* slate-50 */
+.tableRow:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.patientInfo, .contactInfo, .conditionInfo, .severityInfo, .lastTreatment, .actionsContainer {
+    font-size: 14px;
+    color: var(--neutral-color-700, #495057);
+    min-width: 0;
 }
 
 .patientInfo {
-    grid-column: span 3;
+    flex: 3 1 0%;
     display: flex;
     align-items: center;
-    gap: 0.75rem; /* 12px */
-}
-
-.patientAvatar {
-    width: 2.5rem; /* 40px */
-    height: 2.5rem; /* 40px */
-    border-radius: 9999px;
-    background-color: #f1f5f9; /* slate-100 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    color: var(--color-text-muted);
-    font-size: 0.75rem; /* 12px */
-}
-
-.patientName {
-    font-weight: 700;
-    color: var(--color-text-primary);
-    font-size: 0.875rem; /* 14px */
-}
-
-.patientId {
-    font-family: var(--font-mono);
-    font-size: 0.75rem; /* 12px */
-    color: var(--color-text-muted);
 }
 
 .contactInfo {
-    grid-column: span 2;
-}
-
-.contactLink {
-    font-size: 0.75rem; /* 12px */
-    color: var(--color-text-secondary);
+    flex: 2 1 0%;
     display: flex;
-    align-items: center;
-    gap: 0.5rem; /* 8px */
-}
-
-.contactLink:hover {
-    color: var(--color-accent-dark);
-}
-
-.contactMobile {
-    font-family: var(--font-mono);
-    font-size: 0.75rem; /* 12px */
-    color: var(--color-text-muted);
-    padding-top: 0.25rem; /* 4px */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 .conditionInfo {
-    grid-column: span 2;
-    font-size: 0.75rem; /* 12px */
-    font-weight: 700;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    flex: 2 1 0%;
+    text-align: left;
 }
 
-.severityBadge {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem; /* 12px */
-    font-weight: 700;
-    border-radius: 9999px;
-}
-
-.severitySevere {
-    background-color: #fee2e2; /* red-100 */
-    color: #991b1b; /* red-800 */
-}
-
-.severityModerate {
-    background-color: #ffedd5; /* orange-100 */
-    color: #9a3412; /* orange-800 */
-}
-
-.severityMild {
-    background-color: #dcfce7; /* green-100 */
-    color: #166534; /* green-800 */
+.severityInfo {
+    flex: 1 1 0%;
+    text-align: left;
 }
 
 .lastTreatment {
-    font-size: 0.75rem; /* 12px */
-    font-weight: 700;
-    color: var(--color-text-muted);
+    flex: 1 1 0%;
+}
+
+.patientAvatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--primary-color-100, #cfe2ff);
+    color: var(--primary-color-600, #007bff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+[dir="ltr"] .patientAvatar {
+    margin-right: 12px;
+}
+
+[dir="rtl"] .patientAvatar {
+    margin-left: 12px;
+}
+
+.patientName {
+    font-weight: 600;
+    color: var(--neutral-color-800, #343a40);
+}
+
+.patientId {
+    font-size: 12px;
+    color: var(--neutral-color-500, #adb5bd);
+}
+
+.contactLink {
+    display: flex;
+    align-items: center;
+    color: var(--neutral-color-700, #495057);
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.contactLink:hover {
+    text-decoration: underline;
+}
+
+.severityBadge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.severityMild {
+    background-color: var(--success-color-100, #d1e7dd);
+    color: var(--success-color-800, #0a3622);
+}
+
+.severityModerate {
+    background-color: var(--warning-color-100, #fff3cd);
+    color: var(--warning-color-800, #664d03);
+}
+
+.severitySevere {
+    background-color: var(--danger-color-100, #f8d7da);
+    color: var(--danger-color-800, #58151c);
 }
 
 .actionsContainer {
-    grid-column: span 2;
+    flex: 2 1 0%;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.25rem; /* 4px */
+    gap: 8px;
 }
 
 .actionButton {
-    padding: 0.5rem;
-    color: var(--color-text-muted);
-    border-radius: 0.5rem; /* 8px */
-    transition: all 0.2s;
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--neutral-color-500, #adb5bd);
+    transition: color 0.2s;
 }
 
 .actionButton:hover {
-    color: var(--color-text-primary);
+    color: var(--primary-color-600, #007bff);
 }
 
-.deleteButton:hover {
-    color: var(--color-danger);
+.deleteButton[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .startButton {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    font-weight: 700;
-    padding: 0.5rem 0.75rem 0.5rem 0.75rem; /* 8px 12px */
-    border-radius: 0.5rem; /* 8px */
-    font-size: 0.75rem; /* 12px */
     display: flex;
     align-items: center;
-    gap: 0.375rem; /* 6px */
-    transition: all 0.2s;
+    gap: 8px;
+    background-color: var(--primary-color-600, #007bff);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .startButton:hover {
-    background-color: #1e3a8a;
+    background-color: var(--primary-color-700, #0056b3);
 }
 
 .noPatientsContainer {
     text-align: center;
-    padding: 3rem; /* 48px */
-    color: var(--color-text-muted);
+    padding: 80px 40px;
+    border-top: 1px solid var(--neutral-color-200, #e9ecef);
 }
 
 .noPatientsIcon {
-    margin-inline-start: auto;
-    margin-inline-end: auto;
-    margin-bottom: 1rem; /* 16px */
+    color: var(--neutral-color-300, #dee2e6);
 }
 
 .noPatientsTitle {
-    font-weight: 700;
-    font-size: 1.125rem; /* 18px */
+    margin-top: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--neutral-color-800, #343a40);
 }
 
 .noPatientsDescription {
-    font-size: 0.875rem; /* 14px */
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--neutral-color-500, #adb5bd);
 }
 
 .modalOverlay {
     position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 1rem; /* 16px */
-    animation: fadeIn 0.3s;
-    z-index: 50;
+    align-items: center;
+    z-index: 1000;
 }
 
 .modalContent {
-    background-color: var(--color-white);
-    border-radius: 1rem; /* 16px */
-    padding: 2rem; /* 32px */
-    box-shadow: var(--shadow-2xl);
-    max-width: 24rem; /* 384px */
-    width: 100%;
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
     text-align: center;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .modalIcon {
-    margin-inline-start: auto;
-    margin-inline-end: auto;
-    color: var(--color-danger);
+    color: var(--danger-color-500, #dc3545);
+    margin-bottom: 16px;
 }
 
 .modalTitle {
-    font-size: 1.25rem; /* 20px */
-    font-weight: 900;
-    color: var(--color-text-primary);
-    margin-top: 1rem; /* 16px */
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--neutral-color-900, #212529);
 }
 
 .modalDescription {
-    color: var(--color-text-muted);
-    margin-top: 0.5rem; /* 8px */
-}
-
-.modalDescription b {
-    font-weight: 700;
-    color: var(--color-text-primary);
+    font-size: 14px;
+    color: var(--neutral-color-600, #6c757d);
+    margin-bottom: 24px;
 }
 
 .modalActions {
     display: flex;
-    gap: 1rem; /* 16px */
-    margin-top: 1.5rem; /* 24px */
+    justify-content: center;
+    gap: 12px;
+}
+
+.modalCancelButton, .modalConfirmButton {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .modalCancelButton {
-    width: 100%;
-    padding: 0.75rem; /* 12px */
-    border-radius: 0.75rem; /* 12px */
-    font-size: 0.875rem; /* 14px */
-    font-weight: 700;
-    color: var(--color-text-secondary);
-    background-color: #f1f5f9; /* slate-100 */
-    transition: background-color 0.2s;
+    background-color: white;
+    border-color: var(--neutral-color-300, #ced4da);
+    color: var(--neutral-color-700, #495057);
 }
 
 .modalCancelButton:hover {
-    background-color: #e2e8f0; /* slate-200 */
+    background-color: var(--neutral-color-100, #f8f9fa);
 }
 
 .modalConfirmButton {
-    width: 100%;
-    padding: 0.75rem; /* 12px */
-    border-radius: 0.75rem; /* 12px */
-    font-size: 0.875rem; /* 14px */
-    font-weight: 700;
-    color: var(--color-white);
-    background-color: var(--color-danger);
-    transition: background-color 0.2s;
+    background-color: var(--danger-color-600, #dc3545);
+    border-color: var(--danger-color-600, #dc3545);
+    color: white;
 }
 
 .modalConfirmButton:hover {
-    background-color: #dc2626; /* red-600 */
+    background-color: var(--danger-color-700, #c82333);
+    border-color: var(--danger-color-700, #c82333);
+}
+
+.truncate {
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+:global([dir="rtl"]) .conditionInfo,
+:global([dir="rtl"]) .severityInfo {
+    text-align: right;
 }

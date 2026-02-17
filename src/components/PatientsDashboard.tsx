@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { PatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import styles from './PatientsDashboard.module.css';
+import Tooltip from './common/Tooltip';
 
 interface PatientsDashboardProps {
   user: AppUser;
@@ -26,24 +26,18 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
 
   const filteredPatients = patients.filter(p =>
     getFullName(p).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.identityNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.identityNumber && p.identityNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (p.email && p.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleDeleteClick = (patient: PatientData) => setPatientToDelete(patient);
   const confirmDelete = () => {
     if (patientToDelete) {
-      onDeletePatient(patientToDelete.id);
+      onDeletePatient(patientToDelete.id!);
       setPatientToDelete(null);
     }
   };
   const cancelDelete = () => setPatientToDelete(null);
-
-  const getSeverityClass = (severity?: 'mild' | 'moderate' | 'severe') => {
-    if (!severity) return '';
-    const capitalizedSeverity = severity.charAt(0).toUpperCase() + severity.slice(1);
-    return styles[`severity${capitalizedSeverity}`];
-  };
 
   const isRtl = i18n.dir() === 'rtl';
 
@@ -82,7 +76,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
             filteredPatients.map(patient => (
               <div key={patient.id} className={styles.tableRow}>
                 <div className={styles.patientInfo}>
-                  <div className={styles.patientAvatar}>{getFullName(patient).slice(0, 2).toUpperCase()}</div>
+                  <div className={styles.patientAvatar}>{(getFullName(patient) || '').slice(0, 2).toUpperCase()}</div>
                   <div>
                     <p className={styles.patientName}>{getFullName(patient)}</p>
                     <p className={styles.patientId}>
@@ -100,13 +94,23 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     {patient.mobile}
                   </a>
                 </div>
-                <div className={styles.conditionInfo}>{patient.medicalRecord?.patient_level_data?.condition}</div>
-                <div>
-                  <span className={`${styles.severityBadge} ${getSeverityClass(patient.medicalRecord?.patient_level_data?.severity)}`}>
-                    {patient.medicalRecord?.patient_level_data?.severity ? t(patient.medicalRecord.patient_level_data.severity) : ''}
+                <div className={styles.conditionInfo}>
+                  <Tooltip text={patient.medicalRecord?.patient_level_data?.condition || ''}>
+                    <span className={styles.truncate}>
+                      {patient.medicalRecord?.patient_level_data?.condition}
+                    </span>
+                  </Tooltip>
+                </div>
+                <div className={styles.severityInfo}>
+                  <span className={styles.truncate}>
+                    {patient.medicalRecord?.patient_level_data?.severity}
                   </span>
                 </div>
-                <div className={styles.lastTreatment}>{patient.medicalRecord?.patient_level_data?.lastTreatment ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString() : t('no_treatments_found')}</div>
+                <div className={styles.lastTreatment}>
+                  {patient.medicalRecord?.patient_level_data?.lastTreatment
+                    ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString()
+                    : t('no_treatments_found')}
+                </div>
                 <div className={styles.actionsContainer}>
                     <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
                     <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={t('view_history')}><FileText size={14} /></button>

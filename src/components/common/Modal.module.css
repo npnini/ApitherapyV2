@@ -19,7 +19,9 @@
   width: 100%;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   position: relative;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
 }
 
 .closeButton {
@@ -38,6 +40,8 @@
   background-color: var(--color-primary);
   color: var(--color-white);
   padding: 1.5rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid #dee2e6;
 }
 
 .modalTitle {
@@ -53,5 +57,17 @@
 }
 
 .modalBody {
-    padding: 2rem;
+  padding: 2rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.modalFooter {
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
