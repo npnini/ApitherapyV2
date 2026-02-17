@@ -142,10 +142,10 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
       />
 
       <div className={styles.formActions}>
+        <button type="button" onClick={onCancel} className={styles.secondaryButton} disabled={isSubmitting}>{t('cancel')}</button>
         <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
           {isSubmitting ? t('saving') : t('save_problem')}
         </button>
-        <button type="button" onClick={onCancel} className={styles.secondaryButton} disabled={isSubmitting}>{t('cancel')}</button>
       </div>
     </form>
   );

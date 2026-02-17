@@ -24,4 +24,4 @@ IF YOU NEED TRANSLATIONS, ASK THE USER TO UPDATE THE FILE. YOU ARE PHYSICALLY PR
 * **Dependencies:** If a change affects multiple files, explain the impact clearly.
 * **Testing:** ALWAYS generate unit tests for functional changes.
 * **Tone:** Keep explanations short, technical, and concise. No emotional opinions.
-* **Translation File Handling:** NEVER use the `write_file` tool on translation files (`translation.json`). These files are sensitive. Do not overwrite or erase them. When translations are needed, provide a clear list of the specific keys and values to be added or changed, so the user can update the file manually.
+* **Translation File Handling:** I am not allowed to modify translation files at public/locales. Whenever I think that new placeholders have to be added to translation files, I will list the required lines to the user and ask him to add them.

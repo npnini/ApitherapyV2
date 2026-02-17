@@ -25,8 +25,9 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
   availableTitle = 'Available',
   selectedTitle = 'Selected',
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
+  const isRtl = i18n.dir() === 'rtl';
 
   const filteredAvailableItems = useMemo(() => {
     const selectedIds = new Set(selectedItems.map(item => item.id));
@@ -53,6 +54,9 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
     onSelectionChange([]);
   };
 
+  const SelectArrow = isRtl ? ChevronLeft : ChevronRight;
+  const DeselectArrow = isRtl ? ChevronRight : ChevronLeft;
+
   return (
     <div className={styles.shuttleSelector}>
       {/* Available Items Panel */}
@@ -77,7 +81,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
           {filteredAvailableItems.map(item => (
             <li key={item.id} className={styles.listItem} onClick={() => handleSelect(item)}>
               {item.name}
-              <ChevronRight size={18} className={styles.arrowIcon} />
+              <SelectArrow size={18} className={styles.arrowIcon} />
             </li>
           ))}
         </ul>
@@ -95,7 +99,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
         <ul className={styles.list}>
           {selectedItems.map(item => (
             <li key={item.id} className={styles.listItem} onClick={() => handleDeselect(item)}>
-              <ChevronLeft size={18} className={styles.arrowIcon} />
+              <DeselectArrow size={18} className={styles.arrowIcon} />
               {item.name}
             </li>
           ))}

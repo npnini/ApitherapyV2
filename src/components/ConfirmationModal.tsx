@@ -9,10 +9,11 @@ interface ConfirmationModalProps {
     title: string;
     message: string;
     onConfirm: () => void;
-    onCancel: () => void;
+    onCancel?: () => void;
+    showCancelButton?: boolean;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel, showCancelButton = true }) => {
     const { t } = useTranslation();
 
     if (!isOpen) {
@@ -26,7 +27,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, me
                 <h3 className={styles.modalTitle}>{title}</h3>
                 <p className={styles.modalDescription}>{message}</p>
                 <div className={styles.modalActions}>
-                    <button onClick={onCancel} className={styles.modalCancelButton}>{t('cancel')}</button>
+                    {showCancelButton && (
+                        <button onClick={onCancel} className={styles.modalCancelButton}>{t('cancel')}</button>
+                    )}
                     <button onClick={onConfirm} className={styles.modalConfirmButton}>{t('confirm')}</button>
                 </div>
             </div>

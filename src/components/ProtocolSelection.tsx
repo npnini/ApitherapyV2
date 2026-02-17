@@ -114,6 +114,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
     const [isFinding, setIsFinding] = useState<boolean>(false);
     const [showFullList, setShowFullList] = useState(false);
+    const [isValidationModalOpen, setValidationModalOpen] = useState(false);
 
     const [patientReport, setPatientReport] = useState('');
     const [preStingVitals, setPreStingVitals] = useState<Partial<VitalSigns>>({});
@@ -168,7 +169,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         if (isFormValid) {
             onProtocolSelect(protocol, patientReport, preStingVitals as VitalSigns);
         } else {
-            alert("Please fill all required fields before selecting a protocol.");
+            setValidationModalOpen(true);
         }
     };
 
@@ -176,6 +177,14 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
 
     return (
         <div className={styles.container} dir={direction}>
+            <ConfirmationModal
+                isOpen={isValidationModalOpen}
+                title={t('missing_information')}
+                message={t('fill_required_fields_error')}
+                onConfirm={() => setValidationModalOpen(false)}
+                showCancelButton={false}
+            />
+
             <div className={styles.header}>
                 <div>
                     <h2 className={styles.title}>{t('start_new_treatment')}</h2>

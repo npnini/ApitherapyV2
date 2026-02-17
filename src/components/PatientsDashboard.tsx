@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { PatientData } from '../types/patient';
-import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Trash2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import styles from './PatientsDashboard.module.css';
 
@@ -44,6 +44,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     const capitalizedSeverity = severity.charAt(0).toUpperCase() + severity.slice(1);
     return styles[`severity${capitalizedSeverity}`];
   };
+
+  const isRtl = i18n.dir() === 'rtl';
 
   return (
     <div className={styles.dashboardContainer}>
@@ -89,8 +91,14 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   </div>
                 </div>
                 <div className={styles.contactInfo}>
-                  <a href={`mailto:${patient.email}`} className={styles.contactLink}><Mail size={12}/> {patient.email}</a>
-                  <p className={styles.contactMobile}>{patient.mobile}</p>
+                  <a href={`mailto:${patient.email}`} className={styles.contactLink}>
+                    <Mail size={12} style={{ [isRtl ? 'marginLeft' : 'marginRight']: '5px' }} />
+                    {patient.email}
+                  </a>
+                  <a href={`tel:${patient.mobile}`} className={styles.contactLink}>
+                    <Phone size={12} style={{ [isRtl ? 'marginLeft' : 'marginRight']: '5px' }} />
+                    {patient.mobile}
+                  </a>
                 </div>
                 <div className={styles.conditionInfo}>{patient.medicalRecord?.patient_level_data?.condition}</div>
                 <div>
@@ -112,7 +120,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     </button>
                     <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
                       {t('start_new_treatment')}{' '}
-                      {i18n.dir() === 'rtl' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                      {isRtl ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                     </button>
                 </div>
               </div>

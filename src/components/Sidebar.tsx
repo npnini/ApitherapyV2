@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import styles from './Sidebar.module.css'; // Import the new CSS module
 
 interface SidebarProps {
     user: AppUser | null;
@@ -22,86 +23,87 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, onAdminClick, onUserD
     const [configOpen, setConfigOpen] = useState(false);
     const isRtl = i18n.language === 'he';
 
+    const direction = isRtl ? 'rtl' : 'ltr';
+
+    // A simple guard clause for when the user is not logged in.
     if (!user) {
         return (
-            <div className="w-64 bg-slate-900 text-white flex flex-col h-screen p-4">
-                <div className="flex-grow">
-                    <h2 className="text-xl font-black tracking-tighter">APITHERAPYCARE</h2>
+            <div className={styles.sidebar} dir={direction}>
+                <div className={styles.header}>
+                    <h2 className={styles.title}>APITHERAPYCARE</h2>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="w-64 bg-slate-900 text-white flex flex-col h-screen">
-            <div className="p-4 border-b border-slate-800">
-                <h2 className="text-xl font-black tracking-tighter">APITHERAPYCARE</h2>
+        <div className={styles.sidebar} dir={direction}>
+            <div className={styles.header}>
+                <h2 className={styles.title}>APITHERAPYCARE</h2>
             </div>
-            <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
-                <button onClick={onUserDetailsClick} className="w-full flex items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
-                    <UserIcon size={18} className={isRtl ? "ml-3" : "mr-3"} />
+            <nav className={styles.nav}>
+                <button onClick={onUserDetailsClick} className={styles.navButton}>
+                    <UserIcon size={18} className={styles.iconPrimary} />
                     <span>{t('my_profile')}</span>
                 </button>
 
-                <button onClick={onPatientsClick} className="w-full flex items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
-                    <Users size={18} className={isRtl ? "ml-3" : "mr-3"} />
+                <button onClick={onPatientsClick} className={styles.navButton}>
+                    <Users size={18} className={styles.iconPrimary} />
                     <span>{t('patients')}</span>
                 </button>
 
                 {user.role === 'admin' && (
                     <div>
-                        <button onClick={() => setConfigOpen(!configOpen)} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-800 transition text-sm font-bold">
-                            <div className="flex items-center">
-                                <Shield size={18} className={isRtl ? "ml-3" : "mr-3"} />
+                        <button onClick={() => setConfigOpen(!configOpen)} className={styles.configDropdownButton}>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <Shield size={18} className={styles.iconPrimary} />
                                 <span>{t('configuration')}</span>
                             </div>
-                            <ChevronDown size={16} className={`transform transition-transform ${configOpen ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={16} className={`${styles.chevron} ${configOpen ? styles.chevronOpen : ''}`} />
                         </button>
                         {configOpen && (
-                            <div className={`${isRtl ? 'pr-8' : 'pl-8'} mt-2 space-y-1`}>
-                                <button onClick={onAppSettingsClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
-                                    <Settings size={16} className={isRtl ? "ml-2" : "mr-2"} />
-                                    <span className="whitespace-nowrap">{t('application_settings')}</span>
+                            <div className={styles.configSubMenu}>
+                                <button onClick={onAppSettingsClick} className={styles.configButton}>
+                                    <Settings size={16} className={styles.iconSecondary} />
+                                    <span>{t('application_settings')}</span>
                                 </button>
-                                <button onClick={onAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
-                                     <FileText size={16} className={isRtl ? "ml-2" : "mr-2"} />
-                                     <span className="whitespace-nowrap">{t('protocol_configuration')}</span>
+                                <button onClick={onAdminClick} className={styles.configButton}>
+                                     <FileText size={16} className={styles.iconSecondary} />
+                                     <span>{t('protocol_configuration')}</span>
                                 </button>
-                                <button onClick={onPointsAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
-                                     <MapPin size={16} className={isRtl ? "ml-2" : "mr-2"} />
-                                     <span className="whitespace-nowrap">{t('points_configuration')}</span>
+                                <button onClick={onPointsAdminClick} className={styles.configButton}>
+                                     <MapPin size={16} className={styles.iconSecondary} />
+                                     <span>{t('points_configuration')}</span>
                                 </button>
-                                <button onClick={onMeasuresAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
-                                     <Ruler size={16} className={isRtl ? "ml-2" : "mr-2"} />
-                                     <span className="whitespace-nowrap">{t('measure_configuration')}</span>
+                                <button onClick={onMeasuresAdminClick} className={styles.configButton}>
+                                     <Ruler size={16} className={styles.iconSecondary} />
+                                     <span>{t('measure_configuration')}</span>
                                 </button>
-                                <button onClick={onProblemsAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
-                                     <Bug size={16} className={isRtl ? "ml-2" : "mr-2"} />
-                                     <span className="whitespace-nowrap">{t('problem_configuration')}</span>
+                                <button onClick={onProblemsAdminClick} className={styles.configButton}>
+                                     <Bug size={16} className={styles.iconSecondary} />
+                                     <span>{t('problem_configuration')}</span>
                                 </button>
-                                <button onClick={onQuestionnaireAdminClick} className={`w-full flex items-center p-2 rounded-lg hover:bg-slate-700 transition text-sm`}>
-                                     <ListChecks size={16} className={isRtl ? "ml-2" : "mr-2"} />
-                                     <span className="whitespace-nowrap">{t('questionnaire_configuration')}</span>
+                                <button onClick={onQuestionnaireAdminClick} className={styles.configButton}>
+                                    <ListChecks size={16} className={styles.iconSecondary} />
+                                    <span>{t('questionnaire_configuration')}</span>
                                 </button>
                             </div>
                         )}
                     </div>
                 )}
             </nav>
-            <div className="p-4 border-t border-slate-800">
-                <div className="flex items-center mb-4">
-                    <div className={isRtl ? "ml-3" : "mr-3"}>
-                        <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold">
-                            {user.fullName?.charAt(0).toUpperCase() || 'A'}
-                        </div>
+            <div className={styles.footer}>
+                <div className={styles.userInfo}>
+                    <div className={styles.avatar}>
+                        {user.fullName?.charAt(0).toUpperCase() || 'A'}
                     </div>
                     <div>
-                        <div className="font-bold text-sm">{user.fullName || t('anonymous_user')}</div>
-                        <div className={`text-xs text-slate-400 capitalize ${isRtl ? 'text-right' : 'text-left'}`}>{user.role ? t(user.role) : t('user')}</div>
+                        <div className={styles.userName}>{user.fullName || t('anonymous_user')}</div>
+                        <div className={styles.userRole}>{user.role ? t(user.role) : t('user')}</div>
                     </div>
                 </div>
-                <button onClick={onLogout} className="w-full flex items-center justify-center p-3 rounded-xl bg-red-600 hover:bg-red-700 transition text-sm font-bold">
-                    <LogOut size={16} className={isRtl ? "ml-2" : "mr-2"} />
+                <button onClick={onLogout} className={styles.logoutButton}>
+                    <LogOut size={16} />
                     <span>{t('logout')}</span>
                 </button>
             </div>
