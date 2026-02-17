@@ -249,15 +249,17 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
     return (
         <div className={styles.container}>
-            <div className={styles.form}>
-                {Object.entries(appConfigSchema).map(([key, group]) => (
-                    <fieldset key={key} className={styles.group}>
-                        <legend className={styles.groupLabel}>{group.label}</legend>
-                        <p className={styles.groupDescription}>{group.description}</p>
-                        {renderGroup(group, [key])}
-                    </fieldset>
-                ))}
-            </div>
+            <main className={styles.mainContent}>
+                <div className={styles.form}>
+                    {Object.entries(appConfigSchema).map(([key, group]) => (
+                        <fieldset key={key} className={styles.group}>
+                            <legend className={styles.groupLabel}>{group.label}</legend>
+                            <p className={styles.groupDescription}>{group.description}</p>
+                            {renderGroup(group, [key])}
+                        </fieldset>
+                    ))}
+                </div>
+            </main>
             <div className={styles.actions}>
                 {error && <p className={styles.errorMessage}>{error}</p>}
                 {saveSuccess && <span className={styles.successMessage}>Settings saved!</span>}
