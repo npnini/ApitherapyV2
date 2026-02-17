@@ -9,6 +9,7 @@ import ShuttleSelector, { ShuttleItem } from '../shared/ShuttleSelector';
 import DocumentManagement from '../shared/DocumentManagement';
 import styles from './ProblemForm.module.css';
 import { useTranslation } from 'react-i18next';
+import { X } from 'lucide-react';
 
 interface ProblemFormProps {
   initialData?: Problem;
@@ -101,53 +102,64 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
     }
   }, [fileToUpload]);
 
+  const isEditing = !!initialData;
 
   return (
-    <form onSubmit={handleSubmit} className={styles.formContainer}>
-      <div className={styles.inputGroup}>
-        <label htmlFor="name">{t('form_label_name')}:</label>
-        <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
-      </div>
-      <div className={styles.inputGroup}>
-        <label htmlFor="description">{t('form_label_description')}:</label>
-        <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.formHeader}>
+            <h2 className={styles.formTitle}>{isEditing ? t('edit_problem') : t('add_problem')}</h2>
+            <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.scrollableArea}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="name">{t('form_label_name')}:</label>
+              <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+            <div className={styles.inputGroup}>
+              <label htmlFor="description">{t('form_label_description')}:</label>
+              <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
 
-      <div className={styles.shuttleContainer}>
-        <ShuttleSelector
-          availableItems={availableProtocolsForShuttle}
-          selectedItems={selectedProtocols}
-          onSelectionChange={setSelectedProtocols}
-          availableTitle={t('shuttle_available_protocols')}
-          selectedTitle={t('shuttle_selected_protocols')}
-        />
-      </div>
+            <div className={styles.shuttleContainer}>
+              <ShuttleSelector
+                availableItems={availableProtocolsForShuttle}
+                selectedItems={selectedProtocols}
+                onSelectionChange={setSelectedProtocols}
+                availableTitle={t('shuttle_available_protocols')}
+                selectedTitle={t('shuttle_selected_protocols')}
+              />
+            </div>
 
-      <div className={styles.shuttleContainer}>
-        <ShuttleSelector
-          availableItems={availableMeasuresForShuttle}
-          selectedItems={selectedMeasures}
-          onSelectionChange={setSelectedMeasures}
-          availableTitle={t('shuttle_available_measures')}
-          selectedTitle={t('shuttle_selected_measures')}
-        />
-      </div>
+            <div className={styles.shuttleContainer}>
+              <ShuttleSelector
+                availableItems={availableMeasuresForShuttle}
+                selectedItems={selectedMeasures}
+                onSelectionChange={setSelectedMeasures}
+                availableTitle={t('shuttle_available_measures')}
+                selectedTitle={t('shuttle_selected_measures')}
+              />
+            </div>
 
-      <DocumentManagement 
-        documentUrl={documentUrl}
-        onFileChange={handleFileChange}
-        onFileDelete={handleFileDelete}
-        isSubmitting={isSubmitting}
-        selectedFileName={selectedFileName}
-      />
+            <DocumentManagement 
+              documentUrl={documentUrl}
+              onFileChange={handleFileChange}
+              onFileDelete={handleFileDelete}
+              isSubmitting={isSubmitting}
+              selectedFileName={selectedFileName}
+            />
+          </div>
 
-      <div className={styles.formActions}>
-        <button type="button" onClick={onCancel} className={styles.secondaryButton} disabled={isSubmitting}>{t('cancel')}</button>
-        <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
-          {isSubmitting ? t('saving') : t('save_problem')}
-        </button>
+          <div className={styles.formActions}>
+            <button type="button" onClick={onCancel} className={styles.secondaryButton} disabled={isSubmitting}>{t('cancel')}</button>
+            <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
+              {isSubmitting ? t('saving') : t('save_problem')}
+            </button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 };
 

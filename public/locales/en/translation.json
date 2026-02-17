@@ -163,5 +163,7 @@
   "acupuncturePoints": "Acupuncture Points",
   "addNewPoint": "Add New Point",
   "create_new_problem": "Create New Problem",
-  "search_placeholder_name": "Search problem name"
+  "search_placeholder_name": "Search problem name",
+  "addNew": "Add New Questionnaire",
+  "addQuestion": "Add Question"
 }

@@ -42,8 +42,8 @@ const ProblemAdmin: React.FC = () => {
   };
 
   const handleCancelForm = () => {
-    setSelectedProblemId(null);
     setCurrentView('list');
+    setSelectedProblemId(null);
   };
 
   const handleFormSubmit = async (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null) => {
@@ -89,17 +89,21 @@ const ProblemAdmin: React.FC = () => {
   };
 
   const renderContent = () => {
-    switch (currentView) {
-      case 'details':
-        if (loading) return <p>{t('loading_problems')}</p>;
-        if (error || !problem) return <p>Error loading problem details.</p>;
-        return <ProblemDetails problem={{...problem, id: selectedProblemId! }} onEdit={() => handleEdit(selectedProblemId!)} onBack={handleBackToList} />;
-      case 'form':
-        return <ProblemForm initialData={problem} onSubmit={handleFormSubmit} onCancel={handleCancelForm} isSubmitting={isSubmitting} />;
-      case 'list':
-      default:
-        return <ProblemList onEdit={handleEdit} onAddNew={handleAddNew} />;
-    }
+    return (
+      <>
+        <ProblemList onEdit={handleEdit} onAddNew={handleAddNew} />
+        {currentView === 'details' && (
+          <>
+            {loading && <p>{t('loading_problems')}</p>}
+            {error && <p>Error loading problem details.</p>}
+            {problem && <ProblemDetails problem={{...problem, id: selectedProblemId! }} onEdit={() => handleEdit(selectedProblemId!)} onBack={handleBackToList} />}
+          </>
+        )}
+        {currentView === 'form' && (
+          <ProblemForm initialData={problem} onSubmit={handleFormSubmit} onCancel={handleCancelForm} isSubmitting={isSubmitting} />
+        )}
+      </>
+    );
   };
 
   return (
