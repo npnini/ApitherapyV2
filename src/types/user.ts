@@ -1,14 +1,9 @@
-export interface AppUser {
-    uid: string; // Firebase Authentication user ID
-    userId: string; // The custom, human-readable user ID
+export interface User {
+    id: string;
+    name: string;
     email: string;
-    fullName: string;
-    displayName: string;
-    photoURL?: string;
-    role: 'admin' | 'caretaker'; 
-    mobile: string;
-    address?: string;
-    city?: string;
-    country?: string;
-    preferredLanguage?: string;
-}
+    role: 'user' | 'admin';
+    createdAt?: any;
+    updatedAt?: any;
+  }
+  
