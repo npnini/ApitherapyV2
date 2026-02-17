@@ -23,8 +23,13 @@
 
 .label {
     font-weight: 500;
-    margin-bottom: 0.5rem;
     color: #334155;
+}
+
+.booleanLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .select {
@@ -52,9 +57,8 @@
     border-color: #3b82f6;
 }
 
-/* This will create a scrollable container for the questions */
 .questionsScrollableContainer {
-    max-height: 400px; /* Adjust as needed */
+    max-height: 60vh;
     overflow-y: auto;
     border: 1px solid #e5e7eb;
     border-radius: 0.375rem;
@@ -69,16 +73,19 @@
 
 .questionRow {
     display: flex;
-    align-items: flex-start; /* Corrected this line */
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 1rem;
 }
 
-.questionLabel {
-    flex-grow: 1;
+.booleanQuestionRow {
+    display: flex;
+    justify-content: flex-start; /* Changed from flex-end */
 }
 
 .inputWrapper {
     width: 50%;
+    flex-shrink: 0;
 }
 
 .input {
@@ -88,15 +95,14 @@
     padding: 0.5rem 0.75rem;
 }
 
-/* Styles for the signature section */
-.signatureSection {
-    margin-top: 2rem; 
+.consentAndSignatureContainer {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 1.5rem;
 }
 
 .consentSection {
+    flex-basis: 50%;
     background-color: #f9fafb;
     padding: 1.5rem;
     border-radius: 0.5rem;
@@ -104,23 +110,26 @@
 }
 
 .consentTitle {
-    font-size: 1.125rem;
+    font-size: 0.875rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
 }
 
 .consentText {
     color: #4b5563;
+    font-size: small;
 }
 
 .signaturePadWrapper {
+    flex-basis: 50%;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     padding: 1.5rem;
 }
 
 .signaturePadLabel {
-    font-weight: 500;
+    font-size: 0.875rem;
+    font-weight: 600;
     color: #334155;
     margin-bottom: 1rem;
 }

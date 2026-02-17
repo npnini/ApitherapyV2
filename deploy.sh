@@ -1,20 +1,19 @@
 #!/bin/bash
 
-# This script automates the deployment process for the ApitherapyV2 application.
-
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-# 1. Install dependencies
-echo "Installing project dependencies..."
-npm install
+# 1. DELETE THE CACHE
+# This removes the .firebase folder to prevent "ghost" files during deploy.
+echo "Clearing Firebase CLI cache..."
+rm -rf .firebase/
 
-# 2. Build the application for production
+# 2. BUILD
 echo "Building the application..."
 npm run build
 
-# 3. Deploy to Firebase Hosting
-echo "Deploying to Firebase Hosting (Development Environment)..."
+# 3. DEPLOY
+echo "Deploying to Firebase Hosting..."
 firebase deploy --only hosting --project apitherapyv2
 
 echo "Deployment successful!"

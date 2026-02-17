@@ -15,9 +15,12 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSignature })
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    if (initialSignature && sigPad.current) {
-      sigPad.current.fromDataURL(initialSignature);
-      setIsSigned(true);
+    if (sigPad.current) {
+      sigPad.current.clear();
+      if (initialSignature) {
+        sigPad.current.fromDataURL(initialSignature);
+        setIsSigned(true);
+      }
     }
   }, [initialSignature]);
 
@@ -27,9 +30,12 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSignature })
   };
 
   const clear = () => {
-    sigPad.current?.clear();
-    setIsSigned(false);
-    setIsSaved(false);
+    if (sigPad.current) {
+      sigPad.current.clear();
+      setIsSigned(false);
+      setIsSaved(false);
+      onSave('');
+    }
   };
 
   const save = () => {

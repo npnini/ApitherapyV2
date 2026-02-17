@@ -79,11 +79,20 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
     const translation = question.translations.find((t) => t.language === i18n.language) || question.translations.find((t) => t.language === 'en');
     const answer = patientData.questionnaireResponse?.[question.name as keyof QuestionnaireResponseType] ?? '';
 
+    if (question.type === 'boolean') {
+        return (
+            <div key={question.name} className={styles.booleanQuestionRow}>
+                <label className={styles.booleanLabel}>
+                    <input type="checkbox" name={question.name} onChange={handleChange} checked={!!answer} />
+                    {translation?.text || question.name}
+                    {question.required && <span className={styles.requiredAsterisk}>*</span>}
+                </label>
+            </div>
+        );
+    }
+
     return (
       <div key={question.name} className={styles.questionRow}>
-        {question.type === 'boolean' && (
-          <input type="checkbox" name={question.name} onChange={handleChange} checked={!!answer} />
-        )}
         <label className={styles.label}>
             {translation?.text || question.name}
             {question.required && <span className={styles.requiredAsterisk}>*</span>}
@@ -126,13 +135,13 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
         </div>
       )}
 
-      <div className={styles.signatureSection}>
-        <div className={styles.consentSection}>
-          <h3 className={styles.consentTitle}>{t('legal_confirmation_signature')}</h3>
+      <div className={styles.consentAndSignatureContainer}>
+        <fieldset className={styles.consentSection}>
+          <legend className={styles.consentTitle}>{t('legal_confirmation_signature')}</legend>
           <p className={styles.consentText}>
             {t('legal_confirmation_text')}
           </p>
-        </div>
+        </fieldset>
         <fieldset className={styles.signaturePadWrapper}>
           <legend className={styles.signaturePadLabel}>{t('patient_signature')}</legend>
           <SignaturePad onSave={handleSignatureSave} initialSignature={patientData.questionnaireResponse?.signature} />
