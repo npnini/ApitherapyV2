@@ -48,15 +48,21 @@ const App: React.FC = () => {
     }, [i18n.language]);
 
     useEffect(() => {
+        if (!appUser) return;
+
         const fetchAppConfig = async () => {
-            const configDocRef = doc(db, 'app_config', 'main');
-            const configDocSnap = await getDoc(configDocRef);
-            if (configDocSnap.exists()) {
-                setAppConfig(configDocSnap.data());
+            try {
+                const configDocRef = doc(db, 'app_config', 'main');
+                const configDocSnap = await getDoc(configDocRef);
+                if (configDocSnap.exists()) {
+                    setAppConfig(configDocSnap.data());
+                }
+            } catch (err) {
+                console.error("Config fetch failed:", err);
             }
         };
         fetchAppConfig();
-    }, [isSettingsModalOpen]);
+    }, [appUser]);
 
     const fetchUserData = async (user: User): Promise<AppUser> => {
         const userRef = doc(db, 'users', user.uid);
@@ -203,8 +209,8 @@ const App: React.FC = () => {
             const now = new Date();
 
             const { medicalRecord, questionnaireResponse, ...patientPii } = patientData;
-            let piiToSave: Omit<PatientData, 'id' | 'medicalRecord' | 'questionnaireResponse'> & { dateCreated?: Date; lastUpdated?: Date } = { 
-                ...patientPii, 
+            let piiToSave: Omit<PatientData, 'id' | 'medicalRecord' | 'questionnaireResponse'> & { dateCreated?: Date; lastUpdated?: Date } = {
+                ...patientPii,
                 caretakerId: appUser.userId,
                 lastUpdated: now,
             };
@@ -330,7 +336,7 @@ const App: React.FC = () => {
         });
         setCurrentView('treatment_execution');
     };
-    
+
     const handleSaveTreatment = async (data: { stungPointIds: string[]; notes: string; postStingVitals?: Partial<VitalSigns>; finalVitals?: Partial<VitalSigns>; }) => {
         if (!selectedPatient || !selectedPatient.id || !activeTreatmentSession) return;
         setSaveStatus('saving');
@@ -358,63 +364,63 @@ const App: React.FC = () => {
     };
 
     const renderContent = () => {
-    if (!authReady) return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
-    if (!appUser) return <Login />;
-    if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
+        if (!authReady) return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
+        if (!appUser) return <Login />;
+        if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
 
-    const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
-    const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
+        const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
+        const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
 
-    return (
-        <div className="flex h-screen">
-            <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} onQuestionnaireAdminClick={handleQuestionnaireAdminClick} />
-            <main className="flex-grow p-4 md:p-8 overflow-y-auto">
-                {
-                    isDashboardView ? 
-                        <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
-                    : currentView === 'user_details' ?
-                        <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />
-                    : currentView === 'onboarding_test' ?
-                        <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />
-                    : currentView === 'treatment_execution' && selectedPatient && activeProtocol && activeTreatmentSession ?
-                        <TreatmentExecution patient={selectedPatient as PatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
-                    : currentView === 'admin_protocols' ?
-                        <ProtocolAdmin />
-                    : currentView === 'admin_points' ?
-                        <PointsAdmin />
-                    : currentView === 'admin_measures' ?
-                        <MeasureAdmin />
-                    : currentView === 'admin_problems' ?
-                        <ProblemAdmin />
-                    : currentView === 'admin_questionnaires' ?
-                        <QuestionnaireAdmin />
-                    : null
-                }
+        return (
+            <div className="flex h-screen">
+                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} onQuestionnaireAdminClick={handleQuestionnaireAdminClick} />
+                <main className="flex-grow p-4 md:p-8 overflow-y-auto">
+                    {
+                        isDashboardView ?
+                            <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
+                            : currentView === 'user_details' ?
+                                <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />
+                                : currentView === 'onboarding_test' ?
+                                    <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />
+                                    : currentView === 'treatment_execution' && selectedPatient && activeProtocol && activeTreatmentSession ?
+                                        <TreatmentExecution patient={selectedPatient as PatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
+                                        : currentView === 'admin_protocols' ?
+                                            <ProtocolAdmin />
+                                            : currentView === 'admin_points' ?
+                                                <PointsAdmin />
+                                                : currentView === 'admin_measures' ?
+                                                    <MeasureAdmin />
+                                                    : currentView === 'admin_problems' ?
+                                                        <ProblemAdmin />
+                                                        : currentView === 'admin_questionnaires' ?
+                                                            <QuestionnaireAdmin />
+                                                            : null
+                    }
 
-                {currentView === 'patient_intake' && selectedPatient && 
-                    <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
-                }
-                {currentView === 'protocol_selection' && selectedPatient && 
-                    <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />
-                }
-                {currentView === 'treatment_history' && selectedPatient && 
-                    <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />
-                }
+                    {currentView === 'patient_intake' && selectedPatient &&
+                        <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
+                    }
+                    {currentView === 'protocol_selection' && selectedPatient &&
+                        <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />
+                    }
+                    {currentView === 'treatment_history' && selectedPatient &&
+                        <TreatmentHistory patient={selectedPatient as PatientData} onBack={handleBackToDashboard} />
+                    }
 
-                {appUser && isSettingsModalOpen && (
-                    <Modal
-                        isOpen={isSettingsModalOpen}
-                        onClose={() => setIsSettingsModalOpen(false)}
-                        title="Application Settings"
-                    >
-                        <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
-                    </Modal>
-                )}
+                    {appUser && isSettingsModalOpen && (
+                        <Modal
+                            isOpen={isSettingsModalOpen}
+                            onClose={() => setIsSettingsModalOpen(false)}
+                            title="Application Settings"
+                        >
+                            <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
+                        </Modal>
+                    )}
 
-            </main>
-        </div>
-    );
-};
+                </main>
+            </div>
+        );
+    };
 
     return <>{renderContent()}</>;
 };

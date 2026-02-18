@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
@@ -8,8 +6,10 @@
 # testing
 /coverage
 
-# production
+# production - Added /dist for your React/Vite build
 /build
+/dist
+/out
 
 # misc
 .DS_Store
@@ -23,7 +23,15 @@ yarn-debug.log*
 yarn-error.log*
 
 # Firebase
-.firebase
+.firebase/
+*-debug.log
 
-# Service account keys
-*.json
+# Service account keys - More specific so we don't ignore firebase.json
+*-service-account.json
+service-account.json
+credentials.json
+
+# IDEs
+.idx/
+.vscode/
+.idea/

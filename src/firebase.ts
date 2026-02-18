@@ -1,9 +1,8 @@
-// src/firebase.ts
+// 1. Change the import: Remove getFirestore, add initializeFirestore
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore"; // <-- Update this
 
-// Your web app's Firebase configuration, loaded from environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
   authDomain: import.meta.env.VITE_AUTH_DOMAIN,
@@ -14,10 +13,11 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
 export const app = initializeApp(firebaseConfig);
-
-// Export services
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
+
+// 2. Replace 'export const db = getFirestore(app);' with this:
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
