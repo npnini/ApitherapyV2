@@ -13,18 +13,14 @@ import { useTranslation } from 'react-i18next';
 type View = 'list' | 'details' | 'form';
 
 const ProblemAdmin: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
   const [currentView, setCurrentView] = useState<View>('list');
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [problemDocument, loading, error] = useDocument(selectedProblemId ? doc(db, 'problems', selectedProblemId) : undefined);
-  const problem = problemDocument?.data() as Problem;
-
-  const handleSelectProblem = (id: string) => {
-    setSelectedProblemId(id);
-    setCurrentView('details');
-  };
+  const problem: Problem | undefined = problemDocument ? { id: problemDocument.id, ...problemDocument.data() } as Problem : undefined;
 
   const handleAddNew = () => {
     setSelectedProblemId(null);
@@ -46,69 +42,73 @@ const ProblemAdmin: React.FC = () => {
     setSelectedProblemId(null);
   };
 
-  const handleFormSubmit = async (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null) => {
+  const handleSubmit = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null) => {
     setIsSubmitting(true);
     try {
-      let documentUrl: string | null = data.documentUrl || null;
+      let documentUrl : { [key: string]: string } = {};
+      if (problem?.documentUrl) {
+        if (typeof problem.documentUrl === 'string') {
+            documentUrl.en = problem.documentUrl;
+        } else {
+            documentUrl = { ...problem.documentUrl };
+        }
+      }
 
       if (file) {
-        if (documentUrl) {
-          await deleteFile(documentUrl);
+        if (documentUrl[currentLang]) {
+          await deleteFile(documentUrl[currentLang]);
         }
-        documentUrl = await uploadFile(file, 'Problems');
-      } else if (data.documentUrl === undefined && problem?.documentUrl) {
-        await deleteFile(problem.documentUrl);
-        documentUrl = null;
+        const newUrl = await uploadFile(file, `Problems/${selectedProblemId || 'new'}`);
+        documentUrl[currentLang] = newUrl;
+      } else if (
+        problem?.documentUrl &&
+        typeof problem.documentUrl === 'object' &&
+        problem.documentUrl[currentLang] &&
+        (!formData.documentUrl || !(formData.documentUrl as any)[currentLang])
+      ) {
+          await deleteFile(problem.documentUrl[currentLang]);
+          delete documentUrl[currentLang];
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { documentUrl: _, ...restData } = data;
+      const dataToSave = {
+        ...formData,
+        documentUrl: documentUrl,
+        updatedAt: serverTimestamp(),
+      };
 
       if (selectedProblemId) {
-        const problemRef = doc(db, 'problems', selectedProblemId);
-        await updateDoc(problemRef, {
-          ...restData,
-          documentUrl: documentUrl || null,
-          updatedAt: serverTimestamp(),
-        });
+        await updateDoc(doc(db, 'problems', selectedProblemId), dataToSave);
       } else {
-        await addDoc(collection(db, 'problems'), {
-          ...restData,
-          documentUrl: documentUrl || null,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+        await addDoc(collection(db, 'problems'), { ...dataToSave, createdAt: serverTimestamp() });
       }
-      setCurrentView('list');
-      setSelectedProblemId(null);
-    } catch (e) {
-      console.error("Error saving problem: ", e);
+
+      handleBackToList();
+    } catch (error) {
+      console.error('Error saving problem', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const renderContent = () => {
-    return (
-      <>
-        <ProblemList onEdit={handleEdit} onAddNew={handleAddNew} />
-        {currentView === 'details' && (
-          <>
-            {loading && <p>{t('loading_problems')}</p>}
-            {error && <p>Error loading problem details.</p>}
-            {problem && <ProblemDetails problem={{...problem, id: selectedProblemId! }} onEdit={() => handleEdit(selectedProblemId!)} onBack={handleBackToList} />}
-          </>
-        )}
-        {currentView === 'form' && (
-          <ProblemForm initialData={problem} onSubmit={handleFormSubmit} onCancel={handleCancelForm} isSubmitting={isSubmitting} />
-        )}
-      </>
-    );
+    if (currentView === 'list') {
+      return <ProblemList onEdit={handleEdit} onAddNew={handleAddNew} />;
+    }
+    if (currentView === 'details' && problem) {
+      return <ProblemDetails problem={problem} onBack={handleBackToList} onEdit={() => handleEdit(problem.id)} />;
+    }
+    if (currentView === 'form') {
+        if (loading && selectedProblemId) {
+            return <div>Loading...</div>;
+        }
+        return <ProblemForm initialData={selectedProblemId ? problem : undefined} onSubmit={handleSubmit} onCancel={handleCancelForm} isSubmitting={isSubmitting} />;
+    }
+    return null;
   };
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>{t('problem_admin_title')}</h1>
+      {error && <p className={styles.error}>Error: {error.message}</p>}
       {renderContent()}
     </div>
   );

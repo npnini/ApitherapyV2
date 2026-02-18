@@ -17,7 +17,8 @@ interface ProtocolFormState extends Omit<Protocol, 'points'> {
 }
 
 const ProtocolAdmin: React.FC = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language;
     const [user, setUser] = useState<User | null>(null);
     const [protocols, setProtocols] = useState<Protocol[]>([]);
     const [allAcuPoints, setAllAcuPoints] = useState<AcuPoint[]>([]);
@@ -27,7 +28,6 @@ const ProtocolAdmin: React.FC = () => {
     const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
@@ -107,17 +107,31 @@ const ProtocolAdmin: React.FC = () => {
         setIsFormLoading(true);
 
         try {
-            let documentUrl = editingProtocol.documentUrl;
-            if (fileToDelete) {
-                await deleteFile(fileToDelete);
-                documentUrl = undefined;
+            let documentUrl: { [key: string]: string } = {};
+
+            if (editingProtocol.documentUrl) {
+                if (typeof editingProtocol.documentUrl === 'string') {
+                    documentUrl = { en: editingProtocol.documentUrl };
+                } else {
+                    documentUrl = { ...editingProtocol.documentUrl };
+                }
             }
+            
+            const originalProtocol = editingProtocol.id ? protocols.find(p => p.id === editingProtocol.id) : null;
+            const originalUrlForLang = originalProtocol?.documentUrl 
+                ? (typeof originalProtocol.documentUrl === 'object' ? originalProtocol.documentUrl[currentLang] : (currentLang === 'en' ? originalProtocol.documentUrl : undefined))
+                : undefined;
+
+            const wasRemoved = originalUrlForLang && !documentUrl[currentLang];
 
             if (fileToUpload) {
-                if (documentUrl) {
-                    await deleteFile(documentUrl);
+                if (originalUrlForLang) {
+                  await deleteFile(originalUrlForLang);
                 }
-                documentUrl = await uploadFile(fileToUpload, 'Protocols');
+                const newUrl = await uploadFile(fileToUpload, `Protocols/${editingProtocol.id || 'new'}/${currentLang}`);
+                documentUrl[currentLang] = newUrl;
+            } else if (wasRemoved) {
+                await deleteFile(originalUrlForLang!);
             }
 
             const protocolToSave: any = {
@@ -125,7 +139,7 @@ const ProtocolAdmin: React.FC = () => {
                 description: editingProtocol.description!.trim(),
                 rationale: editingProtocol.rationale!.trim(),
                 points: editingProtocol.points!,
-                documentUrl: documentUrl || null,
+                documentUrl: documentUrl,
             };
 
             if (editingProtocol.id) {
@@ -136,7 +150,6 @@ const ProtocolAdmin: React.FC = () => {
             }
             setEditingProtocol(null);
             setFileToUpload(null);
-            setFileToDelete(null);
             setIsDirty(false);
             fetchProtocolsAndPoints();
         } catch (error) {
@@ -153,7 +166,13 @@ const ProtocolAdmin: React.FC = () => {
         setIsLoading(true);
         try {
             if (deletingProtocol.documentUrl) {
-                await deleteFile(deletingProtocol.documentUrl);
+                if (typeof deletingProtocol.documentUrl === 'object') {
+                    for (const url of Object.values(deletingProtocol.documentUrl)) {
+                        await deleteFile(url);
+                    }
+                } else if (typeof deletingProtocol.documentUrl === 'string') { // Legacy
+                    await deleteFile(deletingProtocol.documentUrl);
+                }
             }
             await deleteDoc(doc(db, 'protocols', deletingProtocol.id));
             fetchProtocolsAndPoints();
@@ -168,8 +187,12 @@ const ProtocolAdmin: React.FC = () => {
 
     const handleFileDelete = (protocol: Partial<ProtocolFormState>) => {
         if (!protocol.documentUrl) return;
-        setFileToDelete(protocol.documentUrl);
-        onUpdate({ ...protocol, documentUrl: undefined });
+
+        const newDocUrls = { ...(typeof protocol.documentUrl === 'object' ? protocol.documentUrl : { en: protocol.documentUrl }) };
+        delete (newDocUrls as Record<string, any>)[currentLang];
+
+        onUpdate({ ...protocol, documentUrl: newDocUrls });
+        setFileToUpload(null);
     };
 
     const onUpdate = (protocol: Partial<ProtocolFormState>) => {
@@ -181,7 +204,6 @@ const ProtocolAdmin: React.FC = () => {
         const pointIds = (proto.points || []).map((p: AcuPoint | string) => typeof p === 'string' ? p : (p as AcuPoint).id);
         setFormError(null);
         setFileToUpload(null);
-        setFileToDelete(null);
         setIsDirty(false);
         setEditingProtocol({ ...proto, points: pointIds });
     };
@@ -189,7 +211,6 @@ const ProtocolAdmin: React.FC = () => {
     const handleStartNew = () => {
         setFormError(null);
         setFileToUpload(null);
-        setFileToDelete(null);
         setIsDirty(false);
         setEditingProtocol({ name: '', description: '', rationale: '', points: [] });
     }
@@ -197,7 +218,6 @@ const ProtocolAdmin: React.FC = () => {
     const onCancel = () => {
         setEditingProtocol(null);
         setFileToUpload(null);
-        setFileToDelete(null);
         setIsDirty(false);
     }
 
@@ -227,13 +247,32 @@ const ProtocolAdmin: React.FC = () => {
                         <tbody className={styles.tableBody}>
                             {protocols.length === 0 ? (
                                 <tr><td colSpan={4} className={styles.emptyCell}>{t('no_protocols_found')}</td></tr>
-                            ) : protocols.map(protocol => (
+                            ) : protocols.map(protocol => {
+                                const docUrlObject = protocol.documentUrl;
+                                let docUrlForLang: string | undefined;
+                                let docUrlEn: string | undefined;
+
+                                if (docUrlObject) {
+                                    if (typeof docUrlObject === 'object') {
+                                        docUrlForLang = docUrlObject[currentLang];
+                                        docUrlEn = docUrlObject['en'];
+                                    } else if (typeof docUrlObject === 'string') { // Legacy support
+                                        docUrlEn = docUrlObject;
+                                        if (currentLang === 'en') {
+                                            docUrlForLang = docUrlObject;
+                                        }
+                                    }
+                                }
+
+                                const finalDocUrl = docUrlForLang || (currentLang !== 'en' ? docUrlEn : undefined);
+
+                                return (
                                 <tr key={protocol.id} className={styles.tableRow}>
                                     <td className={`${styles.cell} ${styles.protocolName}`}>{protocol.name}</td>
                                     <td className={styles.cell}>{protocol.description}</td>
                                     <td className={`${styles.cell} ${styles.documentCell}`}>
-                                        {protocol.documentUrl && (
-                                            <a href={protocol.documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                        {finalDocUrl && (
+                                            <a href={finalDocUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
                                                 <FileCheck2 size={18}/>
                                             </a>
                                         )}
@@ -243,7 +282,7 @@ const ProtocolAdmin: React.FC = () => {
                                         <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
                                     </td>
                                 </tr>
-                            ))}
+                            )}) }
                         </tbody>
                     </table>
                 </div>
@@ -263,6 +302,7 @@ const ProtocolAdmin: React.FC = () => {
                 }}
                 onFileDelete={handleFileDelete}
                 isDirty={isDirty}
+                currentLang={currentLang}
             />}
 
             {deletingProtocol && <DeleteConfirmationModal
@@ -286,12 +326,17 @@ interface EditProtocolFormProps {
     onFileChange: (file: File | null) => void;
     onFileDelete: (protocol: Partial<ProtocolFormState>) => void;
     isDirty: boolean;
+    currentLang: string;
 }
 
-const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty }) => {
+const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang }) => {
     const { t } = useTranslation();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
+    const documentUrlForLang = protocol.documentUrl && typeof protocol.documentUrl === 'object'
+        ? (protocol.documentUrl as any)[currentLang]
+        : (currentLang === 'en' && typeof protocol.documentUrl === 'string' ? protocol.documentUrl : undefined);
 
     const handlePointSelection = (pointId: string) => {
         const currentPoints = protocol.points || [];
@@ -312,6 +357,13 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
             onFileChange(null);
         }
     };
+    
+    useEffect(() => {
+        if(fileInputRef.current){
+            fileInputRef.current.value = '';
+        }
+        setSelectedFileName(null);
+    }, [protocol]);
 
     return (
         <div className={styles.modalOverlay}>
@@ -386,21 +438,21 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
 
                         {/* Document Management Section */}
                         <div className={styles.documentSection}>
-                            <label className={styles.formLabel}>{t('protocol_document')}</label>
+                            <label className={styles.formLabel}>{t('protocol_document')} ({currentLang.toUpperCase()})</label>
 
-                            {!protocol.documentUrl && !selectedFileName && (
-                                <p className={styles.noDocument}>{t('no_document_attached')}</p>
+                            {!documentUrlForLang && !selectedFileName && (
+                                <p className={styles.noDocument}>{t('no_document_attached_for_lang', { lang: currentLang.toUpperCase() })}</p>
                             )}
-
+                            
                             {selectedFileName && (
                                 <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
                             )}
 
                             <div className={styles.documentButtonRow}>
-                                {protocol.documentUrl && (
+                                {documentUrlForLang && !selectedFileName && (
                                     <button
                                         type="button"
-                                        onClick={() => window.open(protocol.documentUrl, '_blank')}
+                                        onClick={() => window.open(documentUrlForLang, '_blank')}
                                         className={`${styles.documentActionButton} ${styles.documentViewButton}`}
                                         disabled={isSubmitting}
                                     >
@@ -415,7 +467,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                     disabled={isSubmitting}
                                 >
                                     <FileUp size={16} /> 
-                                    {protocol.documentUrl ? t('replace_document') : t('upload_document')}
+                                    {documentUrlForLang ? t('replace_document') : t('upload_document')}
                                 </button>
                                 <input
                                     type="file"
@@ -425,14 +477,22 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                     accept=".pdf,.doc,.docx,.jpg,.png"
                                 />
 
-                                {protocol.documentUrl && (
+                                {(documentUrlForLang || selectedFileName) && (
                                     <button
                                         type="button"
-                                        onClick={() => onFileDelete(protocol)}
+                                        onClick={() => {
+                                            if (selectedFileName) {
+                                                onFileChange(null);
+                                                setSelectedFileName(null);
+                                                if(fileInputRef.current) fileInputRef.current.value = '';
+                                            } else {
+                                                onFileDelete(protocol)
+                                            }
+                                        }}
                                         disabled={isSubmitting}
                                         className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
                                     >
-                                        <XSquare size={16} /> {t('delete_document')}
+                                        <XSquare size={16} /> {selectedFileName ? t('cancel_upload') : t('delete_document')}
                                     </button>
                                 )}
                             </div>

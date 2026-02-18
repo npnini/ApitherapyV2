@@ -10,5 +10,5 @@ export interface Protocol {
     description: string;
     rationale: string; 
     stingingPoints?: StingingPoint[];
-    documentUrl?: string;
+    documentUrl?: { [key: string]: string } | string;
 }

@@ -19,13 +19,14 @@ interface ProblemFormProps {
 }
 
 const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCancel, isSubmitting }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedProtocols, setSelectedProtocols] = useState<ShuttleItem[]>([]);
   const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-  const [documentUrl, setDocumentUrl] = useState<string | undefined>(undefined);
+  const [documentUrl, setDocumentUrl] = useState<{ [key: string]: string } | undefined>(undefined);
 
   const [protocolsCollection] = useCollection(collection(db, 'protocols'));
   const [measuresCollection] = useCollection(collection(db, 'measures'));
@@ -49,9 +50,25 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
   );
 
   useEffect(() => {
-    setName(initialData?.name || '');
-    setDescription(initialData?.description || '');
-    setDocumentUrl(initialData?.documentUrl);
+    if (initialData) {
+      setName(initialData.name || '');
+      setDescription(initialData.description || '');
+      
+      let docUrls: { [key: string]: string } | undefined;
+      if (typeof initialData.documentUrl === 'string') {
+        docUrls = { en: initialData.documentUrl };
+      } else if (typeof initialData.documentUrl === 'object' && initialData.documentUrl !== null) {
+        docUrls = initialData.documentUrl as { [key: string]: string };
+      } else {
+        docUrls = undefined;
+      }
+      setDocumentUrl(docUrls);
+
+    } else {
+      setName('');
+      setDescription('');
+      setDocumentUrl(undefined);
+    }
   }, [initialData]);
 
   useEffect(() => {
@@ -69,7 +86,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
       setSelectedProtocols([]);
       setSelectedMeasures([]);
     }
-  }, [initialData?.id, allProtocols, allMeasures]);
+  }, [initialData, allProtocols, allMeasures]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +108,11 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
 
   const handleFileDelete = () => {
     setFileToUpload(null);
-    setDocumentUrl(undefined);
+    if (documentUrl && documentUrl[currentLang]) {
+      const newDocUrls = { ...documentUrl };
+      delete newDocUrls[currentLang];
+      setDocumentUrl(newDocUrls);
+    }
   };
 
   const [selectedFileName, setSelectedFileName] = useState<string | undefined>();

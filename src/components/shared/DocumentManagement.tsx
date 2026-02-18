@@ -4,7 +4,7 @@ import styles from './DocumentManagement.module.css';
 import { useTranslation } from 'react-i18next';
 
 interface DocumentManagementProps {
-  documentUrl?: string;
+  documentUrl?: { [key: string]: string };
   onFileChange: (file: File | null) => void;
   onFileDelete: () => void;
   isSubmitting: boolean;
@@ -18,13 +18,17 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   isSubmitting, 
   selectedFileName 
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
     onFileChange(file);
   };
 
-  const hasDocument = documentUrl || selectedFileName;
+  // No fallback logic here. The form should only care about the current language.
+  const currentDocumentUrl = documentUrl ? documentUrl[currentLang] : undefined;
+  const hasDocumentForCurrentLang = !!currentDocumentUrl;
 
   return (
     <div className={styles.documentSection}>
@@ -34,21 +38,21 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
       </div>
       <div className={styles.documentInfo}>
         <div className={styles.documentStatus}>
-          {!hasDocument && (
+          {!hasDocumentForCurrentLang && !selectedFileName && (
             <p className={styles.noDocument}>{t('no_document_attached')}</p>
           )}
-          {selectedFileName && !documentUrl && (
+          {selectedFileName && (
             <p className={styles.fileName}>{t('selected_file')} {selectedFileName}</p>
           )}
     
           <div className={styles.documentButtonRow}>
-            {hasDocument ? (
+            {hasDocumentForCurrentLang ? (
               <>
                 <button
                   type="button"
-                  onClick={() => window.open(documentUrl, '_blank')}
+                  onClick={() => window.open(currentDocumentUrl, '_blank')}
                   className={`${styles.documentActionButton} ${styles.blueButton}`}
-                  disabled={isSubmitting || !documentUrl}
+                  disabled={isSubmitting}
                 >
                   <ExternalLink size={16} /> {t('view_document')}
                 </button>

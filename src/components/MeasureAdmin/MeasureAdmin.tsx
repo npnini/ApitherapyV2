@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Measure, MeasureType } from '../../types/measure';
 import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -10,18 +10,32 @@ import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 
+const getFilenameFromUrl = (url: string | null | undefined): string => {
+    if (!url) {
+        return '';
+    }
+    try {
+        const path = url.split('?')[0];
+        const filename = path.split('%2F').pop();
+        return filename ? decodeURIComponent(filename) : '';
+    } catch (error) {
+        console.error("Error parsing filename from URL:", error);
+        return '';
+    }
+};
+
 const MeasureAdmin: React.FC = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language;
     const [user, setUser] = useState<User | null>(null);
     const [measures, setMeasures] = useState<Measure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState<Measure | null>(null);
+    const [editingMeasure, setEditingMeasure] = useState<Measure | null>(null);
+    const [originalMeasure, setOriginalMeasure] = useState<Measure | null>(null);
     const [deletingMeasure, setDeletingMeasure] = useState<Measure | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
     const measuresCollectionRef = React.useMemo(() => collection(db, 'measures'), []);
@@ -61,6 +75,26 @@ const MeasureAdmin: React.FC = () => {
         fetchMeasures();
     }, [fetchMeasures]);
 
+    const handleStartEditing = (measure: Measure) => {
+        setFormError(null);
+        let docUrls = measure.documentUrl;
+        if (typeof docUrls === 'string') {
+            docUrls = { en: docUrls };
+        }
+        const measureToEdit = { ...measure, documentUrl: docUrls };
+        setEditingMeasure(measureToEdit);
+        setOriginalMeasure(measureToEdit); 
+        setIsDirty(false);
+    };
+
+    const handleAddNew = () => {
+        setFormError(null);
+        const newMeasure: Measure = { id: '', name: '', type: 'Category', description: '' };
+        setEditingMeasure(newMeasure);
+        setOriginalMeasure(newMeasure);
+        setIsDirty(false);
+    };
+
     const validateMeasureForm = (measure: Measure, isNew: boolean): boolean => {
         if (!measure.name.trim()) {
             setFormError(t('measureNameRequired'));
@@ -68,7 +102,7 @@ const MeasureAdmin: React.FC = () => {
         }
 
         if (isNew) {
-            const nameExists = measures.some(m => m.name.toLowerCase() === measure.name.trim().toLowerCase());
+            const nameExists = measures.some(m => m.id !== measure.id && m.name.toLowerCase() === measure.name.trim().toLowerCase());
             if (nameExists) {
                 setFormError(t('measureNameExists', { name: measure.name.trim() }));
                 return false;
@@ -102,26 +136,22 @@ const MeasureAdmin: React.FC = () => {
         }
 
         setIsSubmitting(true);
-        let documentUrl = measureToSave.documentUrl;
 
         try {
-            if (fileToDelete) {
-                await deleteFile(fileToDelete);
-                documentUrl = undefined;
-            }
+            const originalUrls = (originalMeasure?.documentUrl && typeof originalMeasure.documentUrl === 'object') ? originalMeasure.documentUrl : {};
+            const newUrls = (measureToSave.documentUrl && typeof measureToSave.documentUrl === 'object') ? measureToSave.documentUrl : {};
 
-            if (fileToUpload) {
-                if (documentUrl) {
-                    await deleteFile(documentUrl);
-                }
-                documentUrl = await uploadFile(fileToUpload, 'Measures');
+            // Check if a file was removed for the current language
+            if (originalUrls[currentLang] && !newUrls[currentLang]) {
+                await deleteFile(originalUrls[currentLang]);
             }
 
             const dataToSave: any = {
                 name: measureToSave.name.trim(),
                 description: measureToSave.description.trim(),
                 type: measureToSave.type,
-                documentUrl: documentUrl || null,
+                documentUrl: newUrls || null,
+                updatedAt: serverTimestamp(),
             };
 
             if (measureToSave.type === 'Category') {
@@ -133,15 +163,14 @@ const MeasureAdmin: React.FC = () => {
             }
             
             if (isNewMeasure) {
+                dataToSave.createdAt = serverTimestamp();
                 await addDoc(measuresCollectionRef, dataToSave);
             } else {
                 const measureDoc = doc(db, 'measures', measureToSave.id);
                 await updateDoc(measureDoc, dataToSave);
             }
             
-            setIsEditing(null);
-            setFileToUpload(null);
-            setFileToDelete(null);
+            setEditingMeasure(null);
             setIsDirty(false);
             fetchMeasures();
         } catch (err) {
@@ -158,7 +187,10 @@ const MeasureAdmin: React.FC = () => {
         setIsSubmitting(true);
         try {
             if (deletingMeasure.documentUrl) {
-                await deleteFile(deletingMeasure.documentUrl);
+                const urlsToDelete = typeof deletingMeasure.documentUrl === 'object' ? Object.values(deletingMeasure.documentUrl) : [deletingMeasure.documentUrl];
+                for (const url of urlsToDelete) {
+                    await deleteFile(url);
+                }
             }
 
             const measureDoc = doc(db, 'measures', deletingMeasure.id);
@@ -172,41 +204,48 @@ const MeasureAdmin: React.FC = () => {
         setDeletingMeasure(null);
     };
 
-    const handleFileDelete = (measure: Measure) => {
-        if (!measure.documentUrl) return;
-        setFileToDelete(measure.documentUrl);
-        const updatedMeasure = { ...measure, documentUrl: undefined };
-        onUpdate(updatedMeasure);
-    };
-
-    const onUpdate = (measure: Measure) => {
-        setIsEditing(measure);
+    const handleUpdate = (updatedMeasure: Measure, file?: File | null) => {
+        setEditingMeasure(updatedMeasure);
         setIsDirty(true);
-    }
+
+        if (file) {
+            setIsSubmitting(true);
+            uploadFile(file, 'Measures').then(url => {
+                let currentDocUrls = updatedMeasure.documentUrl;
+                if (typeof currentDocUrls === 'string') {
+                    currentDocUrls = { en: currentDocUrls };
+                }
+                const newDocUrls = { ...(currentDocUrls || {}), [currentLang]: url };
+                setEditingMeasure({ ...updatedMeasure, documentUrl: newDocUrls });
+            }).catch(err => {
+                setFormError(t('failedToUploadFile'));
+                console.error(err);
+            }).finally(() => {
+                setIsSubmitting(false);
+            });
+        }
+    };
     
     const handleCancelEdit = () => {
-        setIsEditing(null);
-        setFileToUpload(null);
-        setFileToDelete(null);
+        setEditingMeasure(null);
         setFormError(null); 
         setIsDirty(false);
     };
+
+    const getDocumentUrl = (docUrl: any) => {
+        if (typeof docUrl === 'string') return docUrl;
+        if (typeof docUrl === 'object' && docUrl !== null) {
+            return docUrl[currentLang] || docUrl.en;
+        }
+        return null;
+    }
 
     return (
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}>{t('measure_configuration')}</h1>
                 <div>
-                    <button
-                        onClick={() => {
-                            setFormError(null);
-                            setFileToUpload(null);
-                            setFileToDelete(null);
-                            setIsDirty(false);
-                            setIsEditing({ id: '', name: '', type: 'Category', description: '' });
-                        }}
-                        className={styles.addButton}
-                    >
+                    <button onClick={handleAddNew} className={styles.addButton}>
                         <PlusCircle size={18} className={styles.addButtonIcon} /> {t('addNewMeasure')}
                     </button>
                 </div>
@@ -214,20 +253,16 @@ const MeasureAdmin: React.FC = () => {
 
             {error && <p className={styles.errorBox}>{error}</p>}
 
-            {isEditing && (
+            {editingMeasure && (
                 <EditMeasureForm 
-                    measure={isEditing} 
+                    measure={editingMeasure} 
+                    originalMeasure={originalMeasure!}
                     onSave={handleSave} 
                     onCancel={handleCancelEdit}
                     error={formError}
                     isSubmitting={isSubmitting}
                     measures={measures}
-                    onFileChange={(file) => {
-                        setFileToUpload(file);
-                        setIsDirty(true);
-                    }}
-                    onFileDelete={handleFileDelete}
-                    onUpdate={onUpdate}
+                    onUpdate={handleUpdate}
                     isDirty={isDirty}
                 />
             )}
@@ -280,20 +315,14 @@ const MeasureAdmin: React.FC = () => {
                                         <td className={styles.cell}>{t(measure.type.toLowerCase())}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={measure.description}>{measure.description}</td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
-                                            {measure.documentUrl && (
-                                                <a href={measure.documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                            {measure.documentUrl && getDocumentUrl(measure.documentUrl) && (
+                                                <a href={getDocumentUrl(measure.documentUrl)} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
                                                     <FileCheck2 size={18}/>
                                                 </a>
                                             )}
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                            <button onClick={() => {
-                                                setFormError(null);
-                                                setFileToUpload(null);
-                                                setFileToDelete(null);
-                                                setIsDirty(false);
-                                                setIsEditing(measure);
-                                            }} className={styles.actionButton}><Edit size={18}/></button>
+                                            <button onClick={() => handleStartEditing(measure)} className={styles.actionButton}><Edit size={18}/></button>
                                             <button onClick={() => setDeletingMeasure(measure)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18}/></button>
                                         </td>
                                     </tr>
@@ -310,42 +339,45 @@ const MeasureAdmin: React.FC = () => {
 
 interface EditMeasureFormProps {
     measure: Measure;
+    originalMeasure: Measure;
     measures: Measure[];
     onSave: (measure: Measure) => void;
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
-    onFileChange: (file: File | null) => void;
-    onFileDelete: (measure: Measure) => void;
-    onUpdate: (measure: Measure) => void;
+    onUpdate: (measure: Measure, file?: File | null) => void;
     isDirty: boolean;
 }
 
-const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, onSave, onCancel, error, isSubmitting, onFileChange, onFileDelete, onUpdate, isDirty }) => {
-    const { t } = useTranslation();
+const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, onSave, onCancel, error, isSubmitting, onUpdate, isDirty }) => {
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language;
     const [formData, setFormData] = useState(measure);
     const [localError, setLocalError] = useState<string | null>(null);
-    const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [categoryInput, setCategoryInput] = useState('');
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
 
     useEffect(() => {
         setFormData(measure);
-        setSelectedFileName(null);
     }, [measure]);
     
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files ? e.target.files[0] : null;
         if (file) {
-            setSelectedFileName(file.name);
-            onFileChange(file);
+            onUpdate(formData, file);
         }
+    };
+
+    const handleFileDelete = () => {
+        const newDocUrls: { [key: string]: string } = { ...(formData.documentUrl as object || {}) };
+        delete newDocUrls[currentLang];
+        onUpdate({ ...formData, documentUrl: newDocUrls });
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        const updatedMeasure = { ...formData, [name]: value };
+        let updatedMeasure = { ...formData, [name]: value };
         if (name === 'type') {
             updatedMeasure.categories = [];
             updatedMeasure.scale = {min: 0, max: 0};
@@ -432,12 +464,10 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
         }
 
         const isNew = !measure.id;
-        if (isNew) {
-            const nameExists = measures.some(m => m.name.toLowerCase() === formData.name.trim().toLowerCase());
-            if (nameExists) {
-                setLocalError(t('measureNameExists', { name: formData.name.trim() }));
-                return;
-            }
+        const nameExists = measures.some(m => m.id !== measure.id && m.name.toLowerCase() === formData.name.trim().toLowerCase());
+        if (isNew && nameExists) {
+            setLocalError(t('measureNameExists', { name: formData.name.trim() }));
+            return;
         }
 
         setLocalError(null);
@@ -445,6 +475,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     };
 
     const isEditing = !!formData.id;
+    const docUrl = typeof formData.documentUrl === 'object' && formData.documentUrl !== null ? formData.documentUrl[currentLang] : undefined;
 
     return (
         <div className={styles.modalOverlay}>
@@ -561,23 +592,20 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         <div className={formStyles.documentSection}>
                             <label className={formStyles.label}>{t('measureDocument')}</label>
 
-                            {!formData.documentUrl && !selectedFileName && (
-                                <p className={formStyles.noDocument}>{t('noDocumentAttached')}</p>
-                            )}
-                            {selectedFileName && (
-                                <p className={formStyles.fileName}>{t('selectedFile', 'Selected file')}: {selectedFileName}</p>
+                            {docUrl && (
+                                <div className={formStyles.fileName}>{t('currentFile')}: {getFilenameFromUrl(docUrl)}</div>
                             )}
 
                             <div className={formStyles.documentButtonRow}>
-                                {formData.documentUrl && (
-                                    <button
-                                        type="button"
-                                        onClick={() => window.open(formData.documentUrl, '_blank')}
+                                {docUrl && (
+                                    <a
+                                        href={docUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         className={`${formStyles.documentActionButton} ${formStyles.documentViewButton}`}
-                                        disabled={isSubmitting}
                                     >
                                         <FileDown size={16} /> {t('viewDocument')}
-                                    </button>
+                                    </a>
                                 )}
 
                                 <button
@@ -587,7 +615,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     disabled={isSubmitting}
                                 >
                                     <FileUp size={16} />
-                                    {formData.documentUrl ? t('replaceDocument') : t('uploadDocument')}
+                                    {docUrl ? t('replaceDocument') : t('uploadDocument')}
                                 </button>
                                 <input
                                     type="file"
@@ -598,10 +626,10 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     accept=".pdf,.doc,.docx,.jpg,.png"
                                 />
 
-                                {formData.documentUrl && (
+                                {docUrl && (
                                     <button
                                         type="button"
-                                        onClick={() => onFileDelete(formData)}
+                                        onClick={handleFileDelete}
                                         disabled={isSubmitting}
                                         className={`${formStyles.documentActionButton} ${formStyles.documentDeleteButton}`}
                                     >

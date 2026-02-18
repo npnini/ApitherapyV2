@@ -25,3 +25,4 @@ IF YOU NEED TRANSLATIONS, ASK THE USER TO UPDATE THE FILE. YOU ARE PHYSICALLY PR
 * **Testing:** ALWAYS generate unit tests for functional changes.
 * **Tone:** Keep explanations short, technical, and concise. No emotional opinions.
 * **Translation File Handling:** I am not allowed to modify translation files at public/locales. Whenever I think that new placeholders have to be added to translation files, I will list the required lines to the user and ask him to add them.
+* **Build and Deploy:** You are not allowed to initiate build or deploy.

@@ -1,4 +1,3 @@
-
 import { Timestamp } from 'firebase/firestore';
 
 export interface Problem {
@@ -7,7 +6,7 @@ export interface Problem {
   description: string;
   protocolIds: string[];
   measureIds: string[];
-  documentUrl?: string;
+  documentUrl?: string | { [key: string]: string };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

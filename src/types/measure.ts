@@ -11,5 +11,5 @@ export interface Measure {
         min?: number;
         max?: number;
     };
-    documentUrl?: string;
+    documentUrl?: string | { [key: string]: string };
 }

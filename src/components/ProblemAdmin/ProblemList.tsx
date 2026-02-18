@@ -14,7 +14,8 @@ interface ProblemListProps {
 }
 
 const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
   const [problemsCollection, loading, error] = useCollection(collection(db, 'problems'));
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,6 +25,17 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
     if (!problemsCollection) return [];
     return problemsCollection.docs.map(doc => ({ ...doc.data(), id: doc.id } as Problem));
   }, [problemsCollection]);
+
+  const getDocumentUrl = (problem: Problem) => {
+    if (problem.documentUrl && typeof problem.documentUrl === 'object') {
+      return problem.documentUrl[currentLang] || problem.documentUrl['en'];
+    }
+    // Fallback for old string-based URLs, if any
+    if (typeof problem.documentUrl === 'string') {
+        return problem.documentUrl;
+    }
+    return undefined;
+  };
 
   const filteredProblems = useMemo(() => {
     return problems.filter(problem =>
@@ -70,27 +82,30 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
           </tr>
         </thead>
         <tbody>
-          {filteredProblems.map(problem => (
-            <tr key={problem.id}>
-              <td>{problem.name}</td>
-              <td>{problem.description}</td>
-              <td className={styles.documentCell}>
-                {problem.documentUrl && (
-                  <a href={problem.documentUrl} target="_blank" rel="noopener noreferrer">
-                    <FileCheck2 size={18} />
-                  </a>
-                )}
-              </td>
-              <td className={styles.actionCell}>
-                <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
-                  <Edit size={18} />
-                </button>
-                <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
-                  <Trash2 size={18} />
-                </button>
-              </td>
-            </tr>
-          ))}
+          {filteredProblems.map(problem => {
+            const documentUrl = getDocumentUrl(problem);
+            return (
+              <tr key={problem.id}>
+                <td>{problem.name}</td>
+                <td>{problem.description}</td>
+                <td className={styles.documentCell}>
+                  {documentUrl && (
+                    <a href={documentUrl} target="_blank" rel="noopener noreferrer">
+                      <FileCheck2 size={18} />
+                    </a>
+                  )}
+                </td>
+                <td className={styles.actionCell}>
+                  <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
+                    <Edit size={18} />
+                  </button>
+                  <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
+                    <Trash2 size={18} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

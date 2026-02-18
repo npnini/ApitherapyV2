@@ -77,7 +77,7 @@
 
 .headerCell {
     padding: 0.75rem 1.5rem;
-    text-align: left;
+    text-align: start;
     font-size: 0.75rem;
     font-weight: 600;
     color: #4b5563;
@@ -127,6 +127,7 @@
     color: var(--color-primary);
     display: inline-flex;
     align-items: center;
+    gap: 0.5rem;
 }
 
 .actionsCell {
