@@ -48,6 +48,12 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         type: 'protocol',
         defaultValue: 'sensitivity_protocol_v1',
       },
+      freeProtocolIdentifier: {
+        label: 'Free Protocol Identifier',
+        description: 'The protocol to be used for freely selecting sting points.',
+        type: 'protocol',
+        defaultValue: '',
+      },
       enableAISuggestions: {
         label: 'Enable AI Suggestions',
         description: 'If on, the system will suggest a treatment protocol based on patient data.',

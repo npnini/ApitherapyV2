@@ -10,7 +10,7 @@ import { Question, Questionnaire } from '../types/questionnaire';
 
 interface ApplicationSettingsProps {
     user: AppUser;
-    onClose: () => void; 
+    onClose: () => void;
 }
 
 interface Protocol {
@@ -156,7 +156,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         setError(null);
         setSettings(prev => {
             const newSettings = JSON.parse(JSON.stringify(prev));
-    
+
             let parentObject = newSettings;
             for (let i = 0; i < path.length - 1; i++) {
                 if (!parentObject[path[i]]) {
@@ -164,14 +164,14 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 }
                 parentObject = parentObject[path[i]];
             }
-    
+
             parentObject[path[path.length - 1]] = value;
-    
+
             if (path.join('.') === 'patientDashboard.domain') {
                 newSettings.patientDashboard.conditionQuestion = '';
                 newSettings.patientDashboard.severityQuestion = '';
             }
-    
+
             return newSettings;
         });
     };
@@ -184,12 +184,12 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
         try {
             await setDoc(configDocRef, settings, { merge: true });
-            setInitialSettings(settings); 
+            setInitialSettings(settings);
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
                 onClose();
-            }, 1500); 
+            }, 1500);
         } catch (err) {
             setError('Failed to save settings. You must be an administrator to perform this action.');
             console.error(err);
@@ -204,8 +204,8 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             if ('children' in item) {
                 return (
                     <fieldset key={key} className={styles.nestedGroup}>
-                         <legend className={styles.groupLabel}>{item.label}</legend>
-                         <p className={styles.groupDescription}>{item.description}</p>
+                        <legend className={styles.groupLabel}>{item.label}</legend>
+                        <p className={styles.groupDescription}>{item.description}</p>
                         {renderGroup(item, currentPath)}
                     </fieldset>
                 );
@@ -219,19 +219,19 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         const key = path.join('.');
         let currentVal = settings;
         for (const p of path) {
-          currentVal = currentVal?.[p];
+            currentVal = currentVal?.[p];
         }
 
-        const value = currentVal ?? setting.defaultValue; 
+        const value = currentVal ?? setting.defaultValue;
 
         let control;
         switch (setting.type) {
             case 'languages':
                 const selectedLanguageCodes = Array.isArray(value) ? value : [];
                 const selectedLanguageItems = allLanguages.filter(lang => selectedLanguageCodes.includes(lang.id));
-                
+
                 control = (
-                    <div className={styles.control}> 
+                    <div className={styles.control}>
                         <ShuttleSelector
                             availableItems={allLanguages}
                             selectedItems={selectedLanguageItems}
@@ -274,6 +274,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                         value={typeof value === 'string' ? value : ''}
                         onChange={e => handleSettingChange(path, e.target.value)}
                     >
+                        <option value="">-- Select a Protocol --</option>
                         {protocols.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
