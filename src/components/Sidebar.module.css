@@ -1,0 +1,194 @@
+/* --- BASE SIDEBAR & BACKGROUND --- */
+.sidebar {
+    width: 22rem; /* Wider for the larger text */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    color: #1F2937;
+    position: relative;
+    overflow: hidden;
+    background-color: #FFFBEB; 
+    /* Honeycomb Pattern - Small cells */
+    background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="56" height="100" viewBox="0 0 56 100"%3E%3Cpath d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="%23fcd34d" stroke-width="1" stroke-opacity="0.3"/%3E%3Cpath d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66" fill="%23f59e0b" fill-opacity="0.15"/%3E%3C/svg%3E');
+    background-size: 40px 70px; 
+}
+
+/* The Warm Glow Overlay */
+.sidebar::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.3) 0%, transparent 70%),
+                linear-gradient(to bottom, transparent, rgba(251, 191, 36, 0.1));
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* --- HEADER --- */
+.header {
+    padding: 1.25rem;
+    border-bottom: 1px solid rgba(217, 119, 6, 0.2);
+    background-color: rgba(255, 251, 235, 0.5);
+    backdrop-filter: blur(4px);
+    position: relative;
+    z-index: 1;
+}
+
+.title {
+    font-size: 1.5rem; /* Larger Title */
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    color: #1F2937;
+}
+
+/* --- NAVIGATION --- */
+.nav {
+    flex-grow: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 1;
+}
+
+.navButton, .configDropdownButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0.85rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    font-size: 1.15rem; /* Larger Font */
+    font-weight: 700;
+    text-align: start;
+    color: #1F2937;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.navButton:hover, .configDropdownButton:hover {
+    background-color: rgba(251, 191, 36, 0.3);
+    transform: translateX(4px);
+}
+
+/* --- ICON STYLING (Standard CSS - No 'composes' errors) --- */
+.icon {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    filter: brightness(0) opacity(0.8);
+}
+
+.iconPrimary {
+    width: 1.5rem;
+    height: 1.5rem;
+    filter: brightness(0) opacity(0.8);
+    [dir="ltr"] & { margin-right: 0.75rem; }
+    [dir="rtl"] & { margin-left: 0.75rem; }
+}
+
+.iconSecondary {
+    width: 1.2rem;
+    height: 1.2rem;
+    filter: brightness(0) opacity(0.8);
+    [dir="ltr"] & { margin-right: 0.5rem; }
+    [dir="rtl"] & { margin-left: 0.5rem; }
+}
+
+/* --- SUBMENU STYLING --- */
+.configSubMenu {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    [dir="ltr"] & { padding-left: 2.5rem; }
+    [dir="rtl"] & { padding-right: 2.5rem; }
+}
+
+.configButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0.6rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+    font-size: 1.05rem; /* Larger Font */
+    text-align: start;
+    color: #1F2937;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.configButton:hover {
+    background-color: rgba(251, 191, 36, 0.4);
+}
+
+.chevron {
+    transition: transform 0.3s;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+/* --- FOOTER & USER INFO --- */
+.footer {
+    padding: 1.25rem;
+    border-top: 1px solid rgba(217, 119, 6, 0.2);
+    background-color: rgba(255, 251, 235, 0.5);
+    position: relative;
+    z-index: 1;
+}
+
+.userInfo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background-color: #FBBF24;
+    color: #1F2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    [dir="ltr"] & { margin-right: 0.75rem; }
+    [dir="rtl"] & { margin-left: 0.75rem; }
+}
+
+.userName {
+    font-weight: 700;
+    font-size: 1.05rem; /* Larger Font */
+}
+
+.userRole {
+    font-size: 0.85rem;
+    color: #4B5563;
+    text-transform: capitalize;
+}
+
+.logoutButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem;
+    border-radius: 0.75rem;
+    background-color: #DC2626;
+    color: white;
+    font-size: 1.05rem; /* Larger Font */
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+}
