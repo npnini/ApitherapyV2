@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage';
   defaultValue: string | number | boolean | string[];
 };
 
@@ -71,6 +71,12 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'Choose the languages your application will support.',
         type: 'languages',
         defaultValue: ['en'],
+      },
+      defaultLanguage: {
+        label: 'Default Language',
+        description: 'Select the default language for the application.',
+        type: 'defaultLanguage',
+        defaultValue: 'en',
       },
     },
   },

@@ -245,6 +245,23 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     </div>
                 );
                 break;
+            case 'defaultLanguage':
+                const supportedLangCodes = settings.languageSettings?.supportedLanguages || [];
+                const supportedLangItems = allLanguages.filter(lang => supportedLangCodes.includes(lang.id));
+
+                control = (
+                    <select
+                        className={styles.input}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={e => handleSettingChange(path, e.target.value)}
+                    >
+                        <option value="">-- Select Default Language --</option>
+                        {supportedLangItems.map(lang => (
+                            <option key={lang.id} value={lang.id}>{lang.name}</option>
+                        ))}
+                    </select>
+                );
+                break;
             case 'boolean':
                 control = (
                     <label className={styles.toggleSwitch}>
