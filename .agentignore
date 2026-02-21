@@ -1,0 +1,37 @@
+# --- DEPENDENCIES (Critical Token Savers) ---
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# --- BUILD OUTPUTS ---
+dist/
+build/
+.next/
+out/
+target/
+
+# --- MEDIA & DOCUMENTS ---
+# Since we already analyzed your PDF/Image, ignore them to stop the agent 
+# from re-reading their metadata every time.
+**/*.pdf
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.svg
+
+# --- IDE & CACHE ---
+.git/
+.antigravity/
+.vscode/
+.idea/
+*.log
+.eslintcache
+.stylelintcache
+
+# --- DATA & BACKUPS ---
+# Ignore any large JSON data dumps or local database exports
+firestore-export/
+seed-data/
+*.db
+*.sqlite

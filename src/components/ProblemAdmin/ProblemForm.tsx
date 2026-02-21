@@ -31,29 +31,29 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
   const [protocolsCollection] = useCollection(collection(db, 'protocols'));
   const [measuresCollection] = useCollection(collection(db, 'measures'));
 
-  const allProtocols = useMemo(() => 
+  const allProtocols = useMemo(() =>
     protocolsCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol)) || []
-  , [protocolsCollection]);
+    , [protocolsCollection]);
 
   const allMeasures = useMemo(() =>
     measuresCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Measure)) || []
-  , [measuresCollection]);
+    , [measuresCollection]);
 
   const availableProtocolsForShuttle = useMemo(() =>
-    allProtocols.map(p => ({ id: p.id, name: p.name })), 
+    allProtocols.map(p => ({ id: p.id, name: p.name })),
     [allProtocols]
   );
 
   const availableMeasuresForShuttle = useMemo(() =>
-    allMeasures.map(m => ({ id: m.id, name: m.name })), 
-    [allMeasures]
+    allMeasures.map(m => ({ id: m.id, name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || '' })),
+    [allMeasures, currentLang]
   );
 
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || '');
       setDescription(initialData.description || '');
-      
+
       let docUrls: { [key: string]: string } | undefined;
       if (typeof initialData.documentUrl === 'string') {
         docUrls = { en: initialData.documentUrl };
@@ -80,7 +80,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
 
       if (allMeasures.length > 0) {
         const initialMeasures = allMeasures.filter(m => initialData.measureIds?.includes(m.id));
-        setSelectedMeasures(initialMeasures.map(m => ({ id: m.id, name: m.name })));
+        setSelectedMeasures(initialMeasures.map(m => ({ id: m.id, name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || '' })));
       }
     } else {
       setSelectedProtocols([]);
@@ -97,8 +97,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
 
   const handleFileChange = (file: File | null) => {
     if (file && file.type !== 'application/pdf') {
-        alert('Only PDF files are allowed.');
-        return;
+      alert('Only PDF files are allowed.');
+      return;
     }
     setFileToUpload(file);
     if (!file) {
@@ -129,8 +129,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.formHeader}>
-            <h2 className={styles.formTitle}>{isEditing ? t('edit_problem') : t('add_problem')}</h2>
-            <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
+          <h2 className={styles.formTitle}>{isEditing ? t('edit_problem') : t('add_problem')}</h2>
+          <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
         </div>
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.scrollableArea}>
@@ -163,7 +163,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               />
             </div>
 
-            <DocumentManagement 
+            <DocumentManagement
               documentUrl={documentUrl}
               onFileChange={handleFileChange}
               onFileDelete={handleFileDelete}

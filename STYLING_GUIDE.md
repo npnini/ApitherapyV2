@@ -32,3 +32,17 @@ All edit forms, especially those presented in modals, must include a standardize
 *   **Close Button:**
     *   An "X" icon button must be placed on the right side.
     *   It should have no background or border to appear integrated into the header.
+
+## Input Field UX & Labeling
+
+To provide clear visual cues for mandatory fields and multilingual support, all input fields must follow these labeling conventions:
+
+*   **Label Structure:**
+    *   **Required Asterisk (`*`):** If a field is mandatory, a red asterisk must follow the label text.
+    *   **Multilingual Globe (`🌐` icon):** If a field supports multiple languages, a globe indicator (Lucide `Globe` icon) must be displayed.
+    *   **Translation Counter (`x/n`):** Multilingual fields must show a counter indicating how many languages have been filled out of the total supported languages (e.g., "1/2").
+
+*   **Multilingual Placeholder Logic:**
+    *   When editing a field in a non-default language, the placeholder should display the current value of that field in the **Default Language**. This helps the editor maintain consistency across translations.
+    *   If the default language value is empty, use a standard localized placeholder.
+

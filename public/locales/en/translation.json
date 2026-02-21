@@ -82,6 +82,7 @@
   "atLeastOneCategory": "At least one category is required",
   "minMaxRequired": "Minimum and maximum values are required for a scale",
   "maxMustBeGreaterThanMin": "Maximum value must be greater than the minimum value",
+  "measureDescriptionRequired": "Measure description is required",
   "failedToSaveMeasure": "Failed to save the measure",
   "failedToDeleteMeasure": "Failed to delete the measure",
   "deleteMeasure": "Delete Measure",

@@ -3,10 +3,10 @@ export type MeasureType = 'Category' | 'Scale';
 
 export interface Measure {
     id: string;
-    name: string;
-    description: string;
+    name: { [key: string]: string };
+    description: { [key: string]: string };
     type: MeasureType;
-    categories?: string[];
+    categories?: Array<{ [key: string]: string }>;
     scale?: {
         min?: number;
         max?: number;
