@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
+import DocumentManagement from '../shared/DocumentManagement';
 
 const getFilenameFromUrl = (url: string | null | undefined): string => {
     if (!url) {
@@ -169,19 +170,22 @@ const MeasureAdmin: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            const originalUrls = (originalMeasure?.documentUrl && typeof originalMeasure.documentUrl === 'object') ? originalMeasure.documentUrl : {};
-            const newUrls = (measureToSave.documentUrl && typeof measureToSave.documentUrl === 'object') ? measureToSave.documentUrl : {};
+            const originalUrls: Record<string, string> = (originalMeasure?.documentUrl && typeof originalMeasure.documentUrl === 'object') ? (originalMeasure.documentUrl as Record<string, string>) : {};
+            const newUrls: Record<string, string> = (measureToSave.documentUrl && typeof measureToSave.documentUrl === 'object') ? (measureToSave.documentUrl as Record<string, string>) : {};
 
-            // Check if a file was removed for the current language
-            if (originalUrls[currentLang] && !newUrls[currentLang]) {
-                await deleteFile(originalUrls[currentLang]);
+            // Identify and delete any files that were removed from the documentUrl object (the form state)
+            for (const [l, url] of Object.entries(originalUrls)) {
+                if (url && !newUrls[l]) {
+                    console.log(`[DEBUG-SAVE-DEL] Deleting orphaned file for lang ${l}:`, url);
+                    await deleteFile(url).catch(err => console.error("Error deleting orphaned file:", err));
+                }
             }
 
             const dataToSave: any = {
                 name: measureToSave.name,
                 description: measureToSave.description,
                 type: measureToSave.type,
-                documentUrl: newUrls || null,
+                documentUrl: Object.keys(newUrls).length > 0 ? newUrls : null,
                 updatedAt: serverTimestamp(),
             };
 
@@ -235,25 +239,45 @@ const MeasureAdmin: React.FC = () => {
         setDeletingMeasure(null);
     };
 
-    const handleUpdate = (updatedMeasure: Measure, file?: File | null) => {
+    const handleUpdate = (updatedMeasure: Measure, file?: File | null, lang: string = currentLang) => {
         setEditingMeasure(updatedMeasure);
         setIsDirty(true);
 
         if (file) {
             setIsSubmitting(true);
-            uploadFile(file, 'Measures').then(url => {
-                let currentDocUrls = updatedMeasure.documentUrl;
-                if (typeof currentDocUrls === 'string') {
-                    currentDocUrls = { en: currentDocUrls };
+
+            // Replacement logic: delete old file for this language if it exists in storage
+            const currentDocUrls = updatedMeasure.documentUrl;
+            let existingUrl: string | undefined;
+            if (typeof currentDocUrls === 'object' && currentDocUrls !== null) {
+                existingUrl = (currentDocUrls as any)[lang];
+            } else if (typeof currentDocUrls === 'string' && lang === 'en') {
+                existingUrl = currentDocUrls;
+            }
+
+            const uploadAndCleanup = async () => {
+                if (existingUrl) {
+                    console.log(`[DEBUG-REPLACE] Deleting existing file for ${lang} before upload:`, existingUrl);
+                    await deleteFile(existingUrl).catch(err => console.error("Error deleting old file for replacement:", err));
                 }
-                const newDocUrls = { ...(currentDocUrls || {}), [currentLang]: url };
+                const url = await uploadFile(file, `Measures/${updatedMeasure.id || 'new'}`);
+
+                let docUrlsToUpdate = updatedMeasure.documentUrl;
+                if (typeof docUrlsToUpdate === 'string') {
+                    docUrlsToUpdate = { en: docUrlsToUpdate };
+                }
+                const newDocUrls = { ...(docUrlsToUpdate || {}), [lang]: url };
                 setEditingMeasure({ ...updatedMeasure, documentUrl: newDocUrls });
-            }).catch(err => {
-                setFormError(t('failedToUploadFile'));
-                console.error(err);
-            }).finally(() => {
-                setIsSubmitting(false);
-            });
+            };
+
+            uploadAndCleanup()
+                .catch(err => {
+                    setFormError(t('failedToUploadFile'));
+                    console.error(err);
+                })
+                .finally(() => {
+                    setIsSubmitting(false);
+                });
         }
     };
 
@@ -377,7 +401,7 @@ interface EditMeasureFormProps {
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
-    onUpdate: (measure: Measure, file?: File | null) => void;
+    onUpdate: (measure: Measure, file?: File | null, lang?: string) => void;
     isDirty: boolean;
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
@@ -399,25 +423,27 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     const SUPPORTED_LANGS = ['he', 'en'];
     const [formData, setFormData] = useState(measure);
     const [localError, setLocalError] = useState<string | null>(null);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [categoryInput, setCategoryInput] = useState('');
     const [editingCategoryIndex, setEditingCategoryIndex] = useState<number | null>(null);
 
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
     useEffect(() => {
         setFormData(measure);
+        setSelectedFile(null);
     }, [measure]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files ? e.target.files[0] : null;
+    const handleFileChange = (file: File | null) => {
         if (file) {
-            onUpdate(formData, file);
+            setSelectedFile(file);
+            onUpdate(formData, file, activeLang);
         }
     };
 
     const handleFileDelete = () => {
         const newDocUrls: { [key: string]: string } = { ...(formData.documentUrl as object || {}) };
-        delete newDocUrls[currentLang];
-        onUpdate({ ...formData, documentUrl: newDocUrls });
+        delete newDocUrls[activeLang];
+        onUpdate({ ...formData, documentUrl: newDocUrls }, null, activeLang);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -534,7 +560,6 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     };
 
     const isEditing = !!formData.id;
-    const docUrl = typeof formData.documentUrl === 'object' && formData.documentUrl !== null ? formData.documentUrl[activeLang] || formData.documentUrl['en'] : undefined;
 
     return (
         <div className={styles.modalOverlay}>
@@ -551,7 +576,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             onClick={() => { setCategoryInput(''); setEditingCategoryIndex(null); setActiveLang(lang); }}
                             className={`${formStyles.langTab} ${activeLang === lang ? formStyles.langTabActive : ''}`}
                         >
-                            {lang.toUpperCase()}
+                            {t(lang)}
                         </button>
                     ))}
                 </div>
@@ -574,7 +599,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             </div>
                             {activeLang !== appConfig.defaultLanguage && (
                                 <TranslationReference
-                                    label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                    label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                     text={formData.name[appConfig.defaultLanguage]}
                                 />
                             )}
@@ -620,7 +645,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                             <div key={index} className={formStyles.categoryTag}>
                                                 <span>
                                                     {displayValue}
-                                                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({activeLang.toUpperCase()} missing)</span>}
+                                                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({t(activeLang)} {t('missing') || 'missing'})</span>}
                                                 </span>
                                                 <div>
                                                     <button type="button" title={`Edit`} onClick={() => handleEditCategory(index)} className={formStyles.actionButton}>
@@ -679,7 +704,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             </div>
                             {activeLang !== appConfig.defaultLanguage && (
                                 <TranslationReference
-                                    label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                    label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                     text={formData.description[appConfig.defaultLanguage]}
                                 />
                             )}
@@ -695,55 +720,17 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         </div>
 
                         {/* Document management section */}
-                        <div className={formStyles.documentSection}>
-                            <label className={formStyles.label}>{t('measureDocument')}</label>
-
-                            {docUrl && (
-                                <div className={formStyles.fileName}>{t('currentFile')}: {getFilenameFromUrl(docUrl)}</div>
-                            )}
-
-                            <div className={formStyles.documentButtonRow}>
-                                {docUrl && (
-                                    <a
-                                        href={docUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`${formStyles.documentActionButton} ${formStyles.documentViewButton}`}
-                                    >
-                                        <FileDown size={16} /> {t('viewDocument')}
-                                    </a>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={`${formStyles.documentActionButton} ${formStyles.documentUploadButton}`}
-                                    disabled={isSubmitting}
-                                >
-                                    <FileUp size={16} />
-                                    {docUrl ? t('replaceDocument') : t('uploadDocument')}
-                                </button>
-                                <input
-                                    type="file"
-                                    id="file-upload"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    className={formStyles.fileInput}
-                                    accept=".pdf,.doc,.docx,.jpg,.png"
-                                />
-
-                                {docUrl && (
-                                    <button
-                                        type="button"
-                                        onClick={handleFileDelete}
-                                        disabled={isSubmitting}
-                                        className={`${formStyles.documentActionButton} ${formStyles.documentDeleteButton}`}
-                                    >
-                                        <XSquare size={16} /> {t('deleteDocument')}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                        <DocumentManagement
+                            entityName="Measure"
+                            documentUrl={formData.documentUrl as { [key: string]: string }}
+                            onFileChange={(newFile) => {
+                                handleFileChange(newFile);
+                            }}
+                            onFileDelete={handleFileDelete}
+                            isSubmitting={isSubmitting}
+                            activeLang={activeLang}
+                            selectedFileName={selectedFile?.name}
+                        />
                     </div>
 
                     <div className={formStyles.formActions}>

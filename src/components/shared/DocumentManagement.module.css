@@ -1,4 +1,3 @@
-
 .documentSection {
     margin-top: 1.5rem;
     padding-top: 1rem;
@@ -7,9 +6,9 @@
 
 .documentHeaderContainer {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
 }
 
 .documentHeader {
@@ -70,6 +69,7 @@
     background-color: #3b82f6;
     color: white;
 }
+
 .blueButton:hover {
     background-color: #2563eb;
 }
@@ -78,6 +78,7 @@
     background-color: #10b981;
     color: white;
 }
+
 .greenButton:hover {
     background-color: #059669;
 }
@@ -87,6 +88,7 @@
     background-color: #ef4444;
     color: white;
 }
+
 .redButton:hover {
     background-color: #dc2626;
 }

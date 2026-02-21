@@ -156,7 +156,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
               onClick={() => setActiveLang(lang)}
             >
-              {lang.toUpperCase()}
+              {t(lang)}
             </button>
           ))}
         </div>
@@ -179,7 +179,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               </div>
               {activeLang !== appConfig.defaultLanguage && (
                 <TranslationReference
-                  label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                  label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                   text={names[appConfig.defaultLanguage]}
                 />
               )}
@@ -208,7 +208,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               </div>
               {activeLang !== appConfig.defaultLanguage && (
                 <TranslationReference
-                  label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                  label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                   text={descriptions[appConfig.defaultLanguage]}
                 />
               )}
@@ -248,6 +248,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               isSubmitting={isSubmitting}
               activeLang={activeLang}
               selectedFileName={selectedFileName}
+              entityName="Problem"
             />
           </div>
 
