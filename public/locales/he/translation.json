@@ -21,6 +21,8 @@
   "confirmDelete": "אשר מחיקה",
   "name": "שם",
   "type": "סוג",
+  "question_id": "מזהה שאלה",
+  "question_type": "סוג שאלה",
   "description": "תיאור",
   "document": "מסמך",
   "entity_document": "מסמך {{entity}}",

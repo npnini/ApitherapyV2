@@ -113,6 +113,8 @@
   "add": "Add",
   "name": "Measure Name",
   "type": "How Measured",
+  "question_id": "Question ID",
+  "question_type": "Question Type",
   "description": "Description",
   "username": "Username",
   "city": "City",

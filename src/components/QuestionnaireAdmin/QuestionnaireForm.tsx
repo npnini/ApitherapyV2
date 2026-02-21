@@ -76,7 +76,7 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
             const newOrder = currentData.questions.length + 1;
             let newName = `question_${newOrder}`;
             let i = 1;
-            while(currentData.questions.some(q => q.name === newName)) {
+            while (currentData.questions.some(q => q.name === newName)) {
                 newName = `question_${newOrder}_${i++}`;
             }
 
@@ -125,8 +125,8 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
                                     <thead>
                                         <tr>
                                             <th></th>
-                                            <th>{t('name')}</th>
-                                            <th>{t('type')}</th>
+                                            <th>{t('question_id')}</th>
+                                            <th>{t('question_type')}</th>
                                             <th className={styles.actionsHeader}>{t('actions')}</th>
                                         </tr>
                                     </thead>
@@ -234,7 +234,7 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({ value, onChange }
 
     const handleBlur = () => {
         setIsEditing(false);
-        if(text.trim() === '') {
+        if (text.trim() === '') {
             setText(value);
             return;
         }
@@ -242,7 +242,7 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({ value, onChange }
     };
 
     return isEditing ? (
-        <input type="text" value={text} onChange={e => setText(e.target.value)} onBlur={handleBlur} autoFocus className={styles.tableInput}/>
+        <input type="text" value={text} onChange={e => setText(e.target.value)} onBlur={handleBlur} autoFocus className={styles.tableInput} />
     ) : (
         <span onClick={() => setIsEditing(true)}>{text}</span>
     );
