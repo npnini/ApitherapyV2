@@ -15,7 +15,13 @@ Before writing a single line of code, read these files **in this order**:
 
 **Phase 1 is complete.** All clinical entity admin components now let the admin user enter multilingual strings (per supported language) directly in the UI. These are stored in Firestore as language maps `{ en: "...", he: "..." }`.
 
-**Phase 2 has not started yet.**
+**Phase 2 infrastructure has NOT been set up yet.** Specifically:
+- `src/components/T.tsx` does **not** exist yet
+- `App.tsx` has **not** been wrapped with `<TranslationProvider>` yet
+- The `translations` Firestore collection rule has **not** been added yet
+- The Google Translate API key **has** been obtained by the developer and is in `.env.local` as `VITE_GOOGLE_TRANSLATE_KEY`
+
+The first task for the new agent is **Phase 2 infrastructure setup** (Steps 1.3–1.6 in the migration guide), then a pilot component migration.
 
 The branch `main` is up to date. The dev server runs with `npm run dev` in `c:\Users\User\Dev\Projects\ApitherapyV2`.
 
@@ -50,9 +56,9 @@ Full technical spec is in `i18n-to-live-translation-migration.md`. Read it befor
 
 ---
 
-## Components to Migrate (31 total TSX files)
+## Components to Migrate
 
-This is the complete inventory of files containing `t()` calls that must be migrated:
+This is the complete inventory of TSX files that must be migrated. **Verify each file for `t()` calls before migrating** — some shared/small components may have zero `t()` calls and can be skipped.
 
 ### Admin / Settings
 - `src/components/ApplicationSettings.tsx`
@@ -152,12 +158,12 @@ Strings with variable substitution (e.g., `t('deletePointConfirmation', { code: 
 
 ### ⚠️ Infrastructure First
 Before migrating ANY component, Phase 2 infrastructure setup must be done:
-1. Google Translate API key obtained by the developer `[HUMAN]`
-2. `.env` file created with `VITE_GOOGLE_TRANSLATE_KEY=...` `[HUMAN]`
-3. `src/components/T.tsx` created (full source is in the migration guide) `[AGENT]`
-4. `App.tsx` wrapped with `<TranslationProvider>` `[AGENT]`
-5. Firestore rules updated for `translations` collection `[AGENT]`
-6. **One pilot component migrated and verified** before migrating all others `[BOTH]`
+1. Google Translate API key obtained by the developer ✅ **DONE** — key is in `.env.local` as `VITE_GOOGLE_TRANSLATE_KEY`
+2. `.env.local` file (NOT `.env`) used for secrets in this project ✅ **DONE**
+3. `src/components/T.tsx` created (full source is in the migration guide Step 1.4) `[AGENT]` ❌ **TODO**
+4. `App.tsx` wrapped with `<TranslationProvider>` (Step 1.5) `[AGENT]` ❌ **TODO**
+5. Firestore rules updated for `translations` collection (Step 1.3) `[AGENT]` ❌ **TODO**
+6. **One pilot component migrated and verified** before migrating all others `[BOTH]` ❌ **TODO**
 
 ---
 
