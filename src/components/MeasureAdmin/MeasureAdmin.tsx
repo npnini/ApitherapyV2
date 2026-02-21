@@ -420,7 +420,9 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     const { t, i18n } = useTranslation();
     const currentLang = i18n.language;
     const [activeLang, setActiveLang] = useState<string>(currentLang);
-    const SUPPORTED_LANGS = ['he', 'en'];
+    const SUPPORTED_LANGS = appConfig.supportedLanguages;
+    const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+        .filter(l => SUPPORTED_LANGS.includes(l));
     const [formData, setFormData] = useState(measure);
     const [localError, setLocalError] = useState<string | null>(null);
     const [categoryInput, setCategoryInput] = useState('');
@@ -569,7 +571,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                     <button onClick={onCancel} className={formStyles.closeButton}><X size={24} /></button>
                 </div>
                 <div className={formStyles.langTabBar}>
-                    {SUPPORTED_LANGS.map(lang => (
+                    {orderedLangs.map(lang => (
                         <button
                             key={lang}
                             type="button"
@@ -597,7 +599,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     </span>
                                 </div>
                             </div>
-                            {activeLang !== appConfig.defaultLanguage && (
+                            {activeLang !== appConfig.defaultLanguage && !formData.name[activeLang] && (
                                 <TranslationReference
                                     label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                     text={formData.name[appConfig.defaultLanguage]}
@@ -702,7 +704,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     </span>
                                 </div>
                             </div>
-                            {activeLang !== appConfig.defaultLanguage && (
+                            {activeLang !== appConfig.defaultLanguage && !formData.description[activeLang] && (
                                 <TranslationReference
                                     label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                     text={formData.description[appConfig.defaultLanguage]}

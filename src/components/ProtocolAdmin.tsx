@@ -395,6 +395,8 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
+    const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+        .filter(l => SUPPORTED_LANGS.includes(l));
 
 
     const handlePointSelection = (pointId: string) => {
@@ -421,7 +423,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                     </button>
                 </div>
                 <div className={styles.langTabBar}>
-                    {SUPPORTED_LANGS.map(lang => (
+                    {orderedLangs.map(lang => (
                         <button
                             key={lang}
                             type="button"
@@ -449,7 +451,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                         </span>
                                     </div>
                                 </div>
-                                {activeLang !== appConfig.defaultLanguage && (
+                                {activeLang !== appConfig.defaultLanguage && !((protocol.name as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
                                         label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(protocol.name as Record<string, string>)?.[appConfig.defaultLanguage]}
@@ -480,7 +482,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                         </span>
                                     </div>
                                 </div>
-                                {activeLang !== appConfig.defaultLanguage && (
+                                {activeLang !== appConfig.defaultLanguage && !((protocol.description as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
                                         label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(protocol.description as Record<string, string>)?.[appConfig.defaultLanguage]}
@@ -507,7 +509,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                         </span>
                                     </div>
                                 </div>
-                                {activeLang !== appConfig.defaultLanguage && (
+                                {activeLang !== appConfig.defaultLanguage && !((protocol.rationale as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
                                         label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(protocol.rationale as Record<string, string>)?.[appConfig.defaultLanguage]}

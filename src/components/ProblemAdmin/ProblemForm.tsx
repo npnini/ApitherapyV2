@@ -46,6 +46,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
   const [measuresCollection] = useCollection(collection(db, 'measures'));
 
   const SUPPORTED_LANGS = appConfig.supportedLanguages;
+  const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+    .filter(l => SUPPORTED_LANGS.includes(l));
 
   const allProtocols = useMemo(() =>
     protocolsCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol)) || []
@@ -149,7 +151,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
         </div>
 
         <div className={styles.langTabBar}>
-          {SUPPORTED_LANGS.map(lang => (
+          {orderedLangs.map(lang => (
             <button
               key={lang}
               type="button"
@@ -177,7 +179,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
                   </span>
                 </div>
               </div>
-              {activeLang !== appConfig.defaultLanguage && (
+              {activeLang !== appConfig.defaultLanguage && !names[activeLang] && (
                 <TranslationReference
                   label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                   text={names[appConfig.defaultLanguage]}
@@ -206,7 +208,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
                   </span>
                 </div>
               </div>
-              {activeLang !== appConfig.defaultLanguage && (
+              {activeLang !== appConfig.defaultLanguage && !descriptions[activeLang] && (
                 <TranslationReference
                   label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                   text={descriptions[appConfig.defaultLanguage]}

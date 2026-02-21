@@ -373,6 +373,8 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
     const [formData, setFormData] = useState(point);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
+    const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+        .filter(l => SUPPORTED_LANGS.includes(l));
     const [file, setFile] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
@@ -440,7 +442,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                     <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
                 </div>
                 <div className={styles.langTabBar}>
-                    {SUPPORTED_LANGS.map(lang => (
+                    {orderedLangs.map(lang => (
                         <button
                             key={lang}
                             type="button"
@@ -470,7 +472,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                         </span>
                                     </div>
                                 </div>
-                                {activeLang !== appConfig.defaultLanguage && (
+                                {activeLang !== appConfig.defaultLanguage && !((formData.label as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
                                         label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
@@ -498,7 +500,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                     </span>
                                 </div>
                             </div>
-                            {activeLang !== appConfig.defaultLanguage && (
+                            {activeLang !== appConfig.defaultLanguage && !((formData.description as Record<string, string>)?.[activeLang]) && (
                                 <TranslationReference
                                     label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                     text={(formData.description as Record<string, string>)?.[appConfig.defaultLanguage]}
