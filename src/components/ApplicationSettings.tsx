@@ -15,7 +15,7 @@ interface ApplicationSettingsProps {
 
 interface Protocol {
     id: string;
-    name: string;
+    name: string | Record<string, string>;
 }
 
 interface QuestionnaireQuestion {
@@ -75,7 +75,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             try {
                 const protocolsCollectionRef = collection(db, 'protocols');
                 const protocolDocs = await getDocs(protocolsCollectionRef);
-                const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+                const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
                 setProtocols(fetchedProtocols);
 
                 const docSnap = await getDoc(configDocRef);
@@ -251,6 +251,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
                 control = (
                     <select
+                        id={key}
                         className={styles.input}
                         value={typeof value === 'string' ? value : ''}
                         onChange={e => handleSettingChange(path, e.target.value)}
@@ -266,6 +267,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 control = (
                     <label className={styles.toggleSwitch}>
                         <input
+                            id={key}
                             type="checkbox"
                             checked={!!value}
                             onChange={e => handleSettingChange(path, e.target.checked)}
@@ -277,6 +279,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             case 'number':
                 control = (
                     <input
+                        id={key}
                         type="number"
                         className={styles.input}
                         value={typeof value === 'number' ? value : 0}
@@ -287,13 +290,20 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             case 'protocol':
                 control = (
                     <select
+                        id={key}
                         className={styles.input}
                         value={typeof value === 'string' ? value : ''}
                         onChange={e => handleSettingChange(path, e.target.value)}
                     >
                         <option value="">-- Select a Protocol --</option>
                         {protocols.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
+                            <option key={p.id} value={p.id}>
+                                {typeof p.name === 'object'
+                                    ? (p.name[settings.languageSettings?.defaultLanguage || 'en'] ||
+                                        p.name['en'] ||
+                                        Object.values(p.name)[0] || p.id)
+                                    : p.name}
+                            </option>
                         ))}
                     </select>
                 );
@@ -301,6 +311,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             case 'question':
                 control = (
                     <select
+                        id={key}
                         className={styles.input}
                         value={typeof value === 'string' ? value : ''}
                         onChange={e => handleSettingChange(path, e.target.value)}
@@ -317,6 +328,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             default:
                 control = (
                     <input
+                        id={key}
                         type="text"
                         className={styles.input}
                         value={typeof value === 'string' ? value : ''}
