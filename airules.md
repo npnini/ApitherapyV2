@@ -26,3 +26,12 @@ IF YOU NEED TRANSLATIONS, ASK THE USER TO UPDATE THE FILE. YOU ARE PHYSICALLY PR
 * **Tone:** Keep explanations short, technical, and concise. No emotional opinions.
 * **Translation File Handling:** I am not allowed to modify translation files at public/locales. Whenever I think that new placeholders have to be added to translation files, I will list the required lines to the user and ask him to add them.
 * **Build and Deploy:** You are not allowed to initiate build or deploy.
+
+## SECTION 4: SESSION CONTINUITY & HANDOVER
+*   **Mandatory:** Always maintain a `handover.md` in the agent's brain directory (`<appDataDir>/brain/<conversation-id>/`).
+*   **Update Frequency:** Solidify this document whenever a major task milestone is reached or before pausing work.
+*   **Contents:** It must briefly summarize:
+    1.  Completed milestones.
+    2.  Active blockers or pending decisions.
+    3.  The exact "next step" (file and function/line) for the next agent.
+*   **Startup:** At the start of every new session, the agent MUST read `airules.md`, `style_guide.md`, and the latest `handover.md`.
