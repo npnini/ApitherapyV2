@@ -192,11 +192,11 @@ Start simple, end complex:
 3. `Sidebar.tsx`, `Login.tsx`
 4. `UserDetails.tsx`, `PatientsDashboard.tsx`
 5. `ApplicationSettings.tsx`
-6. `ProblemAdmin/ProblemList.tsx`, `ProblemAdmin/ProblemDetails.tsx`
-7. `QuestionnaireAdmin/QuestionnaireList.tsx`, `QuestionnaireAdmin/QuestionnaireAdmin.tsx`
-8. `ProblemAdmin/ProblemAdmin.tsx`, `ProblemAdmin/ProblemForm.tsx`
-9. `QuestionnaireAdmin/QuestionnaireForm.tsx`
-10. `MeasureAdmin/MeasureAdmin.tsx`, `PointsAdmin.tsx`, `ProtocolAdmin.tsx`
+6. `MeasureAdmin/MeasureAdmin.tsx`, `PointsAdmin.tsx`, `ProtocolAdmin.tsx`
+7. `ProblemAdmin/ProblemList.tsx`, `ProblemAdmin/ProblemDetails.tsx`
+8. `QuestionnaireAdmin/QuestionnaireList.tsx`, `QuestionnaireAdmin/QuestionnaireAdmin.tsx`
+9. `ProblemAdmin/ProblemAdmin.tsx`, `ProblemAdmin/ProblemForm.tsx`
+10. `QuestionnaireAdmin/QuestionnaireForm.tsx`
 11. `PatientIntake/*` (4 files — patient-facing, test carefully)
 12. `TreatmentExecution.tsx`, `TreatmentHistory.tsx`, `VitalsInputGroup.tsx`
 13. `BodyScene.tsx`, `StingPointMarker.tsx`, `ProtocolSelection.tsx`
