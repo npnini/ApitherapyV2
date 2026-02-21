@@ -33,21 +33,21 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
           <ChevronLeft size={20} />
           {t('back_to_list')}
         </button>
-        <h2 className={styles.title}>{problem.name}</h2>
+        <h2 className={styles.title}>{typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string)}</h2>
         <button onClick={onEdit} className={styles.editButton}>
-            <EditIcon size={20} />
-            {t('edit')}
+          <EditIcon size={20} />
+          {t('edit')}
         </button>
       </div>
-      
+
       <div className={styles.content}>
-        <p className={styles.description}>{problem.description}</p>
+        <p className={styles.description}>{typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string)}</p>
 
         {documentUrl && (
           <div className={styles.documentSection}>
             <h3 className={styles.sectionTitle}>{t('related_document')}</h3>
             <a href={documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-              <FileCheck2 size={18}/> {t('view_document')}
+              <FileCheck2 size={18} /> {t('view_document')}
             </a>
           </div>
         )}

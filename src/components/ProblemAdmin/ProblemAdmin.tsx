@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { doc, collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { db } from '../../firebase';
@@ -9,6 +9,7 @@ import ProblemForm from './ProblemForm';
 import { uploadFile, deleteFile } from '../../services/storageService';
 import styles from './ProblemAdmin.module.css';
 import { useTranslation } from 'react-i18next';
+import { getDoc } from 'firebase/firestore';
 
 type View = 'list' | 'details' | 'form';
 
@@ -18,6 +19,25 @@ const ProblemAdmin: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('list');
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+        if (configDoc.exists()) {
+          const data = configDoc.data();
+          setAppConfig({
+            defaultLanguage: data.languageSettings?.defaultLanguage || 'en',
+            supportedLanguages: data.languageSettings?.supportedLanguages || ['en']
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching app config:", err);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const [problemDocument, loading, error] = useDocument(selectedProblemId ? doc(db, 'problems', selectedProblemId) : undefined);
   const problem: Problem | undefined = problemDocument ? { id: problemDocument.id, ...problemDocument.data() } as Problem : undefined;
@@ -42,32 +62,44 @@ const ProblemAdmin: React.FC = () => {
     setSelectedProblemId(null);
   };
 
-  const handleSubmit = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null) => {
+  const handleSubmit = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null, lang: string) => {
+    const nameValues = Object.values(formData.name || {}).map(v => v.trim()).filter(Boolean);
+    if (nameValues.length === 0) {
+      alert(t('protocol_name_required')); // Reusing translation for now or should add problem_name_required
+      return;
+    }
+
+    const descriptionValues = Object.values(formData.description || {}).map(v => v.trim()).filter(Boolean);
+    if (descriptionValues.length === 0) {
+      alert(t('protocol_description_required'));
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      let documentUrl : { [key: string]: string } = {};
+      let documentUrl: { [key: string]: string } = {};
       if (problem?.documentUrl) {
         if (typeof problem.documentUrl === 'string') {
-            documentUrl.en = problem.documentUrl;
+          documentUrl.en = problem.documentUrl;
         } else {
-            documentUrl = { ...problem.documentUrl };
+          documentUrl = { ...problem.documentUrl };
         }
       }
 
       if (file) {
-        if (documentUrl[currentLang]) {
-          await deleteFile(documentUrl[currentLang]);
+        if (documentUrl[lang]) {
+          await deleteFile(documentUrl[lang]);
         }
         const newUrl = await uploadFile(file, `Problems/${selectedProblemId || 'new'}`);
-        documentUrl[currentLang] = newUrl;
+        documentUrl[lang] = newUrl;
       } else if (
         problem?.documentUrl &&
         typeof problem.documentUrl === 'object' &&
-        problem.documentUrl[currentLang] &&
-        (!formData.documentUrl || !(formData.documentUrl as any)[currentLang])
+        problem.documentUrl[lang] &&
+        (!formData.documentUrl || !(formData.documentUrl as any)[lang])
       ) {
-          await deleteFile(problem.documentUrl[currentLang]);
-          delete documentUrl[currentLang];
+        await deleteFile(problem.documentUrl[lang]);
+        delete documentUrl[lang];
       }
 
       const dataToSave = {
@@ -92,16 +124,16 @@ const ProblemAdmin: React.FC = () => {
 
   const renderContent = () => {
     if (currentView === 'list') {
-      return <ProblemList onEdit={handleEdit} onAddNew={handleAddNew} />;
+      return <ProblemList onEdit={handleEdit} onAddNew={handleAddNew} appConfig={appConfig} />;
     }
     if (currentView === 'details' && problem) {
       return <ProblemDetails problem={problem} onBack={handleBackToList} onEdit={() => handleEdit(problem.id)} />;
     }
     if (currentView === 'form') {
-        if (loading && selectedProblemId) {
-            return <div>Loading...</div>;
-        }
-        return <ProblemForm initialData={selectedProblemId ? problem : undefined} onSubmit={handleSubmit} onCancel={handleCancelForm} isSubmitting={isSubmitting} />;
+      if (loading && selectedProblemId) {
+        return <div>Loading...</div>;
+      }
+      return <ProblemForm initialData={selectedProblemId ? problem : undefined} onSubmit={(data, file, lang) => handleSubmit(data, file, lang)} onCancel={handleCancelForm} isSubmitting={isSubmitting} appConfig={appConfig} />;
     }
     return null;
   };

@@ -9,27 +9,43 @@ import ShuttleSelector, { ShuttleItem } from '../shared/ShuttleSelector';
 import DocumentManagement from '../shared/DocumentManagement';
 import styles from './ProblemForm.module.css';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X, Globe } from 'lucide-react';
 
 interface ProblemFormProps {
   initialData?: Problem;
-  onSubmit: (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null) => void;
+  onSubmit: (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null, lang: string) => void;
   onCancel: () => void;
   isSubmitting: boolean;
+  appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCancel, isSubmitting }) => {
+const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
+  if (!text) return null;
+  return (
+    <div className={styles.translationReference}>
+      <span className={styles.translationReferenceLabel}>{label}</span>
+      {text}
+    </div>
+  );
+};
+
+const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCancel, isSubmitting, appConfig }) => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [activeLang, setActiveLang] = useState<string>(currentLang);
+
+  const [names, setNames] = useState<{ [key: string]: string }>({});
+  const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({});
   const [selectedProtocols, setSelectedProtocols] = useState<ShuttleItem[]>([]);
   const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [documentUrl, setDocumentUrl] = useState<{ [key: string]: string } | undefined>(undefined);
+  const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
 
   const [protocolsCollection] = useCollection(collection(db, 'protocols'));
   const [measuresCollection] = useCollection(collection(db, 'measures'));
+
+  const SUPPORTED_LANGS = appConfig.supportedLanguages;
 
   const allProtocols = useMemo(() =>
     protocolsCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol)) || []
@@ -40,59 +56,63 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
     , [measuresCollection]);
 
   const availableProtocolsForShuttle = useMemo(() =>
-    allProtocols.map(p => ({ id: p.id, name: p.name })),
-    [allProtocols]
+    allProtocols.map(p => ({
+      id: p.id,
+      name: typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)
+    })),
+    [allProtocols, currentLang]
   );
 
   const availableMeasuresForShuttle = useMemo(() =>
-    allMeasures.map(m => ({ id: m.id, name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || '' })),
+    allMeasures.map(m => ({
+      id: m.id,
+      name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || ''
+    })),
     [allMeasures, currentLang]
   );
 
   useEffect(() => {
     if (initialData) {
-      setName(initialData.name || '');
-      setDescription(initialData.description || '');
+      setNames(initialData.name || {});
+      setDescriptions(initialData.description || {});
 
       let docUrls: { [key: string]: string } | undefined;
       if (typeof initialData.documentUrl === 'string') {
         docUrls = { en: initialData.documentUrl };
       } else if (typeof initialData.documentUrl === 'object' && initialData.documentUrl !== null) {
         docUrls = initialData.documentUrl as { [key: string]: string };
-      } else {
-        docUrls = undefined;
       }
       setDocumentUrl(docUrls);
 
-    } else {
-      setName('');
-      setDescription('');
-      setDocumentUrl(undefined);
-    }
-  }, [initialData]);
-
-  useEffect(() => {
-    if (initialData) {
       if (allProtocols.length > 0) {
         const initialProtocols = allProtocols.filter(p => initialData.protocolIds?.includes(p.id));
-        setSelectedProtocols(initialProtocols.map(p => ({ id: p.id, name: p.name })));
+        setSelectedProtocols(initialProtocols.map(p => ({
+          id: p.id,
+          name: typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)
+        })));
       }
 
       if (allMeasures.length > 0) {
         const initialMeasures = allMeasures.filter(m => initialData.measureIds?.includes(m.id));
-        setSelectedMeasures(initialMeasures.map(m => ({ id: m.id, name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || '' })));
+        setSelectedMeasures(initialMeasures.map(m => ({
+          id: m.id,
+          name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || ''
+        })));
       }
     } else {
+      setNames({});
+      setDescriptions({});
+      setDocumentUrl(undefined);
       setSelectedProtocols([]);
       setSelectedMeasures([]);
     }
-  }, [initialData, allProtocols, allMeasures]);
+  }, [initialData, allProtocols, allMeasures, currentLang]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const protocolIds = selectedProtocols.map(p => p.id);
     const measureIds = selectedMeasures.map(m => m.id);
-    onSubmit({ name, description, protocolIds, measureIds, documentUrl }, fileToUpload);
+    onSubmit({ name: names, description: descriptions, protocolIds, measureIds, documentUrl }, fileToUpload, activeLang);
   };
 
   const handleFileChange = (file: File | null) => {
@@ -101,27 +121,22 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
       return;
     }
     setFileToUpload(file);
-    if (!file) {
+    if (file) {
+      setSelectedFileName(file.name);
+    } else {
       setSelectedFileName(undefined);
     }
   };
 
   const handleFileDelete = () => {
     setFileToUpload(null);
-    if (documentUrl && documentUrl[currentLang]) {
+    setSelectedFileName(undefined);
+    if (documentUrl && documentUrl[activeLang]) {
       const newDocUrls = { ...documentUrl };
-      delete newDocUrls[currentLang];
+      delete newDocUrls[activeLang];
       setDocumentUrl(newDocUrls);
     }
   };
-
-  const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (fileToUpload) {
-      setSelectedFileName(fileToUpload.name);
-    }
-  }, [fileToUpload]);
 
   const isEditing = !!initialData;
 
@@ -132,15 +147,78 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
           <h2 className={styles.formTitle}>{isEditing ? t('edit_problem') : t('add_problem')}</h2>
           <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
         </div>
+
+        <div className={styles.langTabBar}>
+          {SUPPORTED_LANGS.map(lang => (
+            <button
+              key={lang}
+              type="button"
+              className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
+              onClick={() => setActiveLang(lang)}
+            >
+              {lang.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.scrollableArea}>
+
             <div className={styles.inputGroup}>
-              <label htmlFor="name">{t('form_label_name')}:</label>
-              <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+              <div className={styles.labelWrapper}>
+                <label htmlFor="name" className={styles.formLabel}>
+                  {t('form_label_name')}
+                  <span className={styles.requiredAsterisk}>*</span>
+                </label>
+                <div className={styles.indicatorContainer}>
+                  <Globe size={14} className={styles.indicatorIcon} />
+                  <span className={styles.translationCounter}>
+                    {Object.values(names).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                  </span>
+                </div>
+              </div>
+              {activeLang !== appConfig.defaultLanguage && (
+                <TranslationReference
+                  label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                  text={names[appConfig.defaultLanguage]}
+                />
+              )}
+              <input
+                id="name"
+                type="text"
+                value={names[activeLang] || ''}
+                onChange={(e) => setNames({ ...names, [activeLang]: e.target.value })}
+                className={styles.formInput}
+                required={activeLang === appConfig.defaultLanguage}
+              />
             </div>
+
             <div className={styles.inputGroup}>
-              <label htmlFor="description">{t('form_label_description')}:</label>
-              <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <div className={styles.labelWrapper}>
+                <label htmlFor="description" className={styles.formLabel}>
+                  {t('form_label_description')}
+                  <span className={styles.requiredAsterisk}>*</span>
+                </label>
+                <div className={styles.indicatorContainer}>
+                  <Globe size={14} className={styles.indicatorIcon} />
+                  <span className={styles.translationCounter}>
+                    {Object.values(descriptions).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                  </span>
+                </div>
+              </div>
+              {activeLang !== appConfig.defaultLanguage && (
+                <TranslationReference
+                  label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                  text={descriptions[appConfig.defaultLanguage]}
+                />
+              )}
+              <textarea
+                id="description"
+                value={descriptions[activeLang] || ''}
+                onChange={(e) => setDescriptions({ ...descriptions, [activeLang]: e.target.value })}
+                className={styles.formTextarea}
+                required={activeLang === appConfig.defaultLanguage}
+              />
             </div>
 
             <div className={styles.shuttleContainer}>
@@ -168,6 +246,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               onFileChange={handleFileChange}
               onFileDelete={handleFileDelete}
               isSubmitting={isSubmitting}
+              activeLang={activeLang}
               selectedFileName={selectedFileName}
             />
           </div>
