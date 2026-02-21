@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
@@ -47,6 +47,7 @@ const PointsAdmin: React.FC = () => {
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
     const pointsCollectionRef = React.useMemo(() => collection(db, 'acupuncture_points'), []);
 
@@ -56,6 +57,23 @@ const PointsAdmin: React.FC = () => {
             setUser(currentUser);
             if (!currentUser) setIsLoading(false);
         });
+
+        const fetchConfig = async () => {
+            try {
+                const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+                if (configDoc.exists()) {
+                    const data = configDoc.data();
+                    setAppConfig({
+                        defaultLanguage: data.languageSettings?.defaultLanguage || 'en',
+                        supportedLanguages: data.languageSettings?.supportedLanguages || ['en']
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching app config:", err);
+            }
+        };
+        fetchConfig();
+
         return () => unsubscribe();
     }, []);
 
@@ -77,19 +95,27 @@ const PointsAdmin: React.FC = () => {
             console.error(err);
         }
         setIsLoading(false);
-    }, [user, pointsCollectionRef, t]);
+    }, [user, pointsCollectionRef, t, currentLang]);
 
     useEffect(() => {
-        if(user) fetchPoints();
+        if (user) fetchPoints();
     }, [user, fetchPoints]);
 
     const handleStartEditing = (point: StingPoint) => {
         setFormError(null);
-        // Normalize legacy string URLs to the new object format upon editing
+        // Normalize legacy fields to the new object format upon editing
         const pointToEdit = { ...point };
+
+        if (typeof pointToEdit.label === 'string') {
+            pointToEdit.label = { en: pointToEdit.label };
+        }
+        if (typeof pointToEdit.description === 'string') {
+            pointToEdit.description = { en: pointToEdit.description };
+        }
         if (typeof pointToEdit.documentUrl === 'string') {
             pointToEdit.documentUrl = { en: pointToEdit.documentUrl };
         }
+
         setEditingPoint(pointToEdit);
         setOriginalPoint(pointToEdit);
         setIsDirty(false);
@@ -97,7 +123,7 @@ const PointsAdmin: React.FC = () => {
 
     const handleAddNew = () => {
         setFormError(null);
-        const newPoint: Partial<StingPoint> = { id: '', code: '', label: '', description: '', position: { x: 0, y: 0, z: 0 }, documentUrl: {} };
+        const newPoint: Partial<StingPoint> = { id: '', code: '', label: {}, description: {}, position: { x: 0, y: 0, z: 0 }, documentUrl: {} };
         setEditingPoint(newPoint);
         setOriginalPoint(newPoint);
         setIsDirty(false);
@@ -105,7 +131,9 @@ const PointsAdmin: React.FC = () => {
 
     const handleSave = async (pointToSave: Partial<StingPoint>, file: File | null) => {
         const isNewPoint = !pointToSave.id;
-        if (!pointToSave.code || !pointToSave.label) {
+
+        const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
+        if (!pointToSave.code || labelValues.length === 0) {
             setFormError(t('pointCodeAndLabelRequired'));
             return;
         }
@@ -121,7 +149,7 @@ const PointsAdmin: React.FC = () => {
 
             // Start with the existing URLs
             if (pointToSave.documentUrl) {
-                 if (typeof pointToSave.documentUrl === 'string') {
+                if (typeof pointToSave.documentUrl === 'string') {
                     console.log('[DEBUG-SAVE-02] Normalizing legacy string URL.');
                     documentUrlObject = { en: pointToSave.documentUrl };
                 } else {
@@ -129,7 +157,7 @@ const PointsAdmin: React.FC = () => {
                     documentUrlObject = { ...pointToSave.documentUrl };
                 }
             }
-            
+
             // Handle file upload
             if (file) {
                 console.log(`[DEBUG-SAVE-04] File upload triggered for lang '${currentLang}'.`);
@@ -148,10 +176,10 @@ const PointsAdmin: React.FC = () => {
             }
 
             const dataToSave = {
-                code: pointToSave.code.trim(),
-                label: pointToSave.label.trim(),
-                description: pointToSave.description?.trim() || '',
-                position: pointToSave.position || {x:0, y:0, z:0},
+                code: pointToSave.code!.trim(),
+                label: pointToSave.label,
+                description: pointToSave.description,
+                position: pointToSave.position || { x: 0, y: 0, z: 0 },
                 documentUrl: Object.keys(documentUrlObject).length > 0 ? documentUrlObject : null,
                 updatedAt: serverTimestamp(),
             };
@@ -167,7 +195,7 @@ const PointsAdmin: React.FC = () => {
                 await updateDoc(pointDoc, dataToSave);
                 console.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointToSave.id} updated.`);
             }
-            
+
             setEditingPoint(null);
             fetchPoints();
 
@@ -189,7 +217,7 @@ const PointsAdmin: React.FC = () => {
             if (deletingPoint.documentUrl) {
                 const urls = typeof deletingPoint.documentUrl === 'string' ? [deletingPoint.documentUrl] : Object.values(deletingPoint.documentUrl);
                 for (const url of urls) {
-                     try {
+                    try {
                         console.log(`[DEBUG-DELETE-02] Deleting file from storage: ${url}`);
                         await deleteFile(url);
                     } catch (storageError) {
@@ -205,14 +233,14 @@ const PointsAdmin: React.FC = () => {
         } catch (err) {
             console.error('%c[DEBUG-DELETE-ERROR] Firestore deletion failed.', 'color: red; font-weight: bold;', err);
             setError(t('failedToDeletePoint'));
-        } 
+        }
         setIsSubmitting(false);
         setDeletingPoint(null);
     };
-    
+
     const handleCancelEdit = () => {
         setEditingPoint(null);
-        setFormError(null); 
+        setFormError(null);
         setIsDirty(false);
     };
 
@@ -220,7 +248,7 @@ const PointsAdmin: React.FC = () => {
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}>{t('acupuncturePoints')}</h1>
-                 <button onClick={handleAddNew} className={styles.addButton}>
+                <button onClick={handleAddNew} className={styles.addButton}>
                     <PlusCircle size={18} className={styles.addButtonIcon} /> {t('addNewPoint')}
                 </button>
             </div>
@@ -228,22 +256,23 @@ const PointsAdmin: React.FC = () => {
             {error && <p className={styles.errorBox}>{error}</p>}
 
             {editingPoint && (
-                <EditPointForm 
+                <EditPointForm
                     key={editingPoint.id || 'new'} // Ensures form resets when switching points
-                    point={editingPoint} 
-                    onSave={handleSave} 
+                    point={editingPoint}
+                    onSave={handleSave}
                     onCancel={handleCancelEdit}
                     error={formError}
                     isSubmitting={isSubmitting}
+                    appConfig={appConfig}
                 />
             )}
 
             {deletingPoint && (
-                 <div className={styles.modalOverlay}>
+                <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
                             <div className={styles.modalIconContainer}>
-                               <AlertTriangle className={styles.modalIcon} aria-hidden="true" />
+                                <AlertTriangle className={styles.modalIcon} aria-hidden="true" />
                             </div>
                             <div>
                                 <h2 className={styles.modalTitle}>{t('deletePoint')}</h2>
@@ -261,49 +290,50 @@ const PointsAdmin: React.FC = () => {
             )}
 
             <div className={styles.tableContainer}>
-                    <table className={styles.table}>
-                        <thead className={styles.tableHeader}>
-                            <tr>
-                                <th scope="col" className={styles.headerCell}>{t('code')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('label')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('description')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('position')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('document')}</th>
-                                <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only">{t('actions')}</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className={styles.tableBody}>
-                            {isLoading ? (
-                                <tr><td colSpan={6} className={styles.loaderCell}><Loader className={styles.loader} size={32}/></td></tr>
-                            ) : points.length === 0 ? (
-                                <tr><td colSpan={6} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noPointsFound')}</td></tr>
-                            ) : (
-                                points.map(point => {
-                                    const docUrlForCurrentLang = getDocumentUrlForLang(point.documentUrl, currentLang);
-                                    return (
+                <table className={styles.table}>
+                    <thead className={styles.tableHeader}>
+                        <tr>
+                            <th scope="col" className={styles.headerCell}>{t('code')}</th>
+                            <th scope="col" className={styles.headerCell}>{t('label')}</th>
+                            <th scope="col" className={styles.headerCell}>{t('description')}</th>
+                            <th scope="col" className={styles.headerCell}>{t('position')}</th>
+                            <th scope="col" className={styles.headerCell}>{t('document')}</th>
+                            <th scope="col" className="relative px-6 py-3">
+                                <span className="sr-only">{t('actions')}</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className={styles.tableBody}>
+                        {isLoading ? (
+                            <tr><td colSpan={6} className={styles.loaderCell}><Loader className={styles.loader} size={32} /></td></tr>
+                        ) : points.length === 0 ? (
+                            <tr><td colSpan={6} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noPointsFound')}</td></tr>
+                        ) : (
+                            points.map(point => {
+                                const docUrlForCurrentLang = getDocumentUrlForLang(point.documentUrl, currentLang);
+                                return (
                                     <tr key={point.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.codeCell}`}>{point.code}</td>
-                                        <td className={styles.cell}>{point.label}</td>
-                                        <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description}>{point.description}</td>
+                                        <td className={styles.cell}>{point.label[currentLang] || point.label['en'] || ''}</td>
+                                        <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description[currentLang] || point.description['en'] || ''}>{point.description[currentLang] || point.description['en'] || ''}</td>
                                         <td className={styles.cell}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {docUrlForCurrentLang && (
                                                 <a href={docUrlForCurrentLang} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-                                                    <FileCheck2 size={18}/>
+                                                    <FileCheck2 size={18} />
                                                 </a>
                                             )}
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                            <button onClick={() => handleStartEditing(point)} className={styles.actionButton}><Edit size={18}/></button>
-                                            <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18}/></button>
+                                            <button onClick={() => handleStartEditing(point)} className={styles.actionButton}><Edit size={18} /></button>
+                                            <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
                                         </td>
                                     </tr>
-                                )})
-                            )}
-                        </tbody>
-                    </table>
+                                )
+                            })
+                        )}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -316,12 +346,25 @@ interface EditPointFormProps {
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
+    appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, error, isSubmitting }) => {
+const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
+    if (!text) return null;
+    return (
+        <div className={styles.translationReference}>
+            <span className={styles.translationReferenceLabel}>{label}</span>
+            {text}
+        </div>
+    );
+};
+
+const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, error, isSubmitting, appConfig }) => {
     const { t, i18n } = useTranslation();
     const currentLang = i18n.language;
     const [formData, setFormData] = useState(point);
+    const [activeLang, setActiveLang] = useState<string>(currentLang);
+    const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const [file, setFile] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -333,7 +376,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
         setFile(null);
         setIsDirty(false);
     }, [point]);
-    
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files ? e.target.files[0] : null;
         if (selectedFile) {
@@ -344,7 +387,14 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        if (name === 'label' || name === 'description') {
+            setFormData(prev => ({
+                ...prev,
+                [name]: { ...(prev[name] as Record<string, string> || {}), [activeLang]: value }
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
         setIsDirty(true);
     };
 
@@ -357,20 +407,26 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
         }));
         setIsDirty(true);
     };
-    
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        const labelValues = Object.values(formData.label || {}).map(v => v.trim()).filter(Boolean);
+        if (!formData.code || labelValues.length === 0) {
+            // Error handled by HTML required or onSave validation
+        }
+
         onSave(formData, file);
     };
 
     const handleFileDelete = () => {
         console.log(`%c[DEBUG-FILE-DELETE] Deleting file for lang: ${currentLang}`, 'color: orange;');
         if (!formData.documentUrl) return;
-        
+
         let newDocUrls = { ... (typeof formData.documentUrl === 'object' ? formData.documentUrl : { en: formData.documentUrl }) };
         delete (newDocUrls as Record<string, any>)[currentLang];
-        
-        setFormData(prev => ({...prev, documentUrl: newDocUrls}));
+
+        setFormData(prev => ({ ...prev, documentUrl: newDocUrls }));
         setFile(null); // Mark for deletion on save if it was just uploaded
         setIsDirty(true);
     };
@@ -384,23 +440,80 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                     <h2 className={styles.formTitle}>{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
                     <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
                 </div>
+                <div className={styles.langTabBar}>
+                    {SUPPORTED_LANGS.map(lang => (
+                        <button
+                            key={lang}
+                            type="button"
+                            onClick={() => setActiveLang(lang)}
+                            className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
+                        >
+                            {lang.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <div className={styles.scrollableArea}>
                         {error && <p className={styles.formError}>{error}</p>}
 
                         <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
-                           <div>
+                            <div>
                                 <label htmlFor="code" className={styles.label}>{t('code')}<span className={styles.requiredAsterisk}>*</span></label>
                                 <input id="code" name="code" type="text" value={formData.code || ''} onChange={handleChange} className={styles.input} required disabled={isEditing} />
                             </div>
                             <div>
-                                <label htmlFor="label" className={styles.label}>{t('label')}<span className={styles.requiredAsterisk}>*</span></label>
-                                <input id="label" name="label" type="text" value={formData.label || ''} onChange={handleChange} className={styles.input} required />
+                                <div className={styles.labelWrapper}>
+                                    <label htmlFor="label" className={styles.label}>{t('label')}<span className={styles.requiredAsterisk}>*</span></label>
+                                    <div className={styles.indicatorContainer}>
+                                        <Globe size={14} className={styles.indicatorIcon} />
+                                        <span className={styles.translationCounter}>
+                                            {Object.values(formData.label || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                        </span>
+                                    </div>
+                                </div>
+                                {activeLang !== appConfig.defaultLanguage && (
+                                    <TranslationReference
+                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                    />
+                                )}
+                                <input
+                                    id="label"
+                                    name="label"
+                                    type="text"
+                                    value={(formData.label as Record<string, string>)?.[activeLang] || ''}
+                                    onChange={handleChange}
+                                    placeholder={t('labelPlaceholder')}
+                                    className={styles.input}
+                                    required={activeLang === appConfig.defaultLanguage}
+                                />
                             </div>
                         </div>
                         <div>
-                             <label htmlFor="description" className={styles.label}>{t('description')}</label>
-                            <textarea id="description" name="description" value={formData.description || ''} onChange={handleChange} className={styles.textarea} rows={3}></textarea>
+                            <div className={styles.labelWrapper}>
+                                <label htmlFor="description" className={styles.label}>{t('description')}</label>
+                                <div className={styles.indicatorContainer}>
+                                    <Globe size={14} className={styles.indicatorIcon} />
+                                    <span className={styles.translationCounter}>
+                                        {Object.values(formData.description || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                    </span>
+                                </div>
+                            </div>
+                            {activeLang !== appConfig.defaultLanguage && (
+                                <TranslationReference
+                                    label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                    text={(formData.description as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                />
+                            )}
+                            <textarea
+                                id="description"
+                                name="description"
+                                value={(formData.description as Record<string, string>)?.[activeLang] || ''}
+                                onChange={handleChange}
+                                placeholder={t('descriptionPlaceholder')}
+                                className={styles.textarea}
+                                rows={3}
+                            ></textarea>
                         </div>
                         <div>
                             <label className={styles.label}>{t('position3d', '3D Position')}</label>
@@ -419,7 +532,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                 </div>
                             </div>
                         </div>
-                         <div className={styles.documentSection}>
+                        <div className={styles.documentSection}>
                             <label className={styles.label}>{t('pointDocument')}</label>
                             {(docUrlForCurrentLang || file) && (
                                 <div className={styles.fileName}>{t('currentFile')}: {file?.name || getFilenameFromUrl(docUrlForCurrentLang)}</div>
@@ -443,7 +556,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                         </div>
 
                     </div>
-                    
+
                     <div className={styles.formActions}>
                         <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
                         <button type="submit" disabled={isSubmitting || !isDirty} className={styles.saveButton}>

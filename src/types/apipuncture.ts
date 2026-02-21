@@ -8,8 +8,8 @@ export interface Vector3Pos {
 export interface StingPoint {
   id: string;
   code: string;
-  label: string;
-  description: string;
+  label: { [key: string]: string };
+  description: { [key: string]: string };
   position: Vector3Pos;
   documentUrl?: { [key: string]: string } | string;
 }

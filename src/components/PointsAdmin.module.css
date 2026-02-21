@@ -53,8 +53,13 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 
@@ -172,7 +177,7 @@
 .modalContent {
     background: white;
     border-radius: 0.75rem;
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     max-width: 600px;
     width: 100%;
     max-height: 90vh;
@@ -238,13 +243,41 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.labelWrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
 .label,
 .coordinateLabel {
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
     color: #374151;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
+}
+
+.indicatorContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #6b7280;
+}
+
+.indicatorIcon {
+    opacity: 0.7;
+}
+
+.translationCounter {
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    background-color: #f3f4f6;
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid #e5e7eb;
 }
 
 .requiredAsterisk {
@@ -304,11 +337,23 @@
     cursor: pointer;
 }
 
-.documentViewButton { background-color: #e5e7eb; }
-.documentUploadButton { background-color: #d1fae5; color: #065f46; }
-.documentDeleteButton { background-color: #fee2e2; color: #991b1b; }
+.documentViewButton {
+    background-color: #e5e7eb;
+}
 
-.fileInput { display: none; }
+.documentUploadButton {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.documentDeleteButton {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.fileInput {
+    display: none;
+}
 
 .formActions {
     display: flex;
@@ -327,9 +372,77 @@
     border-radius: 0.5rem;
 }
 
-.cancelButton { background-color: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
-.saveButton { background-color: var(--color-primary); color: white; border: 1px solid transparent; }
-.saveButton:disabled { background-color: #9ca3af; cursor: not-allowed; }
+.cancelButton {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.saveButton {
+    background-color: var(--color-primary);
+    color: white;
+    border: 1px solid transparent;
+}
+
+.saveButton:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Language tab bar */
+.langTabBar {
+    display: flex;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 1.5rem;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.langTab {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.langTab:hover {
+    color: var(--color-primary);
+}
+
+.langTabActive {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+/* Translation Reference Box */
+.translationReference {
+    background-color: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    color: #475569;
+    line-height: 1.4;
+    position: relative;
+}
+
+.translationReferenceLabel {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+    letter-spacing: 0.025em;
+}
 
 /* Delete confirmation modal */
 .modalHeader {
