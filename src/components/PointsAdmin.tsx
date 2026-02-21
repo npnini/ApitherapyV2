@@ -8,6 +8,7 @@ import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown
 import { useTranslation } from 'react-i18next';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
+import DocumentManagement from './shared/DocumentManagement';
 
 // Helper to get the correct document URL for the current language
 const getDocumentUrlForLang = (docUrl: any, lang: string): string | null => {
@@ -129,7 +130,7 @@ const PointsAdmin: React.FC = () => {
         setIsDirty(false);
     };
 
-    const handleSave = async (pointToSave: Partial<StingPoint>, file: File | null) => {
+    const handleSave = async (pointToSave: Partial<StingPoint>, file: File | null, lang: string) => {
         const isNewPoint = !pointToSave.id;
 
         const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
@@ -147,32 +148,39 @@ const PointsAdmin: React.FC = () => {
         try {
             let documentUrlObject: { [key: string]: string } = {};
 
-            // Start with the existing URLs
+            // Start with the existing URLs from the point being saved
             if (pointToSave.documentUrl) {
                 if (typeof pointToSave.documentUrl === 'string') {
-                    console.log('[DEBUG-SAVE-02] Normalizing legacy string URL.');
                     documentUrlObject = { en: pointToSave.documentUrl };
                 } else {
-                    console.log('[DEBUG-SAVE-03] Starting with existing URL object.');
                     documentUrlObject = { ...pointToSave.documentUrl };
                 }
             }
 
-            // Handle file upload
-            if (file) {
-                console.log(`[DEBUG-SAVE-04] File upload triggered for lang '${currentLang}'.`);
-                // If a file for the current language already exists, delete it first.
-                if (documentUrlObject[currentLang]) {
-                    console.log(`[DEBUG-SAVE-05] Deleting existing file for ${currentLang}:`, documentUrlObject[currentLang]);
-                    try {
-                        await deleteFile(documentUrlObject[currentLang]);
-                    } catch (storageError) {
-                        console.error("[DEBUG-SAVE-ERROR] Failed to delete old file from storage, but proceeding.", storageError);
+            // Identify and delete any files that were removed from the documentUrlObject (the form state)
+            const originalDocUrls = originalPoint?.documentUrl;
+            if (originalDocUrls) {
+                const oldUrls: Record<string, string> = typeof originalDocUrls === 'string' ? { en: originalDocUrls } : originalDocUrls as Record<string, string>;
+                for (const [l, url] of Object.entries(oldUrls)) {
+                    // If it was in the original but NOT in the current object, and we aren't about to replace it with a new file for that same language
+                    if (url && !documentUrlObject[l] && !(file && l === lang)) {
+                        console.log(`[DEBUG-SAVE-DEL] Deleting orphaned file for lang ${l}:`, url);
+                        await deleteFile(url).catch(err => console.error("Error deleting orphaned file:", err));
                     }
                 }
-                const newUrl = await uploadFile(file, `Points/${pointToSave.id || 'new'}/${file.name}`);
+            }
+
+            // Handle file upload/replacement for the active language
+            if (file) {
+                console.log(`[DEBUG-SAVE-04] File upload triggered for lang '${lang}'.`);
+                // If a file for the current language already exists, delete it first.
+                if (documentUrlObject[lang]) {
+                    console.log(`[DEBUG-SAVE-05] Deleting existing file for replacement ${lang}:`, documentUrlObject[lang]);
+                    await deleteFile(documentUrlObject[lang]).catch(err => console.error("Error deleting old file for replacement:", err));
+                }
+                const newUrl = await uploadFile(file, `Points/${pointToSave.id || 'new'}`);
                 console.log(`[DEBUG-SAVE-06] File uploaded. New URL: ${newUrl}`);
-                documentUrlObject[currentLang] = newUrl;
+                documentUrlObject[lang] = newUrl;
             }
 
             const dataToSave = {
@@ -259,7 +267,7 @@ const PointsAdmin: React.FC = () => {
                 <EditPointForm
                     key={editingPoint.id || 'new'} // Ensures form resets when switching points
                     point={editingPoint}
-                    onSave={handleSave}
+                    onSave={(data, file, lang) => handleSave(data, file, lang)}
                     onCancel={handleCancelEdit}
                     error={formError}
                     isSubmitting={isSubmitting}
@@ -342,7 +350,7 @@ const PointsAdmin: React.FC = () => {
 
 interface EditPointFormProps {
     point: Partial<StingPoint>;
-    onSave: (point: Partial<StingPoint>, file: File | null) => void;
+    onSave: (point: Partial<StingPoint>, file: File | null, lang: string) => void;
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
@@ -367,9 +375,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const [file, setFile] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const docUrlForCurrentLang = getDocumentUrlForLang(formData.documentUrl, currentLang);
 
     useEffect(() => {
         setFormData(point);
@@ -377,13 +383,6 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
         setIsDirty(false);
     }, [point]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files ? e.target.files[0] : null;
-        if (selectedFile) {
-            setFile(selectedFile);
-            setIsDirty(true);
-        }
-    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -416,7 +415,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
             // Error handled by HTML required or onSave validation
         }
 
-        onSave(formData, file);
+        onSave(formData, file, activeLang);
     };
 
     const handleFileDelete = () => {
@@ -424,7 +423,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
         if (!formData.documentUrl) return;
 
         let newDocUrls = { ... (typeof formData.documentUrl === 'object' ? formData.documentUrl : { en: formData.documentUrl }) };
-        delete (newDocUrls as Record<string, any>)[currentLang];
+        delete (newDocUrls as Record<string, any>)[activeLang];
 
         setFormData(prev => ({ ...prev, documentUrl: newDocUrls }));
         setFile(null); // Mark for deletion on save if it was just uploaded
@@ -448,7 +447,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                             onClick={() => setActiveLang(lang)}
                             className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
                         >
-                            {lang.toUpperCase()}
+                            {t(lang)}
                         </button>
                     ))}
                 </div>
@@ -473,7 +472,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
@@ -501,7 +500,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                             </div>
                             {activeLang !== appConfig.defaultLanguage && (
                                 <TranslationReference
-                                    label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                    label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                     text={(formData.description as Record<string, string>)?.[appConfig.defaultLanguage]}
                                 />
                             )}
@@ -532,28 +531,18 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                 </div>
                             </div>
                         </div>
-                        <div className={styles.documentSection}>
-                            <label className={styles.label}>{t('pointDocument')}</label>
-                            {(docUrlForCurrentLang || file) && (
-                                <div className={styles.fileName}>{t('currentFile')}: {file?.name || getFilenameFromUrl(docUrlForCurrentLang)}</div>
-                            )}
-                            <div className={styles.documentButtonRow}>
-                                {docUrlForCurrentLang && !file && (
-                                    <a href={docUrlForCurrentLang} target="_blank" rel="noopener noreferrer" className={`${styles.documentActionButton} ${styles.documentViewButton}`}>
-                                        <FileDown size={16} /> {t('viewDocument')}
-                                    </a>
-                                )}
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className={`${styles.documentActionButton} ${styles.documentUploadButton}`} disabled={isSubmitting}>
-                                    <FileUp size={16} /> {docUrlForCurrentLang ? t('replaceDocument') : t('uploadDocument')}
-                                </button>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className={styles.fileInput} accept=".pdf,.doc,.docx,.jpg,.png" />
-                                {(docUrlForCurrentLang || file) && (
-                                    <button type="button" onClick={handleFileDelete} disabled={isSubmitting} className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}>
-                                        <XSquare size={16} /> {t('deleteDocument')}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                        <DocumentManagement
+                            entityName="Point"
+                            documentUrl={formData.documentUrl as { [key: string]: string }}
+                            onFileChange={(newFile) => {
+                                setFile(newFile);
+                                setIsDirty(true);
+                            }}
+                            onFileDelete={handleFileDelete}
+                            isSubmitting={isSubmitting}
+                            activeLang={activeLang}
+                            selectedFileName={file?.name}
+                        />
 
                     </div>
 

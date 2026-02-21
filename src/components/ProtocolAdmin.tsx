@@ -8,6 +8,7 @@ import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, File
 import { useTranslation } from 'react-i18next';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
+import DocumentManagement from './shared/DocumentManagement';
 
 
 // A type for the form state, where points are an array of strings (IDs)
@@ -129,7 +130,7 @@ const ProtocolAdmin: React.FC = () => {
         return true;
     }
 
-    const handleSave = async () => {
+    const handleSave = async (lang: string) => {
         if (!editingProtocol) return;
 
         if (!validateProtocolForm(editingProtocol)) {
@@ -151,17 +152,17 @@ const ProtocolAdmin: React.FC = () => {
 
             const originalProtocol = editingProtocol.id ? protocols.find(p => p.id === editingProtocol.id) : null;
             const originalUrlForLang = originalProtocol?.documentUrl
-                ? (typeof originalProtocol.documentUrl === 'object' ? originalProtocol.documentUrl[currentLang] : (currentLang === 'en' ? originalProtocol.documentUrl : undefined))
+                ? (typeof originalProtocol.documentUrl === 'object' ? (originalProtocol.documentUrl as any)[lang] : (lang === 'en' ? originalProtocol.documentUrl : undefined))
                 : undefined;
 
-            const wasRemoved = originalUrlForLang && !documentUrl[currentLang];
+            const wasRemoved = originalUrlForLang && !documentUrl[lang];
 
             if (fileToUpload) {
                 if (originalUrlForLang) {
                     await deleteFile(originalUrlForLang);
                 }
-                const newUrl = await uploadFile(fileToUpload, `Protocols/${editingProtocol.id || 'new'}/${currentLang}`);
-                documentUrl[currentLang] = newUrl;
+                const newUrl = await uploadFile(fileToUpload, `Protocols/${editingProtocol.id || 'new'}`);
+                documentUrl[lang] = newUrl;
             } else if (wasRemoved) {
                 await deleteFile(originalUrlForLang!);
             }
@@ -217,11 +218,11 @@ const ProtocolAdmin: React.FC = () => {
         }
     };
 
-    const handleFileDelete = (protocol: Partial<ProtocolFormState>) => {
+    const handleFileDelete = (protocol: Partial<ProtocolFormState>, lang: string) => {
         if (!protocol.documentUrl) return;
 
         const newDocUrls = { ...(typeof protocol.documentUrl === 'object' ? protocol.documentUrl : { en: protocol.documentUrl }) };
-        delete (newDocUrls as Record<string, any>)[currentLang];
+        delete (newDocUrls as Record<string, any>)[lang];
 
         onUpdate({ ...protocol, documentUrl: newDocUrls });
         setFileToUpload(null);
@@ -339,7 +340,7 @@ const ProtocolAdmin: React.FC = () => {
             {editingProtocol && <EditProtocolForm
                 protocol={editingProtocol}
                 allAcuPoints={allAcuPoints}
-                onSave={handleSave}
+                onSave={(lang) => handleSave(lang)}
                 onCancel={onCancel}
                 onUpdate={onUpdate}
                 error={formError}
@@ -348,7 +349,7 @@ const ProtocolAdmin: React.FC = () => {
                     setFileToUpload(file);
                     setIsDirty(true);
                 }}
-                onFileDelete={handleFileDelete}
+                onFileDelete={(protocol, lang) => handleFileDelete(protocol, lang)}
                 isDirty={isDirty}
                 currentLang={currentLang}
                 appConfig={appConfig}
@@ -367,13 +368,13 @@ const ProtocolAdmin: React.FC = () => {
 interface EditProtocolFormProps {
     protocol: Partial<ProtocolFormState>;
     allAcuPoints: AcuPoint[];
-    onSave: () => void;
+    onSave: (lang: string) => void;
     onCancel: () => void;
     onUpdate: (protocol: Partial<ProtocolFormState>) => void;
     error: string | null;
     isSubmitting: boolean;
     onFileChange: (file: File | null) => void;
-    onFileDelete: (protocol: Partial<ProtocolFormState>) => void;
+    onFileDelete: (protocol: Partial<ProtocolFormState>, lang: string) => void;
     isDirty: boolean;
     currentLang: string;
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
@@ -391,14 +392,10 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
 
 const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang, appConfig }) => {
     const { t } = useTranslation();
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
 
-    const documentUrlForLang = protocol.documentUrl && typeof protocol.documentUrl === 'object'
-        ? (protocol.documentUrl as any)[activeLang]
-        : (activeLang === 'en' && typeof protocol.documentUrl === 'string' ? protocol.documentUrl : undefined);
 
     const handlePointSelection = (pointId: string) => {
         const currentPoints = protocol.points || [];
@@ -409,21 +406,8 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
         onUpdate({ ...protocol, points: newPoints });
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files ? e.target.files[0] : null;
-        if (file) {
-            setSelectedFileName(file.name);
-            onFileChange(file);
-        } else {
-            setSelectedFileName(null);
-            onFileChange(null);
-        }
-    };
 
     useEffect(() => {
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
         setSelectedFileName(null);
     }, [protocol]);
 
@@ -444,7 +428,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
                             onClick={() => setActiveLang(lang)}
                         >
-                            {lang.toUpperCase()}
+                            {t(lang)}
                         </button>
                     ))}
                 </div>
@@ -467,7 +451,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(protocol.name as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
@@ -498,7 +482,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(protocol.description as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
@@ -525,7 +509,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
                                         text={(protocol.rationale as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
@@ -564,72 +548,32 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             </div>
 
                             {/* Document Management Section */}
-                            <div className={styles.documentSection}>
-                                <label className={styles.formLabel}>{t('protocol_document')} ({activeLang.toUpperCase()})</label>
-
-                                {!documentUrlForLang && !selectedFileName && (
-                                    <p className={styles.noDocument}>{t('no_document_attached_for_lang', { lang: activeLang.toUpperCase() })}</p>
-                                )}
-
-                                {selectedFileName && (
-                                    <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
-                                )}
-
-                                <div className={styles.documentButtonRow}>
-                                    {documentUrlForLang && !selectedFileName && (
-                                        <button
-                                            type="button"
-                                            onClick={() => window.open(documentUrlForLang, '_blank')}
-                                            className={`${styles.documentActionButton} ${styles.documentViewButton}`}
-                                            disabled={isSubmitting}
-                                        >
-                                            <FileDown size={16} /> {t('view_document')}
-                                        </button>
-                                    )}
-
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
-                                        disabled={isSubmitting}
-                                    >
-                                        <FileUp size={16} />
-                                        {documentUrlForLang ? t('replace_document') : t('upload_document')}
-                                    </button>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileChange}
-                                        className={styles.fileInput}
-                                        accept=".pdf,.doc,.docx,.jpg,.png"
-                                    />
-
-                                    {(documentUrlForLang || selectedFileName) && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (selectedFileName) {
-                                                    onFileChange(null);
-                                                    setSelectedFileName(null);
-                                                    if (fileInputRef.current) fileInputRef.current.value = '';
-                                                } else {
-                                                    onFileDelete(protocol)
-                                                }
-                                            }}
-                                            disabled={isSubmitting}
-                                            className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
-                                        >
-                                            <XSquare size={16} /> {selectedFileName ? t('cancel_upload') : t('delete_document')}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                            <DocumentManagement
+                                entityName="Protocol"
+                                documentUrl={protocol.documentUrl as { [key: string]: string }}
+                                onFileChange={(file) => {
+                                    onFileChange(file);
+                                    if (file) setSelectedFileName(file.name);
+                                    else setSelectedFileName(null);
+                                }}
+                                onFileDelete={() => {
+                                    if (selectedFileName) {
+                                        onFileChange(null);
+                                        setSelectedFileName(null);
+                                    } else {
+                                        onFileDelete(protocol, activeLang);
+                                    }
+                                }}
+                                isSubmitting={isSubmitting}
+                                activeLang={activeLang}
+                                selectedFileName={selectedFileName || undefined}
+                            />
                         </>
                     )}
                 </div>
                 <div className={styles.modalActions}>
                     <button onClick={onCancel} className={styles.cancelButton}>{t('cancel')}</button>
-                    <button onClick={onSave} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
+                    <button onClick={() => onSave(activeLang)} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
                         <Save size={16} /> {isSubmitting ? t('saving') : t('save_protocol')}
                     </button>
                 </div>
