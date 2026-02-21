@@ -9,17 +9,19 @@ interface DocumentManagementProps {
   onFileDelete: () => void;
   isSubmitting: boolean;
   selectedFileName?: string;
+  activeLang?: string;
 }
 
-const DocumentManagement: React.FC<DocumentManagementProps> = ({ 
-  documentUrl, 
-  onFileChange, 
-  onFileDelete, 
-  isSubmitting, 
-  selectedFileName 
+const DocumentManagement: React.FC<DocumentManagementProps> = ({
+  documentUrl,
+  onFileChange,
+  onFileDelete,
+  isSubmitting,
+  selectedFileName,
+  activeLang
 }) => {
   const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const effectiveLang = activeLang || i18n.language;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
@@ -27,7 +29,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   };
 
   // No fallback logic here. The form should only care about the current language.
-  const currentDocumentUrl = documentUrl ? documentUrl[currentLang] : undefined;
+  const currentDocumentUrl = documentUrl ? documentUrl[effectiveLang] : undefined;
   const hasDocumentForCurrentLang = !!currentDocumentUrl;
 
   return (
@@ -39,12 +41,14 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
       <div className={styles.documentInfo}>
         <div className={styles.documentStatus}>
           {!hasDocumentForCurrentLang && !selectedFileName && (
-            <p className={styles.noDocument}>{t('no_document_attached')}</p>
+            <p className={styles.noDocument}>
+              {activeLang ? t('no_document_attached_for_lang', { lang: activeLang.toUpperCase() }) : t('no_document_attached')}
+            </p>
           )}
           {selectedFileName && (
             <p className={styles.fileName}>{t('selected_file')} {selectedFileName}</p>
           )}
-    
+
           <div className={styles.documentButtonRow}>
             {hasDocumentForCurrentLang ? (
               <>
@@ -59,11 +63,11 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
 
                 <label className={`${styles.documentActionButton} ${styles.greenButton}`}>
                   <FileUp size={16} /> {t('replace_document')}
-                  <input 
-                    type="file" 
-                    onChange={handleFileSelect} 
-                    className={styles.fileInput} 
-                    disabled={isSubmitting} 
+                  <input
+                    type="file"
+                    onChange={handleFileSelect}
+                    className={styles.fileInput}
+                    disabled={isSubmitting}
                     accept="application/pdf"
                   />
                 </label>
@@ -80,11 +84,11 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
             ) : (
               <label className={`${styles.documentActionButton} ${styles.blueButton}`}>
                 <Upload size={16} /> {t('upload_document')}
-                <input 
-                  type="file" 
-                  onChange={handleFileSelect} 
-                  className={styles.fileInput} 
-                  disabled={isSubmitting} 
+                <input
+                  type="file"
+                  onChange={handleFileSelect}
+                  className={styles.fileInput}
+                  disabled={isSubmitting}
                   accept="application/pdf"
                 />
               </label>

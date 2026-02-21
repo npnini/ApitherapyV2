@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 interface ProblemListProps {
   onEdit: (id: string) => void;
   onAddNew: () => void;
+  appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
 const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
@@ -32,17 +33,19 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
     }
     // Fallback for old string-based URLs, if any
     if (typeof problem.documentUrl === 'string') {
-        return problem.documentUrl;
+      return problem.documentUrl;
     }
     return undefined;
   };
 
   const filteredProblems = useMemo(() => {
-    return problems.filter(problem =>
-      problem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      problem.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [problems, searchTerm]);
+    return problems.filter(problem => {
+      const name = typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string);
+      const description = typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string);
+      return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        description.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [problems, searchTerm, currentLang]);
 
   const handleDeleteClick = (id: string) => {
     setProblemToDelete(id);
@@ -84,10 +87,12 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
         <tbody>
           {filteredProblems.map(problem => {
             const documentUrl = getDocumentUrl(problem);
+            const name = typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string);
+            const description = typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string);
             return (
               <tr key={problem.id}>
-                <td>{problem.name}</td>
-                <td>{problem.description}</td>
+                <td>{name}</td>
+                <td>{description}</td>
                 <td className={styles.documentCell}>
                   {documentUrl && (
                     <a href={documentUrl} target="_blank" rel="noopener noreferrer">

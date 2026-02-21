@@ -2,11 +2,11 @@ import { Timestamp } from 'firebase/firestore';
 
 export interface Problem {
   id: string;
-  name: string;
-  description: string;
+  name: { [key: string]: string };
+  description: { [key: string]: string };
   protocolIds: string[];
   measureIds: string[];
-  documentUrl?: string | { [key: string]: string };
+  documentUrl?: { [key: string]: string } | string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
