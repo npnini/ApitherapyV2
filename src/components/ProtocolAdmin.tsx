@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
-import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, FileCheck2, XSquare, X } from 'lucide-react';
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, FileCheck2, XSquare, X, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
@@ -29,12 +28,31 @@ const ProtocolAdmin: React.FC = () => {
     const [formError, setFormError] = useState<string | null>(null);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
+    const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
     useEffect(() => {
         const auth = getAuth();
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
+            if (!currentUser) setIsLoading(false);
         });
+
+        const fetchConfig = async () => {
+            try {
+                const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+                if (configDoc.exists()) {
+                    const data = configDoc.data();
+                    setAppConfig({
+                        defaultLanguage: data.languageSettings?.defaultLanguage || 'en',
+                        supportedLanguages: data.languageSettings?.supportedLanguages || ['en']
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching app config:", err);
+            }
+        };
+        fetchConfig();
+
         return () => unsubscribe();
     }, []);
 
@@ -53,10 +71,14 @@ const ProtocolAdmin: React.FC = () => {
                 getDocs(collection(db, 'acupuncture_points'))
             ]);
 
-            const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol).sort((a,b) => a.name.localeCompare(b.name));
+            const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol).sort((a, b) => {
+                const nameA = (typeof a.name === 'object' ? a.name[appConfig.defaultLanguage] || Object.values(a.name)[0] || '' : a.name).toLowerCase();
+                const nameB = (typeof b.name === 'object' ? b.name[appConfig.defaultLanguage] || Object.values(b.name)[0] || '' : b.name).toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
             setProtocols(protocolsList);
 
-            const pointsList = pointsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AcuPoint)).sort((a,b) => a.code.localeCompare(b.code));
+            const pointsList = pointsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AcuPoint)).sort((a, b) => a.code.localeCompare(b.code));
             setAllAcuPoints(pointsList);
 
         } catch (error) {
@@ -71,14 +93,18 @@ const ProtocolAdmin: React.FC = () => {
     }, [fetchProtocolsAndPoints]);
 
     const validateProtocolForm = (protocol: Partial<ProtocolFormState>): boolean => {
-        if (!protocol.name?.trim()) {
+        const nameValues = Object.values(protocol.name || {}).map(v => v.trim()).filter(Boolean);
+        if (nameValues.length === 0) {
             setFormError(t('protocol_name_required'));
             return false;
         }
-        if (!protocol.description?.trim()) {
+
+        const descriptionValues = Object.values(protocol.description || {}).map(v => v.trim()).filter(Boolean);
+        if (descriptionValues.length === 0) {
             setFormError(t('protocol_description_required'));
             return false;
         }
+
         if (!protocol.points || protocol.points.length === 0) {
             setFormError(t('at_least_one_point'));
             return false;
@@ -86,10 +112,16 @@ const ProtocolAdmin: React.FC = () => {
 
         const isNewProtocol = !protocol.id;
         if (isNewProtocol) {
-            const nameExists = protocols.some(p => p.name.toLowerCase() === protocol.name!.trim().toLowerCase() && p.id !== protocol.id);
-            if (nameExists) {
-                setFormError(t('protocol_name_exists'));
-                return false;
+            const currentName = typeof protocol.name === 'object' ? (protocol.name[appConfig.defaultLanguage] || Object.values(protocol.name)[0] || '').trim().toLowerCase() : '';
+            if (currentName) {
+                const nameExists = protocols.some(p => {
+                    const pName = typeof p.name === 'object' ? (p.name[appConfig.defaultLanguage] || Object.values(p.name)[0] || '').trim().toLowerCase() : (p.name as string).toLowerCase();
+                    return pName === currentName && p.id !== protocol.id;
+                });
+                if (nameExists) {
+                    setFormError(t('protocol_name_exists'));
+                    return false;
+                }
             }
         }
 
@@ -116,9 +148,9 @@ const ProtocolAdmin: React.FC = () => {
                     documentUrl = { ...editingProtocol.documentUrl };
                 }
             }
-            
+
             const originalProtocol = editingProtocol.id ? protocols.find(p => p.id === editingProtocol.id) : null;
-            const originalUrlForLang = originalProtocol?.documentUrl 
+            const originalUrlForLang = originalProtocol?.documentUrl
                 ? (typeof originalProtocol.documentUrl === 'object' ? originalProtocol.documentUrl[currentLang] : (currentLang === 'en' ? originalProtocol.documentUrl : undefined))
                 : undefined;
 
@@ -126,7 +158,7 @@ const ProtocolAdmin: React.FC = () => {
 
             if (fileToUpload) {
                 if (originalUrlForLang) {
-                  await deleteFile(originalUrlForLang);
+                    await deleteFile(originalUrlForLang);
                 }
                 const newUrl = await uploadFile(fileToUpload, `Protocols/${editingProtocol.id || 'new'}/${currentLang}`);
                 documentUrl[currentLang] = newUrl;
@@ -135,9 +167,9 @@ const ProtocolAdmin: React.FC = () => {
             }
 
             const protocolToSave: any = {
-                name: editingProtocol.name!.trim(),
-                description: editingProtocol.description!.trim(),
-                rationale: editingProtocol.rationale!.trim(),
+                name: typeof editingProtocol.name === 'object' ? editingProtocol.name : { [appConfig.defaultLanguage]: editingProtocol.name },
+                description: typeof editingProtocol.description === 'object' ? editingProtocol.description : { [appConfig.defaultLanguage]: editingProtocol.description },
+                rationale: typeof editingProtocol.rationale === 'object' ? editingProtocol.rationale : { [appConfig.defaultLanguage]: editingProtocol.rationale },
                 points: editingProtocol.points!,
                 documentUrl: documentUrl,
             };
@@ -199,20 +231,31 @@ const ProtocolAdmin: React.FC = () => {
         setEditingProtocol(protocol);
         setIsDirty(true);
     }
-    
+
     const handleStartEditing = (proto: Protocol) => {
         const pointIds = (proto.points || []).map((p: AcuPoint | string) => typeof p === 'string' ? p : (p as AcuPoint).id);
         setFormError(null);
         setFileToUpload(null);
         setIsDirty(false);
-        setEditingProtocol({ ...proto, points: pointIds });
+        setEditingProtocol({
+            ...proto,
+            points: pointIds,
+            name: typeof proto.name === 'string' ? { [appConfig.defaultLanguage]: proto.name } : proto.name,
+            description: typeof proto.description === 'string' ? { [appConfig.defaultLanguage]: proto.description } : proto.description,
+            rationale: typeof proto.rationale === 'string' ? { [appConfig.defaultLanguage]: proto.rationale } : proto.rationale,
+        });
     };
 
     const handleStartNew = () => {
         setFormError(null);
         setFileToUpload(null);
         setIsDirty(false);
-        setEditingProtocol({ name: '', description: '', rationale: '', points: [] });
+        setEditingProtocol({
+            name: { [appConfig.defaultLanguage]: '' },
+            description: { [appConfig.defaultLanguage]: '' },
+            rationale: { [appConfig.defaultLanguage]: '' },
+            points: []
+        });
     }
 
     const onCancel = () => {
@@ -226,14 +269,14 @@ const ProtocolAdmin: React.FC = () => {
             <div className={styles.header}>
                 <h1 className={styles.title}>{t('protocol_configuration')}</h1>
                 <button onClick={handleStartNew} className={styles.addButton}>
-                    <Plus size={18} className={styles.addButtonIcon}/>{t('add_new_protocol')}
+                    <Plus size={18} className={styles.addButtonIcon} />{t('add_new_protocol')}
                 </button>
             </div>
             {formError && <p className={styles.errorBox}>{formError}</p>}
 
-            {isLoading ? <div className={styles.loaderContainer}><Loader className={styles.loader} size={40}/></div> : (
+            {isLoading ? <div className={styles.loaderContainer}><Loader className={styles.loader} size={40} /></div> : (
                 <div className={styles.protocolListContainer}>
-                     <table className={styles.table}>
+                    <table className={styles.table}>
                         <thead className={styles.tableHeader}>
                             <tr>
                                 <th scope="col" className={styles.headerCell}>{t('protocol_name')}</th>
@@ -267,22 +310,27 @@ const ProtocolAdmin: React.FC = () => {
                                 const finalDocUrl = docUrlForLang || (currentLang !== 'en' ? docUrlEn : undefined);
 
                                 return (
-                                <tr key={protocol.id} className={styles.tableRow}>
-                                    <td className={`${styles.cell} ${styles.protocolName}`}>{protocol.name}</td>
-                                    <td className={styles.cell}>{protocol.description}</td>
-                                    <td className={`${styles.cell} ${styles.documentCell}`}>
-                                        {finalDocUrl && (
-                                            <a href={finalDocUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-                                                <FileCheck2 size={18}/>
-                                            </a>
-                                        )}
-                                    </td>
-                                    <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                        <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
-                                        <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
-                                    </td>
-                                </tr>
-                            )}) }
+                                    <tr key={protocol.id} className={styles.tableRow}>
+                                        <td className={`${styles.cell} ${styles.protocolName}`}>
+                                            {(typeof protocol.name === 'object' ? (protocol.name[currentLang] || protocol.name[appConfig.defaultLanguage] || Object.values(protocol.name)[0]) : protocol.name) as string}
+                                        </td>
+                                        <td className={styles.cell}>
+                                            {(typeof protocol.description === 'object' ? (protocol.description[currentLang] || protocol.description[appConfig.defaultLanguage] || Object.values(protocol.description)[0]) : protocol.description) as string}
+                                        </td>
+                                        <td className={`${styles.cell} ${styles.documentCell}`}>
+                                            {finalDocUrl && (
+                                                <a href={finalDocUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                                    <FileCheck2 size={18} />
+                                                </a>
+                                            )}
+                                        </td>
+                                        <td className={`${styles.cell} ${styles.actionsCell}`}>
+                                            <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
+                                            <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -303,6 +351,7 @@ const ProtocolAdmin: React.FC = () => {
                 onFileDelete={handleFileDelete}
                 isDirty={isDirty}
                 currentLang={currentLang}
+                appConfig={appConfig}
             />}
 
             {deletingProtocol && <DeleteConfirmationModal
@@ -327,16 +376,29 @@ interface EditProtocolFormProps {
     onFileDelete: (protocol: Partial<ProtocolFormState>) => void;
     isDirty: boolean;
     currentLang: string;
+    appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang }) => {
+const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
+    if (!text) return null;
+    return (
+        <div className={styles.translationReference}>
+            <span className={styles.translationReferenceLabel}>{label}</span>
+            {text}
+        </div>
+    );
+};
+
+const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang, appConfig }) => {
     const { t } = useTranslation();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+    const [activeLang, setActiveLang] = useState<string>(currentLang);
+    const SUPPORTED_LANGS = appConfig.supportedLanguages;
 
     const documentUrlForLang = protocol.documentUrl && typeof protocol.documentUrl === 'object'
-        ? (protocol.documentUrl as any)[currentLang]
-        : (currentLang === 'en' && typeof protocol.documentUrl === 'string' ? protocol.documentUrl : undefined);
+        ? (protocol.documentUrl as any)[activeLang]
+        : (activeLang === 'en' && typeof protocol.documentUrl === 'string' ? protocol.documentUrl : undefined);
 
     const handlePointSelection = (pointId: string) => {
         const currentPoints = protocol.points || [];
@@ -357,9 +419,9 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
             onFileChange(null);
         }
     };
-    
+
     useEffect(() => {
-        if(fileInputRef.current){
+        if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
         setSelectedFileName(null);
@@ -367,147 +429,212 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
 
     return (
         <div className={styles.modalOverlay}>
-           <div className={styles.modalContent}>
+            <div className={styles.modalContent}>
                 <div className={styles.formHeader}>
-                    <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol') }</h2>
+                    <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol')}</h2>
                     <button onClick={onCancel} className={styles.closeButton}>
                         <X size={24} />
                     </button>
                 </div>
-               {error && <p className={styles.formError}>{error}</p>}
-               <div className={styles.formGrid}>
-                   {isSubmitting ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
-                    <>
-                        <div>
-                            <label htmlFor='protocolName' className={styles.formLabel}>
-                            {t('protocol_name')}
-                            <span className={styles.requiredAsterisk}>*</span>
-                            </label>
-                            <input
-                                id='protocolName'
-                                type="text"
-                                placeholder={t('protocol_name_placeholder')}
-                                value={protocol.name || ''}
-                                onChange={(e) => onUpdate({ ...protocol, name: e.target.value })}
-                                className={styles.formInput}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor='protocolDescription' className={styles.formLabel}>
-                            {t('protocol_description')}
-                            <span className={styles.requiredAsterisk}>*</span>
-                            </label>
-                            <textarea
-                                id='protocolDescription'
-                                placeholder={t('protocol_description_placeholder')}
-                                value={protocol.description || ''}
-                                onChange={(e) => onUpdate({ ...protocol, description: e.target.value })}
-                                className={styles.formTextarea}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
-                            <textarea
-                                id='protocolRationale'
-                                placeholder={t('protocol_rationale_placeholder')}
-                                value={protocol.rationale || ''}
-                                onChange={(e) => onUpdate({ ...protocol, rationale: e.target.value })}
-                                className={styles.formTextarea}
-                            />
-                        </div>
-                        <div>
-                            <h3 className={styles.formLabel}>
-                                {t('select_points')}
-                                <span className={styles.requiredAsterisk}>*</span>
-                            </h3>
-                            <div className={styles.pointsSelectionContainer}>
-                                {allAcuPoints.map(point => (
-                                    <label key={point.id} className={`${styles.pointLabel} ${(protocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={(protocol.points || []).includes(point.id)}
-                                            onChange={() => handlePointSelection(point.id)}
-                                            className={styles.pointCheckbox}
-                                        />
-                                        <span className={styles.pointCode}>{point.code}</span>
-                                        <span className={styles.pointLabelText}>{point.label}</span>
+                <div className={styles.langTabBar}>
+                    {SUPPORTED_LANGS.map(lang => (
+                        <button
+                            key={lang}
+                            type="button"
+                            className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
+                            onClick={() => setActiveLang(lang)}
+                        >
+                            {lang.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
+                {error && <p className={styles.formError}>{error}</p>}
+                <div className={styles.formGrid}>
+                    {isSubmitting ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
+                        <>
+                            <div>
+                                <div className={styles.labelWrapper}>
+                                    <label htmlFor='protocolName' className={styles.formLabel}>
+                                        {t('protocol_name')}
+                                        <span className={styles.requiredAsterisk}>*</span>
                                     </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Document Management Section */}
-                        <div className={styles.documentSection}>
-                            <label className={styles.formLabel}>{t('protocol_document')} ({currentLang.toUpperCase()})</label>
-
-                            {!documentUrlForLang && !selectedFileName && (
-                                <p className={styles.noDocument}>{t('no_document_attached_for_lang', { lang: currentLang.toUpperCase() })}</p>
-                            )}
-                            
-                            {selectedFileName && (
-                                <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
-                            )}
-
-                            <div className={styles.documentButtonRow}>
-                                {documentUrlForLang && !selectedFileName && (
-                                    <button
-                                        type="button"
-                                        onClick={() => window.open(documentUrlForLang, '_blank')}
-                                        className={`${styles.documentActionButton} ${styles.documentViewButton}`}
-                                        disabled={isSubmitting}
-                                    >
-                                        <FileDown size={16} /> {t('view_document')}
-                                    </button>
+                                    <div className={styles.indicatorContainer}>
+                                        <Globe size={14} className={styles.indicatorIcon} />
+                                        <span className={styles.translationCounter}>
+                                            {Object.values(protocol.name || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                        </span>
+                                    </div>
+                                </div>
+                                {activeLang !== appConfig.defaultLanguage && (
+                                    <TranslationReference
+                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        text={(protocol.name as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                    />
                                 )}
-
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
-                                    disabled={isSubmitting}
-                                >
-                                    <FileUp size={16} /> 
-                                    {documentUrlForLang ? t('replace_document') : t('upload_document')}
-                                </button>
                                 <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    className={styles.fileInput}
-                                    accept=".pdf,.doc,.docx,.jpg,.png"
+                                    id='protocolName'
+                                    type="text"
+                                    placeholder={t('protocol_name_placeholder')}
+                                    value={((protocol.name as Record<string, string>)?.[activeLang] || '') as string}
+                                    onChange={(e) => onUpdate({
+                                        ...protocol,
+                                        name: { ...(protocol.name as Record<string, string> || {}), [activeLang]: e.target.value }
+                                    })}
+                                    className={styles.formInput}
                                 />
+                            </div>
+                            <div>
+                                <div className={styles.labelWrapper}>
+                                    <label htmlFor='protocolDescription' className={styles.formLabel}>
+                                        {t('protocol_description')}
+                                        <span className={styles.requiredAsterisk}>*</span>
+                                    </label>
+                                    <div className={styles.indicatorContainer}>
+                                        <Globe size={14} className={styles.indicatorIcon} />
+                                        <span className={styles.translationCounter}>
+                                            {Object.values(protocol.description || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                        </span>
+                                    </div>
+                                </div>
+                                {activeLang !== appConfig.defaultLanguage && (
+                                    <TranslationReference
+                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        text={(protocol.description as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                    />
+                                )}
+                                <textarea
+                                    id='protocolDescription'
+                                    placeholder={t('protocol_description_placeholder')}
+                                    value={((protocol.description as Record<string, string>)?.[activeLang] || '') as string}
+                                    onChange={(e) => onUpdate({
+                                        ...protocol,
+                                        description: { ...(protocol.description as Record<string, string> || {}), [activeLang]: e.target.value }
+                                    })}
+                                    className={styles.formTextarea}
+                                />
+                            </div>
+                            <div>
+                                <div className={styles.labelWrapper}>
+                                    <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
+                                    <div className={styles.indicatorContainer}>
+                                        <Globe size={14} className={styles.indicatorIcon} />
+                                        <span className={styles.translationCounter}>
+                                            {Object.values(protocol.rationale || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                        </span>
+                                    </div>
+                                </div>
+                                {activeLang !== appConfig.defaultLanguage && (
+                                    <TranslationReference
+                                        label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                        text={(protocol.rationale as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                    />
+                                )}
+                                <textarea
+                                    id='protocolRationale'
+                                    placeholder={t('protocol_rationale_placeholder')}
+                                    value={((protocol.rationale as Record<string, string>)?.[activeLang] || '') as string}
+                                    onChange={(e) => onUpdate({
+                                        ...protocol,
+                                        rationale: { ...(protocol.rationale as Record<string, string> || {}), [activeLang]: e.target.value }
+                                    })}
+                                    className={styles.formTextarea}
+                                />
+                            </div>
+                            <div>
+                                <h3 className={styles.formLabel}>
+                                    {t('select_points')}
+                                    <span className={styles.requiredAsterisk}>*</span>
+                                </h3>
+                                <div className={styles.pointsSelectionContainer}>
+                                    {allAcuPoints.map(point => (
+                                        <label key={point.id} className={`${styles.pointLabel} ${(protocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={(protocol.points || []).includes(point.id)}
+                                                onChange={() => handlePointSelection(point.id)}
+                                                className={styles.pointCheckbox}
+                                            />
+                                            <span className={styles.pointCode}>{point.code}</span>
+                                            <span className={styles.pointLabelText}>
+                                                {typeof point.label === 'object' ? (point.label[currentLang] || point.label[appConfig.defaultLanguage] || Object.values(point.label)[0]) : point.label}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
 
-                                {(documentUrlForLang || selectedFileName) && (
+                            {/* Document Management Section */}
+                            <div className={styles.documentSection}>
+                                <label className={styles.formLabel}>{t('protocol_document')} ({activeLang.toUpperCase()})</label>
+
+                                {!documentUrlForLang && !selectedFileName && (
+                                    <p className={styles.noDocument}>{t('no_document_attached_for_lang', { lang: activeLang.toUpperCase() })}</p>
+                                )}
+
+                                {selectedFileName && (
+                                    <p className={styles.fileName}>{t('selected_file')}: {selectedFileName}</p>
+                                )}
+
+                                <div className={styles.documentButtonRow}>
+                                    {documentUrlForLang && !selectedFileName && (
+                                        <button
+                                            type="button"
+                                            onClick={() => window.open(documentUrlForLang, '_blank')}
+                                            className={`${styles.documentActionButton} ${styles.documentViewButton}`}
+                                            disabled={isSubmitting}
+                                        >
+                                            <FileDown size={16} /> {t('view_document')}
+                                        </button>
+                                    )}
+
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            if (selectedFileName) {
-                                                onFileChange(null);
-                                                setSelectedFileName(null);
-                                                if(fileInputRef.current) fileInputRef.current.value = '';
-                                            } else {
-                                                onFileDelete(protocol)
-                                            }
-                                        }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className={`${styles.documentActionButton} ${styles.documentUploadButton}`}
                                         disabled={isSubmitting}
-                                        className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
                                     >
-                                        <XSquare size={16} /> {selectedFileName ? t('cancel_upload') : t('delete_document')}
+                                        <FileUp size={16} />
+                                        {documentUrlForLang ? t('replace_document') : t('upload_document')}
                                     </button>
-                                )}
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        className={styles.fileInput}
+                                        accept=".pdf,.doc,.docx,.jpg,.png"
+                                    />
+
+                                    {(documentUrlForLang || selectedFileName) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (selectedFileName) {
+                                                    onFileChange(null);
+                                                    setSelectedFileName(null);
+                                                    if (fileInputRef.current) fileInputRef.current.value = '';
+                                                } else {
+                                                    onFileDelete(protocol)
+                                                }
+                                            }}
+                                            disabled={isSubmitting}
+                                            className={`${styles.documentActionButton} ${styles.documentDeleteButton}`}
+                                        >
+                                            <XSquare size={16} /> {selectedFileName ? t('cancel_upload') : t('delete_document')}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </>
+                        </>
                     )}
                 </div>
-               <div className={styles.modalActions}>
-                   <button onClick={onCancel} className={styles.cancelButton}>{t('cancel')}</button>
-                   <button onClick={onSave} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
-                      <Save size={16} /> {isSubmitting ? t('saving') : t('save_protocol')}
-                   </button>
-               </div>
-           </div>
-       </div>
+                <div className={styles.modalActions}>
+                    <button onClick={onCancel} className={styles.cancelButton}>{t('cancel')}</button>
+                    <button onClick={onSave} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
+                        <Save size={16} /> {isSubmitting ? t('saving') : t('save_protocol')}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -519,17 +646,21 @@ interface DeleteConfirmationModalProps {
 }
 
 const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ protocol, onConfirm, onCancel, isSubmitting }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     return (
         <div className={styles.modalOverlay}>
             <div className={styles.deleteModalContent}>
                 <div className={styles.deleteModalHeader}>
                     <div className={styles.deleteModalIconContainer}>
-                       <AlertTriangle className={styles.deleteModalIcon} aria-hidden="true" />
+                        <AlertTriangle className={styles.deleteModalIcon} aria-hidden="true" />
                     </div>
                     <div>
                         <h2 className={styles.deleteModalTitle}>{t('delete_protocol')}</h2>
-                        <p className={styles.deleteModalText}>{t('delete_protocol_confirmation', { name: protocol.name })}</p>
+                        <p className={styles.deleteModalText}>
+                            {t('delete_protocol_confirmation', {
+                                name: (typeof protocol.name === 'object' ? (protocol.name[i18n.language] || Object.values(protocol.name)[0]) : protocol.name) as string
+                            })}
+                        </p>
                     </div>
                 </div>
                 <div className={styles.deleteModalActions}>

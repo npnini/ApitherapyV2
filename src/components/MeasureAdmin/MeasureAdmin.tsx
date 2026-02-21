@@ -382,6 +382,16 @@ interface EditMeasureFormProps {
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
+const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
+    if (!text) return null;
+    return (
+        <div className={formStyles.translationReference}>
+            <span className={formStyles.translationReferenceLabel}>{label}</span>
+            {text}
+        </div>
+    );
+};
+
 const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, onSave, onCancel, error, isSubmitting, onUpdate, isDirty, appConfig }) => {
     const { t, i18n } = useTranslation();
     const currentLang = i18n.language;
@@ -562,13 +572,19 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     </span>
                                 </div>
                             </div>
+                            {activeLang !== appConfig.defaultLanguage && (
+                                <TranslationReference
+                                    label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                    text={formData.name[appConfig.defaultLanguage]}
+                                />
+                            )}
                             <input
                                 type="text"
                                 id="name"
                                 name="name"
                                 value={formData.name[activeLang] || ''}
                                 onChange={handleChange}
-                                placeholder={activeLang !== appConfig.defaultLanguage && formData.name[appConfig.defaultLanguage] ? formData.name[appConfig.defaultLanguage] : t('namePlaceholder')}
+                                placeholder={t('namePlaceholder')}
                                 className={formStyles.input}
                             />
                         </div>
@@ -661,12 +677,18 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     </span>
                                 </div>
                             </div>
+                            {activeLang !== appConfig.defaultLanguage && (
+                                <TranslationReference
+                                    label={`${t('defaultLanguage')}: ${appConfig.defaultLanguage.toUpperCase()}`}
+                                    text={formData.description[appConfig.defaultLanguage]}
+                                />
+                            )}
                             <textarea
                                 id="description"
                                 name="description"
                                 value={formData.description[activeLang] || ''}
                                 onChange={handleChange}
-                                placeholder={activeLang !== appConfig.defaultLanguage && formData.description[appConfig.defaultLanguage] ? formData.description[appConfig.defaultLanguage] : t('descriptionPlaceholder')}
+                                placeholder={t('descriptionPlaceholder')}
                                 className={formStyles.textarea}
                                 rows={3}
                             ></textarea>

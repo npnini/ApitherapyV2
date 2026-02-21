@@ -1,6 +1,6 @@
 Session Handover: Multilingual Implementation
 🚨 MANDATORY STARTUP INSTRUCTIONS
-we are in Phase 1 of the implementation plan.
+we are in Phase 1 of the implementation plan. Implemented already - Measures, Points, Protocols.
 The next agent MUST read the following files in order before taking any action. No implementation work may begin without completing all four steps.
 
 airules.md

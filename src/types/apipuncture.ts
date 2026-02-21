@@ -16,7 +16,8 @@ export interface StingPoint {
 
 export interface Protocol {
   id: string;
-  name: string;
-  summary: string;
+  name: { [key: string]: string };
+  description: { [key: string]: string };
+  rationale: { [key: string]: string };
   points: StingPoint[];
 }

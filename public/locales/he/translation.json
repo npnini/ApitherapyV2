@@ -127,6 +127,7 @@
   "delete_protocol": "מחק פרוטוקול",
   "delete_protocol_confirmation": "האם אתה בטוח שברצונך למחוק את הפרוטוקול '{{name}}'?",
   "no_document_attached": "לא צורף מסמך",
+  "no_document_attached_for_lang": "לא צורף מסמך עבור {{lang}}",
   "add_new_patient": "הוסף מטופל חדש",
   "search_patients": "חפש לפי שם, ת.ז. או אימייל...",
   "patient": "מטופל",
