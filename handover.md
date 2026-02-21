@@ -15,13 +15,13 @@ Before writing a single line of code, read these files **in this order**:
 
 **Phase 1 is complete.** All clinical entity admin components now let the admin user enter multilingual strings (per supported language) directly in the UI. These are stored in Firestore as language maps `{ en: "...", he: "..." }`.
 
-**Phase 2 infrastructure has NOT been set up yet.** Specifically:
-- `src/components/T.tsx` does **not** exist yet
-- `App.tsx` has **not** been wrapped with `<TranslationProvider>` yet
-- The `translations` Firestore collection rule has **not** been added yet
-- The Google Translate API key **has** been obtained by the developer and is in `.env.local` as `VITE_GOOGLE_TRANSLATE_KEY`
+**Phase 2 infrastructure is partially done.** Status:
+- `src/components/T.tsx` ✅ **EXISTS** (moved from `src/T.tsx` to correct location). Import paths: `'./T'` or `'../T'` from `src/components/<subfolder>/`
+- `App.tsx` ✅ **DONE** — wrapped with `<TranslationProvider>` (renamed inner component to `AppInner`, `setLanguage` called alongside `i18n.changeLanguage` in `handleSaveUser`)
+- The `translations` Firestore collection rule ✅ **DONE** — deployed in Firestore
+- The Google Translate API key ✅ **DONE** — in `.env.local` as `VITE_GOOGLE_TRANSLATE_KEY`
 
-The first task for the new agent is **Phase 2 infrastructure setup** (Steps 1.3–1.6 in the migration guide), then a pilot component migration.
+The first task for the new agent is **migrating the first component (Sidebar.tsx)** following the revised migration order below.
 
 The branch `main` is up to date. The dev server runs with `npm run dev` in `c:\Users\User\Dev\Projects\ApitherapyV2`.
 
@@ -160,9 +160,9 @@ Strings with variable substitution (e.g., `t('deletePointConfirmation', { code: 
 Before migrating ANY component, Phase 2 infrastructure setup must be done:
 1. Google Translate API key obtained by the developer ✅ **DONE** — key is in `.env.local` as `VITE_GOOGLE_TRANSLATE_KEY`
 2. `.env.local` file (NOT `.env`) used for secrets in this project ✅ **DONE**
-3. `src/components/T.tsx` created (full source is in the migration guide Step 1.4) `[AGENT]` ❌ **TODO**
-4. `App.tsx` wrapped with `<TranslationProvider>` (Step 1.5) `[AGENT]` ❌ **TODO**
-5. Firestore rules updated for `translations` collection (Step 1.3) `[AGENT]` ❌ **TODO**
+3. `src/components/T.tsx` created ✅ **DONE** — file moved to correct location. Import as `'./T'` from `src/components/`, or `'../T'` from `src/components/<subfolder>/`
+4. `App.tsx` wrapped with `<TranslationProvider>` (Step 1.5) ✅ **DONE** — `AppInner` pattern used; `setLanguage` wired to `handleSaveUser`
+5. Firestore rules updated for `translations` collection ✅ **DONE** — deployed
 6. **One pilot component migrated and verified** before migrating all others `[BOTH]` ❌ **TODO**
 
 ---
@@ -189,24 +189,90 @@ Before migrating ANY component, Phase 2 infrastructure setup must be done:
 
 ---
 
+## Known Type Bugs (Fix During Migration)
+
+### `protocolName` type mismatch — fix in **Step 7 (`ProtocolAdmin.tsx`)**
+
+**Location:** `src/App.tsx`, `handleProtocolSelection` function  
+**Lint error:** `Type '{ [key: string]: string }' is not assignable to type 'string'` at the line:
+```ts
+protocolName: protocol.name,  // protocol.name is now MultilingualString, not string
+```
+
+**Root cause:** Phase 1 migrated `Protocol.name` to a multilingual map `{ en: '...', he: '...' }`.
+The `TreatmentSession` type still has `protocolName: string`. So assigning `protocol.name` (a map) to `protocolName` (a string) is a type error.
+
+**Fix — two parts, done together in the `ProtocolAdmin` branch:**
+
+1. In `src/types/treatmentSession.ts` (or wherever `TreatmentSession` is defined), change:
+   ```ts
+   // Before
+   protocolName: string;
+   // After
+   protocolName: string | Record<string, string>;
+   ```
+   Or alternatively keep it as `string` and resolve the display name at the call site.
+
+2. In `src/App.tsx`, `handleProtocolSelection`, extract the display name for the current language:
+   ```ts
+   // Before
+   protocolName: protocol.name,
+   
+   // After — resolve to a string using current language (or fallback to 'en')
+   protocolName: typeof protocol.name === 'object'
+       ? (protocol.name[i18n.language] || protocol.name['en'] || '')
+       : protocol.name,
+   ```
+
+**Why ProtocolAdmin step:** `Protocol` is managed by `ProtocolAdmin`. That is the natural place to review and finalise how `protocol.name` is stored and consumed. The fix in `App.tsx` and `treatmentSession.ts` is a direct consequence of that component's Phase 1 migration.
+
+---
+
 ## Recommended Migration Order
 
-Start simple, end complex:
+Each step is a menu-accessible component (or group) that can be independently activated and tested.
+Sub-components with zero `t()` calls (`common/Modal.tsx`, `common/Tooltip.tsx`, `shared/Modal.tsx`)
+require **no migration** and are excluded from the list.
+Sub-components with `t()` calls are absorbed into the first parent branch that uses them.
 
-1. `common/Modal.tsx`, `common/Tooltip.tsx`, `ConfirmationModal.tsx` — minimal `t()` usage
-2. `shared/DocumentManagement.tsx`, `shared/ShuttleSelector.tsx`
-3. `Sidebar.tsx`, `Login.tsx`
-4. `UserDetails.tsx`, `PatientsDashboard.tsx`
-5. `ApplicationSettings.tsx`
-6. `MeasureAdmin/MeasureAdmin.tsx`, `PointsAdmin.tsx`, `ProtocolAdmin.tsx`
-7. `ProblemAdmin/ProblemList.tsx`, `ProblemAdmin/ProblemDetails.tsx`
-8. `QuestionnaireAdmin/QuestionnaireList.tsx`, `QuestionnaireAdmin/QuestionnaireAdmin.tsx`
-9. `ProblemAdmin/ProblemAdmin.tsx`, `ProblemAdmin/ProblemForm.tsx`
-10. `QuestionnaireAdmin/QuestionnaireForm.tsx`
-11. `PatientIntake/*` (4 files — patient-facing, test carefully)
-12. `TreatmentExecution.tsx`, `TreatmentHistory.tsx`, `VitalsInputGroup.tsx`
-13. `BodyScene.tsx`, `StingPointMarker.tsx`, `ProtocolSelection.tsx`
-14. `App.tsx` last (also where `TranslationProvider` goes)
+### ✅ No migration needed (zero `t()` calls, no `useTranslation` import)
+- `common/Modal.tsx` — receives all strings as props
+- `common/Tooltip.tsx` — receives all strings as props
+- `shared/Modal.tsx` — receives `confirmText`/`cancelText` as props, used in `ProblemList`
+
+### Migration steps (one branch per step)
+
+1. **`Sidebar.tsx`** — directly menu-accessible, no sub-component dependencies from the shared list
+
+2. **`Login.tsx`** — directly accessible page
+
+3. **`MeasureAdmin/MeasureAdmin.tsx`** — first menu-accessible parent that uses `DocumentManagement`
+   - Migrate `shared/DocumentManagement.tsx` **as part of this branch** (used in MeasureAdmin, PointsAdmin, ProtocolAdmin, ProblemForm)
+   - Migrate `ConfirmationModal.tsx` **as part of this branch** (used in MeasureAdmin, ProtocolAdmin, VitalsInputGroup, ProtocolSelection)
+
+4. **`PointsAdmin.tsx`** — `DocumentManagement` already migrated in step 3
+
+5. **`ApplicationSettings.tsx`** — first menu-accessible parent that uses `ShuttleSelector`
+   - Migrate `shared/ShuttleSelector.tsx` **as part of this branch** (also used in ProblemForm)
+   - Note: `ShuttleSelector` uses `i18n.dir()` for RTL — replace with `useTranslationContext().language` and derive dir from language code (`he` → `rtl`, else `ltr`)
+
+6. **`ProblemAdmin/ProblemList.tsx`**, **`ProblemAdmin/ProblemDetails.tsx`**, **`ProblemAdmin/ProblemForm.tsx`**, **`ProblemAdmin/ProblemAdmin.tsx`** — all sub-components (`DocumentManagement`, `ShuttleSelector`, `shared/Modal`) already migrated
+
+7. **`ProtocolAdmin.tsx`** — `ConfirmationModal` and `DocumentManagement` already migrated
+
+8. **`QuestionnaireAdmin/QuestionnaireList.tsx`**, **`QuestionnaireAdmin/QuestionnaireForm.tsx`**, **`QuestionnaireAdmin/QuestionnaireAdmin.tsx`**
+
+9. **`UserDetails.tsx`**, **`PatientsDashboard.tsx`** — `PatientsDashboard` uses `common/Tooltip` (already done)
+
+10. **`PatientIntake/PersonalDetails.tsx`**, **`PatientIntake/SignaturePad.tsx`**, **`PatientIntake/QuestionnaireStep.tsx`**, **`PatientIntake/PatientIntake.tsx`** — patient-facing, test carefully; questionnaire question text must NOT be wrapped in `<T>`
+
+11. **`VitalsInputGroup.tsx`**, **`BodyScene.tsx`**, **`StingPointMarker.tsx`**, **`ProtocolSelection.tsx`** — migrate these before TreatmentExecution as they are sub-components of it
+
+12. **`TreatmentExecution.tsx`** — all sub-components migrated in step 11
+
+13. **`TreatmentHistory.tsx`**
+
+14. **`App.tsx`** — last; also where `<TranslationProvider>` wrapper is added (Step 1.5 of migration guide)
 
 ---
 

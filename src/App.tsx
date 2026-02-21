@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TranslationProvider, useTranslationContext } from './components/T';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData } from 'firebase/firestore';
@@ -28,8 +29,9 @@ import './globals.css';
 type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'treatment_history' | 'user_details' | 'onboarding_test';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
-const App: React.FC = () => {
+const AppInner: React.FC = () => {
     const { i18n } = useTranslation();
+    const { setLanguage } = useTranslationContext();
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<PatientData[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<Partial<PatientData> | null>(null);
@@ -173,6 +175,7 @@ const App: React.FC = () => {
         await updateDoc(userRef, userDataToSave);
         setAppUser(updatedUser);
         i18n.changeLanguage(updatedUser.preferredLanguage);
+        setLanguage(updatedUser.preferredLanguage || 'en');
         setSaveStatus('idle');
         setCurrentView('dashboard');
     };
@@ -424,5 +427,11 @@ const App: React.FC = () => {
 
     return <>{renderContent()}</>;
 };
+
+const App: React.FC = () => (
+    <TranslationProvider>
+        <AppInner />
+    </TranslationProvider>
+);
 
 export default App;

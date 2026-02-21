@@ -94,8 +94,7 @@ Before starting, the human should confirm the following are true:
 
 ---
 
-## Phase 1 — Infrastructure Setup
-
+## Phase 1 — Infrastructure Setup - this phase **has** been done
 ### Step 1.1 — Get a Google Translate API Key `[HUMAN]`
 
 1. Go to [https://console.cloud.google.com](https://console.cloud.google.com)
@@ -132,7 +131,7 @@ match /translations/{document=**} {
 If the Firestore rules file is not accessible, instruct the human to add this rule manually in the
 Firebase Console under **Firestore Database → Rules**.
 
-### Step 1.4 — Install the T Component `[AGENT]`
+### Step 1.4 — Install the T Component `[AGENT]` - this step **has** been done
 
 Create the file `src/components/T.tsx` with the following complete content.
 
