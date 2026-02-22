@@ -1,5 +1,4 @@
 {
-  "welcome_please_signin": "Welcome please signin",
   "admin": "Admin",
   "document": "Document",
   "entity_document": "{{entity}} Document",
@@ -8,7 +7,6 @@
   "Point": "Point",
   "Protocol": "Protocol",
   "actions": "Actions",
-  "login_with_google": "Login with Google",
   "identity_number_display": "Identity Number",
   "next_step": "Next Step",
   "previous": "Previous",
@@ -315,6 +313,8 @@
     "user": "User",
     "logout": "Logout",
     "questionnaire_configuration": "Questionnaire Configuration",
+    "welcome_please_signin": "Welcome please signin",
+    "login_with_google": "Login with Google",
     "sample_2": "Sample 2"
   }
 }
