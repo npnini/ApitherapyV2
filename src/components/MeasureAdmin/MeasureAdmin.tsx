@@ -9,6 +9,7 @@ import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 import DocumentManagement from '../shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../T';
+import Tooltip from '../common/Tooltip';
 
 const MeasureAdmin: React.FC = () => {
     const { language: currentLang, getTranslation, registerString } = useTranslationContext();
@@ -52,7 +53,10 @@ const MeasureAdmin: React.FC = () => {
         'Remove',
         'Enter measure name',
         'Enter description',
-        'Add a new category'
+        'Add a new category',
+        'Edit Measure',
+        'Delete Measure',
+        'View Document'
     ], []);
 
     useEffect(() => {
@@ -371,8 +375,8 @@ const MeasureAdmin: React.FC = () => {
                                 <th scope="col" className={styles.headerCell}><T>Type</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Description</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
-                                <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only"><T>Actions</T></span>
+                                <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
+                                    <T>Actions</T>
                                 </th>
                             </tr>
                         </thead>
@@ -389,14 +393,22 @@ const MeasureAdmin: React.FC = () => {
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={measure.description[currentLang] || measure.description['en'] || ''}>{measure.description[currentLang] || measure.description['en'] || ''}</td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {measure.documentUrl && getDocumentUrl(measure.documentUrl) && (
-                                                <a href={getDocumentUrl(measure.documentUrl)} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-                                                    <FileCheck2 size={18} />
-                                                </a>
+                                                <Tooltip text={useT('View Document')}>
+                                                    <a href={getDocumentUrl(measure.documentUrl)} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                                        <FileCheck2 size={18} />
+                                                    </a>
+                                                </Tooltip>
                                             )}
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                            <button onClick={() => handleStartEditing(measure)} className={styles.actionButton}><Edit size={18} /></button>
-                                            <button onClick={() => setDeletingMeasure(measure)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                            <div className={styles.actionsWrapper}>
+                                                <Tooltip text={useT('Edit Measure')}>
+                                                    <button onClick={() => handleStartEditing(measure)} className={styles.actionButton}><Edit size={18} /></button>
+                                                </Tooltip>
+                                                <Tooltip text={useT('Delete Measure')}>
+                                                    <button onClick={() => setDeletingMeasure(measure)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                                </Tooltip>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

@@ -25,7 +25,10 @@ const ProblemAdmin: React.FC = () => {
     'Problem name is required',
     'Problem description is required',
     'Loading...',
-    'Error:'
+    'Error:',
+    'Edit Problem',
+    'Delete Problem',
+    'View Document'
   ], []);
 
   useEffect(() => {

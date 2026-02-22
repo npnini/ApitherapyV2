@@ -9,6 +9,7 @@ import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../components/T';
+import Tooltip from './common/Tooltip';
 
 // Helper to get the correct document URL for the current language
 const getDocumentUrlForLang = (docUrl: any, lang: string): string | null => {
@@ -45,7 +46,10 @@ const PointsAdmin: React.FC = () => {
         'Deleting...',
         'Confirm Delete',
         'Please log in',
-        'No points found'
+        'No points found',
+        'Edit Point',
+        'Delete Point',
+        'View Document'
     ], []);
 
     useEffect(() => {
@@ -305,8 +309,8 @@ const PointsAdmin: React.FC = () => {
                             <th scope="col" className={styles.headerCell}><T>Description</T></th>
                             <th scope="col" className={styles.headerCell}><T>Position</T></th>
                             <th scope="col" className={styles.headerCell}><T>Document</T></th>
-                            <th scope="col" className="relative px-6 py-3">
-                                <span className="sr-only"><T>Actions</T></span>
+                            <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
+                                <T>Actions</T>
                             </th>
                         </tr>
                     </thead>
@@ -326,14 +330,22 @@ const PointsAdmin: React.FC = () => {
                                         <td className={styles.cell}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {docUrlForCurrentLang && (
-                                                <a href={docUrlForCurrentLang} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-                                                    <FileCheck2 size={18} />
-                                                </a>
+                                                <Tooltip text={useT('View Document')}>
+                                                    <a href={docUrlForCurrentLang} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                                        <FileCheck2 size={18} />
+                                                    </a>
+                                                </Tooltip>
                                             )}
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                            <button onClick={() => handleStartEditing(point)} className={styles.actionButton}><Edit size={18} /></button>
-                                            <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                            <div className={styles.actionsWrapper}>
+                                                <Tooltip text={useT('Edit Point')}>
+                                                    <button onClick={() => handleStartEditing(point)} className={styles.actionButton}><Edit size={18} /></button>
+                                                </Tooltip>
+                                                <Tooltip text={useT('Delete Point')}>
+                                                    <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                                </Tooltip>
+                                            </div>
                                         </td>
                                     </tr>
                                 )

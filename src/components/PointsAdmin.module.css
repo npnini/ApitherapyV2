@@ -136,7 +136,7 @@
 }
 
 .actionsCell {
-    text-align: right;
+    text-align: start;
 }
 
 .actionButton {
@@ -145,7 +145,12 @@
     cursor: pointer;
     color: #6b7280;
     padding: 0.25rem;
-    margin-left: 0.5rem;
+}
+
+.actionsWrapper {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.5rem;
 }
 
 .actionButton:hover {

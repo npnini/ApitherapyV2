@@ -280,6 +280,19 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 
 ---
 
+## Phase 2: Post-Migration UI Enhancements
+
+- **Common Tooltips** — ✅ **DONE** (Completed Feb 22, 2026)
+  - Added list-form tooltips (Edit, Delete, View Document) to:
+    - **`ProtocolAdmin`**
+    - **`PointsAdmin`**
+    - **`MeasureAdmin`**
+    - **`ProblemAdmin`** (in `ProblemList.tsx`)
+  - Standardized action column alignment to `start` (right in RTL) across all administration lists.
+  - Implemented `actionsWrapper` Flexbox pattern for consistent icon spacing.
+
+---
+
 ## Phase 3 (After All Components Migrated)
 
 1. Verify no remaining `react-i18next` imports: `grep -r "react-i18next" src/`

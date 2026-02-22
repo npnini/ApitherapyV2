@@ -7,6 +7,7 @@ import styles from './ProblemList.module.css';
 import { Edit, Trash2, FileCheck2 } from 'lucide-react';
 import Modal from '../shared/Modal';
 import { T, useT, useTranslationContext } from '../T';
+import Tooltip from '../common/Tooltip';
 
 interface ProblemListProps {
   onEdit: (id: string) => void;
@@ -100,18 +101,24 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
                 <td>{description}</td>
                 <td className={styles.documentCell}>
                   {documentUrl && (
-                    <a href={documentUrl} target="_blank" rel="noopener noreferrer">
-                      <FileCheck2 size={18} />
-                    </a>
+                    <Tooltip text={useT('View Document')}>
+                      <a href={documentUrl} target="_blank" rel="noopener noreferrer">
+                        <FileCheck2 size={18} />
+                      </a>
+                    </Tooltip>
                   )}
                 </td>
                 <td className={styles.actionCell}>
-                  <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
-                    <Edit size={18} />
-                  </button>
-                  <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
-                    <Trash2 size={18} />
-                  </button>
+                  <Tooltip text={useT('Edit Problem')}>
+                    <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
+                      <Edit size={18} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip text={useT('Delete Problem')}>
+                    <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
+                      <Trash2 size={18} />
+                    </button>
+                  </Tooltip>
                 </td>
               </tr>
             );
