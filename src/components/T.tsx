@@ -53,6 +53,9 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Pending strings waiting to be translated this render cycle
     const pendingRef = useRef<Set<string>>(new Set());
 
+    // Timeout for batching forceUpdates
+    const flushTimeoutRef = useRef<any>(null);
+
     // Trigger re-render after translations arrive
     const [, forceUpdate] = useState(0);
 
@@ -65,7 +68,17 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const registerString = useCallback((text: string) => {
         if (language === 'en') return;
         if (cacheRef.current[language]?.[text]) return; // already cached
+        if (pendingRef.current.has(text)) return; // already in queue
+
         pendingRef.current.add(text);
+
+        // Schedule a flush if not already scheduled
+        if (!flushTimeoutRef.current) {
+            flushTimeoutRef.current = setTimeout(() => {
+                forceUpdate(n => n + 1);
+                flushTimeoutRef.current = null;
+            }, 50); // Small delay to batch all strings from a new view
+        }
     }, [language]);
 
     // Returns the translated string if available, otherwise the original English
@@ -80,8 +93,8 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         const pending = Array.from(pendingRef.current);
 
-        // Even if no NEW strings are pending, we might need to fetch the initial 
-        // Firestore document for this language if it's not even in the cacheRef yet.
+        // Batch processing logic
+        // We only trigger if there are pending strings OR if we haven't loaded the firestore cache for this lang yet
         if (pending.length === 0 && cacheRef.current[language]) return;
 
         pendingRef.current = new Set();
@@ -126,6 +139,17 @@ export const useT = (text: string): string => {
 const TRANSLATION_API_KEY = import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
 // ↑ VERIFY: this must match the variable name you added to .env in Step 1.2
 
+/**
+ * Removes Hebrew Niqqud (vowels) and cantillation marks from a string.
+ */
+export const stripHebrewNiqqud = (text: string): string => {
+    if (typeof text !== 'string') return text;
+    // Unicode range for Hebrew points and punctuation:
+    // \u0591-\u05AF: Hebrew accents
+    // \u05B0-\u05C7: Hebrew points (vowels)
+    return text.replace(/[\u0591-\u05C7]/g, '');
+};
+
 async function translateBatch(
     strings: string[],
     targetLang: string,
@@ -142,7 +166,10 @@ async function translateBatch(
         const snap = await getDoc(firestoreRef);
         if (snap.exists()) {
             firestoreCache = snap.data() as Record<string, string>;
+            console.log(`[T] Firestore cache hit for ${targetLang}. Found ${Object.keys(firestoreCache).length} strings.`);
             Object.assign(cache[targetLang], firestoreCache);
+        } else {
+            console.log(`[T] No Firestore cache doc found for ${targetLang}.`);
         }
     } catch (e) {
         console.warn('[T] Firestore cache read failed, falling back to API:', e);
@@ -150,6 +177,7 @@ async function translateBatch(
 
     // ── Step 2: Find strings still missing after Firestore lookup ────────────
     const toTranslate = strings.filter(s => !cache[targetLang][s]);
+    console.log(`[T] Batch processing for ${targetLang}. Total requested: ${strings.length}, To translate via API: ${toTranslate.length}`);
     if (toTranslate.length === 0) return;
 
     // ── Step 3: Call Google Translate API in one batched request ─────────────
@@ -178,11 +206,19 @@ async function translateBatch(
         }
 
         const data = await response.json();
+        console.log(`[T] API Translation data received for ${targetLang}:`, data);
         const newTranslations: Record<string, string> = {};
 
         data.data.translations.forEach((item: { translatedText: string }, index: number) => {
             const original = toTranslate[index];
-            const translated = item.translatedText;
+            let translated = item.translatedText;
+
+            // Clean Hebrew vowels if target language is Hebrew
+            if (targetLang === 'he') {
+                translated = stripHebrewNiqqud(translated);
+            }
+
+            console.log(`[T] API Result: "${original}" -> "${translated}"`);
             cache[targetLang][original] = translated;
             newTranslations[original] = translated;
         });

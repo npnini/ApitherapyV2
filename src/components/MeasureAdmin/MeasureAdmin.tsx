@@ -1,33 +1,17 @@
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { Measure, MeasureType } from '../../types/measure';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X, Globe } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Measure } from '../../types/measure';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe } from 'lucide-react';
 import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 import DocumentManagement from '../shared/DocumentManagement';
-
-const getFilenameFromUrl = (url: string | null | undefined): string => {
-    if (!url) {
-        return '';
-    }
-    try {
-        const path = url.split('?')[0];
-        const filename = path.split('%2F').pop();
-        return filename ? decodeURIComponent(filename) : '';
-    } catch (error) {
-        console.error("Error parsing filename from URL:", error);
-        return '';
-    }
-};
+import { T, useT, useTranslationContext } from '../T';
 
 const MeasureAdmin: React.FC = () => {
-    const { t, i18n } = useTranslation();
-    const currentLang = i18n.language;
+    const { language: currentLang, getTranslation, registerString } = useTranslationContext();
     const [user, setUser] = useState<User | null>(null);
     const [measures, setMeasures] = useState<Measure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +23,41 @@ const MeasureAdmin: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
+
+    // Register all strings used in callbacks or non-T components
+    const stringsToRegister = useMemo(() => [
+        'Failed to fetch measures',
+        'Measure name',
+        'already exists',
+        'Measure name is required',
+        'Measure description is required',
+        'At least one category is required',
+        'Minimum and maximum values are required for a scale',
+        'Maximum value must be greater than the minimum value',
+        'Failed to save the measure',
+        'Failed to delete the measure',
+        'Failed to upload file',
+        'Deleting...',
+        'Saving...',
+        'Confirm Delete',
+        'Save Measure',
+        'Category',
+        'Scale',
+        'Hebrew',
+        'English',
+        'Arabic',
+        'Russian',
+        'missing',
+        'Edit',
+        'Remove',
+        'Enter measure name',
+        'Enter description',
+        'Add a new category'
+    ], []);
+
+    useEffect(() => {
+        stringsToRegister.forEach(s => registerString(s));
+    }, [stringsToRegister, registerString]);
 
     const measuresCollectionRef = React.useMemo(() => collection(db, 'measures'), []);
 
@@ -84,13 +103,13 @@ const MeasureAdmin: React.FC = () => {
                 (a.name[currentLang] || a.name['en'] || '').localeCompare(b.name[currentLang] || b.name['en'] || '')
             );
             setMeasures(fetchedMeasures);
-            setError(null); // Clear previous errors on successful fetch
+            setError(null);
         } catch (err) {
-            setError(t('failedToFetchMeasures'));
+            setError(getTranslation('Failed to fetch measures'));
             console.error(err);
         }
         setIsLoading(false);
-    }, [user, measuresCollectionRef, t]);
+    }, [user, measuresCollectionRef, currentLang, getTranslation]);
 
     useEffect(() => {
         fetchMeasures();
@@ -119,13 +138,13 @@ const MeasureAdmin: React.FC = () => {
     const validateMeasureForm = (measure: Measure, isNew: boolean): boolean => {
         const allInputValues = Object.values(measure.name || {}).map(v => v.trim().toLowerCase()).filter(Boolean);
         if (allInputValues.length === 0) {
-            setFormError(t('measureNameRequired'));
+            setFormError(getTranslation('Measure name is required'));
             return false;
         }
 
         const descriptionValues = Object.values(measure.description || {}).map(v => v.trim()).filter(Boolean);
         if (descriptionValues.length === 0) {
-            setFormError(t('measureDescriptionRequired'));
+            setFormError(getTranslation('Measure description is required'));
             return false;
         }
 
@@ -136,23 +155,23 @@ const MeasureAdmin: React.FC = () => {
             );
             if (nameExists) {
                 const displayName = measure.name[currentLang] || measure.name['en'] || allInputValues[0];
-                setFormError(t('measureNameExists', { name: displayName }));
+                setFormError(`${getTranslation('Measure name')} '${displayName}' ${getTranslation('already exists')}`);
                 return false;
             }
         }
 
         if (measure.type === 'Category' && (!measure.categories || measure.categories.length === 0)) {
-            setFormError(t('atLeastOneCategory'));
+            setFormError(getTranslation('At least one category is required'));
             return false;
         }
 
         if (measure.type === 'Scale') {
             if (measure.scale?.min === undefined || measure.scale?.max === undefined) {
-                setFormError(t('minMaxRequired'));
+                setFormError(getTranslation('Minimum and maximum values are required for a scale'));
                 return false;
             }
             if (measure.scale.min >= measure.scale.max) {
-                setFormError(t('maxMustBeGreaterThanMin'));
+                setFormError(getTranslation('Maximum value must be greater than the minimum value'));
                 return false;
             }
         }
@@ -173,10 +192,8 @@ const MeasureAdmin: React.FC = () => {
             const originalUrls: Record<string, string> = (originalMeasure?.documentUrl && typeof originalMeasure.documentUrl === 'object') ? (originalMeasure.documentUrl as Record<string, string>) : {};
             const newUrls: Record<string, string> = (measureToSave.documentUrl && typeof measureToSave.documentUrl === 'object') ? (measureToSave.documentUrl as Record<string, string>) : {};
 
-            // Identify and delete any files that were removed from the documentUrl object (the form state)
             for (const [l, url] of Object.entries(originalUrls)) {
                 if (url && !newUrls[l]) {
-                    console.log(`[DEBUG-SAVE-DEL] Deleting orphaned file for lang ${l}:`, url);
                     await deleteFile(url).catch(err => console.error("Error deleting orphaned file:", err));
                 }
             }
@@ -209,7 +226,7 @@ const MeasureAdmin: React.FC = () => {
             setIsDirty(false);
             fetchMeasures();
         } catch (err) {
-            setFormError(t('failedToSaveMeasure'));
+            setFormError(getTranslation('Failed to save the measure'));
             console.error(err);
         } finally {
             setIsSubmitting(false);
@@ -232,7 +249,7 @@ const MeasureAdmin: React.FC = () => {
             await deleteDoc(measureDoc);
             fetchMeasures();
         } catch (err) {
-            setError(t('failedToDeleteMeasure'));
+            setError(getTranslation('Failed to delete the measure'));
             console.error(err);
         }
         setIsSubmitting(false);
@@ -246,7 +263,6 @@ const MeasureAdmin: React.FC = () => {
         if (file) {
             setIsSubmitting(true);
 
-            // Replacement logic: delete old file for this language if it exists in storage
             const currentDocUrls = updatedMeasure.documentUrl;
             let existingUrl: string | undefined;
             if (typeof currentDocUrls === 'object' && currentDocUrls !== null) {
@@ -257,7 +273,6 @@ const MeasureAdmin: React.FC = () => {
 
             const uploadAndCleanup = async () => {
                 if (existingUrl) {
-                    console.log(`[DEBUG-REPLACE] Deleting existing file for ${lang} before upload:`, existingUrl);
                     await deleteFile(existingUrl).catch(err => console.error("Error deleting old file for replacement:", err));
                 }
                 const url = await uploadFile(file, `Measures/${updatedMeasure.id || 'new'}`);
@@ -272,7 +287,7 @@ const MeasureAdmin: React.FC = () => {
 
             uploadAndCleanup()
                 .catch(err => {
-                    setFormError(t('failedToUploadFile'));
+                    setFormError(getTranslation('Failed to upload file'));
                     console.error(err);
                 })
                 .finally(() => {
@@ -298,10 +313,10 @@ const MeasureAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}>{t('measure_configuration')}</h1>
+                <h1 className={styles.title}><T>Measure Configuration</T></h1>
                 <div>
                     <button onClick={handleAddNew} className={styles.addButton}>
-                        <PlusCircle size={18} className={styles.addButtonIcon} /> {t('addNewMeasure')}
+                        <PlusCircle size={18} className={styles.addButtonIcon} /> <T>Add New Measure</T>
                     </button>
                 </div>
             </div>
@@ -331,14 +346,16 @@ const MeasureAdmin: React.FC = () => {
                                 <AlertTriangle className={styles.modalIcon} aria-hidden="true" />
                             </div>
                             <div>
-                                <h2 className={styles.modalTitle}>{t('deleteMeasure')}</h2>
-                                <p className={styles.modalText}>{t('deleteMeasureConfirmation', { name: deletingMeasure.name[currentLang] || deletingMeasure.name['en'] || '' })}</p>
+                                <h2 className={styles.modalTitle}><T>Delete Measure</T></h2>
+                                <p className={styles.modalText}>
+                                    <T>Are you sure you want to delete the measure</T> '{deletingMeasure.name[currentLang] || deletingMeasure.name['en'] || ''}'?
+                                </p>
                             </div>
                         </div>
                         <div className={styles.modalActions}>
-                            <button onClick={() => setDeletingMeasure(null)} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
+                            <button onClick={() => setDeletingMeasure(null)} disabled={isSubmitting} className={styles.cancelButton}><T>Cancel</T></button>
                             <button onClick={confirmDelete} disabled={isSubmitting} className={styles.confirmDeleteButton}>
-                                {isSubmitting ? t('deleting') : t('confirmDelete')}
+                                {isSubmitting ? <T>Deleting...</T> : <T>Confirm Delete</T>}
                             </button>
                         </div>
                     </div>
@@ -350,12 +367,12 @@ const MeasureAdmin: React.FC = () => {
                     <table className={styles.table}>
                         <thead className={styles.tableHeader}>
                             <tr>
-                                <th scope="col" className={styles.headerCell}>{t('name')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('type')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('description')}</th>
-                                <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}>{t('document')}</th>
+                                <th scope="col" className={styles.headerCell}><T>Name</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Type</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Description</T></th>
+                                <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
                                 <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only">{t('actions')}</span>
+                                    <span className="sr-only"><T>Actions</T></span>
                                 </th>
                             </tr>
                         </thead>
@@ -363,12 +380,12 @@ const MeasureAdmin: React.FC = () => {
                             {isLoading ? (
                                 <tr><td colSpan={5} className={styles.loaderCell}><Loader className={styles.loader} size={32} /></td></tr>
                             ) : error ? null : measures.length === 0 ? (
-                                <tr><td colSpan={5} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noMeasuresFound')}</td></tr>
+                                <tr><td colSpan={5} className={styles.emptyCell}>{!user ? <T>Please log in</T> : <T>No measures found</T>}</td></tr>
                             ) : (
                                 measures.map(measure => (
                                     <tr key={measure.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.codeCell}`}>{measure.name[currentLang] || measure.name['en'] || ''}</td>
-                                        <td className={styles.cell}>{t(measure.type.toLowerCase())}</td>
+                                        <td className={styles.cell}>{getTranslation(measure.type)}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={measure.description[currentLang] || measure.description['en'] || ''}>{measure.description[currentLang] || measure.description['en'] || ''}</td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {measure.documentUrl && getDocumentUrl(measure.documentUrl) && (
@@ -392,7 +409,6 @@ const MeasureAdmin: React.FC = () => {
     );
 };
 
-
 interface EditMeasureFormProps {
     measure: Measure;
     originalMeasure: Measure;
@@ -406,7 +422,7 @@ interface EditMeasureFormProps {
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
+const TranslationReference: React.FC<{ label: React.ReactNode; text: string | undefined }> = ({ label, text }) => {
     if (!text) return null;
     return (
         <div className={formStyles.translationReference}>
@@ -417,8 +433,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
 };
 
 const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, onSave, onCancel, error, isSubmitting, onUpdate, isDirty, appConfig }) => {
-    const { t, i18n } = useTranslation();
-    const currentLang = i18n.language;
+    const { language: currentLang, getTranslation, registerString } = useTranslationContext();
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
@@ -427,7 +442,6 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     const [localError, setLocalError] = useState<string | null>(null);
     const [categoryInput, setCategoryInput] = useState('');
     const [editingCategoryIndex, setEditingCategoryIndex] = useState<number | null>(null);
-
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     useEffect(() => {
@@ -486,14 +500,12 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
         let updatedCategories: Array<{ [key: string]: string }>;
 
         if (editingCategoryIndex !== null) {
-            // Merge the new value for activeLang into the existing category object
             updatedCategories = [...(formData.categories || [])];
             updatedCategories[editingCategoryIndex] = {
                 ...updatedCategories[editingCategoryIndex],
                 [activeLang]: categoryInput.trim(),
             };
         } else {
-            // Check for duplicate: no existing category has the same value for this lang
             const isDuplicate = formData.categories?.some(cat => (cat[activeLang] || '').toLowerCase() === categoryInput.trim().toLowerCase());
             if (isDuplicate) return;
             updatedCategories = [...(formData.categories || []), { [activeLang]: categoryInput.trim() }];
@@ -524,24 +536,24 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
 
         const allInputValues = Object.values(formData.name || {}).map(v => v.trim().toLowerCase()).filter(Boolean);
         if (allInputValues.length === 0) {
-            setLocalError(t('measureNameRequired')); return;
+            setLocalError(getTranslation('Measure name is required')); return;
         }
         const descriptionValues = Object.values(formData.description || {}).map(v => v.trim()).filter(Boolean);
         if (descriptionValues.length === 0) {
-            setLocalError(t('measureDescriptionRequired')); return;
+            setLocalError(getTranslation('Measure description is required')); return;
         }
         if (formData.type === 'Category' && (!formData.categories || formData.categories.length === 0)) {
-            setLocalError(t('atLeastOneCategory'));
+            setLocalError(getTranslation('At least one category is required'));
             return;
         }
 
         if (formData.type === 'Scale') {
             if (formData.scale?.min === undefined || formData.scale?.max === undefined) {
-                setLocalError(t('minMaxRequired'));
+                setLocalError(getTranslation('Minimum and maximum values are required for a scale'));
                 return;
             }
             if (formData.scale.min >= formData.scale.max) {
-                setLocalError(t('maxMustBeGreaterThanMin'));
+                setLocalError(getTranslation('Maximum value must be greater than the minimum value'));
                 return;
             }
         }
@@ -553,7 +565,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
         );
         if (isNew && nameExists) {
             const displayName = formData.name[activeLang] || formData.name['en'] || allInputValues[0];
-            setLocalError(t('measureNameExists', { name: displayName }));
+            setLocalError(`${getTranslation('Measure name')} '${displayName}' ${getTranslation('already exists')}`);
             return;
         }
 
@@ -563,11 +575,21 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
 
     const isEditing = !!formData.id;
 
+    const getLangDisplayName = (lang: string) => {
+        switch (lang) {
+            case 'he': return getTranslation('Hebrew');
+            case 'en': return getTranslation('English');
+            case 'ar': return getTranslation('Arabic');
+            case 'ru': return getTranslation('Russian');
+            default: return lang;
+        }
+    };
+
     return (
         <div className={styles.modalOverlay}>
             <div className={formStyles.modalContent}>
                 <div className={formStyles.formHeader}>
-                    <h2 className={formStyles.formTitle}>{isEditing ? t('editMeasure') : t('addNewMeasure')}</h2>
+                    <h2 className={formStyles.formTitle}>{isEditing ? <T>Edit Measure</T> : <T>Add New Measure</T>}</h2>
                     <button onClick={onCancel} className={formStyles.closeButton}><X size={24} /></button>
                 </div>
                 <div className={formStyles.langTabBar}>
@@ -578,7 +600,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             onClick={() => { setCategoryInput(''); setEditingCategoryIndex(null); setActiveLang(lang); }}
                             className={`${formStyles.langTab} ${activeLang === lang ? formStyles.langTabActive : ''}`}
                         >
-                            {t(lang)}
+                            {getLangDisplayName(lang)}
                         </button>
                     ))}
                 </div>
@@ -589,7 +611,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         <div>
                             <div className={formStyles.labelWrapper}>
                                 <label htmlFor="name" className={formStyles.label}>
-                                    {t('name')}
+                                    <T>Measure Name</T>
                                     <span className={formStyles.requiredAsterisk}>*</span>
                                 </label>
                                 <div className={formStyles.indicatorContainer}>
@@ -601,7 +623,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             </div>
                             {activeLang !== appConfig.defaultLanguage && !formData.name[activeLang] && (
                                 <TranslationReference
-                                    label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                    label={<><T>Default Language</T>: {getLangDisplayName(appConfig.defaultLanguage)}</>}
                                     text={formData.name[appConfig.defaultLanguage]}
                                 />
                             )}
@@ -611,33 +633,33 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                 name="name"
                                 value={formData.name[activeLang] || ''}
                                 onChange={handleChange}
-                                placeholder={t('namePlaceholder')}
+                                placeholder={useT('Enter measure name')}
                                 className={formStyles.input}
                             />
                         </div>
 
                         <div>
                             <label htmlFor="type" className={formStyles.label}>
-                                {t('type')}
+                                <T>Type</T>
                             </label>
                             <select id="type" name="type" value={formData.type} onChange={handleChange} className={formStyles.select}>
-                                <option value="Category">{t('category')}</option>
-                                <option value="Scale">{t('scale')}</option>
+                                <option value="Category">{useT('Category')}</option>
+                                <option value="Scale">{useT('Scale')}</option>
                             </select>
                         </div>
 
                         {formData.type === 'Category' && (
                             <div>
-                                <label className={formStyles.label}>{t('categories')}</label>
+                                <label className={formStyles.label}><T>Categories</T></label>
                                 <div className={formStyles.categoryInputContainer}>
                                     <input
                                         type="text"
                                         value={categoryInput}
                                         onChange={(e) => setCategoryInput(e.target.value)}
-                                        placeholder={t('addCategoryPlaceholder')}
+                                        placeholder={useT('Add a new category')}
                                         className={formStyles.input}
                                     />
-                                    <button type="button" onClick={handleAddCategory} className={`${styles.addButton} ${formStyles.addButton}`}>{editingCategoryIndex !== null ? t('update') : t('add')}</button>
+                                    <button type="button" onClick={handleAddCategory} className={`${styles.addButton} ${formStyles.addButton}`}>{editingCategoryIndex !== null ? <T>Update</T> : <T>Add</T>}</button>
                                 </div>
                                 <div className={formStyles.categoryList}>
                                     {formData.categories?.map((cat, index) => {
@@ -647,13 +669,13 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                             <div key={index} className={formStyles.categoryTag}>
                                                 <span>
                                                     {displayValue}
-                                                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({t(activeLang)} {t('missing') || 'missing'})</span>}
+                                                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({getLangDisplayName(activeLang)} <T>missing</T>)</span>}
                                                 </span>
                                                 <div>
-                                                    <button type="button" title={`Edit`} onClick={() => handleEditCategory(index)} className={formStyles.actionButton}>
+                                                    <button type="button" title={getTranslation('Edit')} onClick={() => handleEditCategory(index)} className={formStyles.actionButton}>
                                                         <Edit size={16} />
                                                     </button>
-                                                    <button type="button" title={`Remove`} onClick={() => handleRemoveCategory(index)} className={formStyles.actionButton}>
+                                                    <button type="button" title={getTranslation('Remove')} onClick={() => handleRemoveCategory(index)} className={formStyles.actionButton}>
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>
@@ -667,7 +689,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         {formData.type === 'Scale' && (
                             <div className={formStyles.scaleContainer}>
                                 <div>
-                                    <label htmlFor="min" className={formStyles.label}>{t('minimum')}</label>
+                                    <label htmlFor="min" className={formStyles.label}><T>Minimum</T></label>
                                     <input
                                         type="number"
                                         id="min"
@@ -678,7 +700,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="max" className={formStyles.label}>{t('maximum')}</label>
+                                    <label htmlFor="max" className={formStyles.label}><T>Maximum</T></label>
                                     <input
                                         type="number"
                                         id="max"
@@ -694,7 +716,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         <div>
                             <div className={formStyles.labelWrapper}>
                                 <label htmlFor="description" className={formStyles.label}>
-                                    {t('description')}
+                                    <T>Description</T>
                                     <span className={formStyles.requiredAsterisk}>*</span>
                                 </label>
                                 <div className={formStyles.indicatorContainer}>
@@ -706,7 +728,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             </div>
                             {activeLang !== appConfig.defaultLanguage && !formData.description[activeLang] && (
                                 <TranslationReference
-                                    label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                    label={<><T>Default Language</T>: {getLangDisplayName(appConfig.defaultLanguage)}</>}
                                     text={formData.description[appConfig.defaultLanguage]}
                                 />
                             )}
@@ -715,13 +737,12 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                 name="description"
                                 value={formData.description[activeLang] || ''}
                                 onChange={handleChange}
-                                placeholder={t('descriptionPlaceholder')}
+                                placeholder={useT('Enter description')}
                                 className={formStyles.textarea}
                                 rows={3}
                             ></textarea>
                         </div>
 
-                        {/* Document management section */}
                         <DocumentManagement
                             entityName="Measure"
                             documentUrl={formData.documentUrl as { [key: string]: string }}
@@ -736,14 +757,14 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                     </div>
 
                     <div className={formStyles.formActions}>
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={formStyles.cancelButton}>{t('cancel')}</button>
+                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={formStyles.cancelButton}><T>Cancel</T></button>
                         <button
                             type="submit"
                             disabled={isSubmitting || !isDirty}
                             className={formStyles.saveButton}
                         >
                             <Save size={16} />
-                            {isSubmitting ? t('saving') : t('saveMeasure')}
+                            {isSubmitting ? <T>Saving...</T> : <T>Save Measure</T>}
                         </button>
                     </div>
                 </form>

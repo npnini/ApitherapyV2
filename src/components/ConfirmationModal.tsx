@@ -1,21 +1,18 @@
-
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import styles from './ConfirmationModal.module.css';
 import { AlertTriangle } from 'lucide-react';
+import { T } from './T';
 
 interface ConfirmationModalProps {
     isOpen: boolean;
-    title: string;
-    message: string;
+    title: string | React.ReactNode;
+    message: string | React.ReactNode;
     onConfirm: () => void;
     onCancel?: () => void;
     showCancelButton?: boolean;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel, showCancelButton = true }) => {
-    const { t } = useTranslation();
-
     if (!isOpen) {
         return null;
     }
@@ -25,12 +22,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, me
             <div className={styles.modalContent}>
                 <AlertTriangle className={styles.modalIcon} size={48} />
                 <h3 className={styles.modalTitle}>{title}</h3>
-                <p className={styles.modalDescription}>{message}</p>
+                <div className={styles.modalDescription}>{message}</div>
                 <div className={styles.modalActions}>
                     {showCancelButton && (
-                        <button onClick={onCancel} className={styles.modalCancelButton}>{t('cancel')}</button>
+                        <button onClick={onCancel} className={styles.modalCancelButton}>
+                            <T>Cancel</T>
+                        </button>
                     )}
-                    <button onClick={onConfirm} className={styles.modalConfirmButton}>{t('confirm')}</button>
+                    <button onClick={onConfirm} className={styles.modalConfirmButton}>
+                        <T>Confirm</T>
+                    </button>
                 </div>
             </div>
         </div>

@@ -244,7 +244,7 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 
 1. **`Sidebar.tsx`** ✅ **DONE** (Pilot completed, sync bug fixed in `App.tsx`)
 
-2. **`Login.tsx`** — directly accessible page
+2. **`Login.tsx`** — ✅ **DONE** directly accessible page
 
 3. **`MeasureAdmin/MeasureAdmin.tsx`** — first menu-accessible parent that uses `DocumentManagement`
    - Migrate `shared/DocumentManagement.tsx` **as part of this branch** (used in MeasureAdmin, PointsAdmin, ProtocolAdmin, ProblemForm)

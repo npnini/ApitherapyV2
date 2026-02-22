@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { FileUp, Trash2, ExternalLink, Upload } from 'lucide-react';
 import styles from './DocumentManagement.module.css';
-import { useTranslation } from 'react-i18next';
+import { T, useTranslationContext } from '../T';
 
 interface DocumentManagementProps {
   documentUrl?: { [key: string]: string };
@@ -34,8 +34,23 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   activeLang,
   entityName
 }) => {
-  const { t, i18n } = useTranslation();
-  const effectiveLang = activeLang || i18n.language;
+  const { language, getTranslation, registerString } = useTranslationContext();
+  const effectiveLang = activeLang || language;
+
+  // Register strings needed by this component
+  const stringsToRegister = useMemo(() => [
+    entityName,
+    'Hebrew',
+    'English',
+    'Arabic',
+    'Russian',
+    'Current file',
+    'No document attached for'
+  ], [entityName]);
+
+  useEffect(() => {
+    stringsToRegister.forEach(s => registerString(s));
+  }, [stringsToRegister, registerString]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
@@ -45,21 +60,33 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   const currentDocumentUrl = documentUrl ? documentUrl[effectiveLang] : undefined;
   const hasDocumentForCurrentLang = !!currentDocumentUrl;
 
+  const getLangDisplayName = (lang: string) => {
+    switch (lang) {
+      case 'he': return getTranslation('Hebrew');
+      case 'en': return getTranslation('English');
+      case 'ar': return getTranslation('Arabic');
+      case 'ru': return getTranslation('Russian');
+      default: return lang;
+    }
+  };
+
   return (
     <div className={styles.documentSection}>
       <div className={styles.documentHeaderContainer}>
-        <h3 className={styles.documentHeader}>{t('entity_document', { entity: t(entityName) })}</h3>
+        <h3 className={styles.documentHeader}>
+          {getTranslation(entityName)} <T>Document</T>
+        </h3>
         <div className={styles.documentStatus}>
           {!hasDocumentForCurrentLang && !selectedFileName && (
             <p className={styles.noDocument}>
-              {t('no_document_attached_for_lang', { lang: t(effectiveLang) })}
+              <T>No document attached for</T> {getLangDisplayName(effectiveLang)}
             </p>
           )}
           {selectedFileName && (
-            <p className={styles.fileName}>currentFile: {selectedFileName}</p>
+            <p className={styles.fileName}><T>Current file</T>: {selectedFileName}</p>
           )}
           {hasDocumentForCurrentLang && !selectedFileName && (
-            <p className={styles.fileName}>currentFile: {getFilenameFromUrl(currentDocumentUrl)}</p>
+            <p className={styles.fileName}><T>Current file</T>: {getFilenameFromUrl(currentDocumentUrl)}</p>
           )}
         </div>
       </div>
@@ -74,11 +101,11 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 className={`${styles.documentActionButton} ${styles.blueButton}`}
                 disabled={isSubmitting}
               >
-                <ExternalLink size={16} /> {t('view_document')}
+                <ExternalLink size={16} /> <T>View Document</T>
               </button>
 
               <label className={`${styles.documentActionButton} ${styles.greenButton}`}>
-                <FileUp size={16} /> {t('replace_document')}
+                <FileUp size={16} /> <T>Replace Document</T>
                 <input
                   type="file"
                   onChange={handleFileSelect}
@@ -94,12 +121,12 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 className={`${styles.documentActionButton} ${styles.redButton}`}
                 disabled={isSubmitting}
               >
-                <Trash2 size={16} /> {t('delete_document')}
+                <Trash2 size={16} /> <T>Delete Document</T>
               </button>
             </>
           ) : (
             <label className={`${styles.documentActionButton} ${styles.blueButton}`}>
-              <Upload size={16} /> {t('upload_document')}
+              <Upload size={16} /> <T>Upload Document</T>
               <input
                 type="file"
                 onChange={handleFileSelect}
