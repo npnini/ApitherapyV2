@@ -8,7 +8,7 @@ import { Measure } from '../../types/measure';
 import ShuttleSelector, { ShuttleItem } from '../shared/ShuttleSelector';
 import DocumentManagement from '../shared/DocumentManagement';
 import styles from './ProblemForm.module.css';
-import { useTranslation } from 'react-i18next';
+import { T, useT, useTranslationContext } from '../T';
 import { X, Globe } from 'lucide-react';
 
 interface ProblemFormProps {
@@ -30,8 +30,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
 };
 
 const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCancel, isSubmitting, appConfig }) => {
-  const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const { language: currentLang, registerString, getTranslation } = useTranslationContext();
   const [activeLang, setActiveLang] = useState<string>(currentLang);
 
   const [names, setNames] = useState<{ [key: string]: string }>({});
@@ -46,8 +45,27 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
   const [measuresCollection] = useCollection(collection(db, 'measures'));
 
   const SUPPORTED_LANGS = appConfig.supportedLanguages;
-  const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
-    .filter(l => SUPPORTED_LANGS.includes(l));
+  const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+    .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
+
+  // String Registry for languages and dynamic labels
+  useEffect(() => {
+    SUPPORTED_LANGS.forEach(lang => registerString(lang));
+    registerString('English');
+    registerString('Hebrew');
+    registerString('Arabic');
+    registerString('Russian');
+    registerString('Name');
+    registerString('Description');
+    registerString('Only PDF files are allowed.');
+    registerString('Default language');
+    registerString('Available protocols');
+    registerString('Selected protocols');
+    registerString('Available measures');
+    registerString('Selected measures');
+    registerString('Cancel');
+    registerString('Saving...');
+  }, [registerString, SUPPORTED_LANGS]);
 
   const allProtocols = useMemo(() =>
     protocolsCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol)) || []
@@ -119,7 +137,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
 
   const handleFileChange = (file: File | null) => {
     if (file && file.type !== 'application/pdf') {
-      alert('Only PDF files are allowed.');
+      alert(getTranslation('Only PDF files are allowed.'));
       return;
     }
     setFileToUpload(file);
@@ -141,12 +159,26 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
   };
 
   const isEditing = !!initialData;
+  const shuttleAvailableProtocols = useT('Available protocols');
+  const shuttleSelectedProtocols = useT('Selected protocols');
+  const shuttleAvailableMeasures = useT('Available measures');
+  const shuttleSelectedMeasures = useT('Selected measures');
+
+  const getLangDisplayName = (lang: string) => {
+    switch (lang) {
+      case 'he': return getTranslation('Hebrew');
+      case 'en': return getTranslation('English');
+      case 'ar': return getTranslation('Arabic');
+      case 'ru': return getTranslation('Russian');
+      default: return lang;
+    }
+  };
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.formHeader}>
-          <h2 className={styles.formTitle}>{isEditing ? t('edit_problem') : t('add_problem')}</h2>
+          <h2 className={styles.formTitle}>{isEditing ? <T>Edit problem</T> : <T>Add problem</T>}</h2>
           <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
         </div>
 
@@ -158,7 +190,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
               onClick={() => setActiveLang(lang)}
             >
-              {t(lang)}
+              {getLangDisplayName(lang)}
             </button>
           ))}
         </div>
@@ -169,7 +201,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
             <div className={styles.inputGroup}>
               <div className={styles.labelWrapper}>
                 <label htmlFor="name" className={styles.formLabel}>
-                  {t('form_label_name')}
+                  <T>Name</T>
                   <span className={styles.requiredAsterisk}>*</span>
                 </label>
                 <div className={styles.indicatorContainer}>
@@ -181,7 +213,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               </div>
               {activeLang !== appConfig.defaultLanguage && !names[activeLang] && (
                 <TranslationReference
-                  label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                  label={`${getTranslation('Default language')}: ${getLangDisplayName(appConfig.defaultLanguage)}`}
                   text={names[appConfig.defaultLanguage]}
                 />
               )}
@@ -198,7 +230,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
             <div className={styles.inputGroup}>
               <div className={styles.labelWrapper}>
                 <label htmlFor="description" className={styles.formLabel}>
-                  {t('form_label_description')}
+                  <T>Description</T>
                   <span className={styles.requiredAsterisk}>*</span>
                 </label>
                 <div className={styles.indicatorContainer}>
@@ -210,7 +242,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               </div>
               {activeLang !== appConfig.defaultLanguage && !descriptions[activeLang] && (
                 <TranslationReference
-                  label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                  label={`${getTranslation('Default language')}: ${getLangDisplayName(appConfig.defaultLanguage)}`}
                   text={descriptions[appConfig.defaultLanguage]}
                 />
               )}
@@ -228,8 +260,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
                 availableItems={availableProtocolsForShuttle}
                 selectedItems={selectedProtocols}
                 onSelectionChange={setSelectedProtocols}
-                availableTitle={t('shuttle_available_protocols')}
-                selectedTitle={t('shuttle_selected_protocols')}
+                availableTitle={shuttleAvailableProtocols}
+                selectedTitle={shuttleSelectedProtocols}
               />
             </div>
 
@@ -238,8 +270,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
                 availableItems={availableMeasuresForShuttle}
                 selectedItems={selectedMeasures}
                 onSelectionChange={setSelectedMeasures}
-                availableTitle={t('shuttle_available_measures')}
-                selectedTitle={t('shuttle_selected_measures')}
+                availableTitle={shuttleAvailableMeasures}
+                selectedTitle={shuttleSelectedMeasures}
               />
             </div>
 
@@ -255,9 +287,9 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
           </div>
 
           <div className={styles.formActions}>
-            <button type="button" onClick={onCancel} className={styles.secondaryButton} disabled={isSubmitting}>{t('cancel')}</button>
+            <button type="button" onClick={onCancel} className={styles.secondaryButton} disabled={isSubmitting}>{getTranslation('Cancel')}</button>
             <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
-              {isSubmitting ? t('saving') : t('save_problem')}
+              {isSubmitting ? getTranslation('Saving...') : <T>Save problem</T>}
             </button>
           </div>
         </form>
@@ -267,3 +299,4 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
 };
 
 export default ProblemForm;
+

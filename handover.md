@@ -254,9 +254,9 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
      - **Hook Violations (Directive)**: **CRITICAL**: Never use `useT` inside callbacks or conditional logic. Use the **"String Registry" pattern** (initialize a `useMemo` array of strings and register them in a `useEffect`) at the top level of the component to avoid crashes.
 
 4. **`PointsAdmin.tsx`** — ✅ **DONE** (Completed Feb 22, 2026)
-5. **`ApplicationSettings.tsx`** — first menu-accessible parent that uses `ShuttleSelector`
-   - Migrate `shared/ShuttleSelector.tsx` **as part of this branch** (also used in ProblemForm)
-   - Note: `ShuttleSelector` uses `i18n.dir()` for RTL — replace with `useTranslationContext().language` and derive dir from language code (`he` → `rtl`, else `ltr`)
+5. **`ApplicationSettings.tsx`** — ✅ **DONE** (Completed Feb 22, 2026)
+   - Migrated `shared/ShuttleSelector.tsx` (also used in ProblemForm).
+   - Fixed `Modal.module.css` to use `inset-inline-end` for RTL close button support.
 
 6. **`ProblemAdmin/ProblemList.tsx`**, **`ProblemAdmin/ProblemDetails.tsx`**, **`ProblemAdmin/ProblemForm.tsx`**, **`ProblemAdmin/ProblemAdmin.tsx`** — all sub-components (`DocumentManagement`, `ShuttleSelector`, `shared/Modal`) already migrated
 

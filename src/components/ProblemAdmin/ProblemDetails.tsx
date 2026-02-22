@@ -1,7 +1,7 @@
 import React from 'react';
 import { Problem } from '../../types/problem';
 import styles from './ProblemDetails.module.css';
-import { useTranslation } from 'react-i18next';
+import { T, useTranslationContext } from '../T';
 import { ChevronLeft, Edit as EditIcon, FileCheck2 } from 'lucide-react';
 
 interface ProblemDetailsProps {
@@ -11,8 +11,7 @@ interface ProblemDetailsProps {
 }
 
 const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack }) => {
-  const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const { language: currentLang } = useTranslationContext();
 
   const getDocumentUrl = () => {
     if (typeof problem.documentUrl === 'string') {
@@ -31,12 +30,12 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
       <div className={styles.header}>
         <button onClick={onBack} className={styles.backButton}>
           <ChevronLeft size={20} />
-          {t('back_to_list')}
+          <T>Back to list</T>
         </button>
         <h2 className={styles.title}>{typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string)}</h2>
         <button onClick={onEdit} className={styles.editButton}>
           <EditIcon size={20} />
-          {t('edit')}
+          <T>Edit</T>
         </button>
       </div>
 
@@ -45,16 +44,16 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
 
         {documentUrl && (
           <div className={styles.documentSection}>
-            <h3 className={styles.sectionTitle}>{t('related_document')}</h3>
+            <h3 className={styles.sectionTitle}><T>Related document</T></h3>
             <a href={documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-              <FileCheck2 size={18} /> {t('view_document')}
+              <FileCheck2 size={18} /> <T>View document</T>
             </a>
           </div>
         )}
 
         {problem.protocolIds && problem.protocolIds.length > 0 && (
           <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>{t('protocols')}</h3>
+            <h3 className={styles.sectionTitle}><T>Protocols</T></h3>
             {/* Future implementation: Display protocol names instead of IDs */}
             <ul className={styles.list}>
               {problem.protocolIds.map(id => <li key={id}>{id}</li>)}
@@ -64,7 +63,7 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
 
         {problem.measureIds && problem.measureIds.length > 0 && (
           <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>{t('measures')}</h3>
+            <h3 className={styles.sectionTitle}><T>Measures</T></h3>
             {/* Future implementation: Display measure names instead of IDs */}
             <ul className={styles.list}>
               {problem.measureIds.map(id => <li key={id}>{id}</li>)}
@@ -77,3 +76,4 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
 };
 
 export default ProblemDetails;
+

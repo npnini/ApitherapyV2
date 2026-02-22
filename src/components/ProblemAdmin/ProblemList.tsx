@@ -6,7 +6,7 @@ import { Problem } from '../../types/problem';
 import styles from './ProblemList.module.css';
 import { Edit, Trash2, FileCheck2 } from 'lucide-react';
 import Modal from '../shared/Modal';
-import { useTranslation } from 'react-i18next';
+import { T, useT, useTranslationContext } from '../T';
 
 interface ProblemListProps {
   onEdit: (id: string) => void;
@@ -15,12 +15,17 @@ interface ProblemListProps {
 }
 
 const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
-  const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const { language: currentLang } = useTranslationContext();
   const [problemsCollection, loading, error] = useCollection(collection(db, 'problems'));
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [problemToDelete, setProblemToDelete] = useState<string | null>(null);
+
+  const searchPlaceholder = useT('Search...');
+  const modalTitle = useT('Delete Problem');
+  const modalMessage = useT('Are you sure you want to delete this problem? This action cannot be undone.');
+  const confirmText = useT('Delete');
+  const cancelText = useT('Cancel');
 
   const problems = useMemo(() => {
     if (!problemsCollection) return [];
@@ -63,25 +68,25 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>{t('problems_title')}</h2>
-        <button onClick={onAddNew} className={styles.addNewButton}>{t('create_new_problem')}</button>
+        <h2 className={styles.title}><T>Problems list</T></h2>
+        <button onClick={onAddNew} className={styles.addNewButton}><T>Add new problem</T></button>
       </div>
       <input
         type="text"
-        placeholder={t('search_placeholder_main')}
+        placeholder={searchPlaceholder}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className={styles.searchInput}
       />
-      {loading && <p className={styles.loadingText}>{t('loading_problems')}</p>}
-      {error && <p className={styles.errorText}>Error loading problems.</p>}
+      {loading && <p className={styles.loadingText}><T>Loading problems...</T></p>}
+      {error && <p className={styles.errorText}><T>Error loading problems.</T></p>}
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>{t('table_header_name')}</th>
-            <th>{t('table_header_description')}</th>
-            <th>{t('table_header_document')}</th>
-            <th>{t('table_header_actions')}</th>
+            <th><T>Name</T></th>
+            <th><T>Description</T></th>
+            <th><T>Document</T></th>
+            <th><T>Actions</T></th>
           </tr>
         </thead>
         <tbody>
@@ -118,13 +123,14 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Delete Problem"
-        message="Are you sure you want to delete this problem? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={modalTitle}
+        message={modalMessage}
+        confirmText={confirmText}
+        cancelText={cancelText}
       />
     </div>
   );
 };
 
 export default ProblemList;
+

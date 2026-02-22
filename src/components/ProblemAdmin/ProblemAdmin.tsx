@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { doc, collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { db } from '../../firebase';
@@ -8,18 +8,29 @@ import ProblemDetails from './ProblemDetails';
 import ProblemForm from './ProblemForm';
 import { uploadFile, deleteFile } from '../../services/storageService';
 import styles from './ProblemAdmin.module.css';
-import { useTranslation } from 'react-i18next';
+import { useTranslationContext } from '../T';
 import { getDoc } from 'firebase/firestore';
 
 type View = 'list' | 'details' | 'form';
 
 const ProblemAdmin: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const { language: currentLang, registerString, getTranslation } = useTranslationContext();
   const [currentView, setCurrentView] = useState<View>('list');
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
+
+  // String Registry for alerts
+  const stringsToRegister = useMemo(() => [
+    'Problem name is required',
+    'Problem description is required',
+    'Loading...',
+    'Error:'
+  ], []);
+
+  useEffect(() => {
+    stringsToRegister.forEach(s => registerString(s));
+  }, [registerString, stringsToRegister]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -65,13 +76,13 @@ const ProblemAdmin: React.FC = () => {
   const handleSubmit = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null, lang: string) => {
     const nameValues = Object.values(formData.name || {}).map(v => v.trim()).filter(Boolean);
     if (nameValues.length === 0) {
-      alert(t('protocol_name_required')); // Reusing translation for now or should add problem_name_required
+      alert(getTranslation('Problem name is required'));
       return;
     }
 
     const descriptionValues = Object.values(formData.description || {}).map(v => v.trim()).filter(Boolean);
     if (descriptionValues.length === 0) {
-      alert(t('protocol_description_required'));
+      alert(getTranslation('Problem description is required'));
       return;
     }
 
@@ -131,7 +142,7 @@ const ProblemAdmin: React.FC = () => {
     }
     if (currentView === 'form') {
       if (loading && selectedProblemId) {
-        return <div>Loading...</div>;
+        return <div>{getTranslation('Loading...')}</div>;
       }
       return <ProblemForm initialData={selectedProblemId ? problem : undefined} onSubmit={(data, file, lang) => handleSubmit(data, file, lang)} onCancel={handleCancelForm} isSubmitting={isSubmitting} appConfig={appConfig} />;
     }
@@ -140,10 +151,11 @@ const ProblemAdmin: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {error && <p className={styles.error}>Error: {error.message}</p>}
+      {error && <p className={styles.error}>{getTranslation('Error:')} {error.message}</p>}
       {renderContent()}
     </div>
   );
 };
 
 export default ProblemAdmin;
+
