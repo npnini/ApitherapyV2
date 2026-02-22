@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { db } from '../firebase';
@@ -7,9 +6,9 @@ import { PatientData } from '../types/patient';
 import { Protocol } from '../types/protocol';
 import { VitalSigns } from '../types/treatmentSession';
 import { ChevronLeft, BrainCircuit, List, ChevronRight, AlertTriangle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import styles from './ProtocolSelection.module.css';
 import ConfirmationModal from './ConfirmationModal';
+import { T, useT, useTranslationContext } from './T';
 
 // This sub-component was the source of the persistent system confirmation dialog.
 // It has been rewritten to use the custom ConfirmationModal component.
@@ -23,8 +22,6 @@ interface VitalSignsInputProps {
 }
 
 const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChange, min, max, placeholder }) => {
-    const { t } = useTranslation();
-    
     const [isWarningActive, setIsWarningActive] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -36,7 +33,7 @@ const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChang
 
     const handleBlur = () => {
         const numericValue = Number(value);
-        if (value === '' || isNaN(numericValue)) {
+        if (value === '' || isNaN(numericValue) || numericValue === 0) {
             setIsWarningActive(false);
             return;
         }
@@ -47,7 +44,7 @@ const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChang
             setIsWarningActive(false);
         }
     };
-    
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.currentTarget.blur();
@@ -65,12 +62,16 @@ const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChang
         setIsModalOpen(false);
     };
 
+    const modalTitle = useT('Value out of range');
+    const modalMessage = useT('This value is outside the typical range. Do you want to approve it?');
+    const warningText = useT('Value out of range');
+
     return (
         <div>
             <ConfirmationModal
                 isOpen={isModalOpen}
-                title={t('value_out_of_range')}
-                message={t('approve_out_of_range')}
+                title={modalTitle}
+                message={modalMessage}
                 onConfirm={handleConfirm}
                 onCancel={handleCancel}
             />
@@ -90,7 +91,7 @@ const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ label, value, onChang
             {isWarningActive && (
                 <div className={styles.warningText}>
                     <AlertTriangle size={14} className="inline-block mr-1" />
-                    {t('value_out_of_range')}
+                    {warningText}
                 </div>
             )}
         </div>
@@ -105,8 +106,8 @@ interface ProtocolSelectionProps {
 }
 
 const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect }) => {
-    const { t, i18n } = useTranslation();
-    const direction = i18n.dir();
+    const { language, registerString } = useTranslationContext();
+    const isRtl = language === 'he';
 
     const [user, setUser] = useState<User | null>(null);
     const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
@@ -124,6 +125,42 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         preStingVitals.systolic !== undefined &&
         preStingVitals.diastolic !== undefined &&
         preStingVitals.heartRate !== undefined;
+
+    // String Registry
+    const stringsToRegister = useMemo(() => [
+        'Value out of range',
+        'This value is outside the typical range. Do you want to approve it?',
+        'Missing Information',
+        'Please fill in all required fields before proceeding.',
+        'Patient Report',
+        'Enter patient feedback or symptoms...',
+        'Systolic',
+        'Enter systolic BP',
+        'Diastolic',
+        'Enter diastolic BP',
+        'Heart Rate',
+        'Enter heart rate',
+        'Finding protocols...',
+        'Start New Treatment',
+        'For patient',
+        'Back to Dashboard',
+        'Patient report',
+        'Patient report description',
+        'Pre-stinging Measures',
+        'Find Suggested Protocols',
+        'AI Suggested Protocols',
+        'Analyzing report and finding best protocols...',
+        'or',
+        'Hide Full List',
+        'Select from Full List',
+        'All Protocols',
+        'No protocols found. Please add protocols in the admin section.',
+        'Loading protocols...'
+    ], []);
+
+    useEffect(() => {
+        stringsToRegister.forEach(s => registerString(s));
+    }, [registerString, stringsToRegister]);
 
     useEffect(() => {
         const auth = getAuth();
@@ -173,118 +210,133 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         }
     };
 
-    const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
+    const BackIcon = isRtl ? ChevronRight : ChevronLeft;
+
+    const validationModalTitle = useT('Missing Information');
+    const validationModalMessage = useT('Please fill in all required fields before proceeding.');
+    const patientReportPlaceholder = useT('Enter patient feedback or symptoms...');
+    const systolicPlaceholder = useT('Enter systolic BP');
+    const diastolicPlaceholder = useT('Enter diastolic BP');
+    const heartRatePlaceholder = useT('Enter heart rate');
 
     return (
-        <div className={styles.container} dir={direction}>
+        <div className={styles.container}>
             <ConfirmationModal
                 isOpen={isValidationModalOpen}
-                title={t('missing_information')}
-                message={t('fill_required_fields_error')}
+                title={validationModalTitle}
+                message={validationModalMessage}
                 onConfirm={() => setValidationModalOpen(false)}
                 showCancelButton={false}
             />
 
             <div className={styles.header}>
                 <div>
-                    <h2 className={styles.title}>{t('start_new_treatment')}</h2>
-                    <p className={styles.patientName}>{t('for_patient')}: {patient.fullName}</p>
+                    <h2 className={styles.title}><T>Start New Treatment</T></h2>
+                    <p className={styles.patientName}><T>For patient</T>: {patient.fullName}</p>
                 </div>
                 <button onClick={onBack} className={styles.backButton}>
                     <BackIcon size={16} />
-                    {t('back_to_dashboard')}
+                    <T>Back to Dashboard</T>
                 </button>
             </div>
 
             <div className={styles.formContainer}>
                 <div className={styles.formGroup}>
                     <label className={styles.label} htmlFor="patientReport">
-                        {t('patient_report')} <span className={styles.requiredAsterisk}>*</span>
+                        <T>Patient report</T> <span className={styles.requiredAsterisk}>*</span>
                     </label>
-                    <textarea id="patientReport" value={patientReport} onChange={(e) => setPatientReport(e.target.value)} className={styles.textarea} rows={5} placeholder={t('patient_report_placeholder')}></textarea>
+                    <textarea id="patientReport" value={patientReport} onChange={(e) => setPatientReport(e.target.value)} className={styles.textarea} rows={5} placeholder={patientReportPlaceholder}></textarea>
                 </div>
 
-                <h3 className={styles.vitalsHeader}>{t('pre_stinging_measures')}</h3>
+                <h3 className={styles.vitalsHeader}><T>Pre-stinging Measures</T></h3>
                 <div className={styles.inputGrid}>
                     <VitalSignsInput
-                        label={t('systolic')}
+                        label={useT('Systolic')}
                         value={preStingVitals.systolic ?? ''}
                         onChange={(val) => setPreStingVitals(v => ({ ...v, systolic: val === '' ? undefined : Number(val) }))}
                         min={90}
                         max={140}
-                        placeholder={t('systolic_placeholder')}
+                        placeholder={systolicPlaceholder}
                     />
                     <VitalSignsInput
-                        label={t('diastolic')}
+                        label={useT('Diastolic')}
                         value={preStingVitals.diastolic ?? ''}
                         onChange={(val) => setPreStingVitals(v => ({ ...v, diastolic: val === '' ? undefined : Number(val) }))}
                         min={60}
                         max={90}
-                        placeholder={t('diastolic_placeholder')}
+                        placeholder={diastolicPlaceholder}
                     />
                     <VitalSignsInput
-                        label={t('heart_rate')}
+                        label={useT('Heart Rate')}
                         value={preStingVitals.heartRate ?? ''}
                         onChange={(val) => setPreStingVitals(v => ({ ...v, heartRate: val === '' ? undefined : Number(val) }))}
                         min={40}
                         max={100}
-                        placeholder={t('heart_rate_placeholder')}
+                        placeholder={heartRatePlaceholder}
                     />
                 </div>
 
                 <div className={styles.buttonContainer}>
                     <button onClick={handleFindProtocol} disabled={!isFormValid || isFinding} className={styles.findButton}>
                         {isFinding ? (
-                            <>{t('finding_protocols')}</>
+                            <><T>Finding protocols...</T></>
                         ) : (
-                            <><BrainCircuit size={16} /> {t('find_suggested_protocols')}</>
+                            <><BrainCircuit size={16} /> <T>Find Suggested Protocols</T></>
                         )}
                     </button>
                 </div>
 
                 {isFinding && (
-                     <div className={styles.loadingMessage}>Analyzing report and finding best protocols...</div>
+                    <div className={styles.loadingMessage}><T>Analyzing report and finding best protocols...</T></div>
                 )}
-                
+
                 {proposedProtocols.length > 0 && (
                     <div className={styles.suggestionsContainer}>
-                        <h3 className={styles.suggestionsHeader}>{t('ai_suggested_protocols')}</h3>
+                        <h3 className={styles.suggestionsHeader}><T>AI Suggested Protocols</T></h3>
                         <div className={styles.protocolList}>
                             {proposedProtocols.map(p => (
                                 <div key={p.id} onClick={() => handleProtocolSelect(p)} className={styles.protocolItem}>
-                                    <h4 className={styles.protocolName}>{p.name}</h4>
-                                    <p className={styles.protocolDescription}>{p.description}</p>
+                                    <h4 className={styles.protocolName}>
+                                        {(typeof p.name === 'object' ? (p.name[language] || (p.name as any)['en'] || Object.values(p.name)[0]) : p.name) as string}
+                                    </h4>
+                                    <p className={styles.protocolDescription}>
+                                        {(typeof p.description === 'object' ? (p.description[language] || (p.description as any)['en'] || Object.values(p.description)[0]) : p.description) as string}
+                                    </p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
-                
+
                 <div className={styles.dividerContainer}>
                     <div className={styles.divider}></div>
-                    <span className={styles.dividerText}>{t('or')}</span>
+                    <span className={styles.dividerText}><T>or</T></span>
                     <div className={styles.divider}></div>
                 </div>
 
                 <div className={styles.fullListButtonContainer}>
-                     <button onClick={() => setShowFullList(!showFullList)} disabled={allProtocols.length === 0 && !isLoading} className={styles.fullListButton}>
-                        <List size={16} /> {showFullList ? t('hide_full_list') : t('select_from_full_list')}
+                    <button onClick={() => setShowFullList(!showFullList)} disabled={allProtocols.length === 0 && !isLoading} className={styles.fullListButton}>
+                        <List size={16} /> {showFullList ? <T>Hide Full List</T> : <T>Select from Full List</T>}
                     </button>
                 </div>
 
                 {showFullList && (
-                     <div className={styles.fullProtocolsContainer}>
-                        <h3 className={styles.allProtocolsHeader}>{t('all_protocols')}</h3>
+                    <div className={styles.fullProtocolsContainer}>
+                        <h3 className={styles.allProtocolsHeader}><T>All Protocols</T></h3>
                         {isLoading ? (
-                            <div className={styles.loadingMessage}>Loading protocols...</div>
+                            <div className={styles.loadingMessage}><T>Loading protocols...</T></div>
                         ) : allProtocols.length === 0 ? (
-                             <div className={styles.loadingMessage}>No protocols found. Please add protocols in the admin section.</div>
+                            <div className={styles.loadingMessage}><T>No protocols found. Please add protocols in the admin section.</T></div>
                         ) : (
                             <div className={styles.protocolList}>
-                            {allProtocols.map(p => (
+                                {allProtocols.map(p => (
                                     <div key={p.id} onClick={() => handleProtocolSelect(p)} className={styles.protocolItem}>
-                                        <h4 className={styles.protocolName}>{p.name}</h4>
-                                        <p className={styles.protocolDescription}>{p.description}</p>
+                                        <h4 className={styles.protocolName}>
+                                            {(typeof p.name === 'object' ? (p.name[language] || (p.name as any)['en'] || Object.values(p.name)[0]) : p.name) as string}
+                                        </h4>
+                                        <p className={styles.protocolDescription}>
+                                            {(typeof p.description === 'object' ? (p.description[language] || (p.description as any)['en'] || Object.values(p.description)[0]) : p.description) as string}
+                                        </p>
                                     </div>
                                 ))}
                             </div>

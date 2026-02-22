@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
-import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileUp, FileDown, FileCheck2, XSquare, X, Globe } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe } from 'lucide-react';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
-
+import { T, useT, useTranslationContext } from './T';
+import Tooltip from './common/Tooltip';
 
 // A type for the form state, where points are an array of strings (IDs)
 interface ProtocolFormState extends Omit<Protocol, 'points'> {
@@ -17,8 +17,7 @@ interface ProtocolFormState extends Omit<Protocol, 'points'> {
 }
 
 const ProtocolAdmin: React.FC = () => {
-    const { t, i18n } = useTranslation();
-    const currentLang = i18n.language;
+    const { language: currentLang, getTranslation, registerString } = useTranslationContext();
     const [user, setUser] = useState<User | null>(null);
     const [protocols, setProtocols] = useState<Protocol[]>([]);
     const [allAcuPoints, setAllAcuPoints] = useState<AcuPoint[]>([]);
@@ -30,6 +29,47 @@ const ProtocolAdmin: React.FC = () => {
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
+
+    // String Registry for callbacks and dynamic content
+    const stringsToRegister = useMemo(() => [
+        'could_not_fetch_data',
+        'protocol_name_required',
+        'protocol_description_required',
+        'at_least_one_point',
+        'protocol_name_exists',
+        'failed_to_save_protocol',
+        'failed_to_delete_protocol',
+        'English',
+        'Hebrew',
+        'Arabic',
+        'Russian',
+        'Cancel',
+        'Saving...',
+        'Deleting...',
+        'Confirm Delete',
+        'Protocol Name',
+        'Protocol Description',
+        'Protocol Rationale',
+        'Protocol',
+        'Protocol name is required',
+        'Protocol description is required',
+        'At least one point is required',
+        'Protocol name already exists',
+        'Failed to save protocol',
+        'Failed to delete protocol',
+        'Default language',
+        'Enter protocol name',
+        'Describe protocol purpose',
+        'Explain rationale',
+        'Are you sure you want to delete the protocol',
+        'Delete Protocol',
+        'Edit Protocol'
+    ], []);
+
+    useEffect(() => {
+        stringsToRegister.forEach(s => registerString(s));
+        appConfig.supportedLanguages.forEach(lang => registerString(lang));
+    }, [registerString, stringsToRegister, appConfig.supportedLanguages]);
 
     useEffect(() => {
         const auth = getAuth();
@@ -84,10 +124,10 @@ const ProtocolAdmin: React.FC = () => {
 
         } catch (error) {
             console.error("Error fetching data:", error);
-            setFormError(t('could_not_fetch_data'));
+            setFormError(getTranslation('Could not fetch protocols and points'));
         }
         setIsLoading(false);
-    }, [user, t]);
+    }, [user, getTranslation, appConfig.defaultLanguage]);
 
     useEffect(() => {
         fetchProtocolsAndPoints();
@@ -96,18 +136,18 @@ const ProtocolAdmin: React.FC = () => {
     const validateProtocolForm = (protocol: Partial<ProtocolFormState>): boolean => {
         const nameValues = Object.values(protocol.name || {}).map(v => v.trim()).filter(Boolean);
         if (nameValues.length === 0) {
-            setFormError(t('protocol_name_required'));
+            setFormError(getTranslation('Protocol name is required'));
             return false;
         }
 
         const descriptionValues = Object.values(protocol.description || {}).map(v => v.trim()).filter(Boolean);
         if (descriptionValues.length === 0) {
-            setFormError(t('protocol_description_required'));
+            setFormError(getTranslation('Protocol description is required'));
             return false;
         }
 
         if (!protocol.points || protocol.points.length === 0) {
-            setFormError(t('at_least_one_point'));
+            setFormError(getTranslation('At least one point is required'));
             return false;
         }
 
@@ -120,7 +160,7 @@ const ProtocolAdmin: React.FC = () => {
                     return pName === currentName && p.id !== protocol.id;
                 });
                 if (nameExists) {
-                    setFormError(t('protocol_name_exists'));
+                    setFormError(getTranslation('Protocol name already exists'));
                     return false;
                 }
             }
@@ -186,7 +226,7 @@ const ProtocolAdmin: React.FC = () => {
             setIsDirty(false);
             fetchProtocolsAndPoints();
         } catch (error) {
-            setFormError(t('failed_to_save_protocol'));
+            setFormError(getTranslation('Failed to save protocol'));
             console.error("Error saving protocol:", error);
         } finally {
             setIsFormLoading(false);
@@ -211,7 +251,7 @@ const ProtocolAdmin: React.FC = () => {
             fetchProtocolsAndPoints();
         } catch (error) {
             console.error("Error deleting protocol:", error);
-            setFormError(t('failed_to_delete_protocol'));
+            setFormError(getTranslation('Failed to delete protocol'));
         } finally {
             setIsLoading(false);
             setDeletingProtocol(null);
@@ -268,9 +308,9 @@ const ProtocolAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}>{t('protocol_configuration')}</h1>
+                <h1 className={styles.title}><T>Protocol Configuration</T></h1>
                 <button onClick={handleStartNew} className={styles.addButton}>
-                    <Plus size={18} className={styles.addButtonIcon} />{t('add_new_protocol')}
+                    <Plus size={18} className={styles.addButtonIcon} /><T>Add New Protocol</T>
                 </button>
             </div>
             {formError && <p className={styles.errorBox}>{formError}</p>}
@@ -280,17 +320,17 @@ const ProtocolAdmin: React.FC = () => {
                     <table className={styles.table}>
                         <thead className={styles.tableHeader}>
                             <tr>
-                                <th scope="col" className={styles.headerCell}>{t('protocol_name')}</th>
-                                <th scope="col" className={styles.headerCell}>{t('description')}</th>
-                                <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}>{t('document')}</th>
+                                <th scope="col" className={styles.headerCell}><T>Protocol Name</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Description</T></th>
+                                <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
-                                    {t('actions')}
+                                    <T>Actions</T>
                                 </th>
                             </tr>
                         </thead>
                         <tbody className={styles.tableBody}>
                             {protocols.length === 0 ? (
-                                <tr><td colSpan={4} className={styles.emptyCell}>{t('no_protocols_found')}</td></tr>
+                                <tr><td colSpan={4} className={styles.emptyCell}><T>No protocols found</T></td></tr>
                             ) : protocols.map(protocol => {
                                 const docUrlObject = protocol.documentUrl;
                                 let docUrlForLang: string | undefined;
@@ -298,8 +338,8 @@ const ProtocolAdmin: React.FC = () => {
 
                                 if (docUrlObject) {
                                     if (typeof docUrlObject === 'object') {
-                                        docUrlForLang = docUrlObject[currentLang];
-                                        docUrlEn = docUrlObject['en'];
+                                        docUrlForLang = (docUrlObject as any)[currentLang];
+                                        docUrlEn = (docUrlObject as any)['en'];
                                     } else if (typeof docUrlObject === 'string') { // Legacy support
                                         docUrlEn = docUrlObject;
                                         if (currentLang === 'en') {
@@ -326,8 +366,14 @@ const ProtocolAdmin: React.FC = () => {
                                             )}
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
-                                            <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
-                                            <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                            <div className={styles.actionsWrapper}>
+                                                <Tooltip text={useT('Edit Protocol')}>
+                                                    <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
+                                                </Tooltip>
+                                                <Tooltip text={useT('Delete Protocol')}>
+                                                    <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                                </Tooltip>
+                                            </div>
                                         </td>
                                     </tr>
                                 )
@@ -353,6 +399,7 @@ const ProtocolAdmin: React.FC = () => {
                 isDirty={isDirty}
                 currentLang={currentLang}
                 appConfig={appConfig}
+                getTranslation={getTranslation}
             />}
 
             {deletingProtocol && <DeleteConfirmationModal
@@ -378,6 +425,7 @@ interface EditProtocolFormProps {
     isDirty: boolean;
     currentLang: string;
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
+    getTranslation: (s: string) => string;
 }
 
 const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
@@ -390,14 +438,12 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
     );
 };
 
-const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang, appConfig }) => {
-    const { t } = useTranslation();
+const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang, appConfig, getTranslation }) => {
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
-    const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
-        .filter(l => SUPPORTED_LANGS.includes(l));
-
+    const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+        .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
 
     const handlePointSelection = (pointId: string) => {
         const currentPoints = protocol.points || [];
@@ -408,16 +454,25 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
         onUpdate({ ...protocol, points: newPoints });
     };
 
-
     useEffect(() => {
         setSelectedFileName(null);
     }, [protocol]);
+
+    const getLangDisplayName = (lang: string) => {
+        switch (lang) {
+            case 'he': return getTranslation('Hebrew');
+            case 'en': return getTranslation('English');
+            case 'ar': return getTranslation('Arabic');
+            case 'ru': return getTranslation('Russian');
+            default: return lang;
+        }
+    };
 
     return (
         <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
                 <div className={styles.formHeader}>
-                    <h2 className={styles.formTitle}>{protocol.id ? t('edit_protocol') : t('add_new_protocol')}</h2>
+                    <h2 className={styles.formTitle}>{protocol.id ? <T>Edit Protocol</T> : <T>Add New Protocol</T>}</h2>
                     <button onClick={onCancel} className={styles.closeButton}>
                         <X size={24} />
                     </button>
@@ -430,7 +485,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
                             onClick={() => setActiveLang(lang)}
                         >
-                            {t(lang)}
+                            {getLangDisplayName(lang)}
                         </button>
                     ))}
                 </div>
@@ -441,7 +496,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             <div>
                                 <div className={styles.labelWrapper}>
                                     <label htmlFor='protocolName' className={styles.formLabel}>
-                                        {t('protocol_name')}
+                                        <T>Protocol Name</T>
                                         <span className={styles.requiredAsterisk}>*</span>
                                     </label>
                                     <div className={styles.indicatorContainer}>
@@ -453,14 +508,14 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && !((protocol.name as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                        label={`${getTranslation('Default language')}: ${getLangDisplayName(appConfig.defaultLanguage)}`}
                                         text={(protocol.name as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
                                 <input
                                     id='protocolName'
                                     type="text"
-                                    placeholder={t('protocol_name_placeholder')}
+                                    placeholder={getTranslation('Enter protocol name')}
                                     value={((protocol.name as Record<string, string>)?.[activeLang] || '') as string}
                                     onChange={(e) => onUpdate({
                                         ...protocol,
@@ -472,7 +527,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             <div>
                                 <div className={styles.labelWrapper}>
                                     <label htmlFor='protocolDescription' className={styles.formLabel}>
-                                        {t('protocol_description')}
+                                        <T>Protocol Description</T>
                                         <span className={styles.requiredAsterisk}>*</span>
                                     </label>
                                     <div className={styles.indicatorContainer}>
@@ -484,13 +539,13 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && !((protocol.description as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                        label={`${getTranslation('Default language')}: ${getLangDisplayName(appConfig.defaultLanguage)}`}
                                         text={(protocol.description as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
                                 <textarea
                                     id='protocolDescription'
-                                    placeholder={t('protocol_description_placeholder')}
+                                    placeholder={getTranslation('Describe protocol purpose')}
                                     value={((protocol.description as Record<string, string>)?.[activeLang] || '') as string}
                                     onChange={(e) => onUpdate({
                                         ...protocol,
@@ -501,7 +556,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             </div>
                             <div>
                                 <div className={styles.labelWrapper}>
-                                    <label htmlFor='protocolRationale' className={styles.formLabel}>{t('protocol_rationale')}</label>
+                                    <label htmlFor='protocolRationale' className={styles.formLabel}><T>Protocol Rationale</T></label>
                                     <div className={styles.indicatorContainer}>
                                         <Globe size={14} className={styles.indicatorIcon} />
                                         <span className={styles.translationCounter}>
@@ -511,13 +566,13 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && !((protocol.rationale as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                        label={`${getTranslation('Default language')}: ${getLangDisplayName(appConfig.defaultLanguage)}`}
                                         text={(protocol.rationale as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
                                 <textarea
                                     id='protocolRationale'
-                                    placeholder={t('protocol_rationale_placeholder')}
+                                    placeholder={getTranslation('Explain rationale')}
                                     value={((protocol.rationale as Record<string, string>)?.[activeLang] || '') as string}
                                     onChange={(e) => onUpdate({
                                         ...protocol,
@@ -528,7 +583,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                             </div>
                             <div>
                                 <h3 className={styles.formLabel}>
-                                    {t('select_points')}
+                                    <T>Select Points</T>
                                     <span className={styles.requiredAsterisk}>*</span>
                                 </h3>
                                 <div className={styles.pointsSelectionContainer}>
@@ -549,7 +604,6 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 </div>
                             </div>
 
-                            {/* Document Management Section */}
                             <DocumentManagement
                                 entityName="Protocol"
                                 documentUrl={protocol.documentUrl as { [key: string]: string }}
@@ -574,9 +628,9 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                     )}
                 </div>
                 <div className={styles.modalActions}>
-                    <button onClick={onCancel} className={styles.cancelButton}>{t('cancel')}</button>
+                    <button onClick={onCancel} className={styles.cancelButton}><T>Cancel</T></button>
                     <button onClick={() => onSave(activeLang)} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
-                        <Save size={16} /> {isSubmitting ? t('saving') : t('save_protocol')}
+                        <Save size={16} /> {isSubmitting ? getTranslation('Saving...') : <T>Save Protocol</T>}
                     </button>
                 </div>
             </div>
@@ -592,7 +646,9 @@ interface DeleteConfirmationModalProps {
 }
 
 const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ protocol, onConfirm, onCancel, isSubmitting }) => {
-    const { t, i18n } = useTranslation();
+    const { language: currentLang, getTranslation } = useTranslationContext();
+    const modalMessage = useT('Are you sure you want to delete the protocol');
+
     return (
         <div className={styles.modalOverlay}>
             <div className={styles.deleteModalContent}>
@@ -601,24 +657,21 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ proto
                         <AlertTriangle className={styles.deleteModalIcon} aria-hidden="true" />
                     </div>
                     <div>
-                        <h2 className={styles.deleteModalTitle}>{t('delete_protocol')}</h2>
+                        <h2 className={styles.deleteModalTitle}><T>Delete Protocol</T></h2>
                         <p className={styles.deleteModalText}>
-                            {t('delete_protocol_confirmation', {
-                                name: (typeof protocol.name === 'object' ? (protocol.name[i18n.language] || Object.values(protocol.name)[0]) : protocol.name) as string
-                            })}
+                            {modalMessage} '{(typeof protocol.name === 'object' ? (protocol.name[currentLang] || Object.values(protocol.name)[0]) : protocol.name) as string}'?
                         </p>
                     </div>
                 </div>
                 <div className={styles.deleteModalActions}>
-                    <button onClick={onCancel} className={styles.deleteCancelButton} disabled={isSubmitting}>{t('cancel')}</button>
+                    <button onClick={onCancel} className={styles.deleteCancelButton} disabled={isSubmitting}><T>Cancel</T></button>
                     <button onClick={onConfirm} className={styles.confirmDeleteButton} disabled={isSubmitting}>
-                        {isSubmitting ? t('deleting') : t('confirm_delete')}
+                        {isSubmitting ? <T>Deleting...</T> : <T>Confirm Delete</T>}
                     </button>
                 </div>
             </div>
         </div>
     )
 }
-
 
 export default ProtocolAdmin;

@@ -343,7 +343,9 @@ const AppInner: React.FC = () => {
             patientId: selectedPatient.id,
             date: new Date().toISOString(),
             protocolId: protocol.id,
-            protocolName: protocol.name,
+            protocolName: typeof protocol.name === 'object'
+                ? (protocol.name[i18n.language] || (protocol.name as any)['en'] || Object.values(protocol.name)[0] || '')
+                : protocol.name,
             patientReport: patientReport,
             preStingVitals: preStingVitals,
             caretakerId: appUser.userId,
