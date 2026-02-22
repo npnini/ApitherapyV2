@@ -312,5 +312,9 @@
   "identity_number": "Identity Number",
   "patient_details": " Patient Details",
   "legal_confirmation_signature": "Patient Consent",
-  "legal_confirmation_text": "I hereby confirm that all the information I have provided in the attached questionnaire is true. I am aware that Bee Venom Therapy (Apitherapy) is experimental and does not replace any treatment, diagnosis, recommendation, or instruction from a physician. I am aware that I am not allergic to bee venom and that I have chosen to participate in this treatment of my own free will and desire."
+  "legal_confirmation_text": "I hereby confirm that all the information I have provided in the attached questionnaire is true. I am aware that Bee Venom Therapy (Apitherapy) is experimental and does not replace any treatment, diagnosis, recommendation, or instruction from a physician. I am aware that I am not allergic to bee venom and that I have chosen to participate in this treatment of my own free will and desire.",
+  "__migrated__": {
+    "sample_placeholder": "Sample",
+    "sample_2": "Sample 2"
+  }
 }

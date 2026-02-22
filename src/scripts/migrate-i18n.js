@@ -28,7 +28,7 @@ const path = require('path');
 
 // ─── Argument parsing ────────────────────────────────────────────────────────
 
-const [,, tsxPath, jsonPath] = process.argv;
+const [, , tsxPath, jsonPath] = process.argv;
 
 if (!tsxPath || !jsonPath) {
     console.error('Usage: node migrate-i18n.js <path-to-page.tsx> <path-to-en.json>');
@@ -85,12 +85,16 @@ const stats = {
     missingKeys: 0,       // key not found in en.json
     missingKeyList: [],
     interpolationList: [],
+    replacedKeyList: new Set(), // NEW: Track successfully replaced keys
 };
 
 // ─── Helper: resolve a key to English text ───────────────────────────────────
 
 function resolveKey(key, fallback = null) {
-    if (flat[key] !== undefined) return flat[key];
+    if (flat[key] !== undefined) {
+        stats.replacedKeyList.add(key); // Track this key
+        return flat[key];
+    }
     if (fallback) {
         stats.fallbackUsed++;
         return fallback;
@@ -178,13 +182,13 @@ function migrate(source) {
 
         // ── Determine context: what's immediately before and after ───────────
         const before = source.slice(Math.max(0, matchStart - 60), matchStart);
-        const after  = source.slice(matchEnd, Math.min(source.length, matchEnd + 10));
+        const after = source.slice(matchEnd, Math.min(source.length, matchEnd + 10));
 
         // Case 1: JSX expression — {t('key')}
         // Detected by: the character just before the match (ignoring whitespace) is '{'
         // and the char just after is '}'
         const charBefore = source[matchStart - 1];
-        const charAfter  = source[matchEnd];
+        const charAfter = source[matchEnd];
 
         if (charBefore === '{' && charAfter === '}') {
             // Replace the whole {t('key')} with <T>text</T>
@@ -292,8 +296,14 @@ if (stats.interpolations === 0 && stats.missingKeys === 0) {
     console.log('\n🎉  No manual fixes needed — all keys resolved cleanly.');
 }
 
+if (stats.replacedKeyList.size > 0) {
+    console.log(`\n📦  Successfully migrated keys (you can now move these to "__migrated__" in JSON):`);
+    const sortedKeys = Array.from(stats.replacedKeyList).sort();
+    sortedKeys.forEach(k => console.log(`     "${k}"`));
+}
+
 console.log('\n📝  Next steps:');
-console.log('    1. Create src/components/T.tsx (see companion file T.tsx.template)');
+console.log('    1. Create src/components/T.tsx (already done in this project)');
 console.log('    2. Review any TODO comments in the output file');
 console.log(`    3. If i18n is still used for language detection (currentLang),`);
 console.log(`       replace it with your TranslationContext's language value`);
