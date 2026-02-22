@@ -77,14 +77,19 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // After each render cycle, flush pending strings to the translation API
     useEffect(() => {
         if (language === 'en') return;
+
         const pending = Array.from(pendingRef.current);
-        if (pending.length === 0) return;
+
+        // Even if no NEW strings are pending, we might need to fetch the initial 
+        // Firestore document for this language if it's not even in the cacheRef yet.
+        if (pending.length === 0 && cacheRef.current[language]) return;
+
         pendingRef.current = new Set();
 
         translateBatch(pending, language, cacheRef.current).then(() => {
             forceUpdate(n => n + 1);
         });
-    });
+    }); // Run after every render to catch newly registered strings
 
     return (
         <TranslationContext.Provider value={{ language, setLanguage, registerString, getTranslation }}>

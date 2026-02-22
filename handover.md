@@ -21,7 +21,7 @@ Before writing a single line of code, read these files **in this order**:
 - The `translations` Firestore collection rule ✅ **DONE** — deployed in Firestore
 - The Google Translate API key ✅ **DONE** — in `.env.local` as `VITE_GOOGLE_TRANSLATE_KEY`
 
-The first task for the new agent is **migrating the first component (Sidebar.tsx)** following the revised migration order below.
+The first component (**Sidebar.tsx**) has been successfully migrated and verified. It served as the pilot component.
 
 The branch `main` is up to date. The dev server runs with `npm run dev` in `c:\Users\User\Dev\Projects\ApitherapyV2`.
 
@@ -163,7 +163,7 @@ Before migrating ANY component, Phase 2 infrastructure setup must be done:
 3. `src/components/T.tsx` created ✅ **DONE** — file moved to correct location. Import as `'./T'` from `src/components/`, or `'../T'` from `src/components/<subfolder>/`
 4. `App.tsx` wrapped with `<TranslationProvider>` (Step 1.5) ✅ **DONE** — `AppInner` pattern used; `setLanguage` wired to `handleSaveUser`
 5. Firestore rules updated for `translations` collection ✅ **DONE** — deployed
-6. **One pilot component migrated and verified** before migrating all others `[BOTH]` ❌ **TODO**
+6. **One pilot component migrated and verified** before migrating all others ✅ **DONE** (`Sidebar.tsx`)
 
 ---
 
@@ -242,7 +242,7 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 
 ### Migration steps (one branch per step)
 
-1. **`Sidebar.tsx`** — directly menu-accessible, no sub-component dependencies from the shared list
+1. **`Sidebar.tsx`** ✅ **DONE** (Pilot completed, sync bug fixed in `App.tsx`)
 
 2. **`Login.tsx`** — directly accessible page
 
@@ -285,3 +285,18 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 5. `npm run build` — must succeed cleanly
 6. Human deploys to staging and performs full smoke test
 7. Human deploys to production: `firebase deploy --only hosting`
+
+---
+
+## Technical Notes from Sidebar Migration
+
+### Initial Load Synchronization Bug (Fixed)
+An issue was found where the app would display in English on initial load even if the user's preferred language was Hebrew (though the layout was correctly RTL).
+**Fix implemented:**
+- In `App.tsx`, a `useEffect` was added to `AppInner` that monitors `appUser.preferredLanguage` and forces `i18n.changeLanguage` and `TranslationContext.setLanguage` to match immediately.
+- In `T.tsx`, the `useEffect` that flushes the translation queue was updated to ensure it runs even when no *new* strings are registered, allowing it to pick up the initial language switch.
+
+### JSON Key Migration Side-Effect
+As components are migrated, their keys are moved to the `__migrated__` section of the JSON files. 
+**Important:** If a key is moved to `__migrated__` but another component still uses the old `t('key')` call, `react-i18next` will display the raw key (e.g., `my_profile`). This is expected and will be resolved as each component is migrated. For example, the header in the User Profile form currently shows `my_profile` because `UserDetails.tsx` is not yet migrated.
+

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TranslationProvider, useTranslationContext } from './components/T';
+import { TranslationProvider, useTranslationContext, T } from './components/T';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData } from 'firebase/firestore';
@@ -31,7 +31,7 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
     const { i18n } = useTranslation();
-    const { setLanguage } = useTranslationContext();
+    const { language, setLanguage } = useTranslationContext();
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<PatientData[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<Partial<PatientData> | null>(null);
@@ -151,6 +151,17 @@ const AppInner: React.FC = () => {
         });
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        if (appUser && appUser.preferredLanguage) {
+            if (i18n.language !== appUser.preferredLanguage) {
+                i18n.changeLanguage(appUser.preferredLanguage);
+            }
+            if (language !== appUser.preferredLanguage) {
+                setLanguage(appUser.preferredLanguage);
+            }
+        }
+    }, [appUser?.preferredLanguage, i18n, language, setLanguage]);
 
     useEffect(() => {
         if (appUser && appConfig) {
@@ -381,10 +392,12 @@ const AppInner: React.FC = () => {
                     {
                         isDashboardView ?
                             <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
-                            : currentView === 'user_details' ?
-                                <UserDetails user={appUser} onSave={handleSaveUser} onBack={handleBackToDashboard} />
+                            : currentView === 'user_details' && appUser ?
+                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={<T>My Profile</T> as unknown as string}>
+                                    <UserDetails user={appUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
+                                </Modal>
                                 : currentView === 'onboarding_test' ?
-                                    <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} />
+                                    <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} onBack={() => { }} />
                                     : currentView === 'treatment_execution' && selectedPatient && activeProtocol && activeTreatmentSession ?
                                         <TreatmentExecution patient={selectedPatient as PatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
                                         : currentView === 'admin_protocols' ?
