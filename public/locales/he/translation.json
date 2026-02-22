@@ -24,7 +24,6 @@
   "country": "מדינה",
   "preferred_language": "שפה מועדפת",
   "role": "תפקיד",
-  "save_changes": "שמור שינויים",
   "back_to_dashboard": "חזרה ללוח המחוונים",
   "address_placeholder": "הזן את כתובתך",
   "city_placeholder": "הזן את עירך",
@@ -343,6 +342,10 @@
     "y_axis": "ציר Y",
     "z_axis": "ציר Z",
     "savePoint": "שמור נקודה",
+    "save_changes": "שמור שינויים",
+    "search_placeholder": "חיפוש...",
+    "select_all": "בחר הכל",
+    "deselect_all": "בטל בחירה",
     "sample_2": "Sample 2"
   }
 }

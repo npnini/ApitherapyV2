@@ -7,6 +7,7 @@ import { appConfigSchema, ConfigGroup, ConfigSetting } from '../config/appConfig
 import styles from './ApplicationSettings.module.css';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import { Question, Questionnaire } from '../types/questionnaire';
+import { T, useT, useTranslationContext } from './T';
 
 interface ApplicationSettingsProps {
     user: AppUser;
@@ -54,6 +55,7 @@ const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<s
 };
 
 const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose }) => {
+    const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [initialSettings, setInitialSettings] = useState<Record<string, any>>({});
     const [settings, setSettings] = useState<Record<string, any>>({});
     const [protocols, setProtocols] = useState<Protocol[]>([]);
@@ -68,6 +70,46 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const areSettingsChanged = useMemo(() => {
         return JSON.stringify(settings) !== JSON.stringify(initialSettings);
     }, [settings, initialSettings]);
+
+    const stringsToRegister = useMemo(() => {
+        const schemaStrings: string[] = [];
+        Object.values(appConfigSchema).forEach(group => {
+            schemaStrings.push(group.label);
+            schemaStrings.push(group.description);
+            Object.values(group.children).forEach(child => {
+                schemaStrings.push(child.label);
+                schemaStrings.push(child.description);
+                // Handle nested groups if any (though schema currently only has 1 level of children in some groups)
+                if ('children' in child) {
+                    Object.values(child.children).forEach(grandchild => {
+                        schemaStrings.push(grandchild.label);
+                        schemaStrings.push(grandchild.description);
+                    });
+                }
+            });
+        });
+
+        return [
+            'Failed to fetch application settings.',
+            'Failed to save settings. You must be an administrator to perform this action.',
+            'Settings saved!',
+            'Saving...',
+            '-- Select Default Language --',
+            '-- Select a Protocol --',
+            '-- Select a Question --',
+            'Available Languages',
+            'Supported Languages',
+            'English', 'Spanish', 'French', 'German', 'Hebrew', 'Arabic', 'Chinese', 'Russian',
+            'Loading settings...',
+            'Cancel',
+            'Save Changes',
+            ...schemaStrings
+        ];
+    }, []);
+
+    useEffect(() => {
+        stringsToRegister.forEach(s => registerString(s));
+    }, [registerString, stringsToRegister]);
 
     useEffect(() => {
         const fetchSettingsAndProtocols = async () => {
@@ -95,7 +137,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 setInitialSettings(mergedSettings);
 
             } catch (err) {
-                setError('Failed to fetch application settings.');
+                setError(getTranslation('Failed to fetch application settings.'));
                 console.error(err);
             } finally {
                 setIsLoading(false);
@@ -103,7 +145,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         };
 
         fetchSettingsAndProtocols();
-    }, []);
+    }, [getTranslation]);
 
     useEffect(() => {
         const fetchQuestionnaire = async () => {
@@ -191,7 +233,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 onClose();
             }, 1500);
         } catch (err) {
-            setError('Failed to save settings. You must be an administrator to perform this action.');
+            setError(getTranslation('Failed to save settings. You must be an administrator to perform this action.'));
             console.error(err);
         } finally {
             setIsSaving(false);
@@ -204,8 +246,8 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             if ('children' in item) {
                 return (
                     <fieldset key={key} className={styles.nestedGroup}>
-                        <legend className={styles.groupLabel}>{item.label}</legend>
-                        <p className={styles.groupDescription}>{item.description}</p>
+                        <legend className={styles.groupLabel}><T>{item.label}</T></legend>
+                        <p className={styles.groupDescription}><T>{item.description}</T></p>
                         {renderGroup(item, currentPath)}
                     </fieldset>
                 );
@@ -256,9 +298,9 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                         value={typeof value === 'string' ? value : ''}
                         onChange={e => handleSettingChange(path, e.target.value)}
                     >
-                        <option value="">-- Select Default Language --</option>
+                        <option value=""><T>-- Select Default Language --</T></option>
                         {supportedLangItems.map(lang => (
-                            <option key={lang.id} value={lang.id}>{lang.name}</option>
+                            <option key={lang.id} value={lang.id}><T>{lang.name}</T></option>
                         ))}
                     </select>
                 );
@@ -295,7 +337,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                         value={typeof value === 'string' ? value : ''}
                         onChange={e => handleSettingChange(path, e.target.value)}
                     >
-                        <option value="">-- Select a Protocol --</option>
+                        <option value=""><T>-- Select a Protocol --</T></option>
                         {protocols.map(p => (
                             <option key={p.id} value={p.id}>
                                 {typeof p.name === 'object'
@@ -317,7 +359,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                         onChange={e => handleSettingChange(path, e.target.value)}
                         disabled={!settings.patientDashboard?.domain || questionnaireQuestions.length === 0}
                     >
-                        <option value="">-- Select a Question --</option>
+                        <option value=""><T>-- Select a Question --</T></option>
                         {questionnaireQuestions.map(q => (
                             <option key={q.id} value={q.id}>{q.name}</option>
                         ))}
@@ -341,16 +383,16 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         return (
             <div key={key} className={styles.setting} data-type={setting.type}>
                 <label htmlFor={key} className={styles.settingLabel}>
-                    {setting.label}
+                    <T>{setting.label}</T>
                 </label>
-                <p className={styles.settingDescription}>{setting.description}</p>
+                <p className={styles.settingDescription}><T>{setting.description}</T></p>
                 {control}
             </div>
         );
     };
 
     if (isLoading) {
-        return <div className={styles.container}>Loading settings...</div>;
+        return <div className={styles.container}><T>Loading settings...</T></div>;
     }
 
     return (
@@ -359,8 +401,8 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 <div className={styles.form}>
                     {Object.entries(appConfigSchema).map(([key, group]) => (
                         <fieldset key={key} className={styles.group}>
-                            <legend className={styles.groupLabel}>{group.label}</legend>
-                            <p className={styles.groupDescription}>{group.description}</p>
+                            <legend className={styles.groupLabel}><T>{group.label}</T></legend>
+                            <p className={styles.groupDescription}><T>{group.description}</T></p>
                             {renderGroup(group, [key])}
                         </fieldset>
                     ))}
@@ -368,12 +410,12 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             </main>
             <div className={styles.actions}>
                 {error && <p className={styles.errorMessage}>{error}</p>}
-                {saveSuccess && <span className={styles.successMessage}>Settings saved!</span>}
+                {saveSuccess && <span className={styles.successMessage}><T>Settings saved!</T></span>}
                 <button onClick={onClose} className={`${styles.button} ${styles.cancelButton}`}>
-                    Cancel
+                    <T>Cancel</T>
                 </button>
                 <button onClick={handleSave} disabled={!areSettingsChanged || isSaving} className={`${styles.button} ${styles.saveButton}`}>
-                    {isSaving ? 'Saving...' : 'Save Changes'}
+                    {isSaving ? <T>Saving...</T> : <T>Save Changes</T>}
                 </button>
             </div>
         </div>

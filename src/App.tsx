@@ -427,7 +427,7 @@ const AppInner: React.FC = () => {
                         <Modal
                             isOpen={isSettingsModalOpen}
                             onClose={() => setIsSettingsModalOpen(false)}
-                            title="Application Settings"
+                            title={<T>Application Settings</T> as unknown as string}
                         >
                             <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
                         </Modal>

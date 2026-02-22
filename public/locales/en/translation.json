@@ -78,7 +78,6 @@
   "country": "Country",
   "preferred_language": "Preferred Language",
   "role": "Role",
-  "save_changes": "Save Changes",
   "back_to_dashboard": "Back to Dashboard",
   "address_placeholder": "Enter your address",
   "city_placeholder": "Enter your city",
@@ -228,9 +227,6 @@
   "shuttle_selected_protocols": "Selected Protocols",
   "shuttle_available_measures": "Available Measures",
   "shuttle_selected_measures": "Selected Measures",
-  "search_placeholder": "Search...",
-  "select_all": "Select All",
-  "deselect_all": "Deselect All",
   "document_section_title": "Document",
   "pdf_only_supported": "Only PDF files are supported",
   "selected_file": "Selected file:",
@@ -313,6 +309,10 @@
     "y_axis": "Y-axis",
     "z_axis": "Z-axis",
     "savePoint": "Save Point",
+    "save_changes": "Save Changes",
+    "search_placeholder": "Search...",
+    "select_all": "Select All",
+    "deselect_all": "Deselect All",
     "sample_2": "Sample 2"
   }
 }

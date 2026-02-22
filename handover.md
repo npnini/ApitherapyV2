@@ -253,8 +253,7 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
      - **Hebrew Vowel Removal**: `stripHebrewNiqqud` implemented in `T.tsx` to automatically clean Hebrew translations before caching.
      - **Hook Violations (Directive)**: **CRITICAL**: Never use `useT` inside callbacks or conditional logic. Use the **"String Registry" pattern** (initialize a `useMemo` array of strings and register them in a `useEffect`) at the top level of the component to avoid crashes.
 
-4. **`PointsAdmin.tsx`** — `DocumentManagement` already migrated in step 3
-
+4. **`PointsAdmin.tsx`** — ✅ **DONE** (Completed Feb 22, 2026)
 5. **`ApplicationSettings.tsx`** — first menu-accessible parent that uses `ShuttleSelector`
    - Migrate `shared/ShuttleSelector.tsx` **as part of this branch** (also used in ProblemForm)
    - Note: `ShuttleSelector` uses `i18n.dir()` for RTL — replace with `useTranslationContext().language` and derive dir from language code (`he` → `rtl`, else `ltr`)

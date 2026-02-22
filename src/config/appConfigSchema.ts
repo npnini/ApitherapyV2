@@ -86,7 +86,7 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
     children: {
       domain: {
         label: 'Domain',
-        description: 'The domain for which the questionnaires are retrieved.',
+        description: 'The medical domain the system is used for',
         type: 'string',
         defaultValue: 'apitherapy',
       },

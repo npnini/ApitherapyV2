@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Search } from 'lucide-react';
 import styles from './ShuttleSelector.module.css';
-import { useTranslation } from 'react-i18next';
+import { T, useT, useTranslationContext } from '../T';
 
 export interface ShuttleItem {
   id: string;
@@ -25,9 +25,23 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
   availableTitle = 'Available',
   selectedTitle = 'Selected',
 }) => {
-  const { t, i18n } = useTranslation();
+  const { language, registerString, getTranslation } = useTranslationContext();
   const [searchTerm, setSearchTerm] = useState('');
-  const isRtl = i18n.dir() === 'rtl';
+
+  // Custom RTL detection logic as per Phase 2 rules
+  const isRtl = language === 'he';
+
+  const stringsToRegister = useMemo(() => [
+    'Available',
+    'Selected',
+    'Search...',
+    'Select All',
+    'Deselect All'
+  ], []);
+
+  useEffect(() => {
+    stringsToRegister.forEach(s => registerString(s));
+  }, [registerString, stringsToRegister]);
 
   const filteredAvailableItems = useMemo(() => {
     const selectedIds = new Set(selectedItems.map(item => item.id));
@@ -62,25 +76,25 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
       {/* Available Items Panel */}
       <div className={styles.box}>
         <div className={styles.header}>
-          <span className={styles.title}>{availableTitle}</span>
+          <span className={styles.title}><T>{availableTitle}</T></span>
           <div className={styles.searchContainer}>
             <Search size={16} className={styles.searchIcon} />
             <input
               type="text"
-              placeholder={t('search_placeholder')}
+              placeholder={useT('Search...')}
               className={styles.searchInput}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
           <button type="button" onClick={handleSelectAll} className={styles.headerButton}>
-            {t('select_all')}
+            <T>Select All</T>
           </button>
         </div>
         <ul className={styles.list}>
           {filteredAvailableItems.map(item => (
             <li key={item.id} className={styles.listItem} onClick={() => handleSelect(item)}>
-              {item.name}
+              <T>{item.name}</T>
               <SelectArrow size={18} className={styles.arrowIcon} />
             </li>
           ))}
@@ -90,17 +104,17 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
       {/* Selected Items Panel */}
       <div className={styles.box}>
         <div className={styles.header}>
-          <span className={styles.title}>{selectedTitle}</span>
+          <span className={styles.title}><T>{selectedTitle}</T></span>
           <div className={styles.placeholder}></div>
           <button type="button" onClick={handleDeselectAll} className={styles.headerButton}>
-            {t('deselect_all')}
+            <T>Deselect All</T>
           </button>
         </div>
         <ul className={styles.list}>
           {selectedItems.map(item => (
             <li key={item.id} className={styles.listItem} onClick={() => handleDeselect(item)}>
               <DeselectArrow size={18} className={styles.arrowIcon} />
-              {item.name}
+              <T>{item.name}</T>
             </li>
           ))}
         </ul>
