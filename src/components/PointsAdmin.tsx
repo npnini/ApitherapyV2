@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileUp, FileDown, FileCheck2, XSquare, X, Globe } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe } from 'lucide-react';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
+import { T, useT, useTranslationContext } from '../components/T';
 
 // Helper to get the correct document URL for the current language
 const getDocumentUrlForLang = (docUrl: any, lang: string): string | null => {
@@ -22,22 +22,8 @@ const getDocumentUrlForLang = (docUrl: any, lang: string): string | null => {
     return null;
 };
 
-const getFilenameFromUrl = (url: string | null | undefined): string => {
-    if (!url) return '';
-    try {
-        const path = url.split('?')[0];
-        const filename = path.split('%2F').pop();
-        return filename ? decodeURIComponent(filename) : '';
-    } catch (error) {
-        console.error("Error parsing filename from URL:", error);
-        return '';
-    }
-};
-
-
 const PointsAdmin: React.FC = () => {
-    const { t, i18n } = useTranslation();
-    const currentLang = i18n.language;
+    const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [user, setUser] = useState<User | null>(null);
     const [points, setPoints] = useState<StingPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -47,10 +33,24 @@ const PointsAdmin: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
-    const pointsCollectionRef = React.useMemo(() => collection(db, 'acupuncture_points'), []);
+    const pointsCollectionRef = useMemo(() => collection(db, 'acupuncture_points'), []);
+
+    const stringsToRegister = useMemo(() => [
+        'Failed to fetch points',
+        'Point code and label (in at least one language) are required',
+        'Failed to save the point',
+        'Failed to delete the point',
+        'Deleting...',
+        'Confirm Delete',
+        'Please log in',
+        'No points found'
+    ], []);
+
+    useEffect(() => {
+        stringsToRegister.forEach(s => registerString(s));
+    }, [registerString, stringsToRegister]);
 
     useEffect(() => {
         const auth = getAuth();
@@ -92,11 +92,11 @@ const PointsAdmin: React.FC = () => {
             setPoints(fetchedPoints);
             setError(null);
         } catch (err) {
-            setError(t('failedToFetchPoints'));
+            setError(getTranslation('Failed to fetch points'));
             console.error(err);
         }
         setIsLoading(false);
-    }, [user, pointsCollectionRef, t, currentLang]);
+    }, [user, pointsCollectionRef, getTranslation]);
 
     useEffect(() => {
         if (user) fetchPoints();
@@ -119,7 +119,6 @@ const PointsAdmin: React.FC = () => {
 
         setEditingPoint(pointToEdit);
         setOriginalPoint(pointToEdit);
-        setIsDirty(false);
     };
 
     const handleAddNew = () => {
@@ -127,7 +126,6 @@ const PointsAdmin: React.FC = () => {
         const newPoint: Partial<StingPoint> = { id: '', code: '', label: {}, description: {}, position: { x: 0, y: 0, z: 0 }, documentUrl: {} };
         setEditingPoint(newPoint);
         setOriginalPoint(newPoint);
-        setIsDirty(false);
     };
 
     const handleSave = async (pointToSave: Partial<StingPoint>, file: File | null, lang: string) => {
@@ -135,7 +133,7 @@ const PointsAdmin: React.FC = () => {
 
         const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
         if (!pointToSave.code || labelValues.length === 0) {
-            setFormError(t('pointCodeAndLabelRequired'));
+            setFormError(getTranslation('Point code and label (in at least one language) are required'));
             return;
         }
 
@@ -209,7 +207,7 @@ const PointsAdmin: React.FC = () => {
 
         } catch (err) {
             console.error('%c[DEBUG-SAVE-ERROR] SAVE FAILED', 'color: red; font-weight: bold;', err);
-            setFormError(t('failedToSavePoint'));
+            setFormError(getTranslation('Failed to save the point'));
         } finally {
             setIsSubmitting(false);
         }
@@ -240,7 +238,7 @@ const PointsAdmin: React.FC = () => {
             fetchPoints();
         } catch (err) {
             console.error('%c[DEBUG-DELETE-ERROR] Firestore deletion failed.', 'color: red; font-weight: bold;', err);
-            setError(t('failedToDeletePoint'));
+            setError(getTranslation('Failed to delete the point'));
         }
         setIsSubmitting(false);
         setDeletingPoint(null);
@@ -249,15 +247,14 @@ const PointsAdmin: React.FC = () => {
     const handleCancelEdit = () => {
         setEditingPoint(null);
         setFormError(null);
-        setIsDirty(false);
     };
 
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}>{t('acupuncturePoints')}</h1>
+                <h1 className={styles.title}><T>Acupuncture Points</T></h1>
                 <button onClick={handleAddNew} className={styles.addButton}>
-                    <PlusCircle size={18} className={styles.addButtonIcon} /> {t('addNewPoint')}
+                    <PlusCircle size={18} className={styles.addButtonIcon} /> <T>Add New Point</T>
                 </button>
             </div>
 
@@ -283,14 +280,16 @@ const PointsAdmin: React.FC = () => {
                                 <AlertTriangle className={styles.modalIcon} aria-hidden="true" />
                             </div>
                             <div>
-                                <h2 className={styles.modalTitle}>{t('deletePoint')}</h2>
-                                <p className={styles.modalText}>{t('deletePointConfirmation', { code: deletingPoint.code })}</p>
+                                <h2 className={styles.modalTitle}><T>Delete Point</T></h2>
+                                <p className={styles.modalText}>
+                                    <T>{`Are you sure you want to delete the point '${deletingPoint.code}'?`}</T>
+                                </p>
                             </div>
                         </div>
                         <div className={styles.modalActions}>
-                            <button onClick={() => setDeletingPoint(null)} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
+                            <button onClick={() => setDeletingPoint(null)} disabled={isSubmitting} className={styles.cancelButton}><T>Cancel</T></button>
                             <button onClick={confirmDelete} disabled={isSubmitting} className={styles.confirmDeleteButton}>
-                                {isSubmitting ? t('deleting') : t('confirmDelete')}
+                                {isSubmitting ? <T>Deleting...</T> : <T>Confirm Delete</T>}
                             </button>
                         </div>
                     </div>
@@ -301,13 +300,13 @@ const PointsAdmin: React.FC = () => {
                 <table className={styles.table}>
                     <thead className={styles.tableHeader}>
                         <tr>
-                            <th scope="col" className={styles.headerCell}>{t('code')}</th>
-                            <th scope="col" className={styles.headerCell}>{t('label')}</th>
-                            <th scope="col" className={styles.headerCell}>{t('description')}</th>
-                            <th scope="col" className={styles.headerCell}>{t('position')}</th>
-                            <th scope="col" className={styles.headerCell}>{t('document')}</th>
+                            <th scope="col" className={styles.headerCell}><T>Code</T></th>
+                            <th scope="col" className={styles.headerCell}><T>Label</T></th>
+                            <th scope="col" className={styles.headerCell}><T>Description</T></th>
+                            <th scope="col" className={styles.headerCell}><T>Position</T></th>
+                            <th scope="col" className={styles.headerCell}><T>Document</T></th>
                             <th scope="col" className="relative px-6 py-3">
-                                <span className="sr-only">{t('actions')}</span>
+                                <span className="sr-only"><T>Actions</T></span>
                             </th>
                         </tr>
                     </thead>
@@ -315,7 +314,7 @@ const PointsAdmin: React.FC = () => {
                         {isLoading ? (
                             <tr><td colSpan={6} className={styles.loaderCell}><Loader className={styles.loader} size={32} /></td></tr>
                         ) : points.length === 0 ? (
-                            <tr><td colSpan={6} className={styles.emptyCell}>{!user ? t('please_log_in') : t('noPointsFound')}</td></tr>
+                            <tr><td colSpan={6} className={styles.emptyCell}>{!user ? <T>Please log in</T> : <T>No points found</T>}</td></tr>
                         ) : (
                             points.map(point => {
                                 const docUrlForCurrentLang = getDocumentUrlForLang(point.documentUrl, currentLang);
@@ -368,16 +367,30 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
 };
 
 const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, error, isSubmitting, appConfig }) => {
-    const { t, i18n } = useTranslation();
-    const currentLang = i18n.language;
+    const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [formData, setFormData] = useState(point);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
-    const orderedLangs = [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
-        .filter(l => SUPPORTED_LANGS.includes(l));
+    const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
+        .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
     const [file, setFile] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
+    const stringsToRegister = useMemo(() => [
+        'Saving...',
+        'Save Point',
+        'Default Language',
+        'English',
+        'Hebrew',
+        'Edit Point',
+        'Add New Point',
+        'e.g., Hundred Meetings',
+        "Describe the point's purpose"
+    ], []);
+
+    useEffect(() => {
+        stringsToRegister.forEach(s => registerString(s));
+    }, [registerString, stringsToRegister]);
 
     useEffect(() => {
         setFormData(point);
@@ -411,17 +424,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        const labelValues = Object.values(formData.label || {}).map(v => v.trim()).filter(Boolean);
-        if (!formData.code || labelValues.length === 0) {
-            // Error handled by HTML required or onSave validation
-        }
-
         onSave(formData, file, activeLang);
     };
 
     const handleFileDelete = () => {
-        console.log(`%c[DEBUG-FILE-DELETE] Deleting file for lang: ${currentLang}`, 'color: orange;');
         if (!formData.documentUrl) return;
 
         let newDocUrls = { ... (typeof formData.documentUrl === 'object' ? formData.documentUrl : { en: formData.documentUrl }) };
@@ -438,7 +444,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
         <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
                 <div className={styles.formHeader}>
-                    <h2 className={styles.formTitle}>{isEditing ? t('editPoint') : t('addNewPoint')}</h2>
+                    <h2 className={styles.formTitle}>{isEditing ? <T>Edit Point</T> : <T>Add New Point</T>}</h2>
                     <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
                 </div>
                 <div className={styles.langTabBar}>
@@ -449,7 +455,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                             onClick={() => setActiveLang(lang)}
                             className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
                         >
-                            {t(lang)}
+                            <T>{lang === 'en' ? 'English' : lang === 'he' ? 'Hebrew' : lang}</T>
                         </button>
                     ))}
                 </div>
@@ -459,12 +465,12 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
 
                         <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
                             <div>
-                                <label htmlFor="code" className={styles.label}>{t('code')}<span className={styles.requiredAsterisk}>*</span></label>
+                                <label htmlFor="code" className={styles.label}><T>Code</T><span className={styles.requiredAsterisk}>*</span></label>
                                 <input id="code" name="code" type="text" value={formData.code || ''} onChange={handleChange} className={styles.input} required disabled={isEditing} />
                             </div>
                             <div>
                                 <div className={styles.labelWrapper}>
-                                    <label htmlFor="label" className={styles.label}>{t('label')}<span className={styles.requiredAsterisk}>*</span></label>
+                                    <label htmlFor="label" className={styles.label}><T>Label</T><span className={styles.requiredAsterisk}>*</span></label>
                                     <div className={styles.indicatorContainer}>
                                         <Globe size={14} className={styles.indicatorIcon} />
                                         <span className={styles.translationCounter}>
@@ -474,7 +480,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                 </div>
                                 {activeLang !== appConfig.defaultLanguage && !((formData.label as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
-                                        label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                        label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
                                         text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
@@ -484,7 +490,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                     type="text"
                                     value={(formData.label as Record<string, string>)?.[activeLang] || ''}
                                     onChange={handleChange}
-                                    placeholder={t('labelPlaceholder')}
+                                    placeholder={useT('e.g., Hundred Meetings')}
                                     className={styles.input}
                                     required={activeLang === appConfig.defaultLanguage}
                                 />
@@ -492,7 +498,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                         </div>
                         <div>
                             <div className={styles.labelWrapper}>
-                                <label htmlFor="description" className={styles.label}>{t('description')}</label>
+                                <label htmlFor="description" className={styles.label}><T>Description</T></label>
                                 <div className={styles.indicatorContainer}>
                                     <Globe size={14} className={styles.indicatorIcon} />
                                     <span className={styles.translationCounter}>
@@ -502,7 +508,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                             </div>
                             {activeLang !== appConfig.defaultLanguage && !((formData.description as Record<string, string>)?.[activeLang]) && (
                                 <TranslationReference
-                                    label={`${t('defaultLanguage')}: ${t(appConfig.defaultLanguage)}`}
+                                    label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
                                     text={(formData.description as Record<string, string>)?.[appConfig.defaultLanguage]}
                                 />
                             )}
@@ -511,24 +517,24 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                                 name="description"
                                 value={(formData.description as Record<string, string>)?.[activeLang] || ''}
                                 onChange={handleChange}
-                                placeholder={t('descriptionPlaceholder')}
+                                placeholder={useT("Describe the point's purpose")}
                                 className={styles.textarea}
                                 rows={3}
                             ></textarea>
                         </div>
                         <div>
-                            <label className={styles.label}>{t('position3d', '3D Position')}</label>
+                            <label className={styles.label}><T>3D Position</T></label>
                             <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
                                 <div>
-                                    <label htmlFor="x" className={styles.coordinateLabel}>{t('x_axis', 'X-axis')}</label>
+                                    <label htmlFor="x" className={styles.coordinateLabel}><T>X-axis</T></label>
                                     <input id="x" type="number" name="x" step="0.01" value={formData.position?.x || 0} onChange={handlePosChange} placeholder="X" className={styles.input} />
                                 </div>
                                 <div>
-                                    <label htmlFor="y" className={styles.coordinateLabel}>{t('y_axis', 'Y-axis')}</label>
+                                    <label htmlFor="y" className={styles.coordinateLabel}><T>Y-axis</T></label>
                                     <input id="y" type="number" name="y" step="0.01" value={formData.position?.y || 0} onChange={handlePosChange} placeholder="Y" className={styles.input} />
                                 </div>
                                 <div>
-                                    <label htmlFor="z" className={styles.coordinateLabel}>{t('z_axis', 'Z-axis')}</label>
+                                    <label htmlFor="z" className={styles.coordinateLabel}><T>Z-axis</T></label>
                                     <input id="z" type="number" name="z" step="0.01" value={formData.position?.z || 0} onChange={handlePosChange} placeholder="Z" className={styles.input} />
                                 </div>
                             </div>
@@ -549,9 +555,9 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                     </div>
 
                     <div className={styles.formActions}>
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
+                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}><T>Cancel</T></button>
                         <button type="submit" disabled={isSubmitting || !isDirty} className={styles.saveButton}>
-                            <Save size={16} /> {isSubmitting ? t('saving') : t('savePoint')}
+                            <Save size={16} /> {isSubmitting ? <T>Saving...</T> : <T>Save Point</T>}
                         </button>
                     </div>
                 </form>

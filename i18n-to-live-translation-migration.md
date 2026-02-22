@@ -131,42 +131,20 @@ match /translations/{document=**} {
 If the Firestore rules file is not accessible, instruct the human to add this rule manually in the
 Firebase Console under **Firestore Database → Rules**.
 
-### Step 1.4 — Install the T Component `[AGENT]` - this step **has** been done
+### Step 1.4 — Install the T Component `[AGENT]`
 
-Create the file `src/components/T.tsx` with the following complete content.
+Create the file `src/components/T.tsx` with the following complete content. 
 
-The file implements:
-- `TranslationProvider` — wrap the app root with this
-- `<T>` component — for JSX string contexts
-- `useT()` hook — for JavaScript string contexts (prop values, error messages, etc.)
-- `translateBatch()` — internal function handling Firestore cache lookup and Google Translate API calls
+**This version includes async batching for dynamic views and Hebrew vowel removal.**
 
 ```tsx
 /**
  * T.tsx — Drop-in translation component and hook
- *
- * Place this file at: src/components/T.tsx
- *
- * Usage in JSX:
- *   <T>Welcome to the app</T>
- *
- * Usage in JS string context (props, error messages, etc.):
- *   placeholder={useT('Enter patient name')}
- *   setError(useT('Failed to save'))
- *
- * Translations are cached in Firestore under:
- *   translations/{language}  →  { "English string": "Translated string", ... }
- *
- * On first visit to a page in a new language, all strings for that page
- * are collected and sent in a single batched API call, then stored in
- * Firestore so every subsequent user worldwide gets the cached version.
  */
 
 import React, { useState, useEffect, useContext, createContext, useCallback, useRef } from 'react';
-import { db } from '../firebase'; // ← VERIFY: adjust this path to match your project's firebase init file
+import { db } from '../firebase'; 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TranslationContextValue {
     language: string;
@@ -175,29 +153,21 @@ interface TranslationContextValue {
     getTranslation: (text: string) => string;
 }
 
-// ─── Context ──────────────────────────────────────────────────────────────────
-
 const TranslationContext = createContext<TranslationContextValue>({
     language: 'en',
-    setLanguage: () => {},
-    registerString: () => {},
+    setLanguage: () => { },
+    registerString: () => { },
     getTranslation: (text) => text,
 });
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [language, setLanguageState] = useState<string>(() => {
         return localStorage.getItem('appLanguage') || 'en';
     });
 
-    // Cache: language → { englishText: translatedText }
     const cacheRef = useRef<Record<string, Record<string, string>>>({});
-
-    // Pending strings waiting to be translated this render cycle
     const pendingRef = useRef<Set<string>>(new Set());
-
-    // Trigger re-render after translations arrive
+    const flushTimeoutRef = useRef<any>(null);
     const [, forceUpdate] = useState(0);
 
     const setLanguage = useCallback((lang: string) => {
@@ -205,26 +175,31 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLanguageState(lang);
     }, []);
 
-    // Called by every <T> and useT() on render to register their string
     const registerString = useCallback((text: string) => {
-        if (language === 'en') return;
-        if (cacheRef.current[language]?.[text]) return; // already cached
+        if (language === 'en' || !text) return;
+        if (cacheRef.current[language]?.[text]) return;
+        if (pendingRef.current.has(text)) return;
+
         pendingRef.current.add(text);
+
+        if (!flushTimeoutRef.current) {
+            flushTimeoutRef.current = setTimeout(() => {
+                forceUpdate(n => n + 1);
+                flushTimeoutRef.current = null;
+            }, 50); 
+        }
     }, [language]);
 
-    // Returns the translated string if available, otherwise the original English
     const getTranslation = useCallback((text: string): string => {
         if (language === 'en') return text;
         return cacheRef.current[language]?.[text] ?? text;
     }, [language]);
 
-    // After each render cycle, flush pending strings to the translation API
     useEffect(() => {
         if (language === 'en') return;
         const pending = Array.from(pendingRef.current);
-        if (pending.length === 0) return;
+        if (pending.length === 0 && cacheRef.current[language]) return;
         pendingRef.current = new Set();
-
         translateBatch(pending, language, cacheRef.current).then(() => {
             forceUpdate(n => n + 1);
         });
@@ -239,31 +214,24 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
 export const useTranslationContext = () => useContext(TranslationContext);
 
-// ─── <T> component ────────────────────────────────────────────────────────────
-
 export const T: React.FC<{ children: string }> = ({ children }) => {
     const { registerString, getTranslation } = useContext(TranslationContext);
     registerString(children);
     return <>{getTranslation(children)}</>;
 };
 
-// ─── useT() hook — for string contexts (props, error messages, etc.) ──────────
-
 export const useT = (text: string): string => {
     const { registerString, getTranslation } = useContext(TranslationContext);
-    registerString(text);
+    if (text) registerString(text);
     return getTranslation(text);
 };
 
-// ─── Batch translation logic ──────────────────────────────────────────────────
-//
-// Strategy:
-//   1. Check Firestore cache first (shared across all users)
-//   2. For strings not in Firestore, call Google Translate API
-//   3. Store results back to Firestore so future users get them for free
-
 const TRANSLATION_API_KEY = import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
-// ↑ VERIFY: this must match the variable name you added to .env in Step 1.2
+
+export const stripHebrewNiqqud = (text: string): string => {
+    if (typeof text !== 'string') return text;
+    return text.replace(/[\u0591-\u05C7]/g, '');
+};
 
 async function translateBatch(
     strings: string[],
@@ -271,11 +239,8 @@ async function translateBatch(
     cache: Record<string, Record<string, string>>
 ): Promise<void> {
     if (!cache[targetLang]) cache[targetLang] = {};
+    const firestoreRef = doc(db, 'translations', `ui_${targetLang}`);
 
-    const firestoreDocId = `ui_${targetLang}`;
-    const firestoreRef = doc(db, 'translations', firestoreDocId);
-
-    // ── Step 1: Fetch from Firestore ─────────────────────────────────────────
     let firestoreCache: Record<string, string> = {};
     try {
         const snap = await getDoc(firestoreRef);
@@ -284,18 +249,13 @@ async function translateBatch(
             Object.assign(cache[targetLang], firestoreCache);
         }
     } catch (e) {
-        console.warn('[T] Firestore cache read failed, falling back to API:', e);
+        console.warn('[T] Firestore read failed:', e);
     }
 
-    // ── Step 2: Find strings still missing after Firestore lookup ────────────
     const toTranslate = strings.filter(s => !cache[targetLang][s]);
     if (toTranslate.length === 0) return;
 
-    // ── Step 3: Call Google Translate API in one batched request ─────────────
-    if (!TRANSLATION_API_KEY) {
-        console.warn('[T] No VITE_GOOGLE_TRANSLATE_KEY set. Strings will display in English.');
-        return;
-    }
+    if (!TRANSLATION_API_KEY) return;
 
     try {
         const response = await fetch(
@@ -303,41 +263,62 @@ async function translateBatch(
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    q: toTranslate,
-                    target: targetLang,
-                    source: 'en',
-                    format: 'text',
-                }),
+                body: JSON.stringify({ q: toTranslate, target: targetLang, source: 'en', format: 'text' }),
             }
         );
-
-        if (!response.ok) {
-            throw new Error(`Translation API responded with ${response.status}`);
-        }
 
         const data = await response.json();
         const newTranslations: Record<string, string> = {};
 
         data.data.translations.forEach((item: { translatedText: string }, index: number) => {
             const original = toTranslate[index];
-            const translated = item.translatedText;
+            let translated = item.translatedText;
+            if (targetLang === 'he') translated = stripHebrewNiqqud(translated);
             cache[targetLang][original] = translated;
             newTranslations[original] = translated;
         });
 
-        // ── Step 4: Persist new translations back to Firestore ───────────────
-        try {
-            await setDoc(firestoreRef, { ...firestoreCache, ...newTranslations }, { merge: true });
-        } catch (e) {
-            console.warn('[T] Firestore cache write failed (translations still work this session):', e);
-        }
-
+        await setDoc(firestoreRef, { ...firestoreCache, ...newTranslations }, { merge: true });
     } catch (e) {
-        console.error('[T] Translation API call failed:', e);
+        console.error('[T] Translation API failed:', e);
     }
 }
 ```
+
+---
+
+## Critical Lessons Learned & Bug Patterns
+
+### 1. Hook Violations (useT in callbacks)
+###     - **Hook Violations (Directive)**: **CRITICAL**: Never use `useT` inside callbacks or conditional logic. Use the **"String Registry" pattern** (initialize a `useMemo` array of strings and register them in a `useEffect`) at the top level of the component.
+**Problem:** Calling `useT('text')` inside an `onClick` or `useEffect` callback causes a React crash.
+**Solution:** Do NOT call hooks in callbacks. Instead:
+- Register the string at the top level of the component using a "String Registry" pattern:
+```tsx
+const stringsToRegister = useMemo(() => ['Saving...', 'Error occurred'], []);
+useEffect(() => { stringsToRegister.forEach(s => registerString(s)); }, [registerString]);
+```
+- Access the translation in the callback using `getTranslation(text)` from context.
+
+### 2. Prop-based Translations (Placeholders/Titles)
+**Problem:** Placeholders (e.g., `placeholder="Search..."`) were often missed or stayed in English.
+**Solution:** Always use the `useT()` hook for direct string props:
+```tsx
+<input placeholder={useT('Search patients...')} />
+```
+*Note: Ensure `useT` is called in the render body, not inside a sub-function.*
+
+### 3. Missing Activation for Dynamic Content
+**Problem:** When a view opens (like a Modal), new strings were registered but didn't trigger a re-render for translation.
+**Solution:** The batching mechanism in `T.tsx` now uses a `setTimeout` (50ms) to ensure that any string registered during a render cycle triggers a follow-up "flush" to the API.
+
+### 4. Hebrew Vowel Stripping
+**Requirement:** Hebrew translations from Google often include Niqqud (vowels), which are not desired in clean UI code.
+**Solution:** The `stripHebrewNiqqud` utility is now built into the `translateBatch` function and runs automatically for any target language `he`.
+
+---
+
+## Phase 2 — Page-by-Page Migration
 
 After creating the file, the agent must verify two things:
 1. The import path on the line `import { db } from '../firebase'` matches the actual path to the
@@ -499,16 +480,16 @@ For each of the 20 pages, execute the following sequence:
 1. Run the migration script on the page file
 2. Read the script's console output summary
 3. Open the .migrated.tsx file
-4. Search for all TODO comments — resolve each one using the rules above
-5. Search for any remaining t( occurrences — the script should have caught all of them,
-   but verify none were missed
-6. Search for any remaining useTranslation imports — remove if found
-7. Verify the import path for T.tsx is correct relative to this page's directory depth
-8. Run TypeScript compiler check: npx tsc --noEmit
-9. Fix any TypeScript errors
-10. Replace the original file: mv PageName.migrated.tsx PageName.tsx
-11. Run the app and visually verify the page renders correctly in English
-12. Switch language and verify strings translate
+4. Search for all TODO comments — resolve each one using the rules above.
+5. **CRITICAL**: Verify that any strings used in callbacks, logic, or passed to sub-components follow the "String Registry" pattern (see [Lessons Learned #1](#1-hook-violations-uset-in-callbacks)) to avoid Hook Violations.
+6. Search for any remaining `t(` occurrences — the script should have caught all of them, but verify none were missed.
+7. Search for any remaining `useTranslation` imports — remove if found.
+8. Verify the import path for `T.tsx` is correct relative to this page's directory depth.
+9. Run TypeScript compiler check: `npx tsc --noEmit`
+10. Fix any TypeScript errors.
+11. Replace the original file: `mv PageName.migrated.tsx PageName.tsx`
+12. Run the app and visually verify the page renders correctly in English.
+13. Switch language and verify strings translate.
 ```
 
 ### Page Migration Order

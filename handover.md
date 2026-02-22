@@ -246,9 +246,12 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 
 2. **`Login.tsx`** — ✅ **DONE** directly accessible page
 
-3. **`MeasureAdmin/MeasureAdmin.tsx`** — first menu-accessible parent that uses `DocumentManagement`
-   - Migrate `shared/DocumentManagement.tsx` **as part of this branch** (used in MeasureAdmin, PointsAdmin, ProtocolAdmin, ProblemForm)
-   - Migrate `ConfirmationModal.tsx` **as part of this branch** (used in MeasureAdmin, ProtocolAdmin, VitalsInputGroup, ProtocolSelection)
+3. **`MeasureAdmin/MeasureAdmin.tsx`** — ✅ **DONE** (Completed Feb 22, 2026)
+   - Migrated `shared/DocumentManagement.tsx` and `ConfirmationModal.tsx` as part of this branch.
+   - **Critical Fixes Applied**:
+     - **Async Batching**: `T.tsx` updated to use a 50ms timeout for registering strings, ensuring dynamic views (like modals/list headers) are translated even when registered during render.
+     - **Hebrew Vowel Removal**: `stripHebrewNiqqud` implemented in `T.tsx` to automatically clean Hebrew translations before caching.
+     - **Hook Violations (Directive)**: **CRITICAL**: Never use `useT` inside callbacks or conditional logic. Use the **"String Registry" pattern** (initialize a `useMemo` array of strings and register them in a `useEffect`) at the top level of the component to avoid crashes.
 
 4. **`PointsAdmin.tsx`** — `DocumentManagement` already migrated in step 3
 
