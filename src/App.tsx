@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { TranslationProvider, useTranslationContext, T } from './components/T';
+
+import { TranslationProvider, useTranslationContext, T, useT } from './components/T';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData } from 'firebase/firestore';
@@ -30,8 +30,7 @@ type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_e
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
-    const { i18n } = useTranslation();
-    const { language, setLanguage } = useTranslationContext();
+    const { language, setLanguage, direction } = useTranslationContext();
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<PatientData[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<Partial<PatientData> | null>(null);
@@ -46,8 +45,8 @@ const AppInner: React.FC = () => {
     const [appConfig, setAppConfig] = useState<any>(null);
 
     useEffect(() => {
-        document.documentElement.dir = i18n.language === 'he' ? 'rtl' : 'ltr';
-    }, [i18n.language]);
+        document.documentElement.dir = direction;
+    }, [direction]);
 
     useEffect(() => {
         if (!appUser) return;
@@ -154,14 +153,11 @@ const AppInner: React.FC = () => {
 
     useEffect(() => {
         if (appUser && appUser.preferredLanguage) {
-            if (i18n.language !== appUser.preferredLanguage) {
-                i18n.changeLanguage(appUser.preferredLanguage);
-            }
             if (language !== appUser.preferredLanguage) {
                 setLanguage(appUser.preferredLanguage);
             }
         }
-    }, [appUser?.preferredLanguage, i18n, language, setLanguage]);
+    }, [appUser?.preferredLanguage, language, setLanguage]);
 
     useEffect(() => {
         if (appUser && appConfig) {
@@ -185,7 +181,6 @@ const AppInner: React.FC = () => {
         const { uid, ...userDataToSave } = updatedUser;
         await updateDoc(userRef, userDataToSave);
         setAppUser(updatedUser);
-        i18n.changeLanguage(updatedUser.preferredLanguage);
         setLanguage(updatedUser.preferredLanguage || 'en');
         setSaveStatus('idle');
         setCurrentView('dashboard');
@@ -344,7 +339,7 @@ const AppInner: React.FC = () => {
             date: new Date().toISOString(),
             protocolId: protocol.id,
             protocolName: typeof protocol.name === 'object'
-                ? (protocol.name[i18n.language] || (protocol.name as any)['en'] || Object.values(protocol.name)[0] || '')
+                ? (protocol.name[language] || (protocol.name as any)['en'] || Object.values(protocol.name)[0] || '')
                 : protocol.name,
             patientReport: patientReport,
             preStingVitals: preStingVitals,
@@ -380,9 +375,9 @@ const AppInner: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (!authReady) return <div className="flex justify-center items-center h-screen"><div>Initializing...</div></div>;
+        if (!authReady) return <div className="flex justify-center items-center h-screen"><div><T>Initializing...</T></div></div>;
         if (!appUser) return <Login />;
-        if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div>Loading Patient Data...</div></div>;
+        if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div><T>Loading Patient Data...</T></div></div>;
 
         const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
         const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
@@ -395,7 +390,7 @@ const AppInner: React.FC = () => {
                         isDashboardView ?
                             <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
                             : currentView === 'user_details' && appUser ?
-                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={<T>My Profile</T> as unknown as string}>
+                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={useT('My Profile')}>
                                     <UserDetails user={appUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
                                 </Modal>
                                 : currentView === 'onboarding_test' ?
@@ -429,7 +424,7 @@ const AppInner: React.FC = () => {
                         <Modal
                             isOpen={isSettingsModalOpen}
                             onClose={() => setIsSettingsModalOpen(false)}
-                            title={<T>Application Settings</T> as unknown as string}
+                            title={useT('Application Settings')}
                         >
                             <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
                         </Modal>
