@@ -264,9 +264,9 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
    - Migrated `ProtocolSelection.tsx` (from Step 11) in this branch as well.
    - Fixed `App.tsx` and `treatmentSession.ts` to support multilingual protocol names.
    
-8. **`QuestionnaireAdmin/QuestionnaireList.tsx`**, **`QuestionnaireAdmin/QuestionnaireForm.tsx`**, **`QuestionnaireAdmin/QuestionnaireAdmin.tsx`**
+8. **`QuestionnaireAdmin/QuestionnaireList.tsx`**, **`QuestionnaireAdmin/QuestionnaireForm.tsx`**, **`QuestionnaireAdmin/QuestionnaireAdmin.tsx`** - ✅ **DONE** (Completed Feb 23, 2026)
 
-9. **`UserDetails.tsx`**, **`PatientsDashboard.tsx`** — `PatientsDashboard` uses `common/Tooltip` (already done)
+9. **`UserDetails.tsx`**, **`PatientsDashboard.tsx`** - ✅ **DONE** (Completed Feb 23, 2026)
 
 10. **`PatientIntake/PersonalDetails.tsx`**, **`PatientIntake/SignaturePad.tsx`**, **`PatientIntake/QuestionnaireStep.tsx`**, **`PatientIntake/PatientIntake.tsx`** — patient-facing, test carefully; questionnaire question text must NOT be wrapped in `<T>`
 

@@ -16,4 +16,7 @@ export interface AppUser {
   mobile: string;
   role: 'admin' | 'caretaker' | 'patient';
   preferredLanguage?: string;
+  address?: string;
+  city?: string;
+  country?: string;
 }

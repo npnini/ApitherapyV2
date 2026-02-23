@@ -373,6 +373,11 @@
     text-overflow: ellipsis;
 }
 
+.conditionTooltip {
+    display: block;
+    width: 100%;
+}
+
 :global([dir="rtl"]) .conditionInfo,
 :global([dir="rtl"]) .severityInfo {
     text-align: right;

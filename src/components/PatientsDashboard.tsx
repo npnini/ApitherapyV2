@@ -2,23 +2,23 @@ import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { PatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle } from 'lucide-react';
-import { useTranslation, Trans } from 'react-i18next';
 import styles from './PatientsDashboard.module.css';
 import Tooltip from './common/Tooltip';
+import { T, useT, useTranslationContext } from '../components/T';
 
 interface PatientsDashboardProps {
   user: AppUser;
   patients: PatientData[];
   onStartTreatment: (patient: PatientData) => void;
-  onUpdatePatient: (patient: PatientData) => void; 
-  onAddPatient: () => void; 
+  onUpdatePatient: (patient: PatientData) => void;
+  onAddPatient: () => void;
   onShowTreatments: (patient: PatientData) => void;
   onDeletePatient: (patientId: string) => void;
   isSaving: boolean;
 }
 
 const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, onDeletePatient, isSaving }) => {
-  const { t, i18n } = useTranslation();
+  const { language } = useTranslationContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
 
@@ -39,15 +39,15 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   };
   const cancelDelete = () => setPatientToDelete(null);
 
-  const isRtl = i18n.dir() === 'rtl';
+  const isRtl = language === 'he';
 
   return (
     <div className={styles.dashboardContainer}>
       <div className={styles.header}>
-        <h2 className={styles.title}>{t('patients')}</h2>
+        <h2 className={styles.title}><T>Patients</T></h2>
         <button onClick={onAddPatient} className={styles.addPatientButton}>
           <PlusCircle size={16} />
-          {t('add_new_patient')}
+          <T>Add New Patient</T>
         </button>
       </div>
 
@@ -55,7 +55,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         <Search size={16} className={styles.searchIcon} />
         <input
           type="text"
-          placeholder={t('search_patients')}
+          placeholder={useT('Search by name, ID, or email...')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className={styles.searchInput}
@@ -64,11 +64,11 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
 
       <div className={styles.tableContainer}>
         <div className={styles.tableHeader}>
-          <div className={`${styles.headerCell} ${styles.headerCellCol3}`}>{t('patient')}</div>
-          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('contact')}</div>
-          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}>{t('condition')}</div>
-          <div className={styles.headerCell}>{t('severity')}</div>
-          <div className={styles.headerCell}>{t('last_treatment')}</div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Patient</T></div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Contact</T></div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Condition</T></div>
+          <div className={styles.headerCell}><T>Severity</T></div>
+          <div className={styles.headerCell}><T>Last Treatment</T></div>
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
         </div>
         <div className={styles.tableBody}>
@@ -80,7 +80,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <div>
                     <p className={styles.patientName}>{getFullName(patient)}</p>
                     <p className={styles.patientId}>
-                      {t('identity_number_display', { identityNumber: patient.identityNumber })}
+                      <T>{`Identity: ${patient.identityNumber}`}</T>
                     </p>
                   </div>
                 </div>
@@ -95,7 +95,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   </a>
                 </div>
                 <div className={styles.conditionInfo}>
-                  <Tooltip text={patient.medicalRecord?.patient_level_data?.condition || ''}>
+                  <Tooltip text={patient.medicalRecord?.patient_level_data?.condition || ''} className={styles.conditionTooltip}>
                     <span className={styles.truncate}>
                       {patient.medicalRecord?.patient_level_data?.condition}
                     </span>
@@ -109,31 +109,31 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                 <div className={styles.lastTreatment}>
                   {patient.medicalRecord?.patient_level_data?.lastTreatment
                     ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString()
-                    : t('no_treatments_found')}
+                    : <T>N/A</T>}
                 </div>
                 <div className={styles.actionsContainer}>
-                    <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={t('edit_patient')}><Edit size={14} /></button>
-                    <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={t('view_history')}><FileText size={14} /></button>
-                    <button
-                        onClick={() => handleDeleteClick(patient)}
-                        className={`${styles.actionButton} ${styles.deleteButton}`}
-                        style={{ visibility: patient.medicalRecord?.patient_level_data?.lastTreatment ? 'hidden' : 'visible' }}
-                        disabled={!!patient.medicalRecord?.patient_level_data?.lastTreatment}
-                        title={t('delete_patient')}>
-                        <Trash2 size={14} />
-                    </button>
-                    <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
-                      {t('start_new_treatment')}{' '}
-                      {isRtl ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                    </button>
+                  <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={useT('Edit Patient Details')}><Edit size={14} /></button>
+                  <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={useT('View Treatment History')}><FileText size={14} /></button>
+                  <button
+                    onClick={() => handleDeleteClick(patient)}
+                    className={`${styles.actionButton} ${styles.deleteButton}`}
+                    style={{ visibility: patient.medicalRecord?.patient_level_data?.lastTreatment ? 'hidden' : 'visible' }}
+                    disabled={!!patient.medicalRecord?.patient_level_data?.lastTreatment}
+                    title={useT('Delete Patient')}>
+                    <Trash2 size={14} />
+                  </button>
+                  <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
+                    <T>Start New Treatment</T>{' '}
+                    {isRtl ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                  </button>
                 </div>
               </div>
             ))
           ) : (
             <div className={styles.noPatientsContainer}>
               <UserIcon className={styles.noPatientsIcon} size={40} />
-              <h3 className={styles.noPatientsTitle}>{t('no_patients_found')}</h3>
-              <p className={styles.noPatientsDescription}>{t('get_started_by_adding_a_new_patient')}</p>
+              <h3 className={styles.noPatientsTitle}><T>No Patients Found</T></h3>
+              <p className={styles.noPatientsDescription}><T>Get started by adding a new patient record.</T></p>
             </div>
           )}
         </div>
@@ -143,13 +143,13 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <AlertTriangle className={styles.modalIcon} size={48} />
-            <h3 className={styles.modalTitle}>{t('are_you_sure_delete_patient')}</h3>
+            <h3 className={styles.modalTitle}><T>Are you sure?</T></h3>
             <p className={styles.modalDescription}>
-                <Trans i18nKey="this_action_is_irreversible" components={{ b: <b /> }} values={{ patientName: getFullName(patientToDelete) }}/>
+              <T>{`This action is irreversible. Patient: ${getFullName(patientToDelete)}`}</T>
             </p>
             <div className={styles.modalActions}>
-              <button onClick={cancelDelete} className={styles.modalCancelButton}>{t('cancel')}</button>
-              <button onClick={confirmDelete} className={styles.modalConfirmButton}>{t('delete')}</button>
+              <button onClick={cancelDelete} className={styles.modalCancelButton}><T>Cancel</T></button>
+              <button onClick={confirmDelete} className={styles.modalConfirmButton}><T>Delete</T></button>
             </div>
           </div>
         </div>
