@@ -274,7 +274,7 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 
 12. **`TreatmentExecution.tsx`** — all sub-components migrated in step 11
 
-13. **`TreatmentHistory.tsx`**
+13. **`TreatmentHistory.tsx`** - ✅ **DONE** (Completed Feb 23, 2026)
 
 14. **`App.tsx`** — last; also where `<TranslationProvider>` wrapper is added (Step 1.5 of migration guide)
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { PatientData } from '../types/patient';
 import { db } from '../firebase';
@@ -6,7 +5,7 @@ import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/fires
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { T, useT, useTranslationContext } from './T';
 import styles from './TreatmentHistory.module.css';
 
 // Explicit type for documents stored in Firestore
@@ -49,8 +48,6 @@ interface VitalSignsDisplayProps {
 }
 
 const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) => {
-    const { t } = useTranslation();
-
     if (!vitals) {
         return null;
     }
@@ -59,7 +56,7 @@ const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) 
     if (typeof vitals === 'string') {
         return (
             <div className={styles.vitalsBlock}>
-                <h4 className={styles.detailLabel}>{title}</h4>
+                <h4 className={styles.detailLabel}><T>{title}</T></h4>
                 <p className={styles.detailContentShort}>{vitals}</p>
             </div>
         );
@@ -73,11 +70,11 @@ const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) 
 
     return (
         <div className={styles.vitalsBlock}>
-            <h4 className={styles.detailLabel}>{title}</h4>
+            <h4 className={styles.detailLabel}><T>{title}</T></h4>
             <div className={styles.vitalsGrid}>
-                {systolic !== undefined && <div><span className={styles.vitalsLabel}>{t('systolic')}:</span> {systolic}</div>}
-                {diastolic !== undefined && <div><span className={styles.vitalsLabel}>{t('diastolic')}:</span> {diastolic}</div>}
-                {heartRate !== undefined && <div><span className={styles.vitalsLabel}>{t('heart_rate')}:</span> {heartRate}</div>}
+                {systolic !== undefined && <div><span className={styles.vitalsLabel}><T>Systolic</T>:</span> {systolic}</div>}
+                {diastolic !== undefined && <div><span className={styles.vitalsLabel}><T>Diastolic</T>:</span> {diastolic}</div>}
+                {heartRate !== undefined && <div><span className={styles.vitalsLabel}><T>Heart Rate</T>:</span> {heartRate}</div>}
             </div>
         </div>
     )
@@ -88,8 +85,16 @@ interface TreatmentHistoryProps {
     onBack: () => void;
 }
 
+const getMLValue = (value: any, lang: string): string => {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object') {
+        return value[lang] || value.en || '';
+    }
+    return '';
+};
+
 const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) => {
-    const { t, i18n } = useTranslation();
+    const { language } = useTranslationContext();
     const [treatments, setTreatments] = useState<HydratedTreatment[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -132,25 +137,25 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
             setTreatments(hydratedTreatments);
         } catch (err) {
             console.error("Error fetching treatment history:", err);
-            setError(t('failed_to_load_treatment_history'));
+            setError("Failed to load treatment history");
         } finally {
             setIsLoading(false);
         }
-    }, [patient.id, t]);
+    }, [patient.id]);
 
     useEffect(() => {
         fetchTreatments();
     }, [fetchTreatments]);
 
     const formatDate = (isoString: string) => {
-        if (!isoString) return t('not_available');
+        if (!isoString) return useT('Not available');
         try {
-            return new Date(isoString).toLocaleString(i18n.language, { 
-                year: 'numeric', month: 'numeric', day: 'numeric', 
-                hour: '2-digit', minute: '2-digit' 
+            return new Date(isoString).toLocaleString(language, {
+                year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
             });
         } catch (e) {
-            return t('invalid_date');
+            return useT('Invalid date');
         }
     };
 
@@ -158,7 +163,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
         return (
             <div className={styles.loadingContainer}>
                 <Loader className={styles.loader} />
-                <p className={styles.loaderText}>{t('loading_treatment_history')}</p>
+                <p className={styles.loaderText}><T>Loading treatment history...</T></p>
             </div>
         );
     }
@@ -166,15 +171,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
     if (error) {
         return (
             <div className={styles.errorContainer}>
-               <AlertTriangle className={styles.errorIcon} />
-               <h3 className={styles.errorTitle}>{t('error_title')}</h3>
-               <p className={styles.errorMessage}>{error}</p>
-               <button onClick={onBack} className={styles.errorButton}>{t('back')}</button>
-           </div>
-       );
+                <AlertTriangle className={styles.errorIcon} />
+                <h3 className={styles.errorTitle}><T>Error</T></h3>
+                <p className={styles.errorMessage}><T>{error}</T></p>
+                <button onClick={onBack} className={styles.errorButton}><T>Back</T></button>
+            </div>
+        );
     }
 
-    const direction = i18n.dir();
+    const direction = language === 'he' ? 'rtl' : 'ltr';
     const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
 
     return (
@@ -183,19 +188,21 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                 <button onClick={onBack} className={styles.backButton}>
                     <BackIcon size={24} />
                 </button>
-                <h1 className={styles.title}>{t('treatment_history_for', {patientName: patient.fullName})}</h1>
+                <h1 className={styles.title}>
+                    <T>{`Treatment History for ${patient.fullName}`}</T>
+                </h1>
             </div>
 
             {treatments.length === 0 ? (
                 <div className={styles.emptyState}>
-                    <p>{t('no_treatments_recorded')}</p>
+                    <p><T>No treatments recorded</T></p>
                 </div>
             ) : (
                 <div className={styles.treatmentsList}>
                     {treatments.map((treatment) => (
                         <div key={treatment.id} className={styles.treatmentCard}>
                             <div className={styles.cardHeader} dir={direction}>
-                                <h2 className={styles.protocolName}>{treatment.protocolName}</h2>
+                                <h2 className={styles.protocolName}>{getMLValue(treatment.protocolName, language)}</h2>
                                 <div className={styles.metaInfo}>
                                     <div className={styles.metaRow}>
                                         <Calendar size={16} />
@@ -212,25 +219,25 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                                 <div className={styles.detailItem}>
                                     <h3 className={styles.detailLabel}>
                                         <FileText size={16} />
-                                        {t('patient_report')}
+                                        <T>Patient Report</T>
                                     </h3>
-                                    <p className={styles.detailContent}>{treatment.patientReport || t('not_provided')}</p>
+                                    <p className={styles.detailContent}>{treatment.patientReport || useT('Not provided')}</p>
                                 </div>
                                 <div className={styles.detailItem}>
                                     <h3 className={styles.detailLabel}>
                                         <Activity size={16} />
-                                        {t('vitals')}
+                                        <T>Vitals</T>
                                     </h3>
-                                    <VitalSignsDisplay title={t('pre_stinging_measures')} vitals={treatment.preStingVitals || treatment.vitals} />
-                                    <VitalSignsDisplay title={t('post_stinging_measures')} vitals={treatment.postStingVitals} />
-                                    <VitalSignsDisplay title={t('final_measures')} vitals={treatment.finalVitals} />
+                                    <VitalSignsDisplay title="Pre-stinging measures" vitals={treatment.preStingVitals || treatment.vitals} />
+                                    <VitalSignsDisplay title="Post-stinging measures" vitals={treatment.postStingVitals} />
+                                    <VitalSignsDisplay title="Final measures" vitals={treatment.finalVitals} />
                                 </div>
                             </div>
-                            
+
                             <div className={styles.pointsContainer}>
                                 <h3 className={styles.detailLabel}>
                                     <Syringe size={16} />
-                                    {t('stung_points')}
+                                    <T>Stung Points</T>
                                 </h3>
                                 <ul className={styles.pointsList}>
                                     {treatment.stungPoints.length > 0 ? (
@@ -239,13 +246,13 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                                                 <div className={styles.pointDetails}>
                                                     <MapPin size={16} className={styles.pointIcon} />
                                                     <span className="text-sm">
-                                                        <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{point.label}</span>
+                                                        <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
                                                     </span>
                                                 </div>
                                             </li>
                                         ))
                                     ) : (
-                                        <li>{t('no_points_for_treatment')}</li>
+                                        <li><T>No points for treatment</T></li>
                                     )}
                                 </ul>
                             </div>
@@ -253,9 +260,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
                             <div className={styles.notesContainer}>
                                 <h3 className={styles.detailLabel}>
                                     <FileText size={16} />
-                                    {t('final_notes')}
+                                    <T>Final Notes</T>
                                 </h3>
-                                <p className={styles.notesContent}>{treatment.finalNotes || t('no_notes')}</p>
+                                <p className={styles.notesContent}>{treatment.finalNotes || useT('No notes')}</p>
                             </div>
                         </div>
                     ))}
