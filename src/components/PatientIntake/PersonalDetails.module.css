@@ -4,7 +4,8 @@
     display: block;
 }
 
-.input, .textarea {
+.input,
+.textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
@@ -14,4 +15,19 @@
 .textarea {
     min-height: 100px;
     resize: vertical;
+}
+
+.errorLabel {
+    color: #ef4444;
+}
+
+.errorInput {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2;
+}
+
+.errorMessage {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 4px;
 }

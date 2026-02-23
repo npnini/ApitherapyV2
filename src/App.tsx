@@ -236,7 +236,7 @@ const AppInner: React.FC = () => {
             const email = piiToSave.email;
 
             if (!identityNumber) {
-                throw new Error("Identity Number cannot be empty.");
+                throw new Error("Identity Number cannot be empty");
             }
 
             const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber));

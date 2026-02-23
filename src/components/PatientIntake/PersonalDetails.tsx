@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { PatientData } from '../../types/patient';
 import styles from './PersonalDetails.module.css';
+import { T } from '../T';
 
 interface PersonalDetailsProps {
     patientData: Partial<PatientData>;
     onDataChange: (data: Partial<PatientData>) => void;
+    showErrors?: boolean;
 }
 
-const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataChange }) => {
-    const { t } = useTranslation();
+const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataChange, showErrors = false }) => {
     const [age, setAge] = useState<string>('');
 
     useEffect(() => {
@@ -37,47 +37,69 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
         onDataChange({ ...patientData, birthDate: value });
     };
 
+    const isFieldMissing = (value: any) => !value || (typeof value === 'string' && !value.trim());
+
+    const renderInput = (
+        name: keyof PatientData,
+        labelTitle: string,
+        errorText: string,
+        type: string = 'text',
+        isRequired: boolean = true,
+        isTextArea: boolean = false
+    ) => {
+        const value = patientData[name];
+        const hasError = showErrors && isRequired && isFieldMissing(value);
+
+        return (
+            <div className={name === 'address' || name === 'profession' ? "md:col-span-2" : ""}>
+                <label
+                    htmlFor={name}
+                    className={`${styles.label} ${hasError ? styles.errorLabel : ''}`}
+                >
+                    <T>{labelTitle}</T> {isRequired && <span className="text-red-500">*</span>}
+                </label>
+                {isTextArea ? (
+                    <textarea
+                        id={name}
+                        name={name}
+                        value={(value as string) || ''}
+                        onChange={handleChange}
+                        className={`${styles.textarea} ${hasError ? styles.errorInput : ''}`}
+                    />
+                ) : (
+                    <input
+                        type={type}
+                        id={name}
+                        name={name}
+                        value={(value as string) || ''}
+                        onChange={name === 'birthDate' ? handleDateChange : handleChange}
+                        className={`${styles.input} ${hasError ? styles.errorInput : ''}`}
+                    />
+                )}
+                {hasError && (
+                    <p className={styles.errorMessage}>
+                        <T>{errorText}</T>
+                    </p>
+                )}
+            </div>
+        );
+    };
+
     return (
         <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label htmlFor="fullName" className={styles.label}>{t('full_name')} <span className="text-red-500">*</span></label>
-                <input type="text" id="fullName" name="fullName" value={patientData.fullName || ''} onChange={handleChange} className={styles.input} required />
-            </div>
+            {renderInput('fullName', 'Full Name', 'Full name cannot be empty')}
+            {renderInput('identityNumber', 'Identity Number', 'Identity Number cannot be empty')}
+            {renderInput('email', 'Email', 'Email cannot be empty', 'email')}
+            {renderInput('mobile', 'Mobile', 'Mobile number cannot be empty', 'tel')}
+            {renderInput('birthDate', 'Birth Date', 'Birth date cannot be empty', 'date')}
 
             <div>
-                <label htmlFor="identityNumber" className={styles.label}>{t('identity_number')} <span className="text-red-500">*</span></label>
-                <input type="text" id="identityNumber" name="identityNumber" value={patientData.identityNumber || ''} onChange={handleChange} className={styles.input} required />
-            </div>
-
-            <div>
-                <label htmlFor="email" className={styles.label}>{t('email')} <span className="text-red-500">*</span></label>
-                <input type="email" id="email" name="email" value={patientData.email || ''} onChange={handleChange} className={styles.input} required />
-            </div>
-
-            <div>
-                <label htmlFor="mobile" className={styles.label}>{t('mobile')} <span className="text-red-500">*</span></label>
-                <input type="tel" id="mobile" name="mobile" value={patientData.mobile || ''} onChange={handleChange} className={styles.input} required />
-            </div>
-
-            <div>
-                <label htmlFor="birthDate" className={styles.label}>{t('birth_date')} <span className="text-red-500">*</span></label>
-                <input type="date" id="birthDate" name="birthDate" value={patientData.birthDate || ''} onChange={handleDateChange} className={styles.input} required />
-            </div>
-
-            <div>
-                <label htmlFor="age" className={styles.label}>{t('age')}</label>
+                <label htmlFor="age" className={styles.label}><T>Age</T></label>
                 <input type="text" id="age" name="age" value={age} className={styles.input} disabled />
             </div>
 
-            <div className="md:col-span-2">
-                <label htmlFor="profession" className={styles.label}>{t('profession')} <span className="text-red-500">*</span></label>
-                <input type="text" id="profession" name="profession" value={patientData.profession || ''} onChange={handleChange} className={styles.input} required />
-            </div>
-            
-            <div className="md:col-span-2">
-                <label htmlFor="address" className={styles.label}>{t('address')} <span className="text-red-500">*</span></label>
-                <textarea id="address" name="address" value={patientData.address || ''} onChange={handleChange} className={styles.textarea} required />
-            </div>
+            {renderInput('profession', 'Profession', 'Profession cannot be empty')}
+            {renderInput('address', 'Address', 'Address cannot be empty', 'text', true, true)}
         </form>
     );
 };
