@@ -4,14 +4,13 @@ import { db } from '../../firebase';
 import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { Questionnaire } from '../../types/questionnaire';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import QuestionnaireList from './QuestionnaireList';
 import QuestionnaireForm from './QuestionnaireForm';
 import styles from './QuestionnaireAdmin.module.css';
 import { saveQuestionnaire } from '../../firebase/questionnaire';
+import { T, useT } from '../T';
 
 const QuestionnaireAdmin: React.FC = () => {
-    const { t } = useTranslation();
     const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState<Questionnaire | null>(null);
@@ -22,6 +21,11 @@ const QuestionnaireAdmin: React.FC = () => {
     const [supportedLanguages, setSupportedLanguages] = useState<string[]>([]);
 
     const collectionRef = React.useMemo(() => collection(db, 'questionnaires'), []);
+
+    const failedToFetchAppConfig = useT('Failed to fetch app configuration');
+    const failedToFetchData = useT('Failed to fetch questionnaires');
+    const failedToSaveItem = useT('Failed to save questionnaire');
+    const failedToDeleteItem = useT('Failed to delete questionnaire');
 
     useEffect(() => {
         const fetchAppConfig = async () => {
@@ -36,11 +40,11 @@ const QuestionnaireAdmin: React.FC = () => {
                 }
             } catch (err) {
                 console.error("Failed to fetch app config:", err);
-                setError(t('failedToFetchAppConfig'));
+                setError(failedToFetchAppConfig);
             }
         };
         fetchAppConfig();
-    }, [t]);
+    }, [failedToFetchAppConfig]);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -51,11 +55,11 @@ const QuestionnaireAdmin: React.FC = () => {
             setQuestionnaires(fetchedItems);
             setError(null);
         } catch (err) {
-            setError(t('failedToFetchData'));
+            setError(failedToFetchData);
             console.error(err);
         }
         setIsLoading(false);
-    }, [collectionRef, t]);
+    }, [collectionRef, failedToFetchData]);
 
     useEffect(() => {
         fetchData();
@@ -69,7 +73,7 @@ const QuestionnaireAdmin: React.FC = () => {
             setIsEditing(null);
             await fetchData();
         } catch (err) {
-            setFormError(t('failedToSaveItem'));
+            setFormError(failedToSaveItem);
             console.error(err);
         } finally {
             setIsSubmitting(false);
@@ -83,7 +87,7 @@ const QuestionnaireAdmin: React.FC = () => {
             await deleteDoc(doc(db, 'questionnaires', deletingItem.id));
             fetchData();
         } catch (err) {
-            setError(t('failedToDeleteItem'));
+            setError(failedToDeleteItem);
             console.error(err);
         }
         setIsSubmitting(false);
@@ -103,9 +107,9 @@ const QuestionnaireAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}>{t('questionnaire_configuration')}</h1>
+                <h1 className={styles.title}><T>Questionnaire Configuration</T></h1>
                 <button onClick={() => setIsEditing({ id: '', domain: 'apitherapy', versionNumber: 1, questions: [] })} className={styles.addButton}>
-                    <PlusCircle size={18} /> {t('addNew')}
+                    <PlusCircle size={18} /> <T>Add New Questionnaire</T>
                 </button>
             </div>
             {error && <p className={styles.errorBox}>{error}</p>}
@@ -129,14 +133,16 @@ const QuestionnaireAdmin: React.FC = () => {
                                <AlertTriangle className={styles.modalIcon} aria-hidden="true" />
                             </div>
                             <div>
-                                <h2 className={styles.modalTitle}>{t('deleteItem')}</h2>
-                                <p className={styles.modalText}>{t('deleteConfirmation', { domain: deletingItem.domain, version: deletingItem.versionNumber })}</p>
+                                <h2 className={styles.modalTitle}><T>Delete Questionnaire</T></h2>
+                                <p className={styles.modalText}>
+                                    <T>{`Are you sure you want to delete questionnaire for domain ${deletingItem.domain} (version ${deletingItem.versionNumber})?`}</T>
+                                </p>
                             </div>
                         </div>
                         <div className={styles.modalActions}>
-                            <button onClick={() => setDeletingItem(null)} disabled={isSubmitting} className={styles.cancelButton}>{t('cancel')}</button>
+                            <button onClick={() => setDeletingItem(null)} disabled={isSubmitting} className={styles.cancelButton}><T>Cancel</T></button>
                             <button onClick={confirmDelete} disabled={isSubmitting} className={styles.confirmDeleteButton}>
-                                {isSubmitting ? t('deleting') : t('confirmDelete')}
+                                {isSubmitting ? <T>Deleting...</T> : <T>Confirm Delete</T>}
                             </button>
                         </div>
                     </div>

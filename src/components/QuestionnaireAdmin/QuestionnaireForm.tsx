@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Questionnaire, Question } from '../../types/questionnaire';
-import { useTranslation } from 'react-i18next';
 import { Save, X, Plus, Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import styles from './QuestionnaireForm.module.css';
+import { T, useT } from '../T';
 
 interface QuestionnaireFormProps {
     questionnaire: Questionnaire | null;
@@ -18,7 +17,6 @@ interface QuestionnaireFormProps {
 }
 
 const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, onSave, onCancel, isSubmitting, error, supportedLanguages }) => {
-    const { t } = useTranslation();
     const [formData, setFormData] = useState<Questionnaire | null>(questionnaire);
 
     useEffect(() => {
@@ -110,10 +108,10 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
         <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
                 <div className={styles.modalHeaderBar}>
-                    <span className={styles.headerTitle}>{t('questionnaire_configuration')}</span>
+                    <span className={styles.headerTitle}><T>Questionnaire Configuration</T></span>
                     <div className={styles.headerDetails}>
-                        <span>{t('model')}: {formData.domain}</span>
-                        <span>{t('version')}: {formData.versionNumber}</span>
+                        <span><T>Model</T>: {formData.domain}</span>
+                        <span><T>Version</T>: {formData.versionNumber}</span>
                     </div>
                 </div>
                 <form onSubmit={handleSubmit} className={styles.form}>
@@ -125,9 +123,9 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
                                     <thead>
                                         <tr>
                                             <th></th>
-                                            <th>{t('question_id')}</th>
-                                            <th>{t('question_type')}</th>
-                                            <th className={styles.actionsHeader}>{t('actions')}</th>
+                                            <th><T>QUESTION ID</T></th>
+                                            <th><T>QUESTION TYPE</T></th>
+                                            <th className={styles.actionsHeader}><T>Actions</T></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -145,17 +143,52 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
                                 </table>
                             </SortableContext>
                         </DndContext>
-                        <button type="button" onClick={addQuestion} className={styles.addButton}><Plus size={18} /> {t('addQuestion')}</button>
+                        <button type="button" onClick={addQuestion} className={styles.addButton}><Plus size={18} /> <T>Add Question</T></button>
                     </div>
 
                     <div className={styles.formActions}>
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}><X size={16} />{t('cancel')}</button>
+                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}><X size={16} /><T>Cancel</T></button>
                         <button type="submit" disabled={isSubmitting} className={styles.saveButton}>
-                            <Save size={16} />{isSubmitting ? t('saving') : t('save')}
+                            <Save size={16} />{isSubmitting ? <T>Saving...</T> : <T>Save</T>}
                         </button>
                     </div>
                 </form>
             </div>
+        </div>
+    );
+};
+
+const LANGUAGE_NAMES: Record<string, string> = {
+    en: 'English',
+    he: 'Hebrew',
+    es: 'Spanish',
+    fr: 'French',
+    de: 'German',
+    ar: 'Arabic',
+    zh: 'Chinese',
+    ru: 'Russian'
+};
+
+interface TranslationRowProps {
+    lang: string;
+    value: string;
+    onChange: (text: string) => void;
+}
+
+const TranslationRow: React.FC<TranslationRowProps> = ({ lang, value, onChange }) => {
+    const langName = useT(LANGUAGE_NAMES[lang] || lang);
+    const placeholder = useT(`Enter translation for ${langName}`);
+
+    return (
+        <div className={styles.translationRow}>
+            <div className={styles.languageSelector}>{langName}</div>
+            <input
+                type="text"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                className={styles.translationInput}
+                placeholder={placeholder}
+            />
         </div>
     );
 };
@@ -169,7 +202,6 @@ interface DraggableQuestionRowProps {
 }
 
 const DraggableQuestionRow: React.FC<DraggableQuestionRowProps> = ({ question, onQuestionChange, onTranslationChange, onRemove, supportedLanguages }) => {
-    const { t } = useTranslation();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: question.name });
     const style = { transform: CSS.Transform.toString(transform), transition };
     const [isExpanded, setIsExpanded] = useState(false);
@@ -181,9 +213,9 @@ const DraggableQuestionRow: React.FC<DraggableQuestionRowProps> = ({ question, o
                 <td><EditableTableCell value={question.name} onChange={value => onQuestionChange(question.name, 'name', value)} /></td>
                 <td>
                     <select value={question.type} onChange={e => onQuestionChange(question.name, 'type', e.target.value)} className={styles.tableInput}>
-                        <option value="string">{t('string')}</option>
-                        <option value="number">{t('number')}</option>
-                        <option value="boolean">{t('boolean')}</option>
+                        <option value="string"><T>String</T></option>
+                        <option value="number"><T>Number</T></option>
+                        <option value="boolean"><T>Boolean</T></option>
                     </select>
                 </td>
                 <td className={styles.actionsCell}>
@@ -195,21 +227,17 @@ const DraggableQuestionRow: React.FC<DraggableQuestionRowProps> = ({ question, o
                 <tr>
                     <td colSpan={4} className={styles.translationsCell}>
                         <div className={styles.translationsContainer}>
-                            <h4 className={styles.translationsHeader}>{t('translations')}</h4>
-                            {supportedLanguages.map((lang, index) => {
+                            <h4 className={styles.translationsHeader}><T>Translations</T></h4>
+                            {supportedLanguages.map((lang: string, index: number) => {
                                 const translation = question.translations.find(t => t.language === lang) || { language: lang, text: '' };
                                 return (
-                                    <div key={lang} className={styles.translationRow}>
-                                        <div className={styles.languageSelector}>{lang}</div>
-                                        <input
-                                            type="text"
-                                            value={translation.text}
-                                            onChange={e => onTranslationChange(question.name, index, lang, e.target.value)}
-                                            className={styles.translationInput}
-                                            placeholder={t('translation_placeholder', { lang })}
-                                        />
-                                    </div>
-                                )
+                                    <TranslationRow
+                                        key={lang}
+                                        lang={lang}
+                                        value={translation.text}
+                                        onChange={text => onTranslationChange(question.name, index, lang, text)}
+                                    />
+                                );
                             })}
                         </div>
                     </td>

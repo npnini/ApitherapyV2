@@ -71,8 +71,6 @@
   "deleteDocument": "Delete Document",
   "name": "Measure Name",
   "type": "How Measured",
-  "question_id": "Question ID",
-  "question_type": "Question Type",
   "username": "Username",
   "city": "City",
   "country": "Country",
@@ -166,8 +164,6 @@
   "pdf_only_supported": "Only PDF files are supported",
   "selected_file": "Selected file:",
   "uploading": "Uploading...",
-  "addNew": "Add New Questionnaire",
-  "addQuestion": "Add Question",
   "identity_number": "Identity Number",
   "patient_details": " Patient Details",
   "legal_confirmation_signature": "Patient Consent",
@@ -190,7 +186,6 @@
     "cancel": "Cancel",
     "deleting": "Deleting...",
     "confirmDelete": "Confirm Delete",
-    "saving": "Saving...",
     "actions": "Actions",
     "add": "Add",
     "update": "Update",
@@ -313,6 +308,11 @@
     "all_protocols": "All Protocols",
     "value_out_of_range": "Value out of range",
     "approve_out_of_range": "The value entered is outside the normal range. Do you want to approve it anyway?",
+    "addNew": "Add New Questionnaire",
+    "addQuestion": "Add Question",
+    "question_id": "Question ID",
+    "question_type": "Question Type",
+    "saving": "Saving...",
     "sample_2": "Sample 2"
   }
 }
