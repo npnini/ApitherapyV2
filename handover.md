@@ -268,7 +268,7 @@ Sub-components with `t()` calls are absorbed into the first parent branch that u
 
 9. **`UserDetails.tsx`**, **`PatientsDashboard.tsx`** - ✅ **DONE** (Completed Feb 23, 2026)
 
-10. **`PatientIntake/PersonalDetails.tsx`**, **`PatientIntake/SignaturePad.tsx`**, **`PatientIntake/QuestionnaireStep.tsx`**, **`PatientIntake/PatientIntake.tsx`** — patient-facing, test carefully; questionnaire question text must NOT be wrapped in `<T>`
+10. **`PatientIntake/PersonalDetails.tsx`**, **`PatientIntake/SignaturePad.tsx`**, **`PatientIntake/QuestionnaireStep.tsx`**, **`PatientIntake/PatientIntake.tsx`** — patient-facing, test carefully; questionnaire question text must NOT be wrapped in `<T>` - ✅ **DONE** (Completed Feb 23, 2026)
 
 11. **`VitalsInputGroup.tsx`**, **`BodyScene.tsx`**, **`StingPointMarker.tsx`**, ~~`ProtocolSelection.tsx`~~ (done in step 7) — migrate these before TreatmentExecution as they are sub-components of it
 
