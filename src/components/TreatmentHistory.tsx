@@ -108,23 +108,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
             const querySnapshot = await getDocs(q);
             const rawTreatments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StoredTreatmentDoc));
 
-            const allPointIds = rawTreatments.reduce((acc, treatment) => {
-                if (Array.isArray(treatment.stungPoints)) {
-                    treatment.stungPoints.forEach(id => acc.add(id));
-                }
-                return acc;
-            }, new Set<string>());
-
+            // Fetch all points to handle both legacy IDs and new Codes in stungPoints
+            const pointsSnapshot = await getDocs(collection(db, 'acupuncture_points'));
             const pointsMap = new Map<string, StingPoint>();
-            if (allPointIds.size > 0) {
-                const pointPromises = Array.from(allPointIds).map(id => getDoc(doc(db, 'acupuncture_points', id)));
-                const pointDocs = await Promise.all(pointPromises);
-                pointDocs.forEach(doc => {
-                    if (doc.exists()) {
-                        pointsMap.set(doc.id, { id: doc.id, ...doc.data() } as StingPoint);
-                    }
-                });
-            }
+            pointsSnapshot.docs.forEach(doc => {
+                const data = doc.data() as StingPoint;
+                const point = { ...data, id: doc.id };
+                pointsMap.set(doc.id, point);
+                pointsMap.set(data.code, point);
+            });
 
             const hydratedTreatments = rawTreatments.map((treatment): HydratedTreatment => {
                 const hydratedPoints = (Array.isArray(treatment.stungPoints) ? treatment.stungPoints : [])

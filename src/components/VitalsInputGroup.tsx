@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { T, useT, useTranslationContext } from './T';
 import { VitalSigns } from '../types/treatmentSession';
 import { AlertCircle } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
@@ -15,7 +15,7 @@ interface VitalsInputGroupProps {
 type VitalField = keyof Omit<VitalSigns, 'outOfRange'>;
 
 const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVitalsChange }) => {
-    const { t } = useTranslation();
+    const { language } = useTranslationContext();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [pendingChange, setPendingChange] = useState<{ field: VitalField; value: number } | null>(null);
@@ -93,7 +93,7 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
     const renderInput = (field: VitalField, placeholder: string) => {
         const value = localVitals[field];
         const isCurrentValueOutOfRange = value !== undefined && isValueOutOfRange(field, value);
-        
+
         // The field is considered problematic if the user has confirmed an out-of-range value for it.
         const isConfirmedProblematic = vitals.outOfRange && isCurrentValueOutOfRange;
 
@@ -107,19 +107,20 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
                         onBlur={() => handleBlur(field)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
-                        className={`w-full p-3 bg-slate-100 border-2 rounded-lg text-lg text-center font-bold transition-colors duration-200 outline-none ${
-                            isCurrentValueOutOfRange && !isConfirmedProblematic ? 'border-yellow-400 focus:border-yellow-600' : 'border-slate-200 focus:border-slate-400'
-                        }`}
+                        className={`w-full p-3 bg-slate-100 border-2 rounded-lg text-lg text-center font-bold transition-colors duration-200 outline-none ${isCurrentValueOutOfRange && !isConfirmedProblematic ? 'border-yellow-400 focus:border-yellow-600' : 'border-slate-200 focus:border-slate-400'
+                            }`}
                     />
-                    {isCurrentValueOutOfRange && !isConfirmedProblematic && 
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2" title={t('value_out_of_range')}>
+                    {isCurrentValueOutOfRange && !isConfirmedProblematic &&
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2" title={useT('Value out of range')}>
                             <AlertCircle className="h-5 w-5 text-yellow-500" />
                         </div>
                     }
                 </div>
-                <label className="text-xs text-slate-500 mt-1">{t(field)} <span className="text-red-500">*</span></label>
+                <label className="text-xs text-slate-500 mt-1">
+                    <T>{field === 'heartRate' ? 'Heart Rate' : field.charAt(0).toUpperCase() + field.slice(1)}</T> <span className="text-red-500">*</span>
+                </label>
                 {isConfirmedProblematic && (
-                    <p className="text-xs text-yellow-600 font-bold mt-1">{t('value_out_of_range')}</p>
+                    <p className="text-xs text-yellow-600 font-bold mt-1"><T>Value out of range</T></p>
                 )}
             </div>
         );
@@ -129,16 +130,16 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-4">
             <ConfirmationModal
                 isOpen={isModalOpen}
-                title={t('value_out_of_range')}
-                message={t('approve_out_of_range')}
+                title={useT('Value out of range')}
+                message={useT('The value entered is outside the normal range. Do you want to approve it anyway?')}
                 onConfirm={handleConfirmOutOfRange}
                 onCancel={handleCancelOutOfRange}
             />
-            <h3 className="text-md font-bold text-slate-700 text-center mb-3">{title}</h3>
+            <h3 className="text-md font-bold text-slate-700 text-center mb-3"><T>{title}</T></h3>
             <div className="grid grid-cols-3 gap-3">
-                 {renderInput('systolic', t('systolic_placeholder'))}
-                 {renderInput('diastolic', t('diastolic_placeholder'))}
-                 {renderInput('heartRate', t('heart_rate_placeholder'))}
+                {renderInput('systolic', useT('e.g., 120'))}
+                {renderInput('diastolic', useT('e.g., 80'))}
+                {renderInput('heartRate', useT('e.g., 70'))}
             </div>
         </div>
     );

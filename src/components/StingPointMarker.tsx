@@ -2,6 +2,7 @@
 import React from 'react';
 import { Html } from '@react-three/drei';
 import { StingPoint } from '../types/apipuncture';
+import { T } from './T';
 
 interface StingPointMarkerProps {
   point: StingPoint;
@@ -19,22 +20,22 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({ point, onClick, isH
         }}
       >
         <sphereGeometry args={[isHighlighted ? 0.035 : 0.02, 16, 16]} />
-        <meshStandardMaterial 
-          color={isHighlighted ? "#ff0000" : "#2563eb"} 
+        <meshStandardMaterial
+          color={isHighlighted ? "#ff0000" : "#2563eb"}
           emissive={isHighlighted ? "#ff0000" : "#2563eb"}
           emissiveIntensity={isHighlighted ? 2 : 0.8}
           transparent={!isHighlighted}
           opacity={isHighlighted ? 1 : 0.6}
         />
       </mesh>
-      
+
       {/* Visual ring - pulse effect when highlighted */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.035, 0.045, 32]} />
-        <meshBasicMaterial 
-          color={isHighlighted ? "#ff0000" : "#94a3b8"} 
-          transparent 
-          opacity={isHighlighted ? 0.8 : 0.3} 
+        <meshBasicMaterial
+          color={isHighlighted ? "#ff0000" : "#94a3b8"}
+          transparent
+          opacity={isHighlighted ? 0.8 : 0.3}
         />
       </mesh>
 

@@ -353,13 +353,13 @@ const AppInner: React.FC = () => {
         setCurrentView('treatment_execution');
     };
 
-    const handleSaveTreatment = async (data: { stungPointIds: string[]; notes: string; postStingVitals?: Partial<VitalSigns>; finalVitals?: Partial<VitalSigns>; }) => {
+    const handleSaveTreatment = async (data: { stungPointCodes: string[]; notes: string; postStingVitals?: Partial<VitalSigns>; finalVitals?: Partial<VitalSigns>; }) => {
         if (!selectedPatient || !selectedPatient.id || !activeTreatmentSession) return;
         setSaveStatus('saving');
         try {
             const finalTreatmentRecord: TreatmentSession = {
                 ...activeTreatmentSession,
-                stungPoints: data.stungPointIds,
+                stungPoints: data.stungPointCodes,
                 postStingVitals: data.postStingVitals,
                 finalVitals: data.finalVitals,
                 finalNotes: data.notes,

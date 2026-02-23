@@ -26,6 +26,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface TranslationContextValue {
     language: string;
+    direction: 'ltr' | 'rtl';
     setLanguage: (lang: string) => void;
     registerString: (text: string) => void;
     getTranslation: (text: string) => string;
@@ -35,6 +36,7 @@ interface TranslationContextValue {
 
 const TranslationContext = createContext<TranslationContextValue>({
     language: 'en',
+    direction: 'ltr',
     setLanguage: () => { },
     registerString: () => { },
     getTranslation: (text) => text,
@@ -104,8 +106,10 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         });
     }); // Run after every render to catch newly registered strings
 
+    const direction = language === 'he' ? 'rtl' : 'ltr';
+
     return (
-        <TranslationContext.Provider value={{ language, setLanguage, registerString, getTranslation }}>
+        <TranslationContext.Provider value={{ language, direction, setLanguage, registerString, getTranslation }}>
             {children}
         </TranslationContext.Provider>
     );
