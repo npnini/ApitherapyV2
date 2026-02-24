@@ -10,7 +10,7 @@ import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
-import { AlertTriangle, CheckCircle, XCircle, Trash2, Loader, MousePointerClick, List } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
@@ -31,6 +31,7 @@ interface TreatmentExecutionProps {
     onBack: () => void;
     saveStatus: SaveStatus;
     onFinish: () => void;
+    isModal?: boolean;
 }
 
 const getMLValue = (value: any, lang: string): string => {
@@ -41,7 +42,7 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
-const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protocol, onSave, onBack, saveStatus, onFinish }) => {
+const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protocol, onSave, onBack, saveStatus, onFinish, isModal }) => {
     const { language, direction } = useTranslationContext();
     const [hydratedProtocol, setHydratedProtocol] = useState<HydratedProtocol | null>(null);
     const [isHydrating, setIsHydrating] = useState(true);
@@ -153,16 +154,19 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
     }
 
     return (
-        <div className="max-w-full mx-auto animate-fade-in px-4" dir={direction}>
-            <div className="flex justify-between items-center mb-4">
-                <div className={direction === 'rtl' ? 'text-right' : 'text-left'}>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter"><T>Perform Treatment</T></h2>
-                    <p className="text-slate-500">
-                        <T>For</T>: <span className='font-bold'>{patient.fullName}</span> | <T>Protocol</T>: <span className='font-bold'>{getMLValue(protocol.name, language)}</span>
-                    </p>
+        <div className={styles.container} dir={direction}>
+            {!isModal && (
+                <div className={styles.header}>
+                    <div className={styles.headerLeft}>
+                        <button onClick={onBack} className={styles.backButton}>
+                            <ChevronLeft size={24} />
+                        </button>
+                        <h1 className={styles.headerTitle}>
+                            <T>{`Treatment Execution: ${getMLValue(protocol.name, language)}`}</T>
+                        </h1>
+                    </div>
                 </div>
-                <button onClick={onBack} className="text-sm font-bold text-slate-600 hover:text-slate-900"><T>Back</T></button>
-            </div>
+            )}
 
             <div className="grid grid-cols-12 gap-4">
 

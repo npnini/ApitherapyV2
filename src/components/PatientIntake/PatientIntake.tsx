@@ -6,6 +6,14 @@ import { PatientData } from '../../types/patient';
 import styles from './PatientIntake.module.css';
 import { T, useT } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
+import ConsentTab from './ConsentTab';
+import InstructionsTab from './InstructionsTab';
+import ProblemsProtocolsTab from './ProblemsProtocolsTab';
+import MeasuresHistoryTab from './MeasuresHistoryTab';
+import ProtocolSelection from '../ProtocolSelection';
+import TreatmentExecution from '../TreatmentExecution';
+import { Protocol } from '../../types/protocol';
+import { VitalSigns } from '../../types/treatmentSession';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
 type TabKey =
@@ -61,6 +69,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [showCloseGuard, setShowCloseGuard] = useState(false);       // UX-2
     const [showTreatmentGuard, setShowTreatmentGuard] = useState(false); // UX-6
     const [pendingTab, setPendingTab] = useState<TabKey | null>(null);
+    const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
+    const [preStingVitals, setPreStingVitals] = useState<VitalSigns | null>(null);
+    const [patientReport, setPatientReport] = useState('');
 
     // Translation labels
     const tPersonal = useT('Personal Details');
@@ -105,7 +116,39 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
     useEffect(() => {
-        setPatientData(initializePatientData(patient));
+        const data = initializePatientData(patient);
+        setPatientData(data);
+
+        // Initialize savedTabs based on existing data
+        const initialSaved = new Set<TabKey>();
+
+        // 1. Personal Details
+        if (data.fullName && data.identityNumber && data.mobile) {
+            initialSaved.add('personal');
+        }
+
+        // 2. Questionnaire
+        const qResponse = data.questionnaireResponse || {};
+        const hasAnswers = Object.keys(qResponse).some(
+            key => key !== 'domain' && key !== 'version' && key !== 'dateUpdated' && key !== 'signature' && qResponse[key] !== undefined
+        );
+        if (hasAnswers) {
+            initialSaved.add('questionnaire');
+        }
+
+        // 3. Consent
+        if (qResponse.signature) {
+            initialSaved.add('consent');
+        }
+
+        // 4. Treatments (Check if patient has id, assuming existing patients have history)
+        if (patient.id) {
+            // In a real app, we'd check treatment count from an API call or another prop.
+            // For now, if it's an existing patient, we can assume they have history or at least the tab is "ready"
+            initialSaved.add('treatments');
+        }
+
+        setSavedTabs(initialSaved);
     }, [patient]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
@@ -152,6 +195,29 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setActiveTab(tab);
     };
 
+    // Step 5: Start New Treatment
+    const handleStartNewTreatment = () => {
+        setViewState('protocolSelection');
+    };
+
+    const handleProtocolSelect = (protocol: Protocol, report: string, vitals: VitalSigns) => {
+        setSelectedProtocol(protocol);
+        setPatientReport(report);
+        setPreStingVitals(vitals);
+        setViewState('treatmentExecution');
+    };
+
+    const handleTreatmentSave = (treatmentData: any) => {
+        // Implement treatment saving logic here (e.g., call onSave with full treatment object)
+        console.log('Saving treatment:', treatmentData);
+    };
+
+    const handleTreatmentFinish = () => {
+        setViewState('tabs');
+        setActiveTab('treatments');
+        setSelectedProtocol(null);
+    };
+
     // X click — dirty state guard (UX-2)
     const handleXClick = () => {
         if (isDirty) {
@@ -187,8 +253,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     />
                 );
             case 'consent':
+                return <ConsentTab />;
             case 'instructions':
+                return <InstructionsTab />;
             case 'problems':
+                return <ProblemsProtocolsTab />;
             case 'treatments':
                 return (
                     <TreatmentHistory
@@ -198,6 +267,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     />
                 );
             case 'measures':
+                return <MeasuresHistoryTab />;
             default:
                 return (
                     <div className={styles.placeholderTab}>
@@ -275,16 +345,23 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 <div className={styles.contentArea}>
                     {viewState === 'tabs' && renderTabContent()}
                     {viewState === 'protocolSelection' && (
-                        <div className={styles.placeholderTab}>
-                            <h2><T>Protocol Selection</T></h2>
-                            <p><T>Protocol selection will render here.</T></p>
-                        </div>
+                        <ProtocolSelection
+                            patient={patientData as PatientData}
+                            onBack={() => setViewState('tabs')}
+                            onProtocolSelect={handleProtocolSelect}
+                            isModal={true}
+                        />
                     )}
-                    {viewState === 'treatmentExecution' && (
-                        <div className={styles.placeholderTab}>
-                            <h2><T>Treatment Execution</T></h2>
-                            <p><T>Treatment execution will render here.</T></p>
-                        </div>
+                    {viewState === 'treatmentExecution' && selectedProtocol && (
+                        <TreatmentExecution
+                            patient={patientData as PatientData}
+                            protocol={selectedProtocol}
+                            onSave={handleTreatmentSave}
+                            onBack={() => setViewState('protocolSelection')}
+                            saveStatus={saveStatus === 'saving' ? 'saving' : 'idle'}
+                            onFinish={handleTreatmentFinish}
+                            isModal={true}
+                        />
                     )}
                 </div>
 

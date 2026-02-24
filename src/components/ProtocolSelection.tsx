@@ -103,9 +103,10 @@ interface ProtocolSelectionProps {
     patient: PatientData;
     onBack: () => void;
     onProtocolSelect: (protocol: Protocol, patientReport: string, preStingVitals: VitalSigns) => void;
+    isModal?: boolean;
 }
 
-const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect }) => {
+const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect, isModal }) => {
     const { language, registerString } = useTranslationContext();
     const isRtl = language === 'he';
 
@@ -229,16 +230,16 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                 showCancelButton={false}
             />
 
-            <div className={styles.header}>
-                <div>
-                    <h2 className={styles.title}><T>Start New Treatment</T></h2>
-                    <p className={styles.patientName}><T>For patient</T>: {patient.fullName}</p>
+            {!isModal && (
+                <div className={styles.header}>
+                    <button onClick={onBack} className={styles.backButton}>
+                        <ChevronLeft size={24} />
+                    </button>
+                    <h1 className={styles.title}>
+                        <T>{`Start Treatment for ${patient.fullName}`}</T>
+                    </h1>
                 </div>
-                <button onClick={onBack} className={styles.backButton}>
-                    <BackIcon size={16} />
-                    <T>Back to Dashboard</T>
-                </button>
-            </div>
+            )}
 
             <div className={styles.formContainer}>
                 <div className={styles.formGroup}>

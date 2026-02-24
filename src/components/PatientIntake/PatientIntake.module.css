@@ -15,8 +15,8 @@
     background: white;
     border-radius: 0.5rem;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: 66%;
-    max-width: 66vw;
+    width: 90%;
+    max-width: 1200px;
     height: 90vh;
     max-height: 90vh;
     display: flex;
@@ -84,8 +84,15 @@
     gap: 0;
     border: 1px solid #cbd5e1;
     border-radius: 0.375rem;
-    overflow: hidden;
+    overflow-x: auto;
     background: white;
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.tabButtons::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
 }
 
 .tabButton {
@@ -253,4 +260,20 @@
 .btnPrimary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.placeholderTab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: #64748b;
+    padding: 3rem;
+}
+
+.placeholderTab h2 {
+    margin-bottom: 1rem;
+    color: #1e293b;
 }
