@@ -46,9 +46,12 @@
     padding: 0.5rem 0.75rem;
     width: 100%;
     transition: border-color 0.2s;
-    overflow-y: hidden; /* Hide vertical scrollbar */
-    resize: none; /* Prevent manual resize */
-    box-sizing: border-box; /* Add this line */
+    overflow-y: hidden;
+    /* Hide vertical scrollbar */
+    resize: none;
+    /* Prevent manual resize */
+    box-sizing: border-box;
+    /* Add this line */
 }
 
 .textarea:focus,
@@ -80,7 +83,8 @@
 
 .booleanQuestionRow {
     display: flex;
-    justify-content: flex-start; /* Changed from flex-end */
+    justify-content: flex-start;
+    /* Changed from flex-end */
 }
 
 .inputWrapper {
@@ -97,12 +101,12 @@
 
 .consentAndSignatureContainer {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 1.5rem;
 }
 
 .consentSection {
-    flex-basis: 50%;
+    width: 100%;
     background-color: #f9fafb;
     padding: 1.5rem;
     border-radius: 0.5rem;
@@ -121,7 +125,7 @@
 }
 
 .signaturePadWrapper {
-    flex-basis: 50%;
+    width: 100%;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     padding: 1.5rem;

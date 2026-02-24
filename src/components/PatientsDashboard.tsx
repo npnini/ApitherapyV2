@@ -113,7 +113,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                 </div>
                 <div className={styles.actionsContainer}>
                   <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={useT('Edit Patient Details')}><Edit size={14} /></button>
-                  <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={useT('View Treatment History')}><FileText size={14} /></button>
+                  {/* Treatment history is now in the Patient Intake modal */}
+                  {/* <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={useT('View Treatment History')}><FileText size={14} /></button> */}
                   <button
                     onClick={() => handleDeleteClick(patient)}
                     className={`${styles.actionButton} ${styles.deleteButton}`}

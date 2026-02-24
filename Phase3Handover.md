@@ -46,7 +46,7 @@ Mark completed steps with `[x]`.
 ---
 
 ### Step 1 — Branch Setup
-- [ ] Create branch: `git checkout -b feature/Phase3-PatientIntake`
+- [ X] Create branch: `git checkout -b feature/Phase3-PatientIntake`
 
 ---
 
@@ -92,12 +92,12 @@ These components already exist — just re-wire them into `renderTab()`. After t
 ### Step 4 — Treatments History Tab: `TreatmentHistory.tsx`
 **Branch:** `feature/Phase3-TreatmentHistoryTab`  *(branch from `main` after Step 3 merge)*
 
-- [ ] Wire `case 'treatments'` → `<TreatmentHistory patient={patient} onBack={() => {}} />`
+- [x] Wire `case 'treatments'` → `<TreatmentHistory patient={patient} onBack={() => {}} />`
   - `onBack` is unused in tab context — pass no-op
-- [ ] Hide `Update` button when `activeTab === 'treatments'` (UX-4)
-- [ ] Verify empty state exists for patients with no treatments (UX-3); add friendly message if missing
-- [ ] In `src/components/PatientDashboard.tsx`: remove the standalone TreatmentHistory icon/button from the patient row — treatment history is now accessed via the modal tab
-- [ ] `Build and verify`
+- [x] Hide `Update` button when `activeTab === 'treatments'` (UX-4)
+- [x] Verify empty state exists for patients with no treatments (UX-3); add friendly message if missing
+- [x] In `src/components/PatientDashboard.tsx`: remove the standalone TreatmentHistory icon/button from the patient row — treatment history is now accessed via the modal tab
+- [x] `Build and verify`
 
 **✅ Human test gate:** Verify Treatments History tab renders correctly, standalone icon is gone. When confirmed — commit, push, and merge `feature/Phase3-TreatmentHistoryTab` → `main`.
 

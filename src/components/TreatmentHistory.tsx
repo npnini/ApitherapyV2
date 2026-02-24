@@ -83,6 +83,7 @@ const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) 
 interface TreatmentHistoryProps {
     patient: PatientData;
     onBack: () => void;
+    isTab?: boolean;
 }
 
 const getMLValue = (value: any, lang: string): string => {
@@ -93,7 +94,7 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
-const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) => {
+const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab }) => {
     const { language } = useTranslationContext();
     const [treatments, setTreatments] = useState<HydratedTreatment[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -176,14 +177,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack }) 
 
     return (
         <div className={styles.container} dir={direction}>
-            <div className={styles.header}>
-                <button onClick={onBack} className={styles.backButton}>
-                    <BackIcon size={24} />
-                </button>
-                <h1 className={styles.title}>
-                    <T>{`Treatment History for ${patient.fullName}`}</T>
-                </h1>
-            </div>
+            {!isTab && (
+                <div className={styles.header}>
+                    <button onClick={onBack} className={styles.backButton}>
+                        <BackIcon size={24} />
+                    </button>
+                    <h1 className={styles.title}>
+                        <T>{`Treatment History for ${patient.fullName}`}</T>
+                    </h1>
+                </div>
+            )}
 
             {treatments.length === 0 ? (
                 <div className={styles.emptyState}>

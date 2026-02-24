@@ -5,7 +5,7 @@ import { T } from '../T';
 
 interface PersonalDetailsProps {
     patientData: Partial<PatientData>;
-    onDataChange: (data: Partial<PatientData>) => void;
+    onDataChange: (data: Partial<PatientData>, isInternal?: boolean) => void;
     showErrors?: boolean;
 }
 

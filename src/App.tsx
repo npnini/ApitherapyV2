@@ -411,7 +411,7 @@ const AppInner: React.FC = () => {
                     }
 
                     {currentView === 'patient_intake' && selectedPatient &&
-                        <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onBack={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
+                        <PatientIntake patient={selectedPatient} onSave={handleSavePatient} onClose={handleBackToDashboard} saveStatus={saveStatus} errorMessage={errorMessage} onUpdate={(patientData) => handleSavePatient(patientData, false)} />
                     }
                     {currentView === 'protocol_selection' && selectedPatient &&
                         <ProtocolSelection patient={selectedPatient as PatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />

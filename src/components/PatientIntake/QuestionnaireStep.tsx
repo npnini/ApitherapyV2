@@ -8,7 +8,7 @@ import { T, useT, useTranslationContext } from '../T';
 
 interface QuestionnaireStepProps {
   patientData: Partial<PatientData>;
-  onDataChange: (data: Partial<PatientData>) => void;
+  onDataChange: (data: Partial<PatientData>, isInternal?: boolean) => void;
 }
 
 interface AutosizedTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { }
@@ -43,7 +43,7 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
           domain: q.domain,
           version: q.versionNumber
         };
-        onDataChange({ ...patientData, questionnaireResponse: updatedQuestionnaireResponse as QuestionnaireResponseType });
+        onDataChange({ ...patientData, questionnaireResponse: updatedQuestionnaireResponse as QuestionnaireResponseType }, true);
       }
       setIsLoading(false);
     };
@@ -139,7 +139,7 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
         <fieldset className={styles.consentSection}>
           <legend className={styles.consentTitle}><T>Patient Consent</T></legend>
           <p className={styles.consentText}>
-            <T>I hereby confirm that all the information I have provided in the attached questionnaire is true. I am aware that Bee Venom Therapy (Apitherapy) is experimental and does not replace any treatment, diagnosis, recommendation, or instruction from a physician. I am aware that I am not allergic to bee venom and that I have chosen to participate in this treatment of my own free will and desire.</T>
+            <T>I hereby confirm that all the information I have provided in the attached questionnaire is true.</T>
           </p>
         </fieldset>
         <fieldset className={styles.signaturePadWrapper}>
