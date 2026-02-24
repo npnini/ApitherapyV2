@@ -79,8 +79,6 @@ This is the core shell. Do this first — everything else plugs into it.
 
 These components already exist — just re-wire them into `renderTab()`. After this step the modal is fully functional for the existing Add New Patient and Edit Patient scenarios.
 
-- [ ] Wire `case 'personal'` → `<PersonalDetails>` (same props as before)
-- [ ] Wire `case 'questionnaire'` → `<QuestionnaireStep>` (same props as before)
 - [ ] On `Update` click for `personal` and `questionnaire`: call `onUpdate()`, then add tab key to `savedTabs`
 - [ ] Verify patient name appears live in header as user types (UX-7)
 - [ ] `Build and verify`
