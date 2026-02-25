@@ -3,6 +3,7 @@ export interface MedicalRecord {
         condition?: string;
         severity?: 'mild' | 'moderate' | 'severe';
         lastTreatment?: string;
+        consentSignedUrl?: string;
     }
 }
 
@@ -17,7 +18,7 @@ export interface QuestionnaireResponse {
 export interface PatientData {
     id: string;
     fullName: string;
-    birthDate: string; 
+    birthDate: string;
     profession: string;
     address: string;
     identityNumber: string;

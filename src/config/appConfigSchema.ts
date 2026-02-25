@@ -8,8 +8,8 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage';
-  defaultValue: string | number | boolean | string[];
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file';
+  defaultValue: string | number | boolean | string[] | Record<string, any>;
 };
 
 /**
@@ -32,6 +32,36 @@ export type ConfigGroup = {
  * The keys of this object serve as the keys in the saved Firestore document.
  */
 export const appConfigSchema: { [key: string]: ConfigGroup } = {
+  languageSettings: {
+    label: 'Languages',
+    description: 'Configure the languages supported by the application.',
+    children: {
+      supportedLanguages: {
+        label: 'Supported Languages',
+        description: 'Choose the languages your application will support.',
+        type: 'languages',
+        defaultValue: ['en'],
+      },
+      defaultLanguage: {
+        label: 'Default Language',
+        description: 'Select the default language for the application.',
+        type: 'defaultLanguage',
+        defaultValue: 'en',
+      },
+    },
+  },
+  consentSettings: {
+    label: 'Patient Consent',
+    description: 'Manage consent document templates for each supported language.',
+    children: {
+      consent_files: {
+        label: 'Consent Templates',
+        description: 'Upload a consent form for each language.',
+        type: 'file',
+        defaultValue: {},
+      }
+    }
+  },
   treatmentSettings: {
     label: 'Treatment Process',
     description: 'Settings that control the logic and flow of patient treatments.',
@@ -59,24 +89,6 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'If on, the system will suggest a treatment protocol based on patient data.',
         type: 'boolean',
         defaultValue: false,
-      },
-    },
-  },
-  languageSettings: {
-    label: 'Languages',
-    description: 'Configure the languages supported by the application.',
-    children: {
-      supportedLanguages: {
-        label: 'Supported Languages',
-        description: 'Choose the languages your application will support.',
-        type: 'languages',
-        defaultValue: ['en'],
-      },
-      defaultLanguage: {
-        label: 'Default Language',
-        description: 'Select the default language for the application.',
-        type: 'defaultLanguage',
-        defaultValue: 'en',
       },
     },
   },

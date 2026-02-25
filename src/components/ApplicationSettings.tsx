@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AppUser } from '../types/user';
+import { uploadFile, deleteFile } from '../services/storageService';
 import { appConfigSchema, ConfigGroup, ConfigSetting } from '../config/appConfigSchema';
 import styles from './ApplicationSettings.module.css';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
@@ -257,6 +258,90 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         });
     };
 
+    const handleFileUpload = async (path: string[], lang: string, file: File) => {
+        setIsSaving(true);
+        try {
+            const downloadUrl = await uploadFile(file, 'App_config');
+
+            setSettings(prev => {
+                const newSettings = JSON.parse(JSON.stringify(prev));
+                let parentObject = newSettings;
+                for (let i = 0; i < path.length - 1; i++) {
+                    if (!parentObject[path[i]]) parentObject[path[i]] = {};
+                    parentObject = parentObject[path[i]];
+                }
+
+                const lastKey = path[path.length - 1];
+                if (!parentObject[lastKey]) parentObject[lastKey] = {};
+                if (!parentObject[lastKey].apitherapy) parentObject[lastKey].apitherapy = {};
+
+                parentObject[lastKey].apitherapy[lang] = downloadUrl;
+                return newSettings;
+            });
+            setError(null);
+        } catch (err) {
+            console.error('File upload failed:', err);
+            setError(getTranslation('Failed to upload file.'));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+
+    const openInNewTab = async (url: string) => {
+        try {
+            const response = await fetch(url);
+            let blob = await response.blob();
+
+            // Check file extension to infer type
+            const path = url.toLowerCase().split('?')[0];
+            let type = 'text/plain';
+            if (path.endsWith('.html')) type = 'text/html';
+            else if (path.endsWith('.pdf')) type = 'application/pdf';
+            else if (path.endsWith('.png')) type = 'image/png';
+            else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) type = 'image/jpeg';
+
+            // Create a new blob with the inferred content type to force browser rendering
+            const viewerBlob = new Blob([blob], { type });
+            const viewerUrl = URL.createObjectURL(viewerBlob);
+            window.open(viewerUrl, '_blank');
+        } catch (err) {
+            console.warn('Failed to fetch blob for viewer, falling back to direct link:', err);
+            window.open(url, '_blank');
+        }
+    };
+
+    const downloadFile = (url: string, filename: string) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleFileDelete = async (path: string[], lang: string, url: string) => {
+        setIsSaving(true);
+        try {
+            await deleteFile(url);
+            setSettings(prev => {
+                const newSettings = JSON.parse(JSON.stringify(prev));
+                let parentObject = newSettings;
+                for (let i = 0; i < path.length - 1; i++) {
+                    parentObject = parentObject[path[i]];
+                }
+                const lastKey = path[path.length - 1];
+                delete parentObject[lastKey].apitherapy[lang];
+                return newSettings;
+            });
+        } catch (err) {
+            console.error('File deletion failed:', err);
+            setError(getTranslation('Failed to delete file.'));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const renderSetting = (setting: ConfigSetting, path: string[]) => {
         const key = path.join('.');
         let currentVal = settings;
@@ -364,6 +449,65 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                             <option key={q.id} value={q.id}>{q.name}</option>
                         ))}
                     </select>
+                );
+                break;
+            case 'file':
+                const supportedLangs = settings.languageSettings?.supportedLanguages || ['en'];
+                const fileValues = value?.apitherapy || {};
+
+                control = (
+                    <div className={styles.fileSettingsList}>
+                        {supportedLangs.map((lang: string) => {
+                            const langName = allLanguages.find(l => l.id === lang)?.name || lang;
+                            const fileUrl = fileValues[lang];
+
+                            return (
+                                <div key={lang} className={styles.fileSettingRow}>
+                                    <span className={styles.langLabel}><T>{langName}</T></span>
+                                    {fileUrl ? (
+                                        <div className={styles.fileActions}>
+                                            <button
+                                                type="button"
+                                                className={styles.viewBtn}
+                                                onClick={() => openInNewTab(fileUrl)}
+                                            >
+                                                <T>View</T>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={styles.viewBtn} // same style for now
+                                                onClick={() => downloadFile(fileUrl, `consent_${lang}.txt`)}
+                                            >
+                                                <T>Download</T>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={styles.deleteBtn}
+                                                onClick={() => handleFileDelete(path, lang, fileUrl)}
+                                            >
+                                                <T>Delete</T>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className={styles.uploadWrapper}>
+                                            <input
+                                                type="file"
+                                                id={`file-${key}-${lang}`}
+                                                className={styles.fileInput}
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleFileUpload(path, lang, file);
+                                                }}
+                                            />
+                                            <label htmlFor={`file-${key}-${lang}`} className={styles.uploadBtn}>
+                                                <T>Upload Document</T>
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 );
                 break;
             case 'string':

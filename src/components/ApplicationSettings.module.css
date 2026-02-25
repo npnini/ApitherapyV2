@@ -114,12 +114,19 @@
     justify-self: end;
 }
 
-.toggleSwitch input { opacity: 0; width: 0; height: 0; }
+.toggleSwitch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
 
 .slider {
     position: absolute;
     cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: var(--color-secondary-button-background);
     transition: .4s;
     border-radius: 28px;
@@ -128,16 +135,26 @@
 .slider:before {
     position: absolute;
     content: "";
-    height: 20px; width: 20px;
-    left: 4px; bottom: 4px;
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
     background-color: white;
     transition: .4s;
     border-radius: 50%;
 }
 
-input:checked + .slider { background-color: var(--color-primary); }
-input:focus + .slider { box-shadow: 0 0 1px var(--color-primary); }
-input:checked + .slider:before { transform: translateX(22px); }
+input:checked+.slider {
+    background-color: var(--color-primary);
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--color-primary);
+}
+
+input:checked+.slider:before {
+    transform: translateX(22px);
+}
 
 /* Actions */
 .actions {
@@ -152,8 +169,17 @@ input:checked + .slider:before { transform: translateX(22px); }
     padding: var(--space-md);
 }
 
-.errorMessage { color: var(--color-error); font-size: var(--font-size-sm); margin-right: auto; }
-.successMessage { color: var(--color-success); font-size: var(--font-size-sm); margin-right: auto; }
+.errorMessage {
+    color: var(--color-error);
+    font-size: var(--font-size-sm);
+    margin-right: auto;
+}
+
+.successMessage {
+    color: var(--color-success);
+    font-size: var(--font-size-sm);
+    margin-right: auto;
+}
 
 .button {
     border: none;
@@ -176,7 +202,9 @@ input:checked + .slider:before { transform: translateX(22px); }
     opacity: 0.7;
 }
 
-.saveButton:hover:not(:disabled) { background-color: var(--color-primary-dark); }
+.saveButton:hover:not(:disabled) {
+    background-color: var(--color-primary-dark);
+}
 
 .cancelButton {
     background-color: transparent;
@@ -184,4 +212,102 @@ input:checked + .slider:before { transform: translateX(22px); }
     border: 1px solid var(--color-border);
 }
 
-.cancelButton:hover { background-color: var(--color-background-muted); }
+.cancelButton:hover {
+    background-color: var(--color-background-muted);
+}
+
+/* File Settings Styling */
+.fileSettingsList {
+    grid-area: control;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    width: 100%;
+    margin-top: var(--space-sm);
+}
+
+.fileSettingRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    background-color: var(--color-background-muted);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.langLabel {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-inline-end: var(--space-md);
+    min-width: 80px;
+}
+
+.fileActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.viewBtn {
+    background-color: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    padding: 4px 12px;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-inline-start: var(--space-sm);
+}
+
+.viewBtn:hover {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.deleteBtn {
+    background-color: transparent;
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+    padding: 4px 12px;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.deleteBtn:hover {
+    background-color: var(--color-error);
+    color: var(--color-white);
+}
+
+.uploadWrapper {
+    position: relative;
+}
+
+.fileInput {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.uploadBtn {
+    display: inline-block;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    padding: 6px 12px;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.uploadBtn:hover {
+    background-color: var(--color-primary-dark);
+}

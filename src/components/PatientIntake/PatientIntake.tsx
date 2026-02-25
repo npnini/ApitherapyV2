@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PersonalDetails from './PersonalDetails';
 import QuestionnaireStep from './QuestionnaireStep';
 import TreatmentHistory from '../TreatmentHistory';
@@ -6,7 +6,7 @@ import { PatientData } from '../../types/patient';
 import styles from './PatientIntake.module.css';
 import { T, useT } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
-import ConsentTab from './ConsentTab';
+import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab from './InstructionsTab';
 import ProblemsProtocolsTab from './ProblemsProtocolsTab';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
@@ -40,9 +40,12 @@ const TAB_ORDER: TabKey[] = [
 // The first 5 tabs must all be saved before "Start New Treatment" is enabled (UX-1)
 const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'consent', 'instructions', 'problems'];
 
+import { AppUser } from '../../types/user';
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface PatientIntakeProps {
     patient: Partial<PatientData>;
+    user: AppUser;
     onSave: (patientData: PatientData) => void;
     onUpdate: (patientData: PatientData) => void;
     onClose: () => void;          // renamed from onBack (UX-2)
@@ -53,6 +56,7 @@ interface PatientIntakeProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 const PatientIntake: React.FC<PatientIntakeProps> = ({
     patient,
+    user,
     onSave,
     onUpdate,
     onClose,
@@ -72,6 +76,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
     const [preStingVitals, setPreStingVitals] = useState<VitalSigns | null>(null);
     const [patientReport, setPatientReport] = useState('');
+
+    const consentTabRef = useRef<ConsentTabHandle>(null);
 
     // Translation labels
     const tPersonal = useT('Personal Details');
@@ -137,7 +143,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         }
 
         // 3. Consent
-        if (qResponse.signature) {
+        if (data.medicalRecord?.patient_level_data?.consentSignedUrl) {
             initialSaved.add('consent');
         }
 
@@ -164,16 +170,54 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setIsDirty(false);
     };
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
         setHasAttemptedSubmit(true);
-        onUpdate(patientData as PatientData);
+        let finalData = { ...patientData };
+
+        if (activeTab === 'consent' && consentTabRef.current) {
+            const signatureUrl = await consentTabRef.current.onSave();
+            if (!signatureUrl) return; // ConsentTab handles validation/alerts
+
+            finalData = {
+                ...finalData,
+                medicalRecord: {
+                    ...(finalData.medicalRecord || {}),
+                    patient_level_data: {
+                        ...(finalData.medicalRecord?.patient_level_data || {}),
+                        consentSignedUrl: signatureUrl
+                    }
+                }
+            };
+            setPatientData(finalData);
+        }
+
+        await onUpdate(finalData as PatientData);
         markTabSaved(activeTab);
     };
 
     // Save (new patient last step → full submission)
-    const handleCompleteSubmission = () => {
+    const handleCompleteSubmission = async () => {
         setHasAttemptedSubmit(true);
-        onSave(patientData as PatientData);
+        let finalData = { ...patientData };
+
+        if (activeTab === 'consent' && consentTabRef.current) {
+            const signatureUrl = await consentTabRef.current.onSave();
+            if (!signatureUrl) return;
+
+            finalData = {
+                ...finalData,
+                medicalRecord: {
+                    ...(finalData.medicalRecord || {}),
+                    patient_level_data: {
+                        ...(finalData.medicalRecord?.patient_level_data || {}),
+                        consentSignedUrl: signatureUrl
+                    }
+                }
+            };
+            setPatientData(finalData);
+        }
+
+        await onSave(finalData as PatientData);
         markTabSaved(activeTab);
     };
 
@@ -253,7 +297,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     />
                 );
             case 'consent':
-                return <ConsentTab />;
+                return <ConsentTab
+                    ref={consentTabRef}
+                    patientData={patientData}
+                    user={user}
+                    onDataChange={handleDataChange}
+                />;
             case 'instructions':
                 return <InstructionsTab />;
             case 'problems':
