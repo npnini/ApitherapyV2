@@ -127,11 +127,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
                 if (docSnap.exists()) {
                     const fetchedData = docSnap.data();
-                    Object.keys(mergedSettings).forEach(key => {
-                        if (fetchedData[key]) {
-                            mergedSettings[key] = { ...mergedSettings[key], ...fetchedData[key] };
-                        }
-                    });
+                    mergedSettings = { ...defaults, ...fetchedData };
                 }
 
                 setSettings(mergedSettings);
@@ -226,7 +222,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         setSaveSuccess(false);
 
         try {
-            await setDoc(configDocRef, settings, { merge: true });
+            await setDoc(configDocRef, settings);
             setInitialSettings(settings);
             setSaveSuccess(true);
             setTimeout(() => {
@@ -261,7 +257,14 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const handleFileUpload = async (path: string[], lang: string, file: File) => {
         setIsSaving(true);
         try {
-            const downloadUrl = await uploadFile(file, 'App_config');
+            let customFileName = undefined;
+            // Enforce naming convention for treatment instructions as per functional specs
+            if (path[0] === 'treatmentInstructions' && path[1] === 'instructionsFiles') {
+                const extension = file.name.split('.').pop();
+                customFileName = `${lang}_treatment_instructions.${extension}`;
+            }
+
+            const downloadUrl = await uploadFile(file, 'App_config', customFileName);
 
             setSettings(prev => {
                 const newSettings = JSON.parse(JSON.stringify(prev));
@@ -291,20 +294,46 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const openInNewTab = async (url: string) => {
         try {
             const response = await fetch(url);
-            let blob = await response.blob();
 
-            // Check file extension to infer type
+            // Check if it's a text/markdown file
             const path = url.toLowerCase().split('?')[0];
-            let type = 'text/plain';
-            if (path.endsWith('.html')) type = 'text/html';
-            else if (path.endsWith('.pdf')) type = 'application/pdf';
-            else if (path.endsWith('.png')) type = 'image/png';
-            else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) type = 'image/jpeg';
+            const isText = path.endsWith('.md') || path.endsWith('.txt');
 
-            // Create a new blob with the inferred content type to force browser rendering
-            const viewerBlob = new Blob([blob], { type });
-            const viewerUrl = URL.createObjectURL(viewerBlob);
-            window.open(viewerUrl, '_blank');
+            if (isText) {
+                const text = await response.text();
+                // Check if it's Hebrew based on filename or text content
+                const isHebrew = path.includes('_he_') || /[\u0590-\u05FF]/.test(text);
+                const htmlDir = isHebrew ? 'rtl' : 'auto';
+
+                // Create a simple HTML wrapper to force UTF-8 and correct alignment
+                const html = `
+                    <!DOCTYPE html>
+                    <html dir="${htmlDir}">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document Viewer</title>
+                        <style>
+                            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2rem; white-space: pre-wrap; line-height: 1.6; max-width: 900px; margin: 0 auto; color: #1e293b; background: #f8fafc; }
+                            [dir="rtl"] { text-align: right; }
+                        </style>
+                    </head>
+                    <body dir="${htmlDir}">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
+                    </html>
+                `;
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const viewerUrl = URL.createObjectURL(blob);
+                window.open(viewerUrl, '_blank');
+            } else {
+                const blob = await response.blob();
+                let type = blob.type;
+                if (path.endsWith('.pdf')) type = 'application/pdf';
+                else if (path.endsWith('.png')) type = 'image/png';
+                else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) type = 'image/jpeg';
+
+                const viewerBlob = new Blob([blob], { type });
+                const viewerUrl = URL.createObjectURL(viewerBlob);
+                window.open(viewerUrl, '_blank');
+            }
         } catch (err) {
             console.warn('Failed to fetch blob for viewer, falling back to direct link:', err);
             window.open(url, '_blank');

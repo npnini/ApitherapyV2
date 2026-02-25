@@ -4,6 +4,7 @@ export interface MedicalRecord {
         severity?: 'mild' | 'moderate' | 'severe';
         lastTreatment?: string;
         consentSignedUrl?: string;
+        treatmentInstructionsSignedUrl?: string;
     }
 }
 

@@ -6,7 +6,7 @@ import SignaturePad from './SignaturePad';
 import styles from './PatientIntake.module.css';
 import { PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
-import { generateConsentImage } from '../../utils/consentUtils';
+import { generateDocumentImage } from '../../utils/documentUtils';
 import { uploadFile } from '../../services/storageService';
 
 interface ConsentTabProps {
@@ -102,6 +102,8 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
         return result;
     };
 
+    const caretakerName = user?.fullName || (user as any)?.name || user?.displayName || '';
+
     useImperativeHandle(ref, () => ({
         onSave: async () => {
             // Priority 1: If we have an existing signed URL and no new signature input, return it
@@ -116,18 +118,36 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
             }
 
             try {
-                const blob = await generateConsentImage(
+                const signatures = [
+                    {
+                        label: direction === 'rtl' ? 'חתימת המטופל:' : 'Patient Signature:',
+                        dataUrl: patientSignature,
+                        name: patientData.fullName || ''
+                    }
+                ];
+
+                if (caretakerSignature) {
+                    signatures.push({
+                        label: direction === 'rtl' ? 'חתימת המטפל:' : 'Caretaker Signature:',
+                        dataUrl: caretakerSignature,
+                        name: caretakerName
+                    });
+                }
+
+                const blob = await generateDocumentImage(
                     template,
-                    patientSignature,
-                    caretakerSignature,
-                    patientData.fullName || '',
-                    user?.displayName || '',
+                    signatures,
+                    {
+                        patientName: patientData.fullName || '',
+                        identityNumber: patientData.identityNumber || '',
+                        caretakerName: caretakerName
+                    },
                     direction
                 );
 
-                const file = new File([blob], `consent_${patientData.id || 'new'}.png`, { type: 'image/png' });
-                const folderPath = `Patients/${patientData.id || 'unassigned'}`;
-                const url = await uploadFile(file, folderPath);
+                const fileName = `consent.png`;
+                const folderPath = `Patients/${patientData.id || 'new'}`;
+                const url = await uploadFile(new File([blob], fileName, { type: 'image/png' }), folderPath, fileName);
                 return url;
             } catch (err) {
                 console.error('Consent generation/upload failed:', err);

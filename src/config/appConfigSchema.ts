@@ -62,6 +62,18 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       }
     }
   },
+  treatmentInstructions: {
+    label: 'Treatment Instructions',
+    description: 'Manage treatment instruction templates for each supported language.',
+    children: {
+      instructionsFiles: {
+        label: 'Instruction Templates',
+        description: 'Upload a treatment instructions form for each language.',
+        type: 'file',
+        defaultValue: {},
+      }
+    }
+  },
   treatmentSettings: {
     label: 'Treatment Process',
     description: 'Settings that control the logic and flow of patient treatments.',

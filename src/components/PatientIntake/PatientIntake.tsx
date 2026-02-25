@@ -7,7 +7,7 @@ import styles from './PatientIntake.module.css';
 import { T, useT } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
 import ConsentTab, { ConsentTabHandle } from './ConsentTab';
-import InstructionsTab from './InstructionsTab';
+import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
 import ProblemsProtocolsTab from './ProblemsProtocolsTab';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import ProtocolSelection from '../ProtocolSelection';
@@ -78,6 +78,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [patientReport, setPatientReport] = useState('');
 
     const consentTabRef = useRef<ConsentTabHandle>(null);
+    const instructionsTabRef = useRef<InstructionsTabHandle>(null);
 
     // Translation labels
     const tPersonal = useT('Personal Details');
@@ -147,7 +148,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             initialSaved.add('consent');
         }
 
-        // 4. Treatments (Check if patient has id, assuming existing patients have history)
+        // 4. Instructions
+        if (data.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl) {
+            initialSaved.add('instructions');
+        }
+
+        // 5. Treatments (Check if patient has id, assuming existing patients have history)
         if (patient.id) {
             // In a real app, we'd check treatment count from an API call or another prop.
             // For now, if it's an existing patient, we can assume they have history or at least the tab is "ready"
@@ -185,6 +191,23 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     patient_level_data: {
                         ...(finalData.medicalRecord?.patient_level_data || {}),
                         consentSignedUrl: signatureUrl
+                    }
+                }
+            };
+            setPatientData(finalData);
+        }
+
+        if (activeTab === 'instructions' && instructionsTabRef.current) {
+            const signatureUrl = await instructionsTabRef.current.onSave();
+            if (!signatureUrl) return;
+
+            finalData = {
+                ...finalData,
+                medicalRecord: {
+                    ...(finalData.medicalRecord || {}),
+                    patient_level_data: {
+                        ...(finalData.medicalRecord?.patient_level_data || {}),
+                        treatmentInstructionsSignedUrl: signatureUrl
                     }
                 }
             };
@@ -304,7 +327,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     onDataChange={handleDataChange}
                 />;
             case 'instructions':
-                return <InstructionsTab />;
+                return <InstructionsTab
+                    ref={instructionsTabRef}
+                    patientData={patientData}
+                    user={user}
+                    onDataChange={handleDataChange}
+                />;
             case 'problems':
                 return <ProblemsProtocolsTab />;
             case 'treatments':
