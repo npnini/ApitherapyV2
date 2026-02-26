@@ -15,7 +15,15 @@ interface VitalsInputGroupProps {
 type VitalField = keyof Omit<VitalSigns, 'outOfRange'>;
 
 const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVitalsChange }) => {
-    const { language } = useTranslationContext();
+    const { language, direction } = useTranslationContext();
+    const tOutOfRange = useT('Value out of range');
+    const tHeartRate = useT('Heart Rate');
+    const tSystolic = useT('Systolic');
+    const tDiastolic = useT('Diastolic');
+    const tEg120 = useT('e.g., 120');
+    const tEg80 = useT('e.g., 80');
+    const tEg70 = useT('e.g., 70');
+    const tApproveAnyway = useT('The value entered is outside the normal range. Do you want to approve it anyway?');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [pendingChange, setPendingChange] = useState<{ field: VitalField; value: number } | null>(null);
@@ -35,8 +43,26 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
     };
 
     const handleChange = (field: VitalField, valueStr: string) => {
-        const value = valueStr ? parseInt(valueStr, 10) : undefined;
+        // Clean input: only digits
+        const cleanValueStr = valueStr.replace(/\D/g, '');
+        const value = cleanValueStr ? parseInt(cleanValueStr, 10) : undefined;
+
+        console.log(`VitalsInputGroup[${title}] update ${field}:`, value);
         setLocalVitals(current => ({ ...current, [field]: value }));
+
+        // Proactively update parent if value is set (even if potentially out of range)
+        // so that completeness checks (areVitalsComplete) work without needing blur.
+        const updatedVitals = { ...vitals, [field]: value };
+
+        // Logic for outOfRange flag update
+        const otherFields: VitalField[] = ['systolic', 'diastolic', 'heartRate'];
+        const isAnyOutOfRange = otherFields
+            .some(f => {
+                const val = f === field ? value : vitals[f];
+                return val !== undefined && isValueOutOfRange(f, val);
+            });
+
+        onVitalsChange({ ...updatedVitals, outOfRange: isAnyOutOfRange });
     };
 
     const handleBlur = (field: VitalField) => {
@@ -107,20 +133,20 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
                         onBlur={() => handleBlur(field)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
-                        className={`w-full p-3 bg-slate-100 border-2 rounded-lg text-lg text-center font-bold transition-colors duration-200 outline-none ${isCurrentValueOutOfRange && !isConfirmedProblematic ? 'border-yellow-400 focus:border-yellow-600' : 'border-slate-200 focus:border-slate-400'
+                        className={`w-full p-2 bg-slate-100 border-2 rounded-lg text-sm text-center font-bold transition-colors duration-200 outline-none ${isCurrentValueOutOfRange && !isConfirmedProblematic ? 'border-yellow-400 focus:border-yellow-600' : 'border-slate-200 focus:border-slate-400'
                             }`}
                     />
                     {isCurrentValueOutOfRange && !isConfirmedProblematic &&
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2" title={useT('Value out of range')}>
+                        <div className={`absolute ${direction === 'rtl' ? 'left-3' : 'right-3'} top-1/2 transform -translate-y-1/2`} title={tOutOfRange}>
                             <AlertCircle className="h-5 w-5 text-yellow-500" />
                         </div>
                     }
                 </div>
                 <label className="text-xs text-slate-500 mt-1">
-                    <T>{field === 'heartRate' ? 'Heart Rate' : field.charAt(0).toUpperCase() + field.slice(1)}</T> <span className="text-red-500">*</span>
+                    {field === 'heartRate' ? tHeartRate : field === 'systolic' ? tSystolic : tDiastolic} <span className="text-red-500">*</span>
                 </label>
                 {isConfirmedProblematic && (
-                    <p className="text-xs text-yellow-600 font-bold mt-1"><T>Value out of range</T></p>
+                    <p className="text-xs text-yellow-600 font-bold mt-1">{tOutOfRange}</p>
                 )}
             </div>
         );
@@ -130,16 +156,16 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-4">
             <ConfirmationModal
                 isOpen={isModalOpen}
-                title={useT('Value out of range')}
-                message={useT('The value entered is outside the normal range. Do you want to approve it anyway?')}
+                title={tOutOfRange}
+                message={tApproveAnyway}
                 onConfirm={handleConfirmOutOfRange}
                 onCancel={handleCancelOutOfRange}
             />
             <h3 className="text-md font-bold text-slate-700 text-center mb-3"><T>{title}</T></h3>
             <div className="grid grid-cols-3 gap-3">
-                {renderInput('systolic', useT('e.g., 120'))}
-                {renderInput('diastolic', useT('e.g., 80'))}
-                {renderInput('heartRate', useT('e.g., 70'))}
+                {renderInput('systolic', tEg120)}
+                {renderInput('diastolic', tEg80)}
+                {renderInput('heartRate', tEg70)}
             </div>
         </div>
     );

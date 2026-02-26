@@ -1,3 +1,5 @@
+import { VitalSigns } from './treatmentSession';
+
 export interface MedicalRecord {
     patient_level_data?: {
         condition?: string;
@@ -5,7 +7,34 @@ export interface MedicalRecord {
         lastTreatment?: string;
         consentSignedUrl?: string;
         treatmentInstructionsSignedUrl?: string;
+        treatment_plan?: {
+            problemIds: string[];
+            protocolIds: string[];
+            measureIds: string[];
+        }
     }
+}
+
+
+export interface MeasuredValueReading {
+    timestamp: any; // serverTimestamp
+    readings: Array<{
+        measureId: string;
+        type: 'Category' | 'Scale';
+        value: string | number;
+    }>;
+}
+
+export interface Treatment {
+    id?: string;
+    protocolId: string;
+    timestamp: any; // serverTimestamp
+    stungPointCodes: string[];
+    notes: string;
+    patientReport: string;
+    preStingVitals: VitalSigns;
+    postStingVitals: VitalSigns;
+    finalVitals: VitalSigns;
 }
 
 export interface QuestionnaireResponse {

@@ -1,6 +1,6 @@
 import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { PatientData, MedicalRecord, QuestionnaireResponse } from '../types/patient';
+import { PatientData, MedicalRecord, QuestionnaireResponse, MeasuredValueReading, Treatment } from '../types/patient';
 
 export const savePatientIntakeData = async (
     pii: Partial<PatientData>,
@@ -26,8 +26,32 @@ export const savePatientIntakeData = async (
         await setDoc(medicalRecordDocRef, medicalRecord);
     }
 
-    const questionnaireResponsesColRef = collection(db, 'patients', patientDocRef.id, 'medical_records', 'patient_level_data', 'questionnaire_responses');
-    await addDoc(questionnaireResponsesColRef, { ...questionnaireResponse, dateUpdated: serverTimestamp() });
+    if (Object.keys(questionnaireResponse).length > 0) {
+        const questionnaireResponsesColRef = collection(db, 'patients', patientDocRef.id, 'medical_records', 'patient_level_data', 'questionnaire_responses');
+        await addDoc(questionnaireResponsesColRef, { ...questionnaireResponse, dateUpdated: serverTimestamp() });
+    }
 
     return patientDocRef.id;
+};
+
+export const addMeasuredValueReading = async (
+    patientId: string,
+    reading: MeasuredValueReading
+) => {
+    const readingsColRef = collection(db, 'patients', patientId, 'medical_records', 'patient_level_data', 'measured_values');
+    await addDoc(readingsColRef, {
+        ...reading,
+        timestamp: serverTimestamp()
+    });
+};
+
+export const saveTreatment = async (
+    patientId: string,
+    treatment: Omit<Treatment, 'id' | 'timestamp'>
+) => {
+    const treatmentsColRef = collection(db, 'patients', patientId, 'medical_records', 'patient_level_data', 'treatments');
+    await addDoc(treatmentsColRef, {
+        ...treatment,
+        timestamp: serverTimestamp()
+    });
 };

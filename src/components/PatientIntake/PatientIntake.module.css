@@ -22,6 +22,21 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+.overlayWide {
+    left: 22rem;
+}
+
+:global([dir="rtl"]) .overlayWide {
+    left: 0;
+    right: 22rem;
+}
+
+.modalWide {
+    width: 96%;
+    max-width: none;
 }
 
 /* ── Header ────────────────────────────────────────────────────────────────── */

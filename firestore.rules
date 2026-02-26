@@ -62,6 +62,11 @@ service cloud.firestore {
           allow read: if isAuthenticated();
           allow create, update, delete: if isCaretaker() || isAdmin();
         }
+
+        match /measured_values/{readingId} {
+          allow read: if isAuthenticated();
+          allow create, update, delete: if isCaretaker() || isAdmin();
+        }
       }
     }
 

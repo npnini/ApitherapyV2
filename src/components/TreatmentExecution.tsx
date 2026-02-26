@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -29,8 +29,9 @@ interface TreatmentExecutionProps {
         finalVitals?: Partial<VitalSigns>;
     }) => void;
     onBack: () => void;
-    saveStatus: SaveStatus;
     onFinish: () => void;
+    treatmentOnNext?: () => void;
+    saveStatus: SaveStatus;
     isModal?: boolean;
 }
 
@@ -42,8 +43,16 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
-const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protocol, onSave, onBack, saveStatus, onFinish, isModal }) => {
+const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protocol, onSave, onBack, saveStatus, onFinish, treatmentOnNext, isModal }) => {
     const { language, direction } = useTranslationContext();
+    const tFailedToLoadModel = useT('Failed to load 3D model data.');
+    const tSaving = useT('Saving...');
+    const tNotesPlaceholder = useT('Add any final observations or notes here...');
+    const tSaveError = useT('Failed to save treatment. Please try again.');
+    const tSaveSuccess = useT('Saved successfully!');
+    const tSaveTreatment = useT('Save Treatment');
+    const tNextStep = useT('Next Step');
+
     const [hydratedProtocol, setHydratedProtocol] = useState<HydratedProtocol | null>(null);
     const [isHydrating, setIsHydrating] = useState(true);
     const [hydrationError, setHydrationError] = useState<string | null>(null);
@@ -84,11 +93,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
         } catch (error) {
             console.error("Error hydrating protocol:", error);
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-            setHydrationError(`${useT('Failed to load 3D model data.')} ${errorMessage}`);
+            setHydrationError(`${tFailedToLoadModel} ${errorMessage}`);
         } finally {
             setIsHydrating(false);
         }
-    }, [protocol]);
+    }, [protocol, tFailedToLoadModel]);
 
     useEffect(() => {
         hydrateProtocol();
@@ -127,10 +136,33 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
         return vitals.systolic !== undefined && vitals.diastolic !== undefined && vitals.heartRate !== undefined;
     };
 
-    const isSaveDisabled = saveStatus === 'saving' ||
+    const [isComponentDirty, setIsComponentDirty] = useState(false);
+    const isInitialMount = useRef(true);
+
+    // Track if treatment has been saved in this session
+    useEffect(() => {
+        if (saveStatus === 'success') {
+            setIsComponentDirty(false);
+            // Reset mount flag if we want to treat post-save as a new "clean" state
+            // or just rely on the effect below skipping the next run if values haven't changed.
+        }
+    }, [saveStatus]);
+
+    // Track changes to enable/disable save button
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+        setIsComponentDirty(true);
+    }, [stungPoints, postStingVitals, finalVitals, finalNotes]);
+
+    const isSaveDisabled = saveStatus === 'saving' || 
+        !isComponentDirty ||
         stungPoints.length === 0 ||
         !areVitalsComplete(postStingVitals) ||
         !areVitalsComplete(finalVitals);
+
 
     if (isHydrating) {
         return (
@@ -171,10 +203,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
             <div className="grid grid-cols-12 gap-4">
 
                 {/* Left Column: Protocol Points */}
-                <div className="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col">
-                    <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center">
-                            <List size={20} className={direction === 'rtl' ? 'ml-2' : 'mr-2'} /> <T>Protocol Points</T>
+                <div className="col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col h-[750px] min-w-0">
+                    <div className="flex flex-col mb-4">
+                        <h3 className="text-base font-black text-slate-900 tracking-tighter flex items-center mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                            <List size={18} className={direction === 'rtl' ? 'ml-2 flex-shrink-0' : 'mr-2 flex-shrink-0'} /> <T>Protocol Points</T>
                         </h3>
                         <label htmlFor="autorotate" className="flex items-center cursor-pointer">
                             <span className={`text-sm font-bold text-slate-600 ${direction === 'rtl' ? 'ml-2' : 'mr-2'}`}><T>Auto-Rotate</T></span>
@@ -206,7 +238,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                 </div>
 
                 {/* Center Column: 3D Model */}
-                <div className="col-span-6 bg-white rounded-3xl p-2 border border-slate-100 shadow-lg h-[650px] relative">
+                <div className="col-span-5 bg-white rounded-3xl p-2 border border-slate-100 shadow-lg h-[650px] relative">
                     <Canvas className="bg-slate-50 rounded-2xl">
                         <BodyScene
                             protocol={hydratedProtocol}
@@ -218,7 +250,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                 </div>
 
                 {/* Right Column: Treatment Data */}
-                <div className="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col">
+                <div className="col-span-5 bg-white rounded-3xl p-6 border border-slate-100 shadow-lg flex flex-col overflow-y-auto max-h-[750px]">
                     <h3 className="text-lg font-black text-slate-900 tracking-tighter flex items-center mb-2">
                         <MousePointerClick size={20} className={direction === 'rtl' ? 'ml-2' : 'mr-2'} /><T>Treatment Data</T>
                     </h3>
@@ -249,16 +281,32 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                     />
                     <div className="mb-4">
                         <label className="text-[10px] font-bold text-slate-500 uppercase" htmlFor="finalNotes"><T>Final Notes</T></label>
-                        <textarea id="finalNotes" value={finalNotes} onKeyDown={handleKeyDown} onChange={(e) => setFinalNotes(e.target.value)} className={styles.notesTextarea} rows={4} placeholder={useT('Add any final observations or notes here...')}></textarea>
+                        <textarea id="finalNotes" value={finalNotes} onKeyDown={handleKeyDown} onChange={(e) => setFinalNotes(e.target.value)} className={styles.notesTextarea} rows={4} placeholder={tNotesPlaceholder}></textarea>
                     </div>
-                    <div className="mt-auto">
-                        {saveStatus === 'error' && <div className="text-red-600 text-xs mb-2 flex items-center"><XCircle size={14} className={direction === 'rtl' ? 'ml-1' : 'mr-1'} /> <T>Failed to save treatment. Please try again.</T></div>}
-                        {saveStatus === 'success' && <div className="text-green-600 text-xs mb-2 flex items-center"><CheckCircle size={14} className={direction === 'rtl' ? 'ml-1' : 'mr-1'} /> <T>Saved successfully!</T></div>}
-                        {saveStatus === 'success' ?
-                            <button onClick={onFinish} className="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl transition"><T>Finish & Back to Dashboard</T></button>
-                            :
-                            <button onClick={handleSave} disabled={isSaveDisabled} className={styles.saveButton}>{saveStatus === 'saving' ? useT('Saving...') : useT('Finish Treatment')}</button>
-                        }
+                    <div className="mt-auto pt-4 border-t border-slate-100">
+                        {saveStatus === 'error' && <div className="text-red-600 text-xs mb-2 flex items-center"><XCircle size={14} className={direction === 'rtl' ? 'ml-1' : 'mr-1'} /> {tSaveError}</div>}
+                        {saveStatus === 'success' && <div className="text-green-600 text-xs mb-2 flex items-center"><CheckCircle size={14} className={direction === 'rtl' ? 'ml-1' : 'mr-1'} /> {tSaveSuccess}</div>}
+                        
+                        {saveStatus === 'success' ? (
+                            <div className="flex flex-col gap-2">
+                                {treatmentOnNext && (
+                                    <button 
+                                        onClick={treatmentOnNext} 
+                                        className="w-fit mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl transition flex items-center justify-center gap-2"
+                                    >
+                                        <T>Next Step</T>
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={handleSave} 
+                                disabled={isSaveDisabled} 
+                                className={`${styles.saveButton} whitespace-nowrap`}
+                            >
+                                {saveStatus === 'saving' ? tSaving : tSaveTreatment}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

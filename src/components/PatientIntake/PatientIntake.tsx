@@ -8,7 +8,8 @@ import { T, useT } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
 import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
-import ProblemsProtocolsTab from './ProblemsProtocolsTab';
+import ProblemsProtocolsTab, { ProblemsProtocolsTabHandle } from './ProblemsProtocolsTab';
+import { addMeasuredValueReading, saveTreatment } from '../../firebase/patient';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
@@ -72,13 +73,18 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // Guard modal states
     const [showCloseGuard, setShowCloseGuard] = useState(false);       // UX-2
     const [showTreatmentGuard, setShowTreatmentGuard] = useState(false); // UX-6
+    const [showAbortTreatmentGuard, setShowAbortTreatmentGuard] = useState(false);
+    const [showTreatmentErrorGuard, setShowTreatmentErrorGuard] = useState(false);
     const [pendingTab, setPendingTab] = useState<TabKey | null>(null);
     const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
     const [preStingVitals, setPreStingVitals] = useState<VitalSigns | null>(null);
     const [patientReport, setPatientReport] = useState('');
+    const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+    const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
 
     const consentTabRef = useRef<ConsentTabHandle>(null);
     const instructionsTabRef = useRef<InstructionsTabHandle>(null);
+    const problemsTabRef = useRef<ProblemsProtocolsTabHandle>(null);
 
     // Translation labels
     const tPersonal = useT('Personal Details');
@@ -153,7 +159,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             initialSaved.add('instructions');
         }
 
-        // 5. Treatments (Check if patient has id, assuming existing patients have history)
+        // 5. Problems & Protocols
+        if (data.medicalRecord?.patient_level_data?.treatment_plan?.problemIds?.length) {
+            initialSaved.add('problems');
+        }
+
+        // 6. Treatments (Check if patient has id, assuming existing patients have history)
         if (patient.id) {
             // In a real app, we'd check treatment count from an API call or another prop.
             // For now, if it's an existing patient, we can assume they have history or at least the tab is "ready"
@@ -214,6 +225,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setPatientData(finalData);
         }
 
+        if (activeTab === 'problems' && problemsTabRef.current && patientData.id) {
+            const readings = problemsTabRef.current.getReadings();
+            if (readings.length > 0) {
+                await addMeasuredValueReading(patientData.id, { timestamp: null, readings });
+            }
+        }
+
         await onUpdate(finalData as PatientData);
         markTabSaved(activeTab);
     };
@@ -240,6 +258,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setPatientData(finalData);
         }
 
+        if (activeTab === 'problems' && problemsTabRef.current && patientData.id) {
+            const readings = problemsTabRef.current.getReadings();
+            if (readings.length > 0) {
+                await addMeasuredValueReading(patientData.id, { timestamp: null, readings });
+            }
+        }
+
         await onSave(finalData as PatientData);
         markTabSaved(activeTab);
     };
@@ -254,16 +279,24 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     // Tab click — guard if currently in treatment view (UX-6)
     const handleTabClick = (tab: TabKey) => {
-        if (viewState !== 'tabs') {
+        if (viewState !== 'tabs' && isDirty) {
             setPendingTab(tab);
             setShowTreatmentGuard(true);
             return;
         }
+        if (viewState !== 'tabs') {
+            setSelectedProtocol(null);
+        }
+        setViewState('tabs');
         setActiveTab(tab);
     };
 
     // Step 5: Start New Treatment
     const handleStartNewTreatment = () => {
+        if (viewState !== 'tabs' && isDirty) {
+            setShowAbortTreatmentGuard(true);
+            return;
+        }
         setViewState('protocolSelection');
     };
 
@@ -274,14 +307,42 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setViewState('treatmentExecution');
     };
 
-    const handleTreatmentSave = (treatmentData: any) => {
-        // Implement treatment saving logic here (e.g., call onSave with full treatment object)
-        console.log('Saving treatment:', treatmentData);
+    const handleTreatmentSave = async (treatmentData: any) => {
+        if (!patient.id || !selectedProtocol) return;
+
+        setTreatmentSaveStatus('saving');
+        setTreatmentErrorMessage(null);
+
+        try {
+            console.log('Saving treatment to Firestore:', treatmentData);
+            await saveTreatment(patient.id, {
+                protocolId: selectedProtocol.id,
+                patientReport: patientReport,
+                preStingVitals: preStingVitals as VitalSigns,
+                stungPointCodes: treatmentData.stungPointCodes,
+                notes: treatmentData.notes,
+                postStingVitals: treatmentData.postStingVitals,
+                finalVitals: treatmentData.finalVitals
+            });
+            setTreatmentSaveStatus('success');
+            setIsDirty(false); // UX-2: Clear dirty state after successful save
+        } catch (error) {
+            console.error('Error saving treatment:', error);
+            setTreatmentSaveStatus('error');
+            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to save treatment');
+            setShowTreatmentErrorGuard(true);
+        }
     };
 
     const handleTreatmentFinish = () => {
         setViewState('tabs');
         setActiveTab('treatments');
+        setSelectedProtocol(null);
+    };
+
+    const handleNextFromTreatment = () => {
+        setViewState('tabs');
+        setActiveTab('measures');
         setSelectedProtocol(null);
     };
 
@@ -334,7 +395,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     onDataChange={handleDataChange}
                 />;
             case 'problems':
-                return <ProblemsProtocolsTab />;
+                return <ProblemsProtocolsTab
+                    ref={problemsTabRef}
+                    patientData={patientData as PatientData}
+                    onDataChange={handleDataChange}
+                />;
             case 'treatments':
                 return (
                     <TreatmentHistory
@@ -367,8 +432,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const showUpdateButton = activeTab !== 'treatments';
 
     return (
-        <div className={styles.overlay}>
-            <div className={styles.modal}>
+        <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>
+            <div className={`${styles.modal} ${viewState !== 'tabs' ? styles.modalWide : ''}`}>
 
                 {/* ── Modal Header ─────────────────────────────────────────── */}
                 <div className={styles.modalHeader}>
@@ -412,7 +477,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         type="button"
                         className={styles.startTreatmentButton}
                         disabled={!canStartTreatment}
-                        onClick={() => setViewState('protocolSelection')}
+                        onClick={handleStartNewTreatment}
                     >
                         {tStartNewTreatment}
                     </button>
@@ -435,8 +500,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             protocol={selectedProtocol}
                             onSave={handleTreatmentSave}
                             onBack={() => setViewState('protocolSelection')}
-                            saveStatus={saveStatus === 'saving' ? 'saving' : 'idle'}
+                            saveStatus={treatmentSaveStatus}
                             onFinish={handleTreatmentFinish}
+                            treatmentOnNext={handleNextFromTreatment}
                             isModal={true}
                         />
                     )}
@@ -518,6 +584,27 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 }}
                 onCancel={() => { setShowTreatmentGuard(false); setPendingTab(null); }}
                 showCancelButton
+            />
+            {/* ── Abort Treatment guard (Start New Treatment click) ──────── */}
+            <ConfirmationModal
+                isOpen={showAbortTreatmentGuard}
+                title={<T>Leave Treatment?</T>}
+                message={<T>Are you sure you want to leave the current treatment? Any unsaved data will be lost.</T>}
+                onConfirm={() => {
+                    setShowAbortTreatmentGuard(false);
+                    setViewState('protocolSelection');
+                    setSelectedProtocol(null);
+                }}
+                onCancel={() => setShowAbortTreatmentGuard(false)}
+                showCancelButton
+            />
+            {/* ── Treatment Error guard ──────────────────────────────────── */}
+            <ConfirmationModal
+                isOpen={showTreatmentErrorGuard}
+                title={<T>Update Failed</T>}
+                message={<T>Update failed. Please notify the administrator.</T>}
+                onConfirm={() => setShowTreatmentErrorGuard(false)}
+                showCancelButton={false}
             />
         </div>
     );
