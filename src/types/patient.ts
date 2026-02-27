@@ -17,6 +17,7 @@ export interface MedicalRecord {
 
 
 export interface MeasuredValueReading {
+    id?: string;
     timestamp: any; // serverTimestamp
     readings: Array<{
         measureId: string;

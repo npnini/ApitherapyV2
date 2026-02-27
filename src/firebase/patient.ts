@@ -1,4 +1,4 @@
-import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc, query, orderBy, getDocs, QueryDocumentSnapshot, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PatientData, MedicalRecord, QuestionnaireResponse, MeasuredValueReading, Treatment } from '../types/patient';
 
@@ -54,4 +54,20 @@ export const saveTreatment = async (
         ...treatment,
         timestamp: serverTimestamp()
     });
+};
+
+export const getMeasuredValueReadings = async (patientId: string): Promise<MeasuredValueReading[]> => {
+    const readingsColRef = collection(db, 'patients', patientId, 'medical_records', 'patient_level_data', 'measured_values');
+    const q = query(readingsColRef, orderBy('timestamp', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc: QueryDocumentSnapshot) => ({
+        ...doc.data(),
+        id: doc.id
+    })) as unknown as MeasuredValueReading[];
+};
+export const hasMeasuredValueReadings = async (patientId: string): Promise<boolean> => {
+    const readingsColRef = collection(db, 'patients', patientId, 'medical_records', 'patient_level_data', 'measured_values');
+    const q = query(readingsColRef, limit(1));
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
 };

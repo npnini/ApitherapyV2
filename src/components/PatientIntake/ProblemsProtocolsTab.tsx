@@ -258,11 +258,14 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
                                                     onChange={e => handleReadingChange(measure.id, e.target.value)}
                                                 >
                                                     <option value=""><T>Select...</T></option>
-                                                    {measure.categories?.map((cat, idx) => (
-                                                        <option key={idx} value={cat['en']}>
-                                                            {cat[currentLang] || cat['en']}
-                                                        </option>
-                                                    ))}
+                                                    {measure.categories?.map((cat, idx) => {
+                                                        const catValue = cat[currentLang] || cat['en'] || Object.values(cat)[0];
+                                                        return (
+                                                            <option key={idx} value={catValue}>
+                                                                {catValue}
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </select>
                                             ) : (
                                                 <div>

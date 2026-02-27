@@ -9,7 +9,7 @@ import ConfirmationModal from '../ConfirmationModal';
 import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
 import ProblemsProtocolsTab, { ProblemsProtocolsTabHandle } from './ProblemsProtocolsTab';
-import { addMeasuredValueReading, saveTreatment } from '../../firebase/patient';
+import { addMeasuredValueReading, saveTreatment, hasMeasuredValueReadings } from '../../firebase/patient';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
@@ -132,46 +132,56 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         const data = initializePatientData(patient);
         setPatientData(data);
 
-        // Initialize savedTabs based on existing data
-        const initialSaved = new Set<TabKey>();
+        const checkSavedStatus = async () => {
+            // Initialize savedTabs based on existing data
+            const initialSaved = new Set<TabKey>();
 
-        // 1. Personal Details
-        if (data.fullName && data.identityNumber && data.mobile) {
-            initialSaved.add('personal');
-        }
+            // 1. Personal Details
+            if (data.fullName && data.identityNumber && data.mobile) {
+                initialSaved.add('personal');
+            }
 
-        // 2. Questionnaire
-        const qResponse = data.questionnaireResponse || {};
-        const hasAnswers = Object.keys(qResponse).some(
-            key => key !== 'domain' && key !== 'version' && key !== 'dateUpdated' && key !== 'signature' && qResponse[key] !== undefined
-        );
-        if (hasAnswers) {
-            initialSaved.add('questionnaire');
-        }
+            // 2. Questionnaire
+            const qResponse = data.questionnaireResponse || {};
+            const hasAnswers = Object.keys(qResponse).some(
+                key => key !== 'domain' && key !== 'version' && key !== 'dateUpdated' && key !== 'signature' && qResponse[key] !== undefined
+            );
+            if (hasAnswers) {
+                initialSaved.add('questionnaire');
+            }
 
-        // 3. Consent
-        if (data.medicalRecord?.patient_level_data?.consentSignedUrl) {
-            initialSaved.add('consent');
-        }
+            // 3. Consent
+            if (data.medicalRecord?.patient_level_data?.consentSignedUrl) {
+                initialSaved.add('consent');
+            }
 
-        // 4. Instructions
-        if (data.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl) {
-            initialSaved.add('instructions');
-        }
+            // 4. Instructions
+            if (data.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl) {
+                initialSaved.add('instructions');
+            }
 
-        // 5. Problems & Protocols
-        if (data.medicalRecord?.patient_level_data?.treatment_plan?.problemIds?.length) {
-            initialSaved.add('problems');
-        }
+            // 5. Problems & Protocols
+            if (data.medicalRecord?.patient_level_data?.treatment_plan?.problemIds?.length) {
+                initialSaved.add('problems');
+            }
 
-        // 6. Treatments (Check if patient has id, assuming existing patients have history)
-        if (patient.id) {
-            // In a real app, we'd check treatment count from an API call or another prop.
-            // For now, if it's an existing patient, we can assume they have history or at least the tab is "ready"
-            initialSaved.add('treatments');
-        }
+            // 6. Treatments (Check if patient has id, assuming existing patients have history)
+            if (patient.id) {
+                // In a real app, we'd check treatment count from an API call or another prop.
+                // For now, if it's an existing patient, we can assume they have history or at least the tab is "ready"
+                initialSaved.add('treatments');
 
-        setSavedTabs(initialSaved);
+                // 7. Measures History - check if there are actual readings
+                const hasReadings = await hasMeasuredValueReadings(patient.id);
+                if (hasReadings) {
+                    initialSaved.add('measures');
+                }
+            }
+
+            setSavedTabs(initialSaved);
+        };
+
+        checkSavedStatus();
     }, [patient]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
@@ -229,6 +239,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             const readings = problemsTabRef.current.getReadings();
             if (readings.length > 0) {
                 await addMeasuredValueReading(patientData.id, { timestamp: null, readings });
+                // Also mark measures tab as saved if we just added a reading
+                setSavedTabs(prev => new Set(prev).add('measures'));
             }
         }
 
@@ -262,6 +274,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             const readings = problemsTabRef.current.getReadings();
             if (readings.length > 0) {
                 await addMeasuredValueReading(patientData.id, { timestamp: null, readings });
+                // Also mark measures tab as saved if we just added a reading
+                setSavedTabs(prev => new Set(prev).add('measures'));
             }
         }
 
@@ -409,7 +423,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     />
                 );
             case 'measures':
-                return <MeasuresHistoryTab />;
+                return <MeasuresHistoryTab patientData={patientData as PatientData} />;
             default:
                 return (
                     <div className={styles.placeholderTab}>
@@ -428,8 +442,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // ── Bottom bar visibility (UX-8) ─────────────────────────────────────────
     const showBottomBar = viewState === 'tabs';
 
-    // UX-4: hide Update on Treatments History tab
-    const showUpdateButton = activeTab !== 'treatments';
+    // UX-4: hide Update on Treatments History & Measures History tabs
+    const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures';
 
     return (
         <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>
@@ -537,16 +551,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
                             {/* Next Step → Done on last tab */}
                             {isLastTab ? (
-                                isExistingPatient ? null : (
-                                    <button
-                                        type="button"
-                                        onClick={handleCompleteSubmission}
-                                        disabled={saveStatus === 'saving'}
-                                        className={styles.btnPrimary}
-                                    >
-                                        {tDone}
-                                    </button>
-                                )
+                                <button
+                                    type="button"
+                                    onClick={isExistingPatient ? onClose : handleCompleteSubmission}
+                                    disabled={saveStatus === 'saving'}
+                                    className={styles.btnPrimary}
+                                >
+                                    {tDone}
+                                </button>
                             ) : (
                                 <button
                                     type="button"
