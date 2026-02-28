@@ -29,6 +29,7 @@ export interface MeasuredValueReading {
 export interface Treatment {
     id?: string;
     protocolId: string;
+    caretakerId: string;
     timestamp: any; // serverTimestamp
     stungPointCodes: string[];
     notes: string;

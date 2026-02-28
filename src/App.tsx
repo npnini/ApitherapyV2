@@ -31,6 +31,8 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
     const { language, setLanguage, direction } = useTranslationContext();
+    const tMyProfile = useT('My Profile');
+    const tAppSettings = useT('Application Settings');
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<PatientData[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<Partial<PatientData> | null>(null);
@@ -71,18 +73,19 @@ const AppInner: React.FC = () => {
         if (userSnap.exists()) {
             return { uid: user.uid, ...userSnap.data() } as AppUser;
         } else {
-            const newUser: AppUser = { uid: user.uid, userId: user.uid, email: user.email || '', fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker' };
-            await setDoc(userRef, newUser);
+            const newUser: AppUser = { uid: user.uid, email: user.email || '', fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker' };
+            const { uid, ...userDataToSave } = newUser;
+            await setDoc(userRef, userDataToSave);
             setCurrentView('onboarding_test');
             return newUser;
         }
     };
 
     const fetchInitialData = useCallback(async (user: AppUser) => {
-        if (!user || !user.userId || !appConfig) return;
+        if (!user || !user.uid || !appConfig) return;
         setIsLoading(true);
         try {
-            const patientQuery = query(collection(db, "patients"), where("caretakerId", "==", user.userId));
+            const patientQuery = query(collection(db, "patients"), where("caretakerId", "==", user.uid));
             const patientQuerySnapshot = await getDocs(patientQuery);
 
             const domain = appConfig.patientDashboard?.domain;
@@ -201,7 +204,7 @@ const AppInner: React.FC = () => {
             mobile: '',
             medicalRecord: { patient_level_data: {} },
             questionnaireResponse: {},
-            caretakerId: appUser.userId,
+            caretakerId: appUser.uid,
         };
         setSelectedPatient(newPatient);
         setCurrentView('patient_intake');
@@ -220,7 +223,7 @@ const AppInner: React.FC = () => {
             const { medicalRecord, questionnaireResponse, ...patientPii } = patientData;
             let piiToSave: Omit<PatientData, 'id' | 'medicalRecord' | 'questionnaireResponse'> & { dateCreated?: Date; lastUpdated?: Date } = {
                 ...patientPii,
-                caretakerId: appUser.userId,
+                caretakerId: appUser.uid,
                 lastUpdated: now,
             };
 
@@ -343,7 +346,7 @@ const AppInner: React.FC = () => {
                 : protocol.name,
             patientReport: patientReport,
             preStingVitals: preStingVitals,
-            caretakerId: appUser.userId,
+            caretakerId: appUser.uid,
         });
         setCurrentView('treatment_execution');
     };
@@ -390,7 +393,7 @@ const AppInner: React.FC = () => {
                         isDashboardView ?
                             <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
                             : currentView === 'user_details' && appUser ?
-                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={useT('My Profile')}>
+                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile}>
                                     <UserDetails user={appUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
                                 </Modal>
                                 : currentView === 'onboarding_test' ?
@@ -432,7 +435,7 @@ const AppInner: React.FC = () => {
                         <Modal
                             isOpen={isSettingsModalOpen}
                             onClose={() => setIsSettingsModalOpen(false)}
-                            title={useT('Application Settings')}
+                            title={tAppSettings}
                         >
                             <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
                         </Modal>

@@ -79,7 +79,7 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
 
     // Filtered lists (Funneling)
     const availableProtocolItems = useMemo(() => {
-        if (selectedProblems.length === 0) return [];
+        if (selectedProblems.length === 0) return protocolItems;
         const allowedIds = new Set<string>();
         const selectedIds = new Set(selectedProblems.map(p => p.id));
         problems.filter(p => selectedIds.has(p.id)).forEach(p => {
@@ -89,7 +89,7 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
     }, [selectedProblems, problems, protocolItems]);
 
     const availableMeasureItems = useMemo(() => {
-        if (selectedProblems.length === 0) return [];
+        if (selectedProblems.length === 0) return measureItems;
         const allowedIds = new Set<string>();
         const selectedIds = new Set(selectedProblems.map(p => p.id));
         problems.filter(p => selectedIds.has(p.id)).forEach(p => {

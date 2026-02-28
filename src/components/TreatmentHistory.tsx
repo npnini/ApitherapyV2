@@ -15,7 +15,8 @@ interface StoredTreatmentDoc {
     protocolId: string;
     protocolName: string;
     caretakerId: string;
-    date: string;
+    date?: string;
+    timestamp?: any;
     patientReport: string;
     preStingVitals?: Partial<VitalSigns>;
     postStingVitals?: Partial<VitalSigns>;
@@ -32,7 +33,8 @@ interface HydratedTreatment {
     protocolId: string;
     protocolName: string;
     caretakerId: string;
-    date: string;
+    date?: string;
+    timestamp?: any;
     patientReport: string;
     preStingVitals?: Partial<VitalSigns>;
     postStingVitals?: Partial<VitalSigns>;
@@ -96,7 +98,12 @@ const getMLValue = (value: any, lang: string): string => {
 
 const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab }) => {
     const { language } = useTranslationContext();
+    const tNotAvailable = useT('Not available');
+    const tInvalidDate = useT('Invalid date');
+    const tNotProvided = useT('Not provided');
+    const tNoNotes = useT('No notes');
     const [treatments, setTreatments] = useState<HydratedTreatment[]>([]);
+    const [caretakerNames, setCaretakerNames] = useState<Map<string, string>>(new Map());
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -105,9 +112,18 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         setError(null);
         try {
             const treatmentsRef = collection(db, `patients/${patient.id}/medical_records/patient_level_data/treatments`);
-            const q = query(treatmentsRef, orderBy("date", "desc"));
+            // Unified query: try ordering by timestamp first (preferred)
+            const q = query(treatmentsRef, orderBy("timestamp", "desc"));
             const querySnapshot = await getDocs(q);
-            const rawTreatments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StoredTreatmentDoc));
+
+            let rawDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StoredTreatmentDoc));
+
+            // If timestamp query returned nothing but collection might not be empty (unlikely with orderBy), 
+            // or if we need to merge with legacy 'date' field docs if they don't have timestamps:
+            // For now, most new docs have 'timestamp' from saveTreatment. 
+            // If a doc has only 'date', 'timestamp' will be undefined.
+
+            const rawTreatments = rawDocs;
 
             // Fetch all points to handle both legacy IDs and new Codes in stungPoints
             const pointsSnapshot = await getDocs(collection(db, 'acupuncture_points'));
@@ -128,6 +144,30 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             });
 
             setTreatments(hydratedTreatments);
+
+            // Fetch caretaker names
+            const uniqueCaretakerIds = Array.from(new Set(rawTreatments.map(t => t.caretakerId)));
+            const newNamesMap = new Map(caretakerNames);
+            let mapChanged = false;
+
+            await Promise.all(uniqueCaretakerIds.map(async (id) => {
+                if (!newNamesMap.has(id)) {
+                    try {
+                        const userDoc = await getDoc(doc(db, 'users', id));
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            newNamesMap.set(id, userData.fullName || userData.displayName || id);
+                            mapChanged = true;
+                        }
+                    } catch (err) {
+                        console.error(`Error fetching user ${id}:`, err);
+                    }
+                }
+            }));
+
+            if (mapChanged) {
+                setCaretakerNames(newNamesMap);
+            }
         } catch (err) {
             console.error("Error fetching treatment history:", err);
             setError("Failed to load treatment history");
@@ -140,15 +180,28 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         fetchTreatments();
     }, [fetchTreatments]);
 
-    const formatDate = (isoString: string) => {
-        if (!isoString) return useT('Not available');
+    const formatDate = (treatment: StoredTreatmentDoc | HydratedTreatment) => {
+        const dateVal = treatment.timestamp || treatment.date;
+        if (!dateVal) return tNotAvailable;
+
         try {
-            return new Date(isoString).toLocaleString(language, {
+            let date: Date;
+            if (dateVal.seconds) {
+                // Firestore Timestamp
+                date = new Date(dateVal.seconds * 1000);
+            } else if (typeof dateVal === 'string') {
+                // ISO String
+                date = new Date(dateVal);
+            } else {
+                return tNotAvailable;
+            }
+
+            return date.toLocaleString(language, {
                 year: 'numeric', month: 'numeric', day: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             });
         } catch (e) {
-            return useT('Invalid date');
+            return tInvalidDate;
         }
     };
 
@@ -201,11 +254,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 <div className={styles.metaInfo}>
                                     <div className={styles.metaRow}>
                                         <Calendar size={16} />
-                                        <span>{formatDate(treatment.date)}</span>
+                                        <span>{formatDate(treatment)}</span>
                                     </div>
                                     <div className={styles.metaRowSmall}>
                                         <User size={14} />
-                                        <span>{treatment.caretakerId}</span>
+                                        <span>{caretakerNames.get(treatment.caretakerId) || treatment.caretakerId}</span>
                                     </div>
                                 </div>
                             </div>
@@ -216,7 +269,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         <FileText size={16} />
                                         <T>Patient Report</T>
                                     </h3>
-                                    <p className={styles.detailContent}>{treatment.patientReport || useT('Not provided')}</p>
+                                    <p className={styles.detailContent}>{treatment.patientReport || tNotProvided}</p>
                                 </div>
                                 <div className={styles.detailItem}>
                                     <h3 className={styles.detailLabel}>
@@ -254,10 +307,10 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
                             <div className={styles.notesContainer}>
                                 <h3 className={styles.detailLabel}>
-                                    <FileText size={16} />
+                                    <Activity size={16} />
                                     <T>Final Notes</T>
                                 </h3>
-                                <p className={styles.notesContent}>{treatment.finalNotes || useT('No notes')}</p>
+                                <p className={styles.notesContent}>{treatment.finalNotes || tNoNotes}</p>
                             </div>
                         </div>
                     ))}

@@ -119,6 +119,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         birthDate: p.birthDate ?? '',
         profession: p.profession ?? '',
         address: p.address ?? '',
+        caretakerId: p.caretakerId ?? user.uid,
         medicalRecord: p.medicalRecord ?? {},
         questionnaireResponse: p.questionnaireResponse ?? {},
     });
@@ -331,6 +332,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             console.log('Saving treatment to Firestore:', treatmentData);
             await saveTreatment(patient.id, {
                 protocolId: selectedProtocol.id,
+                caretakerId: user.uid,
                 patientReport: patientReport,
                 preStingVitals: preStingVitals as VitalSigns,
                 stungPointCodes: treatmentData.stungPointCodes,

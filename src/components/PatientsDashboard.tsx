@@ -22,6 +22,11 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
 
+  const tSearchPlaceholder = useT('Search by name, ID, or email...');
+  const tEditPatient = useT('Edit Patient Details');
+  const tDeletePatient = useT('Delete Patient');
+  const tViewHistory = useT('View Treatment History');
+
   const getFullName = (patient: PatientData) => patient.fullName;
 
   const filteredPatients = patients.filter(p =>
@@ -55,7 +60,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         <Search size={16} className={styles.searchIcon} />
         <input
           type="text"
-          placeholder={useT('Search by name, ID, or email...')}
+          placeholder={tSearchPlaceholder}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className={styles.searchInput}
@@ -112,7 +117,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     : <T>N/A</T>}
                 </div>
                 <div className={styles.actionsContainer}>
-                  <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={useT('Edit Patient Details')}><Edit size={14} /></button>
+                  <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={tEditPatient}><Edit size={14} /></button>
                   {/* Treatment history is now in the Patient Intake modal */}
                   {/* <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={useT('View Treatment History')}><FileText size={14} /></button> */}
                   <button
@@ -120,7 +125,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     className={`${styles.actionButton} ${styles.deleteButton}`}
                     style={{ visibility: patient.medicalRecord?.patient_level_data?.lastTreatment ? 'hidden' : 'visible' }}
                     disabled={!!patient.medicalRecord?.patient_level_data?.lastTreatment}
-                    title={useT('Delete Patient')}>
+                    title={tDeletePatient}>
                     <Trash2 size={14} />
                   </button>
                   <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>

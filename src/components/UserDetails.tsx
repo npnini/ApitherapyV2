@@ -113,13 +113,6 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                     <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className={styles.input} required />
                 </div>
                 <div className={styles.field}>
-                    <label className={styles.label} htmlFor="userId">
-                        <T>Username</T>
-                        <span className={styles.requiredAsterisk}>*</span>
-                    </label>
-                    <p className={styles.readOnlyField}>{formData.userId}</p>
-                </div>
-                <div className={styles.field}>
                     <label className={styles.label} htmlFor="address">
                         <T>Address</T>
                         <span className={styles.requiredAsterisk}>*</span>

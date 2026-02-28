@@ -9,7 +9,6 @@ export interface User {
 
 export interface AppUser {
   uid: string;
-  userId: string;
   email: string;
   fullName: string;
   displayName: string;

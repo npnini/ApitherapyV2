@@ -12,7 +12,8 @@ export interface TreatmentSession {
   protocolId: string;
   protocolName: string | Record<string, string>;
   caretakerId: string;
-  date: string;
+  date?: string; // Keep for legacy but mark as optional
+  timestamp?: any;
   patientReport: string;
   preStingVitals?: Partial<VitalSigns>;
   postStingVitals?: Partial<VitalSigns>;
