@@ -27,10 +27,10 @@ export const useProblemForm = (initialData?: Problem | null, onFormSubmit?: () =
       const problemData = { ...formData, documentUrl: fileUrl };
 
       if (initialData) {
-        const problemRef = doc(db, 'problems', initialData.id);
+        const problemRef = doc(db, 'cfg_problems', initialData.id);
         await updateDoc(problemRef, problemData);
       } else {
-        await addDoc(collection(db, 'problems'), problemData);
+        await addDoc(collection(db, 'cfg_problems'), problemData);
       }
 
       onFormSubmit?.();
@@ -48,7 +48,7 @@ export const useProblemForm = (initialData?: Problem | null, onFormSubmit?: () =
         if (initialData.documentUrl) {
           await deleteFile(initialData.documentUrl);
         }
-        const problemRef = doc(db, 'problems', initialData.id);
+        const problemRef = doc(db, 'cfg_problems', initialData.id);
         await updateDoc(problemRef, { documentUrl: '' });
       } catch (error) { 
         console.error("Error deleting document from problem: ", error);

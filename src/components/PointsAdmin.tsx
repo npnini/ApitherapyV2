@@ -34,9 +34,10 @@ const PointsAdmin: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
-    const pointsCollectionRef = useMemo(() => collection(db, 'acupuncture_points'), []);
+    const pointsCollectionRef = useMemo(() => collection(db, 'cfg_acupuncture_points'), []);
 
     const stringsToRegister = useMemo(() => [
         'Failed to fetch points',
@@ -65,7 +66,7 @@ const PointsAdmin: React.FC = () => {
 
         const fetchConfig = async () => {
             try {
-                const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+                const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
                 if (configDoc.exists()) {
                     const data = configDoc.data();
                     setAppConfig({
@@ -132,7 +133,37 @@ const PointsAdmin: React.FC = () => {
         setOriginalPoint(newPoint);
     };
 
-    const handleSave = async (pointToSave: Partial<StingPoint>, file: File | null, lang: string) => {
+    const handleUpdate = async (updatedPoint: Partial<StingPoint>, file?: File | null, lang: string = currentLang) => {
+        setEditingPoint(updatedPoint);
+        setIsDirty(true);
+
+        if (file) {
+            setIsSubmitting(true);
+            try {
+                // Determine the folder name based on the point ID (use 'new' if ID is missing)
+                const folderName = updatedPoint.id || 'new';
+                
+                // If a file for the current language already exists, we could delete it, 
+                // but uploadFile might overwrite or we can rely on handleSave to clean up orphaned files if we want.
+                // However, for immediate feedback, we just upload.
+                const firebasePath = `Points/${folderName}`;
+                const newUrl = await uploadFile(file, firebasePath);
+
+                const currentDocUrls = typeof updatedPoint.documentUrl === 'object' ? { ...updatedPoint.documentUrl } : {};
+                const newDocUrls = { ...currentDocUrls, [lang]: newUrl };
+
+                setEditingPoint({ ...updatedPoint, documentUrl: newDocUrls });
+                setFormError(null);
+            } catch (err) {
+                console.error("Error uploading file during update:", err);
+                setFormError(getTranslation('Failed to upload file.'));
+            } finally {
+                setIsSubmitting(false);
+            }
+        }
+    };
+
+    const handleSave = async (pointToSave: Partial<StingPoint>) => {
         const isNewPoint = !pointToSave.id;
 
         const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
@@ -142,47 +173,18 @@ const PointsAdmin: React.FC = () => {
         }
 
         setIsSubmitting(true);
-        console.log(`%c[DEBUG-SAVE-01] handleSave started. Lang: ${currentLang}`, 'color: blue; font-weight: bold;', {
-            pointToSave: JSON.parse(JSON.stringify(pointToSave)),
-            file: file?.name
-        });
-
         try {
-            let documentUrlObject: { [key: string]: string } = {};
-
-            // Start with the existing URLs from the point being saved
-            if (pointToSave.documentUrl) {
-                if (typeof pointToSave.documentUrl === 'string') {
-                    documentUrlObject = { en: pointToSave.documentUrl };
-                } else {
-                    documentUrlObject = { ...pointToSave.documentUrl };
-                }
-            }
-
-            // Identify and delete any files that were removed from the documentUrlObject (the form state)
+            // Cleanup orphaned files (files that were in original but not in pointToSave)
             const originalDocUrls = originalPoint?.documentUrl;
             if (originalDocUrls) {
                 const oldUrls: Record<string, string> = typeof originalDocUrls === 'string' ? { en: originalDocUrls } : originalDocUrls as Record<string, string>;
+                const currentUrls: Record<string, string> = (pointToSave.documentUrl as Record<string, string>) || {};
+                
                 for (const [l, url] of Object.entries(oldUrls)) {
-                    // If it was in the original but NOT in the current object, and we aren't about to replace it with a new file for that same language
-                    if (url && !documentUrlObject[l] && !(file && l === lang)) {
-                        console.log(`[DEBUG-SAVE-DEL] Deleting orphaned file for lang ${l}:`, url);
+                    if (url && !currentUrls[l]) {
                         await deleteFile(url).catch(err => console.error("Error deleting orphaned file:", err));
                     }
                 }
-            }
-
-            // Handle file upload/replacement for the active language
-            if (file) {
-                console.log(`[DEBUG-SAVE-04] File upload triggered for lang '${lang}'.`);
-                // If a file for the current language already exists, delete it first.
-                if (documentUrlObject[lang]) {
-                    console.log(`[DEBUG-SAVE-05] Deleting existing file for replacement ${lang}:`, documentUrlObject[lang]);
-                    await deleteFile(documentUrlObject[lang]).catch(err => console.error("Error deleting old file for replacement:", err));
-                }
-                const newUrl = await uploadFile(file, `Points/${pointToSave.id || 'new'}`);
-                console.log(`[DEBUG-SAVE-06] File uploaded. New URL: ${newUrl}`);
-                documentUrlObject[lang] = newUrl;
             }
 
             const dataToSave = {
@@ -190,27 +192,25 @@ const PointsAdmin: React.FC = () => {
                 label: pointToSave.label,
                 description: pointToSave.description,
                 position: pointToSave.position || { x: 0, y: 0, z: 0 },
-                documentUrl: Object.keys(documentUrlObject).length > 0 ? documentUrlObject : null,
+                documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
                 updatedAt: serverTimestamp(),
             };
 
-            console.log('%c[DEBUG-SAVE-FINAL] FINAL OBJECT TO FIRESTORE:', 'color: green; font-weight: bold;', JSON.parse(JSON.stringify(dataToSave)));
-
             if (isNewPoint) {
-                // Use addDoc for safety, letting Firestore generate the ID.
                 const newDocRef = await addDoc(pointsCollectionRef, { ...dataToSave, createdAt: serverTimestamp() });
                 console.log(`[DEBUG-SAVE-SUCCESS] New point created with ID: ${newDocRef.id}`);
             } else {
-                const pointDoc = doc(db, 'acupuncture_points', pointToSave.id!);
+                const pointDoc = doc(db, 'cfg_acupuncture_points', pointToSave.id!);
                 await updateDoc(pointDoc, dataToSave);
                 console.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointToSave.id} updated.`);
             }
 
             setEditingPoint(null);
+            setIsDirty(false);
             fetchPoints();
 
         } catch (err) {
-            console.error('%c[DEBUG-SAVE-ERROR] SAVE FAILED', 'color: red; font-weight: bold;', err);
+            console.error('Save failed:', err);
             setFormError(getTranslation('Failed to save the point'));
         } finally {
             setIsSubmitting(false);
@@ -236,7 +236,7 @@ const PointsAdmin: React.FC = () => {
                 }
             }
 
-            const pointDoc = doc(db, 'acupuncture_points', deletingPoint.id);
+            const pointDoc = doc(db, 'cfg_acupuncture_points', deletingPoint.id);
             await deleteDoc(pointDoc);
             console.log('[DEBUG-DELETE-SUCCESS] Point deleted from Firestore.');
             fetchPoints();
@@ -268,10 +268,12 @@ const PointsAdmin: React.FC = () => {
                 <EditPointForm
                     key={editingPoint.id || 'new'} // Ensures form resets when switching points
                     point={editingPoint}
-                    onSave={(data, file, lang) => handleSave(data, file, lang)}
+                    onSave={(data) => handleSave(data)}
+                    onUpdate={(data, file, lang) => handleUpdate(data, file, lang)}
                     onCancel={handleCancelEdit}
                     error={formError}
                     isSubmitting={isSubmitting}
+                    isDirty={isDirty}
                     appConfig={appConfig}
                 />
             )}
@@ -330,7 +332,7 @@ const PointsAdmin: React.FC = () => {
                                         <td className={styles.cell}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {docUrlForCurrentLang && (
-                                                <Tooltip text={useT('View Document')}>
+                                                <Tooltip text={getTranslation('View Document')}>
                                                     <a href={docUrlForCurrentLang} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
                                                         <FileCheck2 size={18} />
                                                     </a>
@@ -339,10 +341,10 @@ const PointsAdmin: React.FC = () => {
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
                                             <div className={styles.actionsWrapper}>
-                                                <Tooltip text={useT('Edit Point')}>
+                                                <Tooltip text={getTranslation('Edit Point')}>
                                                     <button onClick={() => handleStartEditing(point)} className={styles.actionButton}><Edit size={18} /></button>
                                                 </Tooltip>
-                                                <Tooltip text={useT('Delete Point')}>
+                                                <Tooltip text={getTranslation('Delete Point')}>
                                                     <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
                                                 </Tooltip>
                                             </div>
@@ -361,10 +363,12 @@ const PointsAdmin: React.FC = () => {
 
 interface EditPointFormProps {
     point: Partial<StingPoint>;
-    onSave: (point: Partial<StingPoint>, file: File | null, lang: string) => void;
+    onSave: (point: Partial<StingPoint>) => void;
+    onUpdate: (point: Partial<StingPoint>, file?: File | null, lang?: string) => void;
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
+    isDirty: boolean;
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
@@ -378,15 +382,14 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
     );
 };
 
-const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, error, isSubmitting, appConfig }) => {
+const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, onCancel, error, isSubmitting, isDirty: initialIsDirty, appConfig }) => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [formData, setFormData] = useState(point);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
         .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
-    const [file, setFile] = useState<File | null>(null);
-    const [isDirty, setIsDirty] = useState(false);
+    const [isDirty, setIsDirty] = useState(initialIsDirty);
 
     const stringsToRegister = useMemo(() => [
         'Saving...',
@@ -406,9 +409,8 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
 
     useEffect(() => {
         setFormData(point);
-        setFile(null);
-        setIsDirty(false);
-    }, [point]);
+        setIsDirty(initialIsDirty);
+    }, [point, initialIsDirty]);
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -436,7 +438,13 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData, file, activeLang);
+        onSave(formData);
+    };
+
+    const handleFileChange = (newFile: File | null) => {
+        if (newFile) {
+            onUpdate(formData, newFile, activeLang);
+        }
     };
 
     const handleFileDelete = () => {
@@ -445,9 +453,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
         let newDocUrls = { ... (typeof formData.documentUrl === 'object' ? formData.documentUrl : { en: formData.documentUrl }) };
         delete (newDocUrls as Record<string, any>)[activeLang];
 
-        setFormData(prev => ({ ...prev, documentUrl: newDocUrls }));
-        setFile(null); // Mark for deletion on save if it was just uploaded
-        setIsDirty(true);
+        onUpdate({ ...formData, documentUrl: newDocUrls });
     };
 
     const isEditing = !!formData.id;
@@ -554,14 +560,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onCancel, 
                         <DocumentManagement
                             entityName="Point"
                             documentUrl={formData.documentUrl as { [key: string]: string }}
-                            onFileChange={(newFile) => {
-                                setFile(newFile);
-                                setIsDirty(true);
-                            }}
+                            onFileChange={handleFileChange}
                             onFileDelete={handleFileDelete}
                             isSubmitting={isSubmitting}
                             activeLang={activeLang}
-                            selectedFileName={file?.name}
                         />
 
                     </div>

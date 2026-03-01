@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { PatientData } from '../types/patient';
+import { JoinedPatientData } from '../types/patient';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle } from 'lucide-react';
 import styles from './PatientsDashboard.module.css';
 import Tooltip from './common/Tooltip';
@@ -8,11 +8,11 @@ import { T, useT, useTranslationContext } from '../components/T';
 
 interface PatientsDashboardProps {
   user: AppUser;
-  patients: PatientData[];
-  onStartTreatment: (patient: PatientData) => void;
-  onUpdatePatient: (patient: PatientData) => void;
+  patients: JoinedPatientData[];
+  onStartTreatment: (patient: JoinedPatientData) => void;
+  onUpdatePatient: (patient: JoinedPatientData) => void;
   onAddPatient: () => void;
-  onShowTreatments: (patient: PatientData) => void;
+  onShowTreatments: (patient: JoinedPatientData) => void;
   onDeletePatient: (patientId: string) => void;
   isSaving: boolean;
 }
@@ -20,14 +20,14 @@ interface PatientsDashboardProps {
 const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, onDeletePatient, isSaving }) => {
   const { language } = useTranslationContext();
   const [searchTerm, setSearchTerm] = useState('');
-  const [patientToDelete, setPatientToDelete] = useState<PatientData | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<JoinedPatientData | null>(null);
 
   const tSearchPlaceholder = useT('Search by name, ID, or email...');
   const tEditPatient = useT('Edit Patient Details');
   const tDeletePatient = useT('Delete Patient');
   const tViewHistory = useT('View Treatment History');
 
-  const getFullName = (patient: PatientData) => patient.fullName;
+  const getFullName = (patient: JoinedPatientData) => patient.fullName;
 
   const filteredPatients = patients.filter(p =>
     getFullName(p).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -35,7 +35,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     (p.email && p.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleDeleteClick = (patient: PatientData) => setPatientToDelete(patient);
+  const handleDeleteClick = (patient: JoinedPatientData) => setPatientToDelete(patient);
   const confirmDelete = () => {
     if (patientToDelete) {
       onDeletePatient(patientToDelete.id!);

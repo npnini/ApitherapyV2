@@ -38,7 +38,7 @@ const ProblemAdmin: React.FC = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+        const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
         if (configDoc.exists()) {
           const data = configDoc.data();
           setAppConfig({
@@ -53,7 +53,7 @@ const ProblemAdmin: React.FC = () => {
     fetchConfig();
   }, []);
 
-  const [problemDocument, loading, error] = useDocument(selectedProblemId ? doc(db, 'problems', selectedProblemId) : undefined);
+  const [problemDocument, loading, error] = useDocument(selectedProblemId ? doc(db, 'cfg_problems', selectedProblemId) : undefined);
   const problem: Problem | undefined = problemDocument ? { id: problemDocument.id, ...problemDocument.data() } as Problem : undefined;
 
   const handleAddNew = () => {
@@ -76,7 +76,71 @@ const ProblemAdmin: React.FC = () => {
     setSelectedProblemId(null);
   };
 
-  const handleSubmit = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null, lang: string) => {
+  const handleFileUpdate = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File, lang: string) => {
+    setIsSubmitting(true);
+    try {
+      const folderName = selectedProblemId || 'new';
+      const firebasePath = `Problems/${folderName}`;
+      const newUrl = await uploadFile(file, firebasePath);
+
+      let documentUrl: { [key: string]: string } = {};
+      if (problem?.documentUrl) {
+        documentUrl = typeof problem.documentUrl === 'string' ? { en: problem.documentUrl } : { ...problem.documentUrl };
+      }
+      if (formData.documentUrl) {
+        documentUrl = { ...documentUrl, ...(formData.documentUrl as object) };
+      }
+
+      documentUrl[lang] = newUrl;
+
+      const dataToSave = {
+        ...formData,
+        documentUrl: documentUrl,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (selectedProblemId) {
+        await updateDoc(doc(db, 'cfg_problems', selectedProblemId), dataToSave);
+      } else {
+        const docRef = await addDoc(collection(db, 'cfg_problems'), { ...dataToSave, createdAt: serverTimestamp() });
+        setSelectedProblemId(docRef.id);
+      }
+    } catch (error) {
+      console.error('Error uploading file', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileDelete = async (lang: string) => {
+    if (!problem?.documentUrl) return;
+
+    setIsSubmitting(true);
+    try {
+      let documentUrl: { [key: string]: string } = {};
+      documentUrl = typeof problem.documentUrl === 'string' ? { en: problem.documentUrl } : { ...problem.documentUrl };
+
+      if (documentUrl[lang]) {
+        await deleteFile(documentUrl[lang]);
+        delete documentUrl[lang];
+      }
+
+      const dataToSave = {
+        documentUrl: documentUrl,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (selectedProblemId) {
+        await updateDoc(doc(db, 'cfg_problems', selectedProblemId), dataToSave);
+      }
+    } catch (error) {
+      console.error('Error deleting file', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, lang: string) => {
     const nameValues = Object.values(formData.name || {}).map(v => v.trim()).filter(Boolean);
     if (nameValues.length === 0) {
       alert(getTranslation('Problem name is required'));
@@ -91,41 +155,15 @@ const ProblemAdmin: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      let documentUrl: { [key: string]: string } = {};
-      if (problem?.documentUrl) {
-        if (typeof problem.documentUrl === 'string') {
-          documentUrl.en = problem.documentUrl;
-        } else {
-          documentUrl = { ...problem.documentUrl };
-        }
-      }
-
-      if (file) {
-        if (documentUrl[lang]) {
-          await deleteFile(documentUrl[lang]);
-        }
-        const newUrl = await uploadFile(file, `Problems/${selectedProblemId || 'new'}`);
-        documentUrl[lang] = newUrl;
-      } else if (
-        problem?.documentUrl &&
-        typeof problem.documentUrl === 'object' &&
-        problem.documentUrl[lang] &&
-        (!formData.documentUrl || !(formData.documentUrl as any)[lang])
-      ) {
-        await deleteFile(problem.documentUrl[lang]);
-        delete documentUrl[lang];
-      }
-
       const dataToSave = {
         ...formData,
-        documentUrl: documentUrl,
         updatedAt: serverTimestamp(),
       };
 
       if (selectedProblemId) {
-        await updateDoc(doc(db, 'problems', selectedProblemId), dataToSave);
+        await updateDoc(doc(db, 'cfg_problems', selectedProblemId), dataToSave);
       } else {
-        await addDoc(collection(db, 'problems'), { ...dataToSave, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'cfg_problems'), { ...dataToSave, createdAt: serverTimestamp() });
       }
 
       handleBackToList();
@@ -147,7 +185,15 @@ const ProblemAdmin: React.FC = () => {
       if (loading && selectedProblemId) {
         return <div>{getTranslation('Loading...')}</div>;
       }
-      return <ProblemForm initialData={selectedProblemId ? problem : undefined} onSubmit={(data, file, lang) => handleSubmit(data, file, lang)} onCancel={handleCancelForm} isSubmitting={isSubmitting} appConfig={appConfig} />;
+      return <ProblemForm
+        initialData={selectedProblemId ? problem : undefined}
+        onSubmit={(data, lang) => handleSubmit(data, lang)}
+        onFileUpdate={(data, file, lang) => handleFileUpdate(data, file, lang)}
+        onFileDelete={(lang) => handleFileDelete(lang)}
+        onCancel={handleCancelForm}
+        isSubmitting={isSubmitting}
+        appConfig={appConfig}
+      />;
     }
     return null;
   };

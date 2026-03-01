@@ -35,7 +35,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
         const fetchTemplate = async () => {
             setIsLoading(true);
             try {
-                const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+                const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
                 if (configDoc.exists()) {
                     const data = configDoc.data();
                     const templateUrl = data.treatmentInstructions?.instructionsFiles?.apitherapy?.[language];

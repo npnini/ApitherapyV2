@@ -66,7 +66,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const [error, setError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
-    const configDocRef = doc(db, 'app_config', 'main');
+    const configRef = doc(db, 'cfg_app_config', 'main');
 
     const areSettingsChanged = useMemo(() => {
         return JSON.stringify(settings) !== JSON.stringify(initialSettings);
@@ -116,12 +116,12 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         const fetchSettingsAndProtocols = async () => {
             setIsLoading(true);
             try {
-                const protocolsCollectionRef = collection(db, 'protocols');
+                const protocolsCollectionRef = collection(db, 'cfg_protocols');
                 const protocolDocs = await getDocs(protocolsCollectionRef);
                 const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
                 setProtocols(fetchedProtocols);
 
-                const docSnap = await getDoc(configDocRef);
+                const docSnap = await getDoc(configRef);
                 const defaults = getDefaultsFromSchema(appConfigSchema);
                 let mergedSettings = { ...defaults };
 
@@ -155,7 +155,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             try {
                 // This query does NOT use orderBy, and will not require an index.
                 const q = query(
-                    collection(db, 'questionnaires'),
+                    collection(db, 'cfg_questionnaires'),
                     where('domain', '==', domain)
                 );
                 const querySnapshot = await getDocs(q);
@@ -222,7 +222,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         setSaveSuccess(false);
 
         try {
-            await setDoc(configDocRef, settings);
+            await setDoc(configRef, settings);
             setInitialSettings(settings);
             setSaveSuccess(true);
             setTimeout(() => {
@@ -291,18 +291,28 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     };
 
 
-    const openInNewTab = async (url: string) => {
+    const getFilenameFromUrl = (url: string | null | undefined): string => {
+        if (!url) return '';
+        try {
+            const path = url.split('?')[0];
+            const filename = path.split('%2F').pop();
+            return filename ? decodeURIComponent(filename) : '';
+        } catch (error) {
+            return '';
+        }
+    };
+
+    const openInNewTab = async (url: string, isConsent?: boolean) => {
         try {
             const response = await fetch(url);
 
-            // Check if it's a text/markdown file
-            const path = url.toLowerCase().split('?')[0];
-            const isText = path.endsWith('.md') || path.endsWith('.txt');
+            const filename = getFilenameFromUrl(url).toLowerCase();
+            const isText = isConsent || filename.endsWith('.md') || filename.endsWith('.txt');
 
             if (isText) {
                 const text = await response.text();
                 // Check if it's Hebrew based on filename or text content
-                const isHebrew = path.includes('_he_') || /[\u0590-\u05FF]/.test(text);
+                const isHebrew = filename.includes('_he') || /[\u0590-\u05FF]/.test(text);
                 const htmlDir = isHebrew ? 'rtl' : 'auto';
 
                 // Create a simple HTML wrapper to force UTF-8 and correct alignment
@@ -326,9 +336,10 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             } else {
                 const blob = await response.blob();
                 let type = blob.type;
-                if (path.endsWith('.pdf')) type = 'application/pdf';
-                else if (path.endsWith('.png')) type = 'image/png';
-                else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) type = 'image/jpeg';
+                if (filename.endsWith('.pdf')) type = 'application/pdf';
+                else if (filename.endsWith('.png')) type = 'image/png';
+                else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) type = 'image/jpeg';
+                // Fallback to text if missing type or extension but seems like text, though mostly we rely on isConsent above.
 
                 const viewerBlob = new Blob([blob], { type });
                 const viewerUrl = URL.createObjectURL(viewerBlob);
@@ -337,6 +348,30 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         } catch (err) {
             console.warn('Failed to fetch blob for viewer, falling back to direct link:', err);
             window.open(url, '_blank');
+        }
+    };
+
+    const forceDownload = async (url: string, filename: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+        } catch (err) {
+            console.warn('Failed to fetch blob for force download, falling back to direct link:', err);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            link.setAttribute('target', '_blank');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     };
 
@@ -360,7 +395,11 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     parentObject = parentObject[path[i]];
                 }
                 const lastKey = path[path.length - 1];
-                delete parentObject[lastKey].apitherapy[lang];
+                if (parentObject[lastKey]?.apitherapy) {
+                    delete parentObject[lastKey].apitherapy[lang];
+                } else if (parentObject[lastKey]) {
+                    delete parentObject[lastKey][lang];
+                }
                 return newSettings;
             });
         } catch (err) {
@@ -482,13 +521,19 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 break;
             case 'file':
                 const supportedLangs = settings.languageSettings?.supportedLanguages || ['en'];
-                const fileValues = value?.apitherapy || {};
+                const fileValues = value?.apitherapy || value || {};
 
                 control = (
                     <div className={styles.fileSettingsList}>
                         {supportedLangs.map((lang: string) => {
+                            const fileUrl = typeof fileValues === 'object' ? fileValues[lang] : undefined;
                             const langName = allLanguages.find(l => l.id === lang)?.name || lang;
-                            const fileUrl = fileValues[lang];
+                            const isConsent = path[0] === 'consentSettings';
+                            
+                            const rawUrlFilename = getFilenameFromUrl(fileUrl) || 'document';
+                            const finalExtension = isConsent ? 'txt' : 'pdf';
+                            const hasExtension = /\.[a-zA-Z0-9]+$/.test(rawUrlFilename);
+                            const filename = hasExtension ? rawUrlFilename : `${rawUrlFilename}.${finalExtension}`;
 
                             return (
                                 <div key={lang} className={styles.fileSettingRow}>
@@ -498,14 +543,14 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                                             <button
                                                 type="button"
                                                 className={styles.viewBtn}
-                                                onClick={() => openInNewTab(fileUrl)}
+                                                onClick={() => openInNewTab(fileUrl, isConsent)}
                                             >
                                                 <T>View</T>
                                             </button>
                                             <button
                                                 type="button"
-                                                className={styles.viewBtn} // same style for now
-                                                onClick={() => downloadFile(fileUrl, `consent_${lang}.txt`)}
+                                                className={styles.downloadBtn}
+                                                onClick={() => forceDownload(fileUrl, filename)}
                                             >
                                                 <T>Download</T>
                                             </button>

@@ -20,7 +20,7 @@ const QuestionnaireAdmin: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [supportedLanguages, setSupportedLanguages] = useState<string[]>([]);
 
-    const collectionRef = React.useMemo(() => collection(db, 'questionnaires'), []);
+    const collectionRef = React.useMemo(() => collection(db, 'cfg_questionnaires'), []);
 
     const failedToFetchAppConfig = useT('Failed to fetch app configuration');
     const failedToFetchData = useT('Failed to fetch questionnaires');
@@ -30,7 +30,7 @@ const QuestionnaireAdmin: React.FC = () => {
     useEffect(() => {
         const fetchAppConfig = async () => {
             try {
-                const appConfigDocRef = doc(db, 'app_config', 'main');
+                const appConfigDocRef = doc(db, 'cfg_app_config', 'main');
                 const appConfigSnap = await getDoc(appConfigDocRef);
                 if (appConfigSnap.exists()) {
                     const configData = appConfigSnap.data();
@@ -49,8 +49,8 @@ const QuestionnaireAdmin: React.FC = () => {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await getDocs(collectionRef);
-            const fetchedItems = data.docs.map(doc => ({ ...(doc.data() as Omit<Questionnaire, 'id'>), id: doc.id }));
+            const snapshot = await getDocs(collection(db, 'cfg_questionnaires'));
+            const fetchedItems = snapshot.docs.map(doc => ({ ...(doc.data() as Omit<Questionnaire, 'id'>), id: doc.id }));
             fetchedItems.sort((a, b) => a.domain.localeCompare(b.domain) || a.versionNumber - b.versionNumber);
             setQuestionnaires(fetchedItems);
             setError(null);
@@ -59,7 +59,7 @@ const QuestionnaireAdmin: React.FC = () => {
             console.error(err);
         }
         setIsLoading(false);
-    }, [collectionRef, failedToFetchData]);
+    }, [failedToFetchData]);
 
     useEffect(() => {
         fetchData();
@@ -84,7 +84,7 @@ const QuestionnaireAdmin: React.FC = () => {
         if (!deletingItem) return;
         setIsSubmitting(true);
         try {
-            await deleteDoc(doc(db, 'questionnaires', deletingItem.id));
+            await deleteDoc(doc(db, 'cfg_questionnaires', deletingItem.id));
             fetchData();
         } catch (err) {
             setError(failedToDeleteItem);

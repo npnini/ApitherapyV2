@@ -1,24 +1,27 @@
 import { VitalSigns } from './treatmentSession';
 
-export interface MedicalRecord {
-    patient_level_data?: {
-        condition?: string;
-        severity?: 'mild' | 'moderate' | 'severe';
-        lastTreatment?: string;
-        consentSignedUrl?: string;
-        treatmentInstructionsSignedUrl?: string;
-        treatment_plan?: {
-            problemIds: string[];
-            protocolIds: string[];
-            measureIds: string[];
-        }
+export interface BaseDocument {
+    id?: string;
+    createdTimestamp: any; // serverTimestamp
+    updatedTimestamp: any; // serverTimestamp
+}
+
+export interface MedicalData extends BaseDocument {
+    patientId: string;
+    condition?: string;
+    severity?: 'mild' | 'moderate' | 'severe';
+    lastTreatment?: string;
+    consentSignedUrl?: string;
+    treatmentInstructionsSignedUrl?: string;
+    treatment_plan?: {
+        problemIds: string[];
+        protocolIds: string[];
+        measureIds: string[];
     }
 }
 
-
-export interface MeasuredValueReading {
-    id?: string;
-    timestamp: any; // serverTimestamp
+export interface MeasuredValueReading extends BaseDocument {
+    patientId: string;
     readings: Array<{
         measureId: string;
         type: 'Category' | 'Scale';
@@ -26,11 +29,10 @@ export interface MeasuredValueReading {
     }>;
 }
 
-export interface Treatment {
-    id?: string;
+export interface Treatment extends BaseDocument {
+    patientId: string;
     protocolId: string;
     caretakerId: string;
-    timestamp: any; // serverTimestamp
     stungPointCodes: string[];
     notes: string;
     patientReport: string;
@@ -39,16 +41,15 @@ export interface Treatment {
     finalVitals: VitalSigns;
 }
 
-export interface QuestionnaireResponse {
+export interface QuestionnaireResponse extends BaseDocument {
+    patientId: string;
     domain?: string;
     version?: number;
-    dateUpdated?: Date;
     signature?: string;
     [key: string]: any; // for answers
 }
 
-export interface PatientData {
-    id: string;
+export interface PatientData extends BaseDocument {
     fullName: string;
     birthDate: string;
     profession: string;
@@ -57,8 +58,13 @@ export interface PatientData {
     email: string;
     mobile: string;
     caretakerId: string;
-    dateCreated?: Date;
-    lastUpdated?: Date;
-    medicalRecord?: Partial<MedicalRecord>;
-    questionnaireResponse?: Partial<QuestionnaireResponse>;
+}
+
+export interface JoinedPatientData extends PatientData {
+    medicalRecord?: {
+        patient_level_data: Partial<MedicalData>;
+    };
+    questionnaireResponse?: QuestionnaireResponse;
+    /** Readings collected in ProblemsProtocolsTab, to be written after patient ID is resolved. */
+    pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number }>;
 }

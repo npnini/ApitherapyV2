@@ -32,7 +32,7 @@ const MeasuresHistoryTab: React.FC<MeasuresHistoryTabProps> = ({ patientData }) 
         setIsLoading(true);
         try {
             // Fetch all measures for lookup
-            const measuresSnapshot = await getDocs(collection(db, 'measures'));
+            const measuresSnapshot = await getDocs(collection(db, 'cfg_measures'));
             const fetchedMeasures = measuresSnapshot.docs.map(doc => ({
                 ...(doc.data() as Omit<Measure, 'id'>),
                 id: doc.id

@@ -1,5 +1,5 @@
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getFirestore, collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, query, getDocs, orderBy, where } from 'firebase/firestore';
 import { app } from '../firebase';
 import { Treatment } from '../types/treatment';
 
@@ -67,8 +67,13 @@ export const getTreatmentsByPatientId = async (patientId: string): Promise<Treat
         throw new Error("Patient ID is required to fetch treatments.");
     }
 
-    const treatmentsRef = collection(db, 'patients', patientId, 'medical_records', 'patient_level_data', 'treatments');
-    const q = query(treatmentsRef, orderBy("date", "desc"));
+    const treatmentsRef = collection(db, 'treatments');
+    const q = query(
+        treatmentsRef,
+        where('__name__', '>=', `${patientId}_`),
+        where('__name__', '<=', `${patientId}_\uf8ff`),
+        orderBy('__name__', 'desc')
+    );
 
     try {
         const querySnapshot = await getDocs(q);

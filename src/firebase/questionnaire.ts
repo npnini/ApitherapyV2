@@ -5,11 +5,11 @@ import { Questionnaire } from '../types/questionnaire';
 export const saveQuestionnaire = async (questionnaire: Partial<Questionnaire>): Promise<string> => {
     let questionnaireRef;
     if (questionnaire.id) {
-        questionnaireRef = doc(db, 'questionnaires', questionnaire.id);
+        questionnaireRef = doc(db, 'cfg_questionnaires', questionnaire.id);
     } else {
-        questionnaireRef = doc(collection(db, 'questionnaires'));
+        questionnaireRef = doc(collection(db, 'cfg_questionnaires'));
     }
-    
+
     const { id, ...dataToSave } = questionnaire;
 
     await setDoc(questionnaireRef, {
@@ -24,7 +24,7 @@ export const getQuestionnaire = async (domain: string): Promise<Questionnaire | 
     // Query for all questionnaires with the specified domain.
     // This avoids needing a composite index in Firestore by sorting client-side.
     const q = query(
-        collection(db, 'questionnaires'), 
+        collection(db, 'cfg_questionnaires'),
         where("domain", "==", domain)
     );
     const querySnapshot = await getDocs(q);
@@ -35,7 +35,7 @@ export const getQuestionnaire = async (domain: string): Promise<Questionnaire | 
     // Sort the results by version number in descending order to find the latest version.
     const questionnaires = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Questionnaire));
     questionnaires.sort((a, b) => b.versionNumber - a.versionNumber);
-    
+
     // Return the questionnaire with the highest version number.
     return questionnaires[0];
 };

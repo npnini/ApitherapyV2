@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PatientData } from '../types/patient';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, where } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight } from 'lucide-react';
@@ -111,9 +111,13 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         setIsLoading(true);
         setError(null);
         try {
-            const treatmentsRef = collection(db, `patients/${patient.id}/medical_records/patient_level_data/treatments`);
-            // Unified query: try ordering by timestamp first (preferred)
-            const q = query(treatmentsRef, orderBy("timestamp", "desc"));
+            const treatmentsRef = collection(db, 'treatments');
+            const q = query(
+                treatmentsRef,
+                where('__name__', '>=', `${patient.id}_`),
+                where('__name__', '<=', `${patient.id}_\uf8ff`),
+                orderBy('__name__', 'desc')
+            );
             const querySnapshot = await getDocs(q);
 
             let rawDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StoredTreatmentDoc));
@@ -126,7 +130,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             const rawTreatments = rawDocs;
 
             // Fetch all points to handle both legacy IDs and new Codes in stungPoints
-            const pointsSnapshot = await getDocs(collection(db, 'acupuncture_points'));
+            const pointsSnapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
             const pointsMap = new Map<string, StingPoint>();
             pointsSnapshot.docs.forEach(doc => {
                 const data = doc.data() as StingPoint;

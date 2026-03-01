@@ -63,7 +63,7 @@ const MeasureAdmin: React.FC = () => {
         stringsToRegister.forEach(s => registerString(s));
     }, [stringsToRegister, registerString]);
 
-    const measuresCollectionRef = React.useMemo(() => collection(db, 'measures'), []);
+    const measuresCollectionRef = React.useMemo(() => collection(db, 'cfg_measures'), []);
 
     useEffect(() => {
         const auth = getAuth();
@@ -76,7 +76,7 @@ const MeasureAdmin: React.FC = () => {
 
         const fetchConfig = async () => {
             try {
-                const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+                const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
                 if (configDoc.exists()) {
                     const data = configDoc.data();
                     setAppConfig({
@@ -222,7 +222,7 @@ const MeasureAdmin: React.FC = () => {
                 dataToSave.createdAt = serverTimestamp();
                 await addDoc(measuresCollectionRef, dataToSave);
             } else {
-                const measureDoc = doc(db, 'measures', measureToSave.id);
+                const measureDoc = doc(db, 'cfg_measures', measureToSave.id);
                 await updateDoc(measureDoc, dataToSave);
             }
 
@@ -249,8 +249,7 @@ const MeasureAdmin: React.FC = () => {
                 }
             }
 
-            const measureDoc = doc(db, 'measures', deletingMeasure.id);
-            await deleteDoc(measureDoc);
+            await deleteDoc(doc(db, 'cfg_measures', deletingMeasure.id));
             fetchMeasures();
         } catch (err) {
             setError(getTranslation('Failed to delete the measure'));

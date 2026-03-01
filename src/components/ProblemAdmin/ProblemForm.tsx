@@ -13,7 +13,9 @@ import { X, Globe } from 'lucide-react';
 
 interface ProblemFormProps {
   initialData?: Problem;
-  onSubmit: (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null, lang: string) => void;
+  onSubmit: (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, lang: string) => void;
+  onFileUpdate: (data: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File, lang: string) => void;
+  onFileDelete: (lang: string) => void;
   onCancel: () => void;
   isSubmitting: boolean;
   appConfig: { defaultLanguage: string; supportedLanguages: string[] };
@@ -29,7 +31,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
   );
 };
 
-const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCancel, isSubmitting, appConfig }) => {
+const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFileUpdate, onFileDelete, onCancel, isSubmitting, appConfig }) => {
   const { language: currentLang, registerString, getTranslation } = useTranslationContext();
   const [activeLang, setActiveLang] = useState<string>(currentLang);
 
@@ -37,12 +39,10 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({});
   const [selectedProtocols, setSelectedProtocols] = useState<ShuttleItem[]>([]);
   const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [documentUrl, setDocumentUrl] = useState<{ [key: string]: string } | undefined>(undefined);
-  const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
 
-  const [protocolsCollection] = useCollection(collection(db, 'protocols'));
-  const [measuresCollection] = useCollection(collection(db, 'measures'));
+  const [protocolsCollection] = useCollection(collection(db, 'cfg_protocols'));
+  const [measuresCollection] = useCollection(collection(db, 'cfg_measures'));
 
   const SUPPORTED_LANGS = appConfig.supportedLanguages;
   const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
@@ -132,7 +132,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
     e.preventDefault();
     const protocolIds = selectedProtocols.map(p => p.id);
     const measureIds = selectedMeasures.map(m => m.id);
-    onSubmit({ name: names, description: descriptions, protocolIds, measureIds, documentUrl }, fileToUpload, activeLang);
+    onSubmit({ name: names, description: descriptions, protocolIds, measureIds, documentUrl }, activeLang);
   };
 
   const handleFileChange = (file: File | null) => {
@@ -140,22 +140,15 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
       alert(getTranslation('Only PDF files are allowed.'));
       return;
     }
-    setFileToUpload(file);
     if (file) {
-      setSelectedFileName(file.name);
-    } else {
-      setSelectedFileName(undefined);
+      const protocolIds = selectedProtocols.map(p => p.id);
+      const measureIds = selectedMeasures.map(m => m.id);
+      onFileUpdate({ name: names, description: descriptions, protocolIds, measureIds, documentUrl }, file, activeLang);
     }
   };
 
   const handleFileDelete = () => {
-    setFileToUpload(null);
-    setSelectedFileName(undefined);
-    if (documentUrl && documentUrl[activeLang]) {
-      const newDocUrls = { ...documentUrl };
-      delete newDocUrls[activeLang];
-      setDocumentUrl(newDocUrls);
-    }
+    onFileDelete(activeLang);
   };
 
   const isEditing = !!initialData;
@@ -281,7 +274,6 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onCanc
               onFileDelete={handleFileDelete}
               isSubmitting={isSubmitting}
               activeLang={activeLang}
-              selectedFileName={selectedFileName}
               entityName="Problem"
             />
           </div>

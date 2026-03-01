@@ -162,7 +162,7 @@ async function translateBatch(
     if (!cache[targetLang]) cache[targetLang] = {};
 
     const firestoreDocId = `ui_${targetLang}`;
-    const firestoreRef = doc(db, 'translations', firestoreDocId);
+    const firestoreRef = doc(db, 'cfg_translations', firestoreDocId);
 
     // ── Step 1: Fetch from Firestore ─────────────────────────────────────────
     let firestoreCache: Record<string, string> = {};

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
 import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe } from 'lucide-react';
@@ -26,7 +26,6 @@ const ProtocolAdmin: React.FC = () => {
     const [editingProtocol, setEditingProtocol] = useState<Partial<ProtocolFormState> | null>(null);
     const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
-    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
@@ -80,7 +79,7 @@ const ProtocolAdmin: React.FC = () => {
 
         const fetchConfig = async () => {
             try {
-                const configDoc = await getDoc(doc(db, 'app_config', 'main'));
+                const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
                 if (configDoc.exists()) {
                     const data = configDoc.data();
                     setAppConfig({
@@ -108,8 +107,8 @@ const ProtocolAdmin: React.FC = () => {
         setIsLoading(true);
         try {
             const [protocolSnapshot, pointsSnapshot] = await Promise.all([
-                getDocs(collection(db, 'protocols')),
-                getDocs(collection(db, 'acupuncture_points'))
+                getDocs(collection(db, 'cfg_protocols')),
+                getDocs(collection(db, 'cfg_acupuncture_points'))
             ]);
 
             const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol).sort((a, b) => {
@@ -170,7 +169,32 @@ const ProtocolAdmin: React.FC = () => {
         return true;
     }
 
-    const handleSave = async (lang: string) => {
+    const handleFileUpdate = async (protocol: Partial<ProtocolFormState>, file?: File | null, lang: string = currentLang) => {
+        setEditingProtocol(protocol);
+        setIsDirty(true);
+
+        if (file) {
+            setIsFormLoading(true);
+            try {
+                const folderName = protocol.id || 'new';
+                const firebasePath = `Protocols/${folderName}`;
+                const newUrl = await uploadFile(file, firebasePath);
+
+                const currentDocUrls = typeof protocol.documentUrl === 'object' ? { ...protocol.documentUrl } : {};
+                const newDocUrls = { ...currentDocUrls, [lang]: newUrl };
+
+                setEditingProtocol({ ...protocol, documentUrl: newDocUrls });
+                setFormError(null);
+            } catch (err) {
+                console.error("Error uploading protocol file:", err);
+                setFormError(getTranslation('Failed to upload file.'));
+            } finally {
+                setIsFormLoading(false);
+            }
+        }
+    };
+
+    const handleSave = async () => {
         if (!editingProtocol) return;
 
         if (!validateProtocolForm(editingProtocol)) {
@@ -180,49 +204,24 @@ const ProtocolAdmin: React.FC = () => {
         setIsFormLoading(true);
 
         try {
-            let documentUrl: { [key: string]: string } = {};
-
-            if (editingProtocol.documentUrl) {
-                if (typeof editingProtocol.documentUrl === 'string') {
-                    documentUrl = { en: editingProtocol.documentUrl };
-                } else {
-                    documentUrl = { ...editingProtocol.documentUrl };
-                }
-            }
-
-            const originalProtocol = editingProtocol.id ? protocols.find(p => p.id === editingProtocol.id) : null;
-            const originalUrlForLang = originalProtocol?.documentUrl
-                ? (typeof originalProtocol.documentUrl === 'object' ? (originalProtocol.documentUrl as any)[lang] : (lang === 'en' ? originalProtocol.documentUrl : undefined))
-                : undefined;
-
-            const wasRemoved = originalUrlForLang && !documentUrl[lang];
-
-            if (fileToUpload) {
-                if (originalUrlForLang) {
-                    await deleteFile(originalUrlForLang);
-                }
-                const newUrl = await uploadFile(fileToUpload, `Protocols/${editingProtocol.id || 'new'}`);
-                documentUrl[lang] = newUrl;
-            } else if (wasRemoved) {
-                await deleteFile(originalUrlForLang!);
-            }
+            const documentUrl = typeof editingProtocol.documentUrl === 'object' ? editingProtocol.documentUrl : {};
 
             const protocolToSave: any = {
                 name: typeof editingProtocol.name === 'object' ? editingProtocol.name : { [appConfig.defaultLanguage]: editingProtocol.name },
                 description: typeof editingProtocol.description === 'object' ? editingProtocol.description : { [appConfig.defaultLanguage]: editingProtocol.description },
                 rationale: typeof editingProtocol.rationale === 'object' ? editingProtocol.rationale : { [appConfig.defaultLanguage]: editingProtocol.rationale },
                 points: editingProtocol.points!,
-                documentUrl: documentUrl,
+                documentUrl: documentUrl && Object.keys(documentUrl).length > 0 ? documentUrl : null,
+                updatedAt: serverTimestamp(),
             };
 
             if (editingProtocol.id) {
-                const protocolRef = doc(db, 'protocols', editingProtocol.id);
+                const protocolRef = doc(db, 'cfg_protocols', editingProtocol.id);
                 await updateDoc(protocolRef, protocolToSave);
             } else {
-                await addDoc(collection(db, 'protocols'), protocolToSave);
+                await addDoc(collection(db, 'cfg_protocols'), { ...protocolToSave, createdAt: serverTimestamp() });
             }
             setEditingProtocol(null);
-            setFileToUpload(null);
             setIsDirty(false);
             fetchProtocolsAndPoints();
         } catch (error) {
@@ -247,7 +246,7 @@ const ProtocolAdmin: React.FC = () => {
                     await deleteFile(deletingProtocol.documentUrl);
                 }
             }
-            await deleteDoc(doc(db, 'protocols', deletingProtocol.id));
+            await deleteDoc(doc(db, 'cfg_protocols', deletingProtocol.id));
             fetchProtocolsAndPoints();
         } catch (error) {
             console.error("Error deleting protocol:", error);
@@ -264,8 +263,7 @@ const ProtocolAdmin: React.FC = () => {
         const newDocUrls = { ...(typeof protocol.documentUrl === 'object' ? protocol.documentUrl : { en: protocol.documentUrl }) };
         delete (newDocUrls as Record<string, any>)[lang];
 
-        onUpdate({ ...protocol, documentUrl: newDocUrls });
-        setFileToUpload(null);
+        handleFileUpdate({ ...protocol, documentUrl: newDocUrls });
     };
 
     const onUpdate = (protocol: Partial<ProtocolFormState>) => {
@@ -276,7 +274,6 @@ const ProtocolAdmin: React.FC = () => {
     const handleStartEditing = (proto: Protocol) => {
         const pointIds = (proto.points || []).map((p: AcuPoint | string) => typeof p === 'string' ? p : (p as AcuPoint).id);
         setFormError(null);
-        setFileToUpload(null);
         setIsDirty(false);
         setEditingProtocol({
             ...proto,
@@ -289,7 +286,6 @@ const ProtocolAdmin: React.FC = () => {
 
     const handleStartNew = () => {
         setFormError(null);
-        setFileToUpload(null);
         setIsDirty(false);
         setEditingProtocol({
             name: { [appConfig.defaultLanguage]: '' },
@@ -367,10 +363,10 @@ const ProtocolAdmin: React.FC = () => {
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
                                             <div className={styles.actionsWrapper}>
-                                                <Tooltip text={useT('Edit Protocol')}>
+                                                <Tooltip text={getTranslation('Edit Protocol')}>
                                                     <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
                                                 </Tooltip>
-                                                <Tooltip text={useT('Delete Protocol')}>
+                                                <Tooltip text={getTranslation('Delete Protocol')}>
                                                     <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
                                                 </Tooltip>
                                             </div>
@@ -386,16 +382,13 @@ const ProtocolAdmin: React.FC = () => {
             {editingProtocol && <EditProtocolForm
                 protocol={editingProtocol}
                 allAcuPoints={allAcuPoints}
-                onSave={(lang) => handleSave(lang)}
-                onCancel={onCancel}
+                onSave={handleSave}
+                onCancel={() => setEditingProtocol(null)}
                 onUpdate={onUpdate}
+                onFileUpdate={handleFileUpdate}
                 error={formError}
                 isSubmitting={isFormLoading}
-                onFileChange={(file) => {
-                    setFileToUpload(file);
-                    setIsDirty(true);
-                }}
-                onFileDelete={(protocol, lang) => handleFileDelete(protocol, lang)}
+                onFileDelete={handleFileDelete}
                 isDirty={isDirty}
                 currentLang={currentLang}
                 appConfig={appConfig}
@@ -415,12 +408,12 @@ const ProtocolAdmin: React.FC = () => {
 interface EditProtocolFormProps {
     protocol: Partial<ProtocolFormState>;
     allAcuPoints: AcuPoint[];
-    onSave: (lang: string) => void;
+    onSave: () => void;
     onCancel: () => void;
     onUpdate: (protocol: Partial<ProtocolFormState>) => void;
+    onFileUpdate: (protocol: Partial<ProtocolFormState>, file: File, lang: string) => void;
     error: string | null;
     isSubmitting: boolean;
-    onFileChange: (file: File | null) => void;
     onFileDelete: (protocol: Partial<ProtocolFormState>, lang: string) => void;
     isDirty: boolean;
     currentLang: string;
@@ -438,8 +431,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
     );
 };
 
-const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, error, isSubmitting, onFileChange, onFileDelete, isDirty, currentLang, appConfig, getTranslation }) => {
-    const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, onFileUpdate, error, isSubmitting, onFileDelete, isDirty, currentLang, appConfig, getTranslation }) => {
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
@@ -454,9 +446,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
         onUpdate({ ...protocol, points: newPoints });
     };
 
-    useEffect(() => {
-        setSelectedFileName(null);
-    }, [protocol]);
+    // No internal selectedFileName state needed anymore as we upload immediately
 
     const getLangDisplayName = (lang: string) => {
         switch (lang) {
@@ -608,28 +598,18 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 entityName="Protocol"
                                 documentUrl={protocol.documentUrl as { [key: string]: string }}
                                 onFileChange={(file) => {
-                                    onFileChange(file);
-                                    if (file) setSelectedFileName(file.name);
-                                    else setSelectedFileName(null);
+                                    if (file) onFileUpdate(protocol, file, activeLang);
                                 }}
-                                onFileDelete={() => {
-                                    if (selectedFileName) {
-                                        onFileChange(null);
-                                        setSelectedFileName(null);
-                                    } else {
-                                        onFileDelete(protocol, activeLang);
-                                    }
-                                }}
+                                onFileDelete={() => onFileDelete(protocol, activeLang)}
                                 isSubmitting={isSubmitting}
                                 activeLang={activeLang}
-                                selectedFileName={selectedFileName || undefined}
                             />
                         </>
                     )}
                 </div>
                 <div className={styles.modalActions}>
                     <button onClick={onCancel} className={styles.cancelButton}><T>Cancel</T></button>
-                    <button onClick={() => onSave(activeLang)} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
+                    <button onClick={() => onSave()} disabled={isSubmitting || !isDirty} className={styles.saveButton}>
                         <Save size={16} /> {isSubmitting ? getTranslation('Saving...') : <T>Save Protocol</T>}
                     </button>
                 </div>

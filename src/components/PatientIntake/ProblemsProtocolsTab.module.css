@@ -19,6 +19,13 @@
     margin-left: -0.5rem;
 }
 
+.lastReadingTimestamp {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #94a3b8;
+    margin-inline-start: 0.35rem;
+}
+
 .searchContainer {
     margin-bottom: 1rem;
     position: relative;

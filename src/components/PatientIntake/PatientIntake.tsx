@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PersonalDetails from './PersonalDetails';
 import QuestionnaireStep from './QuestionnaireStep';
 import TreatmentHistory from '../TreatmentHistory';
-import { PatientData } from '../../types/patient';
+import { JoinedPatientData, PatientData } from '../../types/patient';
 import styles from './PatientIntake.module.css';
 import { T, useT } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
@@ -15,6 +15,7 @@ import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
 import { Protocol } from '../../types/protocol';
 import { VitalSigns } from '../../types/treatmentSession';
+import { AppUser } from '../../types/user';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
 type TabKey =
@@ -41,14 +42,12 @@ const TAB_ORDER: TabKey[] = [
 // The first 5 tabs must all be saved before "Start New Treatment" is enabled (UX-1)
 const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'consent', 'instructions', 'problems'];
 
-import { AppUser } from '../../types/user';
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface PatientIntakeProps {
-    patient: Partial<PatientData>;
+    patient: Partial<JoinedPatientData>;
     user: AppUser;
-    onSave: (patientData: PatientData) => void;
-    onUpdate: (patientData: PatientData) => void;
+    onSave: (patientData: any) => void;
+    onUpdate: (patientData: any) => void;
     onClose: () => void;          // renamed from onBack (UX-2)
     saveStatus: 'idle' | 'saving' | 'success' | 'error';
     errorMessage: string;
@@ -110,7 +109,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
     // ── Patient data ──────────────────────────────────────────────────────────
-    const initializePatientData = (p: Partial<PatientData>): Partial<PatientData> => ({
+    const initializePatientData = (p: Partial<JoinedPatientData>): Partial<JoinedPatientData> => ({
         ...p,
         fullName: p.fullName ?? '',
         identityNumber: p.identityNumber ?? '',
@@ -120,11 +119,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         profession: p.profession ?? '',
         address: p.address ?? '',
         caretakerId: p.caretakerId ?? user.uid,
-        medicalRecord: p.medicalRecord ?? {},
-        questionnaireResponse: p.questionnaireResponse ?? {},
+        medicalRecord: p.medicalRecord ?? { patient_level_data: {} },
+        questionnaireResponse: p.questionnaireResponse,
     });
 
-    const [patientData, setPatientData] = useState<Partial<PatientData>>(
+    const [patientData, setPatientData] = useState<Partial<JoinedPatientData>>(
         initializePatientData(patient)
     );
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -143,9 +142,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             }
 
             // 2. Questionnaire
-            const qResponse = data.questionnaireResponse || {};
+            const qResponse = (data.questionnaireResponse || {}) as any;
             const hasAnswers = Object.keys(qResponse).some(
-                key => key !== 'domain' && key !== 'version' && key !== 'dateUpdated' && key !== 'signature' && qResponse[key] !== undefined
+                key => key !== 'domain' && key !== 'version' && key !== 'signature' && key !== 'patientId' && key !== 'createdTimestamp' && key !== 'updatedTimestamp' && qResponse[key] !== undefined
             );
             if (hasAnswers) {
                 initialSaved.add('questionnaire');
@@ -186,7 +185,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     }, [patient]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
-    const handleDataChange = (data: Partial<PatientData>, isInternal: boolean = false) => {
+    const handleDataChange = (data: Partial<JoinedPatientData>, isInternal: boolean = false) => {
         setPatientData(data);
         if (!isInternal) {
             setIsDirty(true);
@@ -236,16 +235,17 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setPatientData(finalData);
         }
 
-        if (activeTab === 'problems' && problemsTabRef.current && patientData.id) {
+        if (activeTab === 'problems' && problemsTabRef.current) {
             const readings = problemsTabRef.current.getReadings();
-            if (readings.length > 0) {
-                await addMeasuredValueReading(patientData.id, { timestamp: null, readings });
-                // Also mark measures tab as saved if we just added a reading
-                setSavedTabs(prev => new Set(prev).add('measures'));
+            if (problemsTabRef.current.isDirty && readings.length > 0) {
+                finalData = { ...finalData, pendingReadings: readings };
             }
         }
 
-        await onUpdate(finalData as PatientData);
+        await onUpdate(finalData);
+        if (problemsTabRef.current) {
+            problemsTabRef.current.clearDirty();
+        }
         markTabSaved(activeTab);
     };
 
@@ -271,16 +271,17 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setPatientData(finalData);
         }
 
-        if (activeTab === 'problems' && problemsTabRef.current && patientData.id) {
+        if (activeTab === 'problems' && problemsTabRef.current) {
             const readings = problemsTabRef.current.getReadings();
             if (readings.length > 0) {
-                await addMeasuredValueReading(patientData.id, { timestamp: null, readings });
-                // Also mark measures tab as saved if we just added a reading
-                setSavedTabs(prev => new Set(prev).add('measures'));
+                finalData = { ...finalData, pendingReadings: readings };
             }
         }
 
-        await onSave(finalData as PatientData);
+        await onSave(finalData);
+        if (problemsTabRef.current) {
+            problemsTabRef.current.clearDirty();
+        }
         markTabSaved(activeTab);
     };
 
@@ -413,7 +414,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             case 'problems':
                 return <ProblemsProtocolsTab
                     ref={problemsTabRef}
-                    patientData={patientData as PatientData}
+                    patientData={patientData as JoinedPatientData}
                     onDataChange={handleDataChange}
                 />;
             case 'treatments':

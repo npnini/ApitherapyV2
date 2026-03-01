@@ -1,22 +1,24 @@
 import React, { useState, useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db } from '../../firebase';
 import { T, useT, useTranslationContext } from '../T';
 import { Problem } from '../../types/problem';
 import { Protocol } from '../../types/protocol';
 import { Measure } from '../../types/measure';
-import { PatientData, MeasuredValueReading } from '../../types/patient';
+import { JoinedPatientData, MeasuredValueReading } from '../../types/patient';
 import ShuttleSelector, { ShuttleItem } from '../shared/ShuttleSelector';
 import styles from './ProblemsProtocolsTab.module.css';
 
 export interface ProblemsProtocolsTabHandle {
     getReadings: () => Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number }>;
+    isDirty: boolean;
+    clearDirty: () => void;
 }
 
 interface ProblemsProtocolsTabProps {
-    patientData: PatientData;
-    onDataChange: (data: Partial<PatientData>, isInternal?: boolean) => void;
+    patientData: JoinedPatientData;
+    onDataChange: (data: Partial<JoinedPatientData>, isInternal?: boolean) => void;
 }
 
 const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProtocolsTabProps>(({ patientData, onDataChange }, ref) => {
@@ -29,16 +31,18 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
     const tSelectedMeasures = useT("Selected Measures");
 
     // Data fetching
-    const [problemsSnap, problemsLoading] = useCollection(query(collection(db, 'problems')));
-    const [protocolsSnap, protocolsLoading] = useCollection(query(collection(db, 'protocols')));
-    const [measuresSnap, measuresLoading] = useCollection(query(collection(db, 'measures')));
+    const [problemsSnap, problemsLoading] = useCollection(query(collection(db, 'cfg_problems')));
+    const [protocolsSnap, protocolsLoading] = useCollection(query(collection(db, 'cfg_protocols')));
+    const [measuresSnap, measuresLoading] = useCollection(query(collection(db, 'cfg_measures')));
 
-    // Fetch latest readings for this patient
+    // Fetch latest readings for this patient from root measured_values collection using document ID range
     const [readingsSnap, readingsLoading] = useCollection(
         patientData.id
             ? query(
-                collection(db, 'patients', patientData.id, 'medical_records', 'patient_level_data', 'measured_values'),
-                orderBy('timestamp', 'desc'),
+                collection(db, 'measured_values'),
+                where('__name__', '>=', `${patientData.id}_`),
+                where('__name__', '<=', `${patientData.id}_\uf8ff`),
+                orderBy('__name__', 'desc'),
                 limit(1)
             )
             : null
@@ -76,6 +80,8 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
     const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
     const [readings, setReadings] = useState<Record<string, string | number>>({});
     const [isInitialized, setIsInitialized] = useState(false);
+    const [readingsDirty, setReadingsDirty] = useState(false);
+    const [lastReadingTimestamp, setLastReadingTimestamp] = useState<Date | null>(null);
 
     // Filtered lists (Funneling)
     const availableProtocolItems = useMemo(() => {
@@ -98,7 +104,6 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
         return measureItems.filter(m => allowedIds.has(m.id));
     }, [selectedProblems, problems, measureItems]);
 
-    // Initialize from database
     useEffect(() => {
         if (!isInitialized && !problemsLoading && !protocolsLoading && !measuresLoading && !readingsLoading && problemItems.length > 0) {
             const plan = patientData.medicalRecord?.patient_level_data?.treatment_plan;
@@ -120,6 +125,12 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
                     initialReadings[r.measureId] = r.value;
                 });
                 setReadings(initialReadings);
+                // Store the timestamp for display
+                const ts = latestReadingsDoc.createdTimestamp;
+                if (ts) {
+                    const date = ts.toDate ? ts.toDate() : new Date(ts);
+                    setLastReadingTimestamp(date);
+                }
             }
             setIsInitialized(true);
         }
@@ -135,7 +146,9 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
                     value
                 };
             }).filter(r => r.value !== undefined && r.value !== null && r.value !== '');
-        }
+        },
+        isDirty: readingsDirty,
+        clearDirty: () => setReadingsDirty(false)
     }));
 
     // Sync selections to parent
@@ -172,6 +185,7 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
 
     const handleReadingChange = (measureId: string, value: string | number) => {
         setReadings(prev => ({ ...prev, [measureId]: value }));
+        setReadingsDirty(true);
         // Deeply ensure we're sending a fresh object and marking as dirty
         onDataChange({ ...patientData }, false);
     };
@@ -214,31 +228,26 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
 
             {selectedMeasures.length > 0 && (
                 <fieldset className={styles.section}>
-                    <legend><T>Measures values</T></legend>
+                    <legend>
+                        <T>Measures values</T>
+                        {lastReadingTimestamp && (
+                            <span className={styles.lastReadingTimestamp}>
+                                {' '}(<T>last reading at</T>{' '}
+                                {String(lastReadingTimestamp.getDate()).padStart(2, '0')}/
+                                {String(lastReadingTimestamp.getMonth() + 1).padStart(2, '0')}/
+                                {lastReadingTimestamp.getFullYear()}{' '}
+                                {String(lastReadingTimestamp.getHours()).padStart(2, '0')}:
+                                {String(lastReadingTimestamp.getMinutes()).padStart(2, '0')})
+                            </span>
+                        )}
+                    </legend>
                     <div className={styles.measuresTableContainer}>
                         <table className={styles.measuresTable}>
                             <thead>
                                 <tr>
                                     <th><T>Measure Name</T></th>
                                     <th><T>Description</T></th>
-                                    <th>
-                                        {readingsSnap && !readingsSnap.empty && (
-                                            <div className={styles.lastEnteredLabel}>
-                                                <T>Last entered:</T> {(() => {
-                                                    const ts = readingsSnap.docs[0].data().timestamp;
-                                                    if (!ts) return '';
-                                                    const date = ts.toDate ? ts.toDate() : new Date(ts);
-                                                    const d = String(date.getDate()).padStart(2, '0');
-                                                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                                                    const y = date.getFullYear();
-                                                    const hr = String(date.getHours()).padStart(2, '0');
-                                                    const min = String(date.getMinutes()).padStart(2, '0');
-                                                    return `${d}/${m}/${y}  ${hr}:${min}`;
-                                                })()}
-                                            </div>
-                                        )}
-                                        <T>Value</T>
-                                    </th>
+                                    <th><T>Value</T></th>
                                 </tr>
                             </thead>
                             <tbody>

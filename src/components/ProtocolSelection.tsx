@@ -181,7 +181,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
             }
             setIsLoading(true);
             try {
-                const protocolSnapshot = await getDocs(collection(db, 'protocols'));
+                const protocolSnapshot = await getDocs(collection(db, 'cfg_protocols'));
                 const protocolsData = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol));
                 setAllProtocols(protocolsData);
             } catch (error) {

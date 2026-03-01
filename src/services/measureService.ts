@@ -20,8 +20,8 @@ export const groupReadingsByDensity = (
     const groups: Map<string, GroupedReading> = new Map();
 
     readings.forEach(reading => {
-        if (!reading.timestamp) return;
-        const date = reading.timestamp.toDate ? reading.timestamp.toDate() : new Date(reading.timestamp);
+        if (!reading.createdTimestamp) return;
+        const date = reading.createdTimestamp.toDate ? reading.createdTimestamp.toDate() : new Date(reading.createdTimestamp);
 
         let groupDate: Date;
         let mainKey: string;

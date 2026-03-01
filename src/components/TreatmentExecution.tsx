@@ -74,7 +74,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({ patient, protoc
                 return;
             }
 
-            const pointPromises = pointIds.map(id => getDoc(doc(db, 'acupuncture_points', id)));
+            const pointPromises = pointIds.map(id => getDoc(doc(db, 'cfg_acupuncture_points', id)));
             const pointDocs = await Promise.all(pointPromises);
 
             const points: StingPoint[] = pointDocs.map(doc => {

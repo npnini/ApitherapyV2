@@ -17,7 +17,7 @@ interface ProblemListProps {
 
 const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
   const { language: currentLang } = useTranslationContext();
-  const [problemsCollection, loading, error] = useCollection(collection(db, 'problems'));
+  const [problemsCollection, loading, error] = useCollection(collection(db, 'cfg_problems'));
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [problemToDelete, setProblemToDelete] = useState<string | null>(null);
@@ -60,7 +60,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
 
   const handleConfirmDelete = async () => {
     if (problemToDelete) {
-      await deleteDoc(doc(db, 'problems', problemToDelete));
+      await deleteDoc(doc(db, 'cfg_problems', problemToDelete));
       setIsModalOpen(false);
       setProblemToDelete(null);
     }

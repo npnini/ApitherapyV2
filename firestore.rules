@@ -20,64 +20,73 @@ service cloud.firestore {
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    match /acupuncture_points/{pointId} {
+    // --- CONFIGURATION COLLECTIONS (LONG-TERM) ---
+
+    match /cfg_acupuncture_points/{pointId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
-    match /protocols/{protocolId} {
+    match /cfg_protocols/{protocolId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    match /measures/{measureId} {
+    match /cfg_measures/{measureId} {
         allow read: if isAuthenticated();
         allow write: if isAdmin();
     }
 
-    match /problems/{problemId} {
+    match /cfg_problems/{problemId} {
         allow read: if isAuthenticated();
         allow write: if isAdmin();
     }
 
-    match /questionnaires/{questionnaireId} {
+    match /cfg_questionnaires/{questionnaireId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
+    match /cfg_app_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /cfg_translations/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // --- REFACTORED PATIENT COLLECTIONS ---
+
+    // 1. Personal Details
     match /patients/{patientId} {
       allow read: if isAuthenticated();
       allow write: if isCaretaker() || isAdmin();
-
-      match /medical_records/{recordId} {
-        allow read: if isAuthenticated();
-        allow create, update, delete: if (isCaretaker() || isAdmin());
-
-        match /treatments/{treatmentId} {
-          allow read: if isAuthenticated();
-          allow create, update, delete: if isCaretaker() || isAdmin();
-        }
-
-        match /questionnaire_responses/{responseId} {
-          allow read: if isAuthenticated();
-          allow create, update, delete: if isCaretaker() || isAdmin();
-        }
-
-        match /measured_values/{readingId} {
-          allow read: if isAuthenticated();
-          allow create, update, delete: if isCaretaker() || isAdmin();
-        }
-      }
     }
 
-    match /app_config/{configId} {
+    // 2. Medical Data (Singleton per patient)
+    match /patient_medical_data/{patientId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isCaretaker() || isAdmin();
     }
 
-    match /translations/{document=**} {
+    // 3. Questionnaire Responses (Multiple per patient)
+    match /questionnaire_responses/{responseId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isCaretaker() || isAdmin();
+    }
+
+    // 4. Treatments (Multiple per patient)
+    match /treatments/{treatmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isCaretaker() || isAdmin();
+    }
+
+    // 5. Measured Values (Multiple per patient)
+    match /measured_values/{readingId} {
+      allow read: if isAuthenticated();
+      allow write: if isCaretaker() || isAdmin();
     }
   }
 }
