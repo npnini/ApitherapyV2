@@ -14,6 +14,8 @@ import Tooltip from './common/Tooltip';
 // A type for the form state, where points are an array of strings (IDs)
 interface ProtocolFormState extends Omit<Protocol, 'points'> {
     points: string[];
+    status: 'active' | 'inactive';
+    reference_count: number;
 }
 
 const ProtocolAdmin: React.FC = () => {
@@ -27,6 +29,7 @@ const ProtocolAdmin: React.FC = () => {
     const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
     // String Registry for callbacks and dynamic content
@@ -212,8 +215,16 @@ const ProtocolAdmin: React.FC = () => {
                 rationale: typeof editingProtocol.rationale === 'object' ? editingProtocol.rationale : { [appConfig.defaultLanguage]: editingProtocol.rationale },
                 points: editingProtocol.points!,
                 documentUrl: documentUrl && Object.keys(documentUrl).length > 0 ? documentUrl : null,
+                status: editingProtocol.status || 'active',
+                reference_count: editingProtocol.reference_count || 0,
                 updatedAt: serverTimestamp(),
             };
+
+            const originalPoints = protocols.find((p: Protocol) => p.id === editingProtocol.id)?.points || [];
+            const newPoints = editingProtocol.points || [];
+
+            const addedPoints = newPoints.filter((p: string) => !originalPoints.includes(p));
+            const removedPoints = originalPoints.filter((p: string) => !newPoints.includes(p));
 
             if (editingProtocol.id) {
                 const protocolRef = doc(db, 'cfg_protocols', editingProtocol.id);
@@ -221,6 +232,24 @@ const ProtocolAdmin: React.FC = () => {
             } else {
                 await addDoc(collection(db, 'cfg_protocols'), { ...protocolToSave, createdAt: serverTimestamp() });
             }
+
+            // Update reference counts for points
+            for (const pointId of addedPoints) {
+                const pointRef = doc(db, 'cfg_acupuncture_points', pointId);
+                const pointDoc = await getDoc(pointRef);
+                if (pointDoc.exists()) {
+                    await updateDoc(pointRef, { reference_count: (pointDoc.data().reference_count || 0) + 1 });
+                }
+            }
+
+            for (const pointId of removedPoints) {
+                const pointRef = doc(db, 'cfg_acupuncture_points', pointId);
+                const pointDoc = await getDoc(pointRef);
+                if (pointDoc.exists()) {
+                    await updateDoc(pointRef, { reference_count: Math.max(0, (pointDoc.data().reference_count || 0) - 1) });
+                }
+            }
+
             setEditingProtocol(null);
             setIsDirty(false);
             fetchProtocolsAndPoints();
@@ -247,6 +276,17 @@ const ProtocolAdmin: React.FC = () => {
                 }
             }
             await deleteDoc(doc(db, 'cfg_protocols', deletingProtocol.id));
+
+            // Decement reference counts for all points
+            for (const pointId of (deletingProtocol.points || [])) {
+                const pId = typeof pointId === 'string' ? pointId : pointId.id;
+                const pointRef = doc(db, 'cfg_acupuncture_points', pId);
+                const pointDoc = await getDoc(pointRef);
+                if (pointDoc.exists()) {
+                    await updateDoc(pointRef, { reference_count: Math.max(0, (pointDoc.data().reference_count || 0) - 1) });
+                }
+            }
+
             fetchProtocolsAndPoints();
         } catch (error) {
             console.error("Error deleting protocol:", error);
@@ -291,7 +331,9 @@ const ProtocolAdmin: React.FC = () => {
             name: { [appConfig.defaultLanguage]: '' },
             description: { [appConfig.defaultLanguage]: '' },
             rationale: { [appConfig.defaultLanguage]: '' },
-            points: []
+            points: [],
+            status: 'active',
+            reference_count: 0
         });
     }
 
@@ -318,6 +360,7 @@ const ProtocolAdmin: React.FC = () => {
                             <tr>
                                 <th scope="col" className={styles.headerCell}><T>Protocol Name</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Description</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Status</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
                                     <T>Actions</T>
@@ -354,6 +397,11 @@ const ProtocolAdmin: React.FC = () => {
                                         <td className={styles.cell}>
                                             {(typeof protocol.description === 'object' ? (protocol.description[currentLang] || protocol.description[appConfig.defaultLanguage] || Object.values(protocol.description)[0]) : protocol.description) as string}
                                         </td>
+                                        <td className={styles.cell}>
+                                            <span className={`${styles.statusBadge} ${protocol.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                                <T>{protocol.status === 'active' ? 'Active' : 'Inactive'}</T>
+                                            </span>
+                                        </td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {finalDocUrl && (
                                                 <a href={finalDocUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
@@ -366,9 +414,19 @@ const ProtocolAdmin: React.FC = () => {
                                                 <Tooltip text={getTranslation('Edit Protocol')}>
                                                     <button onClick={() => handleStartEditing(protocol)} className={styles.actionButton}><Edit size={18} /></button>
                                                 </Tooltip>
-                                                <Tooltip text={getTranslation('Delete Protocol')}>
-                                                    <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
-                                                </Tooltip>
+                                                {protocol.reference_count > 0 ? (
+                                                    <Tooltip text={getTranslation('Cannot delete: protocol is referenced in problems')}>
+                                                        <button className={`${styles.actionButton} ${styles.deleteButtonDisabled}`} disabled>
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip text={getTranslation('Delete Protocol')}>
+                                                        <button onClick={() => protocol.id && setDeletingProtocol(protocol)} className={`${styles.actionButton} ${styles.deleteButton}`}>
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </Tooltip>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -483,6 +541,22 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                 <div className={styles.formGrid}>
                     {isSubmitting ? <div className={styles.formLoader}><Loader className={styles.loader} size={32} /></div> : (
                         <>
+                            <div className={styles.statusToggleContainer}>
+                                <span className={styles.statusLabel}><T>Status</T>:</span>
+                                <label className={styles.switch}>
+                                    <input
+                                        type="checkbox"
+                                        checked={protocol.status === 'active'}
+                                        onChange={(e) => {
+                                            onUpdate({ ...protocol, status: e.target.checked ? 'active' : 'inactive' });
+                                        }}
+                                    />
+                                    <span className={styles.slider}></span>
+                                </label>
+                                <span className={`${styles.statusText} ${protocol.status === 'active' ? styles.statusActive : styles.statusInactive}`}>
+                                    <T>{protocol.status === 'active' ? 'Active' : 'Inactive'}</T>
+                                </span>
+                            </div>
                             <div>
                                 <div className={styles.labelWrapper}>
                                     <label htmlFor='protocolName' className={styles.formLabel}>
@@ -577,20 +651,33 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                     <span className={styles.requiredAsterisk}>*</span>
                                 </h3>
                                 <div className={styles.pointsSelectionContainer}>
-                                    {allAcuPoints.map(point => (
-                                        <label key={point.id} className={`${styles.pointLabel} ${(protocol.points || []).includes(point.id) ? styles.pointLabelSelected : ''}`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={(protocol.points || []).includes(point.id)}
-                                                onChange={() => handlePointSelection(point.id)}
-                                                className={styles.pointCheckbox}
-                                            />
-                                            <span className={styles.pointCode}>{point.code}</span>
-                                            <span className={styles.pointLabelText}>
-                                                {typeof point.label === 'object' ? (point.label[currentLang] || point.label[appConfig.defaultLanguage] || Object.values(point.label)[0]) : point.label}
-                                            </span>
-                                        </label>
-                                    ))}
+                                    {allAcuPoints.map(point => {
+                                        const isSelected = (protocol.points || []).includes(point.id);
+                                        const isDisabled = point.status === 'inactive' && !isSelected;
+                                        return (
+                                            <label
+                                                key={point.id}
+                                                className={`
+                                                    ${styles.pointLabel} 
+                                                    ${isSelected ? styles.pointLabelSelected : ''} 
+                                                    ${isDisabled ? styles.pointLabelInactive : ''}
+                                                `}
+                                                title={isDisabled ? getTranslation('Point is inactive and cannot be selected') : ''}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => !isDisabled && handlePointSelection(point.id)}
+                                                    className={styles.pointCheckbox}
+                                                    disabled={isDisabled}
+                                                />
+                                                <span className={styles.pointCode}>{point.code}</span>
+                                                <span className={styles.pointLabelText}>
+                                                    {typeof point.label === 'object' ? (point.label[currentLang] || point.label[appConfig.defaultLanguage] || Object.values(point.label)[0]) : point.label}
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

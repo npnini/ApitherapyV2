@@ -7,6 +7,8 @@ export interface Problem {
   protocolIds: string[];
   measureIds: string[];
   documentUrl?: { [key: string]: string } | string;
+  status: 'active' | 'inactive';
+  reference_count: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

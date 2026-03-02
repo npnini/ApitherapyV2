@@ -40,6 +40,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
   const [selectedProtocols, setSelectedProtocols] = useState<ShuttleItem[]>([]);
   const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
   const [documentUrl, setDocumentUrl] = useState<{ [key: string]: string } | undefined>(undefined);
+  const [problemStatus, setProblemStatus] = useState<'active' | 'inactive'>('active');
 
   const [protocolsCollection] = useCollection(collection(db, 'cfg_protocols'));
   const [measuresCollection] = useCollection(collection(db, 'cfg_measures'));
@@ -75,26 +76,27 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     measuresCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Measure)) || []
     , [measuresCollection]);
 
-  const availableProtocolsForShuttle = useMemo(() =>
-    allProtocols.map(p => ({
+  const availableProtocolsForShuttle = useMemo(() => {
+    const activeProtocols = allProtocols.filter(p => !p.status || p.status === 'active' || initialData?.protocolIds?.includes(p.id));
+    return activeProtocols.map(p => ({
       id: p.id,
       name: typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)
-    })),
-    [allProtocols, currentLang]
-  );
+    }));
+  }, [allProtocols, currentLang, initialData]);
 
-  const availableMeasuresForShuttle = useMemo(() =>
-    allMeasures.map(m => ({
+  const availableMeasuresForShuttle = useMemo(() => {
+    const activeMeasures = allMeasures.filter(m => !m.status || m.status === 'active' || initialData?.measureIds?.includes(m.id));
+    return activeMeasures.map(m => ({
       id: m.id,
       name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || ''
-    })),
-    [allMeasures, currentLang]
-  );
+    }));
+  }, [allMeasures, currentLang, initialData]);
 
   useEffect(() => {
     if (initialData) {
       setNames(initialData.name || {});
       setDescriptions(initialData.description || {});
+      setProblemStatus(initialData.status || 'active');
 
       let docUrls: { [key: string]: string } | undefined;
       if (typeof initialData.documentUrl === 'string') {
@@ -132,7 +134,15 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     e.preventDefault();
     const protocolIds = selectedProtocols.map(p => p.id);
     const measureIds = selectedMeasures.map(m => m.id);
-    onSubmit({ name: names, description: descriptions, protocolIds, measureIds, documentUrl }, activeLang);
+    onSubmit({
+      name: names,
+      description: descriptions,
+      protocolIds,
+      measureIds,
+      documentUrl,
+      status: problemStatus,
+      reference_count: initialData?.reference_count || 0
+    }, activeLang);
   };
 
   const handleFileChange = (file: File | null) => {
@@ -143,7 +153,15 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     if (file) {
       const protocolIds = selectedProtocols.map(p => p.id);
       const measureIds = selectedMeasures.map(m => m.id);
-      onFileUpdate({ name: names, description: descriptions, protocolIds, measureIds, documentUrl }, file, activeLang);
+      onFileUpdate({
+        name: names,
+        description: descriptions,
+        protocolIds,
+        measureIds,
+        documentUrl,
+        status: problemStatus,
+        reference_count: initialData?.reference_count || 0
+      }, file, activeLang);
     }
   };
 
@@ -190,6 +208,21 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.scrollableArea}>
+
+            <div className={styles.statusToggleContainer}>
+              <span className={styles.statusLabel}><T>Status</T>:</span>
+              <label className={styles.switch}>
+                <input
+                  type="checkbox"
+                  checked={problemStatus === 'active'}
+                  onChange={(e) => setProblemStatus(e.target.checked ? 'active' : 'inactive')}
+                />
+                <span className={styles.slider}></span>
+              </label>
+              <span className={`${styles.statusText} ${problemStatus === 'active' ? styles.statusActive : styles.statusInactive}`}>
+                <T>{problemStatus === 'active' ? 'Active' : 'Inactive'}</T>
+              </span>
+            </div>
 
             <div className={styles.inputGroup}>
               <div className={styles.labelWrapper}>

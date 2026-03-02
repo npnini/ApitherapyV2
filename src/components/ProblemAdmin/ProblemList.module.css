@@ -100,3 +100,32 @@
     text-align: center;
     padding: 2rem;
 }
+
+/* Status Styles */
+.statusBadge {
+    display: inline-flex;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badgeActive {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.badgeInactive {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.deleteButtonDisabled {
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.deleteButtonDisabled:hover {
+    color: #94a3b8 !important;
+}

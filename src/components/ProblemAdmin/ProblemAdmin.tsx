@@ -96,6 +96,8 @@ const ProblemAdmin: React.FC = () => {
       const dataToSave = {
         ...formData,
         documentUrl: documentUrl,
+        status: formData.status || 'active',
+        reference_count: formData.reference_count || 0,
         updatedAt: serverTimestamp(),
       };
 
@@ -157,6 +159,8 @@ const ProblemAdmin: React.FC = () => {
     try {
       const dataToSave = {
         ...formData,
+        status: formData.status || 'active',
+        reference_count: formData.reference_count || 0,
         updatedAt: serverTimestamp(),
       };
 
