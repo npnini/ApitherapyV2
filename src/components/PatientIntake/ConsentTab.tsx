@@ -135,14 +135,11 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                     });
                 }
 
+                const processedTemplate = injectData(template);
                 const blob = await generateDocumentImage(
-                    template,
+                    processedTemplate,
                     signatures,
-                    {
-                        patientName: patientData.fullName || '',
-                        identityNumber: patientData.identityNumber || '',
-                        caretakerName: caretakerName
-                    },
+                    {}, // Placeholders already injected
                     direction
                 );
 

@@ -75,7 +75,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
             result = result.replace(regex, `<b>${value}</b>`);
         });
 
-        // Convert newlines to breaks if not already HTML
+        // 1. Convert newlines to breaks if not already HTML
         if (!result.includes('<br') && !result.includes('<p>')) {
             result = result.replace(/\n/g, '<br/>');
         }
@@ -95,8 +95,9 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
             }
 
             try {
+                const processedTemplate = injectData(template);
                 const blob = await generateDocumentImage(
-                    template,
+                    processedTemplate,
                     [
                         {
                             label: tPatientSignatureLabel,
@@ -104,10 +105,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                             name: patientData.fullName || ''
                         }
                     ],
-                    {
-                        patientName: patientData.fullName || '',
-                        identityNumber: patientData.identityNumber || ''
-                    },
+                    {}, // Already injected
                     direction
                 );
 

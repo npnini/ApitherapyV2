@@ -24,6 +24,7 @@ export const generateDocumentImage = async (
 
     ctx.fillStyle = '#1e293b';
     ctx.font = '16px Georgia, serif';
+    ctx.direction = direction; // Explicitly set direction for RTL/LTR font rendering
     const margin = 50;
     const maxWidth = canvas.width - (margin * 2);
     let y = 80;
@@ -66,10 +67,12 @@ export const generateDocumentImage = async (
         processedText = processedText.replace(regex, value);
     });
 
-    // Handle newlines and paragraphs
-    const paragraphs = processedText.split('\n');
+    // Handle newlines, breaks and paragraphs
+    const paragraphs = processedText.split(/\n|<br\s*\/?>|<p>/i);
     paragraphs.forEach(p => {
-        y = wrapText(p, startX, y, maxWidth, 24);
+        // Strip other HTML tags (like <b>) but keep the text
+        const cleanP = p.replace(/<[^>]*>/g, '').trim();
+        y = wrapText(cleanP, startX, y, maxWidth, 24);
     });
 
     y += 40;
