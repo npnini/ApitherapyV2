@@ -496,6 +496,124 @@
     border-top: 1px solid #e5e7eb;
 }
 
+/* Status Styles */
+.statusBadge {
+    display: inline-flex;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badgeActive {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.badgeInactive {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+/* Status Toggle Styles */
+.statusToggleContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.statusLabel {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--color-primary);
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--color-primary);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+.statusText {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.statusActive {
+    color: #059669;
+}
+
+.statusInactive {
+    color: #64748b;
+}
+
+/* Selection filtering */
+.pointLabelInactive {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+    background-color: #f1f5f9;
+}
+
+.deleteButtonDisabled {
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.deleteButtonDisabled:hover {
+    color: #94a3b8 !important;
+}
+
 .confirmDeleteButton {
     background-color: #dc2626;
     color: white;
