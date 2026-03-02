@@ -1,17 +1,35 @@
-import { Beaker } from 'lucide-react';
-import { signInWithGoogle } from '../services/authService';
+import { useState, useEffect } from 'react';
+import { Beaker, AlertCircle } from 'lucide-react';
+import { signInWithGoogle, handleRedirectResult } from '../services/authService';
 import styles from './Login.module.css';
 import { T, useTranslationContext } from './T';
 
 const Login = () => {
   const { language } = useTranslationContext();
+  const [error, setError] = useState<string | null>(null);
   const dir = language === 'he' ? 'rtl' : 'ltr';
 
+  useEffect(() => {
+    // Check for redirect result on mount
+    handleRedirectResult()
+      .then((result) => {
+        if (result) {
+          console.log("Login successful after redirect at", window.location.origin);
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect Error at", window.location.origin, ":", error);
+        setError(`${error.code} (${window.location.origin})`);
+      });
+  }, []);
+
   const handleGoogleSignIn = async () => {
+    setError(null);
     try {
       await signInWithGoogle();
-    } catch (error) {
-      console.error("Firebase Popup Error:", error);
+    } catch (error: any) {
+      console.error("Firebase Sign-in Error:", error);
+      setError(error.code || error.message);
     }
   };
 
@@ -25,6 +43,14 @@ const Login = () => {
         <p className={styles.subtitle}>
           <T>Welcome please signin</T>
         </p>
+
+        {error && (
+          <div className={styles.errorBanner}>
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+
         <button
           id="google-signin-button"
           onClick={handleGoogleSignIn}

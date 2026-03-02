@@ -13,6 +13,20 @@
     flex-direction: column;
 }
 
+@media (max-width: 768px) {
+    .container {
+        padding: 1.5rem 1rem;
+    }
+
+    .formContainer {
+        padding: 1.5rem;
+    }
+
+    .stepTitle {
+        font-size: 1.1rem;
+    }
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

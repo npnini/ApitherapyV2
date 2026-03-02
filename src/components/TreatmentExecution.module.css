@@ -431,6 +431,39 @@
     cursor: not-allowed;
 }
 
+@media (max-width: 1200px) {
+    .grid {
+        grid-template-columns: 1fr 1.5fr;
+    }
+
+    .pointsPanel {
+        display: none;
+        /* Hide points panel on medium screens, assume user uses 3D model */
+    }
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: min-content 1fr min-content;
+        overflow-y: auto;
+    }
+
+    .canvasPanel {
+        height: 40vh;
+        min-height: 300px;
+    }
+
+    .dataPanel {
+        overflow-y: visible;
+    }
+
+    .pointsPanel {
+        display: flex;
+        order: 3;
+    }
+}
+
 /* --- Loading / Error states --- */
 .centeredMsg {
     display: flex;

@@ -1,25 +1,29 @@
 /* --- BASE SIDEBAR & BACKGROUND --- */
 .sidebar {
-    width: 22rem; /* Wider for the larger text */
+    width: 16rem;
+    /* Narrower for smaller screens */
     display: flex;
     flex-direction: column;
     height: 100vh;
     color: #1F2937;
     position: relative;
     overflow: hidden;
-    background-color: #FFFBEB; 
+    background-color: #FFFBEB;
     /* Honeycomb Pattern - Small cells */
     background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="56" height="100" viewBox="0 0 56 100"%3E%3Cpath d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="%23fcd34d" stroke-width="1" stroke-opacity="0.3"/%3E%3Cpath d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66" fill="%23f59e0b" fill-opacity="0.15"/%3E%3C/svg%3E');
-    background-size: 40px 70px; 
+    background-size: 40px 70px;
 }
 
 /* The Warm Glow Overlay */
 .sidebar::after {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.3) 0%, transparent 70%),
-                linear-gradient(to bottom, transparent, rgba(251, 191, 36, 0.1));
+        linear-gradient(to bottom, transparent, rgba(251, 191, 36, 0.1));
     pointer-events: none;
     z-index: 0;
 }
@@ -35,7 +39,8 @@
 }
 
 .title {
-    font-size: 1.5rem; /* Larger Title */
+    font-size: 1.25rem;
+    /* Slightly smaller Title */
     font-weight: 900;
     letter-spacing: -0.05em;
     color: #1F2937;
@@ -53,15 +58,17 @@
     z-index: 1;
 }
 
-.navButton, .configDropdownButton {
+.navButton,
+.configDropdownButton {
     width: 100%;
     display: flex;
     align-items: center;
     padding: 0.85rem;
     border-radius: 0.75rem;
     transition: all 0.2s;
-    font-size: 1.15rem; /* Larger Font */
-    font-weight: 700;
+    font-size: 0.95rem;
+    /* More compact font */
+    font-weight: 600;
     text-align: start;
     color: #1F2937;
     background: transparent;
@@ -69,7 +76,8 @@
     cursor: pointer;
 }
 
-.navButton:hover, .configDropdownButton:hover {
+.navButton:hover,
+.configDropdownButton:hover {
     background-color: rgba(251, 191, 36, 0.3);
     transform: translateX(4px);
 }
@@ -86,16 +94,28 @@
     width: 1.5rem;
     height: 1.5rem;
     filter: brightness(0) opacity(0.8);
-    [dir="ltr"] & { margin-right: 0.75rem; }
-    [dir="rtl"] & { margin-left: 0.75rem; }
+
+    [dir="ltr"] & {
+        margin-right: 0.5rem;
+    }
+
+    [dir="rtl"] & {
+        margin-left: 0.5rem;
+    }
 }
 
 .iconSecondary {
     width: 1.2rem;
     height: 1.2rem;
     filter: brightness(0) opacity(0.8);
-    [dir="ltr"] & { margin-right: 0.5rem; }
-    [dir="rtl"] & { margin-left: 0.5rem; }
+
+    [dir="ltr"] & {
+        margin-right: 0.5rem;
+    }
+
+    [dir="rtl"] & {
+        margin-left: 0.5rem;
+    }
 }
 
 /* --- SUBMENU STYLING --- */
@@ -107,8 +127,14 @@
     background-color: rgba(255, 255, 255, 0.3);
     border-radius: 0.5rem;
     padding: 0.5rem;
-    [dir="ltr"] & { padding-left: 2.5rem; }
-    [dir="rtl"] & { padding-right: 2.5rem; }
+
+    [dir="ltr"] & {
+        padding-left: 1.5rem;
+    }
+
+    [dir="rtl"] & {
+        padding-right: 1.5rem;
+    }
 }
 
 .configButton {
@@ -118,7 +144,7 @@
     padding: 0.6rem;
     border-radius: 0.5rem;
     transition: background-color 0.2s;
-    font-size: 1.05rem; /* Larger Font */
+    font-size: 0.85rem;
     text-align: start;
     color: #1F2937;
     background: transparent;
@@ -163,13 +189,19 @@
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    [dir="ltr"] & { margin-right: 0.75rem; }
-    [dir="rtl"] & { margin-left: 0.75rem; }
+
+    [dir="ltr"] & {
+        margin-right: 0.75rem;
+    }
+
+    [dir="rtl"] & {
+        margin-left: 0.75rem;
+    }
 }
 
 .userName {
     font-weight: 700;
-    font-size: 1.05rem; /* Larger Font */
+    font-size: 0.95rem;
 }
 
 .userRole {
@@ -187,8 +219,8 @@
     border-radius: 0.75rem;
     background-color: #DC2626;
     color: white;
-    font-size: 1.05rem; /* Larger Font */
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 600;
     border: none;
     cursor: pointer;
 }

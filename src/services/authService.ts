@@ -4,25 +4,26 @@
 // This file provides functions for user authentication and data retrieval from Firestore.
 // It uses the Firebase v10+ SDK and focuses on cost-optimization by using one-time fetches and pagination.
 
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    GoogleAuthProvider, 
-    signInWithPopup, 
-    signOut,
-    type UserCredential
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  type UserCredential
 } from "firebase/auth";
-import { 
-    doc, 
-    getDoc, 
-    collection, 
-    query, 
-    getDocs, 
-    limit, 
-    startAfter,
-    type DocumentSnapshot,
-    type QuerySnapshot,
-    type DocumentData
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  getDocs,
+  limit,
+  startAfter,
+  type DocumentSnapshot,
+  type QuerySnapshot,
+  type DocumentData
 } from "firebase/firestore";
 import { auth, db } from '../firebase';
 
@@ -48,13 +49,16 @@ export const signInWithEmail = (email: string, password: string): Promise<UserCr
   return signInWithEmailAndPassword(auth, email, password);
 };
 
-/**
- * Signs in a user with their Google account.
- * @returns {Promise<UserCredential>} - A promise that resolves with the user credential.
- */
-export const signInWithGoogle = (): Promise<UserCredential> => {
+export const signInWithGoogle = (): Promise<void> => {
   const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider);
+  return signInWithRedirect(auth, provider);
+};
+
+/**
+ * Handles the redirect result after a Google sign-in.
+ */
+export const handleRedirectResult = (): Promise<UserCredential | null> => {
+  return getRedirectResult(auth);
 };
 
 /**
@@ -86,20 +90,20 @@ export const getDocument = (collectionPath: string, docId: string): Promise<Docu
  * @returns {Promise<{docs: QuerySnapshot<DocumentData>, lastVisible: DocumentSnapshot<DocumentData> | undefined}>} - A promise that resolves with the query snapshot and the last visible document.
  */
 export const getPaginatedData = async (
-    collectionPath: string, 
-    pageSize: number = 10, 
-    lastVisible: DocumentSnapshot<DocumentData> | null = null
+  collectionPath: string,
+  pageSize: number = 10,
+  lastVisible: DocumentSnapshot<DocumentData> | null = null
 ): Promise<{ docs: QuerySnapshot<DocumentData>; lastVisible: DocumentSnapshot<DocumentData> | undefined; }> => {
-    const q = query(
-        collection(db, collectionPath),
-        limit(pageSize),
-        ...(lastVisible ? [startAfter(lastVisible)] : [])
-    );
-    const documentSnapshots = await getDocs(q);
-    const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length-1];
+  const q = query(
+    collection(db, collectionPath),
+    limit(pageSize),
+    ...(lastVisible ? [startAfter(lastVisible)] : [])
+  );
+  const documentSnapshots = await getDocs(q);
+  const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
 
-    return {
-        docs: documentSnapshots,
-        lastVisible: newLastVisible
-    };
+  return {
+    docs: documentSnapshots,
+    lastVisible: newLastVisible
+  };
 };

@@ -162,7 +162,7 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
                 onCancel={handleCancelOutOfRange}
             />
             <h3 className="text-md font-bold text-slate-700 text-center mb-3"><T>{title}</T></h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {renderInput('systolic', tEg120)}
                 {renderInput('diastolic', tEg80)}
                 {renderInput('heartRate', tEg70)}
