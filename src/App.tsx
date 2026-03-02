@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TranslationProvider, useTranslationContext, T, useT } from './components/T';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData, orderBy, limit, increment } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
 import Sidebar from './components/Sidebar';
@@ -253,6 +253,28 @@ const AppInner: React.FC = () => {
 
             // 3. Save Medical Data
             if (medicalRecord?.patient_level_data) {
+                // Manage Problem Reference Counts
+                const newProblemIds = medicalRecord.patient_level_data.treatment_plan?.problemIds || [];
+                const oldMedicalDataRef = doc(db, 'patient_medical_data', finalPatientId);
+                const oldMedicalDataSnap = await getDoc(oldMedicalDataRef);
+                const oldProblemIds = oldMedicalDataSnap.exists()
+                    ? (oldMedicalDataSnap.data().treatment_plan?.problemIds || [])
+                    : [];
+
+                const addedProblemIds = newProblemIds.filter((id: string) => !oldProblemIds.includes(id));
+                const removedProblemIds = oldProblemIds.filter((id: string) => !newProblemIds.includes(id));
+
+                for (const pId of addedProblemIds) {
+                    await updateDoc(doc(db, 'cfg_problems', pId), {
+                        reference_count: increment(1)
+                    });
+                }
+                for (const pId of removedProblemIds) {
+                    await updateDoc(doc(db, 'cfg_problems', pId), {
+                        reference_count: increment(-1)
+                    });
+                }
+
                 // Filter out UI-only fields
                 const { condition, severity, ...dataToSave } = medicalRecord.patient_level_data;
                 await saveMedicalData(finalPatientId, dataToSave);

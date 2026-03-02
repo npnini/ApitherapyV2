@@ -120,6 +120,14 @@
     color: #475569;
 }
 
+.deleteButton {
+    color: #ef4444 !important;
+}
+
+.deleteButton:hover {
+    color: #dc2626 !important;
+}
+
 .deleteButtonDisabled {
     color: #94a3b8 !important;
     cursor: not-allowed;

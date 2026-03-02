@@ -128,7 +128,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
                     </Tooltip>
                   ) : (
                     <Tooltip text={useT('Delete Problem')}>
-                      <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
+                      <button onClick={() => handleDeleteClick(problem.id)} className={`${styles.iconButton} ${styles.deleteButton}`}>
                         <Trash2 size={18} />
                       </button>
                     </Tooltip>

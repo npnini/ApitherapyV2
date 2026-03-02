@@ -211,17 +211,25 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
 
             <div className={styles.statusToggleContainer}>
               <span className={styles.statusLabel}><T>Status</T>:</span>
-              <label className={styles.switch}>
-                <input
-                  type="checkbox"
-                  checked={problemStatus === 'active'}
-                  onChange={(e) => setProblemStatus(e.target.checked ? 'active' : 'inactive')}
-                />
-                <span className={styles.slider}></span>
-              </label>
+              <div className={styles.toggleWrapper} title={initialData && initialData.reference_count ? getTranslation('This problem is referenced by patients and cannot be made inactive.') : ''}>
+                <label className={`${styles.switch} ${initialData && initialData.reference_count ? styles.switchDisabled : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={problemStatus === 'active'}
+                    onChange={(e) => setProblemStatus(e.target.checked ? 'active' : 'inactive')}
+                    disabled={!!(initialData && initialData.reference_count)}
+                  />
+                  <span className={styles.slider}></span>
+                </label>
+              </div>
               <span className={`${styles.statusText} ${problemStatus === 'active' ? styles.statusActive : styles.statusInactive}`}>
                 <T>{problemStatus === 'active' ? 'Active' : 'Inactive'}</T>
               </span>
+              {initialData && initialData.reference_count > 0 && (
+                <span className={styles.referenceCountHint}>
+                  (<T>Used by</T> {initialData.reference_count} <T>patients</T>)
+                </span>
+              )}
             </div>
 
             <div className={styles.inputGroup}>
