@@ -7,7 +7,7 @@ import styles from './PatientIntake.module.css';
 import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
-import { uploadFile } from '../../services/storageService';
+import { uploadFile, deleteFile } from '../../services/storageService';
 
 interface InstructionsTabProps {
     patientData: Partial<JoinedPatientData>;
@@ -132,7 +132,11 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                     <button
                         className={styles.btnSecondary}
                         style={{ marginTop: '1rem' }}
-                        onClick={() => {
+                        onClick={async () => {
+                            // Delete the old file from storage first
+                            if (instructionsSignedUrl) {
+                                await deleteFile(instructionsSignedUrl);
+                            }
                             onDataChange({
                                 ...patientData,
                                 medicalRecord: {

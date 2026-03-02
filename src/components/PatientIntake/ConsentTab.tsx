@@ -7,7 +7,7 @@ import styles from './PatientIntake.module.css';
 import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
-import { uploadFile } from '../../services/storageService';
+import { uploadFile, deleteFile } from '../../services/storageService';
 
 interface ConsentTabProps {
     patientData: Partial<JoinedPatientData>;
@@ -166,7 +166,11 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                     <button
                         className={styles.btnSecondary}
                         style={{ marginTop: '1rem' }}
-                        onClick={() => {
+                        onClick={async () => {
+                            // Delete the old file from storage first
+                            if (consentSignedUrl) {
+                                await deleteFile(consentSignedUrl);
+                            }
                             // Clear the URL in parent data to allow re-signing
                             onDataChange({
                                 ...patientData,
