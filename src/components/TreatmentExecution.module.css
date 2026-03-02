@@ -1,31 +1,471 @@
 /* TreatmentExecution.module.css */
 
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.75rem;
+    gap: 0.75rem;
+    overflow: hidden;
+    /* Allow expanding beyond the default PatientIntake width if needed */
+    width: 100%;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.backButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    transition: color 0.15s;
+}
+
+.backButton:hover {
+    color: #1e293b;
+}
+
+.headerTitle {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.docLink {
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+
+.docLink:hover {
+    color: var(--color-primary, #c0392b);
+}
+
+.sensitivityBanner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fef9c3;
+    border: 1px solid #fde68a;
+    border-radius: 0.625rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #92400e;
+    flex-shrink: 0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 2fr 5fr 5fr;
+    gap: 0.75rem;
+    flex: 1;
+    min-height: 0;
+}
+
+/* --- Points panel --- */
+.pointsPanel {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow: hidden;
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 800;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+}
+
+.toggleLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.toggle {
+    position: relative;
+    cursor: pointer;
+}
+
+.toggleTrack {
+    width: 2.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 0.2s;
+}
+
+.toggleOn {
+    background: var(--color-primary, #c0392b);
+}
+
+.toggleThumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.toggleThumbOn {
+    transform: translateX(1rem);
+}
+
+.hintText {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.pointsList {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.pointItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 2px solid #e2e8f0;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: white;
+    gap: 0.25rem;
+}
+
+.pointItem:hover {
+    border-color: var(--color-primary, #c0392b);
+}
+
+.pointItemActive {
+    background: #fff1f0;
+    border-color: #fca5a5;
+}
+
+.pointItemStung {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.pointInfo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.pointCode {
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: var(--color-primary, #c0392b);
+}
+
+.pointLabel {
+    font-size: 0.7rem;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pointActions {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.pointDocLink {
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+}
+
+.pointDocLink:hover {
+    color: #3b82f6;
+}
+
+.stungIcon {
+    color: #22c55e;
+}
+
+/* --- Canvas panel --- */
+.canvasPanel {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+    overflow: hidden;
+}
+
+.canvas {
+    background: #f8fafc;
+    border-radius: 1rem;
+}
+
+/* --- Data panel --- */
+.dataPanel {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+}
+
+.dataTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0;
+}
+
+.sectionLabel {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stungSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.stungList {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    padding: 0.5rem;
+    min-height: 6rem;
+    max-height: 10rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.stungItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #334155;
+    transition: border-color 0.15s;
+}
+
+.stungItem:hover {
+    border-color: var(--color-primary, #c0392b);
+}
+
+.stungItemActive {
+    background: #fff1f0;
+    border-color: #fca5a5;
+}
+
+.removeBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    padding: 0.1rem;
+}
+
+.removeBtn:hover {
+    color: #b91c1c;
+}
+
+.emptyStung {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    padding: 1.5rem 0;
+}
+
+/* --- End panel --- */
+.endPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    background: #fafafa;
+    border-radius: 0.75rem;
+    border: 1px dashed #e2e8f0;
+}
+
 .notesTextarea {
-    background-color: var(--color-background-input);
-    border: 1px solid var(--color-border);
+    background-color: var(--color-background-input, #f8fafc);
+    border: 1px solid var(--color-border, #e2e8f0);
     resize: vertical;
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.6rem;
     margin-top: 0.25rem;
-    border-radius: 0.75rem;
+    border-radius: 0.625rem;
+    font-size: 0.85rem;
+    box-sizing: border-box;
 }
 
-.saveButton {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    font-weight: bold;
-    padding: 0.75rem 2rem;
-    border-radius: 0.75rem;
-    width: 100%;
-    transition: background-color 0.2s;
+.notesTextarea:focus {
+    outline: none;
+    border-color: var(--color-primary, #c0392b);
 }
 
-.saveButton:hover {
-    background-color: var(--color-primary-dark);
+.endActions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
 }
 
-.saveButton:disabled {
-    background-color: var(--color-slate-300);
-    box-shadow: none;
+/* --- Action row --- */
+.actionRow {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.btnAnotherProtocol,
+.btnEndTreatment,
+.btnEndConfirm,
+.btnSecondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 1rem;
+    border-radius: 0.625rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+    flex: 1;
+    justify-content: center;
+}
+
+.btnAnotherProtocol {
+    background: var(--color-secondary-button-background, #f1f5f9);
+    color: var(--color-text-secondary, #475569);
+}
+
+.btnAnotherProtocol:hover:not(:disabled) {
+    opacity: 0.8;
+}
+
+.btnEndTreatment,
+.btnEndConfirm {
+    background: var(--color-primary, #c0392b);
+    color: white;
+}
+
+.btnEndTreatment:hover:not(:disabled),
+.btnEndConfirm:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.btnSecondary {
+    background: #f1f5f9;
+    color: #475569;
+    flex: initial;
+}
+
+.btnAnotherProtocol:disabled,
+.btnEndTreatment:disabled,
+.btnEndConfirm:disabled {
+    opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* --- Loading / Error states --- */
+.centeredMsg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 20rem;
+    color: #64748b;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.errorBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem;
+    background: white;
+    border-radius: 1.5rem;
+    border: 1px solid #fee2e2;
+    color: #7f1d1d;
+    max-width: 24rem;
+    margin: auto;
+    text-align: center;
 }

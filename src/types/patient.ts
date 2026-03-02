@@ -1,5 +1,3 @@
-import { VitalSigns } from './treatmentSession';
-
 export interface BaseDocument {
     id?: string;
     createdTimestamp: any; // serverTimestamp
@@ -29,17 +27,6 @@ export interface MeasuredValueReading extends BaseDocument {
     }>;
 }
 
-export interface Treatment extends BaseDocument {
-    patientId: string;
-    protocolId: string;
-    caretakerId: string;
-    stungPointCodes: string[];
-    notes: string;
-    patientReport: string;
-    preStingVitals: VitalSigns;
-    postStingVitals: VitalSigns;
-    finalVitals: VitalSigns;
-}
 
 export interface QuestionnaireResponse extends BaseDocument {
     patientId: string;

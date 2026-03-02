@@ -4,15 +4,15 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import SignaturePad from './SignaturePad';
 import styles from './PatientIntake.module.css';
-import { PatientData } from '../../types/patient';
+import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
 import { uploadFile } from '../../services/storageService';
 
 interface InstructionsTabProps {
-    patientData: Partial<PatientData>;
+    patientData: Partial<JoinedPatientData>;
     user: AppUser | null;
-    onDataChange: (data: Partial<PatientData>, isInternal?: boolean) => void;
+    onDataChange: (data: Partial<JoinedPatientData>, isInternal?: boolean) => void;
 }
 
 export interface InstructionsTabHandle {
@@ -30,6 +30,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
     const noTemplateMsg = useT('No instructions template found for this language.');
     const errorMsg = useT('Error loading instructions template.');
     const provideSigMsg = useT('Please provide patient signature.');
+    const tPatientSignatureLabel = useT('Patient Signature:');
 
     useEffect(() => {
         const fetchTemplate = async () => {
@@ -98,7 +99,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                     template,
                     [
                         {
-                            label: direction === 'rtl' ? 'חתימת המטופל:' : 'Patient Signature:',
+                            label: tPatientSignatureLabel,
                             dataUrl: patientSignature,
                             name: patientData.fullName || ''
                         }

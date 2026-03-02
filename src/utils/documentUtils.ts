@@ -33,21 +33,30 @@ export const generateDocumentImage = async (
     const startX = isRtl ? canvas.width - margin : margin;
 
     const wrapText = (text: string, x: number, startY: number, maxWidth: number, lineHeight: number) => {
+        if (!text.trim()) return startY + lineHeight; // Handle empty lines as paragraph spacing
+
         const words = text.replace(/<[^>]*>/g, '').split(' ');
         let line = '';
+        const linesToDraw: string[] = [];
+
         for (let n = 0; n < words.length; n++) {
             const testLine = line + words[n] + ' ';
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxWidth && n > 0) {
-                ctx.fillText(line, x, startY);
+                linesToDraw.push(line.trim());
                 line = words[n] + ' ';
-                startY += lineHeight;
             } else {
                 line = testLine;
             }
         }
-        ctx.fillText(line, x, startY);
-        return startY + lineHeight;
+        linesToDraw.push(line.trim());
+
+        linesToDraw.forEach((l) => {
+            ctx.fillText(l, x, startY);
+            startY += lineHeight;
+        });
+
+        return startY;
     };
 
     // Replace placeholders
@@ -57,9 +66,10 @@ export const generateDocumentImage = async (
         processedText = processedText.replace(regex, value);
     });
 
-    const lines = processedText.split('\n');
-    lines.forEach(line => {
-        y = wrapText(line, startX, y, maxWidth, 24);
+    // Handle newlines and paragraphs
+    const paragraphs = processedText.split('\n');
+    paragraphs.forEach(p => {
+        y = wrapText(p, startX, y, maxWidth, 24);
     });
 
     y += 40;

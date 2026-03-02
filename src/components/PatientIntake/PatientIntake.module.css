@@ -211,6 +211,15 @@
     padding: 1.5rem;
 }
 
+.contentAreaFlow {
+    padding: 1rem 2rem;
+    background-color: #f1f5f9;
+}
+
+.fullWidth {
+    padding-inline: 0.5rem;
+}
+
 /* Placeholder tab (Steps 2's unimplemented tabs; replaced in later steps) */
 .placeholderTab {
     display: flex;

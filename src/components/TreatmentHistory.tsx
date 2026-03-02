@@ -3,53 +3,42 @@ import { PatientData } from '../types/patient';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs, doc, getDoc, where } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { VitalSigns } from '../types/treatmentSession';
+import { VitalSigns, ProtocolRound } from '../types/treatmentSession';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './TreatmentHistory.module.css';
 
-// Explicit type for documents stored in Firestore
-interface StoredTreatmentDoc {
-    id: string;
-    patientId: string;
-    protocolId: string;
-    protocolName: string;
-    caretakerId: string;
-    date?: string;
-    timestamp?: any;
-    patientReport: string;
-    preStingVitals?: Partial<VitalSigns>;
-    postStingVitals?: Partial<VitalSigns>;
-    finalVitals?: Partial<VitalSigns>;
-    stungPoints: string[];
-    finalNotes?: string;
-    vitals?: string; // For backward compatibility
-}
+const getMLValue = (value: any, lang: string): string => {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object') {
+        return value[lang] || value.en || '';
+    }
+    return '';
+};
 
-// Explicit type for the hydrated data used for rendering
-interface HydratedTreatment {
-    id: string;
-    patientId: string;
-    protocolId: string;
-    protocolName: string;
-    caretakerId: string;
-    date?: string;
-    timestamp?: any;
-    patientReport: string;
-    preStingVitals?: Partial<VitalSigns>;
-    postStingVitals?: Partial<VitalSigns>;
-    finalVitals?: Partial<VitalSigns>;
-    stungPoints: StingPoint[];
-    finalNotes?: string;
-    vitals?: string; // For backward compatibility
-}
+const renderSafe = (value: any): React.ReactNode => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+    if (typeof value === 'object') {
+        // If it's a Translation object, it should have been handled by getMLValue
+        // But if it's a VitalSigns or other data object, we stringify it for safety
+        return Object.entries(value as object)
+            .filter(([_, v]) => v !== undefined && v !== null && typeof v !== 'function')
+            .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+            .join(', ');
+    }
+    return String(value);
+};
 
 interface VitalSignsDisplayProps {
     title: string;
     vitals: Partial<VitalSigns> | string | undefined;
+    icon?: React.ReactNode;
 }
 
-const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) => {
+const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals, icon }) => {
     if (!vitals) {
         return null;
     }
@@ -58,7 +47,10 @@ const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) 
     if (typeof vitals === 'string') {
         return (
             <div className={styles.vitalsBlock}>
-                <h4 className={styles.detailLabel}><T>{title}</T></h4>
+                <h4 className={styles.innerLabel}>
+                    {icon && <span className={styles.iconWrapper}>{icon}</span>}
+                    <T>{title}</T>
+                </h4>
                 <p className={styles.detailContentShort}>{vitals}</p>
             </div>
         );
@@ -72,14 +64,49 @@ const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals }) 
 
     return (
         <div className={styles.vitalsBlock}>
-            <h4 className={styles.detailLabel}><T>{title}</T></h4>
+            <h4 className={styles.innerLabel}>
+                {icon && <span className={styles.iconWrapper}>{icon}</span>}
+                <T>{title}</T>
+            </h4>
             <div className={styles.vitalsGrid}>
-                {systolic !== undefined && <div><span className={styles.vitalsLabel}><T>Systolic</T>:</span> {systolic}</div>}
-                {diastolic !== undefined && <div><span className={styles.vitalsLabel}><T>Diastolic</T>:</span> {diastolic}</div>}
-                {heartRate !== undefined && <div><span className={styles.vitalsLabel}><T>Heart Rate</T>:</span> {heartRate}</div>}
+                {systolic !== undefined && <div><span className={styles.vitalsLabel}><T>Systolic</T>:</span> {renderSafe(systolic)}</div>}
+                {diastolic !== undefined && <div><span className={styles.vitalsLabel}><T>Diastolic</T>:</span> {renderSafe(diastolic)}</div>}
+                {heartRate !== undefined && <div><span className={styles.vitalsLabel}><T>Heart Rate</T>:</span> {renderSafe(heartRate)}</div>}
             </div>
         </div>
     )
+}
+
+// Explicit type for documents stored in Firestore
+interface StoredTreatmentDoc {
+    id: string;
+    patientId: string;
+    caretakerId: string;
+    timestamp?: any;
+    date?: string; // legacy
+    patientReport: string;
+    preSessionVitals?: Partial<VitalSigns>;
+    preStingVitals?: Partial<VitalSigns>; // legacy
+    rounds: ProtocolRound[];
+    finalVitals?: Partial<VitalSigns>;
+    finalNotes?: string;
+    isSensitivityTest?: boolean;
+    measureReadingId?: string; // Link to KPI readings
+    vitals?: string; // legacy
+    protocolId?: string; // legacy
+    protocolName?: string | Record<string, string>; // legacy
+    stungPoints?: string[]; // legacy
+}
+
+// Explicit type for the hydrated data used for rendering
+interface HydratedRound extends Omit<ProtocolRound, 'stungPointCodes'> {
+    stungPoints: StingPoint[];
+}
+
+interface HydratedTreatment extends Omit<StoredTreatmentDoc, 'rounds' | 'stungPoints'> {
+    rounds: HydratedRound[];
+    stungPoints?: StingPoint[]; // legacy
+    measuredValues?: Array<{ label: string; value: string | number }>;
 }
 
 interface TreatmentHistoryProps {
@@ -87,14 +114,6 @@ interface TreatmentHistoryProps {
     onBack: () => void;
     isTab?: boolean;
 }
-
-const getMLValue = (value: any, lang: string): string => {
-    if (typeof value === 'string') return value;
-    if (value && typeof value === 'object') {
-        return value[lang] || value.en || '';
-    }
-    return '';
-};
 
 const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab }) => {
     const { language } = useTranslationContext();
@@ -139,13 +158,55 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 pointsMap.set(data.code, point);
             });
 
-            const hydratedTreatments = rawTreatments.map((treatment): HydratedTreatment => {
-                const hydratedPoints = (Array.isArray(treatment.stungPoints) ? treatment.stungPoints : [])
-                    .map(id => pointsMap.get(id))
-                    .filter((p): p is StingPoint => p !== undefined);
-
-                return { ...treatment, stungPoints: hydratedPoints };
+            // Fetch measures labels
+            const measuresSnapshot = await getDocs(collection(db, 'cfg_measures'));
+            const measuresMap = new Map<string, string | Record<string, string>>();
+            measuresSnapshot.docs.forEach(doc => {
+                measuresMap.set(doc.id, doc.data().name);
             });
+
+            setTreatments([]); // Clear old state
+            const hydratedTreatments = await Promise.all(rawTreatments.map(async (treatment): Promise<HydratedTreatment> => {
+                // Determine if it's new structure (rounds) or legacy (single protocol)
+                const rounds = treatment.rounds || [];
+                const hasRounds = rounds.length > 0;
+
+                const hydratedRounds: HydratedRound[] = rounds.map(round => ({
+                    ...round,
+                    stungPoints: (round.stungPointCodes || [])
+                        .map((code: string) => pointsMap.get(code))
+                        .filter((p: StingPoint | undefined): p is StingPoint => p !== undefined)
+                }));
+
+                // Handle legacy hydration if needed
+                const legacyPoints = !hasRounds && Array.isArray(treatment.stungPoints)
+                    ? treatment.stungPoints.map(id => pointsMap.get(id)).filter((p): p is StingPoint => p !== undefined)
+                    : undefined;
+
+                // Fetch measured values (KPIs)
+                let measuredValues: Array<{ label: string; value: string | number }> = [];
+                if (treatment.measureReadingId) {
+                    try {
+                        const readingDoc = await getDoc(doc(db, 'measured_values', treatment.measureReadingId));
+                        if (readingDoc.exists()) {
+                            const data = readingDoc.data();
+                            measuredValues = (data.readings || []).map((r: any) => ({
+                                label: getMLValue(measuresMap.get(r.measureId), language),
+                                value: r.value
+                            }));
+                        }
+                    } catch (err) {
+                        console.error("Error fetching measure reading:", err);
+                    }
+                }
+
+                return {
+                    ...treatment,
+                    rounds: hydratedRounds,
+                    stungPoints: legacyPoints,
+                    measuredValues: measuredValues.length > 0 ? measuredValues : undefined
+                };
+            }));
 
             setTreatments(hydratedTreatments);
 
@@ -185,7 +246,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     }, [fetchTreatments]);
 
     const formatDate = (treatment: StoredTreatmentDoc | HydratedTreatment) => {
-        const dateVal = treatment.timestamp || treatment.date;
+        // Prefer explicit createdTimestamp which is a Firestore Timestamp
+        const dateVal = (treatment as any).createdTimestamp || treatment.timestamp || treatment.date;
         if (!dateVal) return tNotAvailable;
 
         try {
@@ -193,8 +255,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             if (dateVal.seconds) {
                 // Firestore Timestamp
                 date = new Date(dateVal.seconds * 1000);
+            } else if (typeof dateVal === 'number') {
+                // Epoch ms
+                date = new Date(dateVal);
             } else if (typeof dateVal === 'string') {
-                // ISO String
+                // ISO String or other
                 date = new Date(dateVal);
             } else {
                 return tNotAvailable;
@@ -240,7 +305,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                         <BackIcon size={24} />
                     </button>
                     <h1 className={styles.title}>
-                        <T>{`Treatment History for ${patient.fullName}`}</T>
+                        <T>Treatment History for</T> {patient.fullName}
                     </h1>
                 </div>
             )}
@@ -254,8 +319,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     {treatments.map((treatment) => (
                         <div key={treatment.id} className={styles.treatmentCard}>
                             <div className={styles.cardHeader} dir={direction}>
-                                <h2 className={styles.protocolName}>{getMLValue(treatment.protocolName, language)}</h2>
                                 <div className={styles.metaInfo}>
+                                    <h2 className={styles.protocolName}>
+                                        {treatment.rounds?.length > 0
+                                            ? (treatment.rounds.length === 1
+                                                ? getMLValue(treatment.rounds[0].protocolName, language)
+                                                : <T>Multi-protocol session</T>)
+                                            : getMLValue(treatment.protocolName, language)}
+                                        {treatment.isSensitivityTest && <span className={styles.sensitivityBadge}> (<T>Sensitivity Test</T>)</span>}
+                                    </h2>
                                     <div className={styles.metaRow}>
                                         <Calendar size={16} />
                                         <span>{formatDate(treatment)}</span>
@@ -267,54 +339,136 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 </div>
                             </div>
 
-                            <div className={styles.detailsGrid}>
-                                <div className={styles.detailItem}>
-                                    <h3 className={styles.detailLabel}>
-                                        <FileText size={16} />
-                                        <T>Patient Report</T>
-                                    </h3>
-                                    <p className={styles.detailContent}>{treatment.patientReport || tNotProvided}</p>
-                                </div>
-                                <div className={styles.detailItem}>
-                                    <h3 className={styles.detailLabel}>
-                                        <Activity size={16} />
-                                        <T>Vitals</T>
-                                    </h3>
-                                    <VitalSignsDisplay title="Pre-stinging measures" vitals={treatment.preStingVitals || treatment.vitals} />
-                                    <VitalSignsDisplay title="Post-stinging measures" vitals={treatment.postStingVitals} />
-                                    <VitalSignsDisplay title="Final measures" vitals={treatment.finalVitals} />
-                                </div>
-                            </div>
+                            <div className={styles.sessionPhases}>
+                                {/* Phase 1: Session Opening */}
+                                <div className={styles.phase}>
+                                    <h3 className={styles.phaseTitle}><T>1. Session Opening</T></h3>
+                                    <div className={styles.detailsGrid}>
+                                        <div className={styles.detailItem}>
+                                            <h4 className={styles.detailLabel}>
+                                                <FileText size={16} />
+                                                <T>Patient Report</T>
+                                            </h4>
+                                            <p className={styles.detailContent}>{renderSafe(treatment.patientReport) || tNotProvided}</p>
+                                        </div>
 
-                            <div className={styles.pointsContainer}>
-                                <h3 className={styles.detailLabel}>
-                                    <Syringe size={16} />
-                                    <T>Stung Points</T>
-                                </h3>
-                                <ul className={styles.pointsList}>
-                                    {treatment.stungPoints.length > 0 ? (
-                                        treatment.stungPoints.map((point) => (
-                                            <li key={point.id} className={styles.pointItem} dir={direction}>
-                                                <div className={styles.pointDetails}>
-                                                    <MapPin size={16} className={styles.pointIcon} />
-                                                    <span className="text-sm">
-                                                        <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
-                                                    </span>
+                                        {(treatment.measuredValues && treatment.measuredValues.length > 0) && (
+                                            <div className={styles.detailItem}>
+                                                <h4 className={styles.detailLabel}>
+                                                    <Activity size={16} />
+                                                    <T>Initial Measures (KPIs)</T>
+                                                </h4>
+                                                <div className={styles.measuredValuesGrid}>
+                                                    {treatment.measuredValues.map((mv, idx) => (
+                                                        <div key={idx} className={styles.kpiItem}>
+                                                            <span className={styles.kpiLabel}>{mv.label}:</span>
+                                                            <span className={styles.kpiValue}>
+                                                                {renderSafe(mv.value)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            </li>
-                                        ))
-                                    ) : (
-                                        <li><T>No points for treatment</T></li>
-                                    )}
-                                </ul>
-                            </div>
+                                            </div>
+                                        )}
 
-                            <div className={styles.notesContainer}>
-                                <h3 className={styles.detailLabel}>
-                                    <Activity size={16} />
-                                    <T>Final Notes</T>
-                                </h3>
-                                <p className={styles.notesContent}>{treatment.finalNotes || tNoNotes}</p>
+                                        <div className={styles.detailItem}>
+                                            <VitalSignsDisplay
+                                                title="Pre-session Vitals"
+                                                vitals={treatment.preSessionVitals || treatment.preStingVitals || treatment.vitals}
+                                                icon={<Activity size={14} />}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Phase 2: Protocol Rounds */}
+                                {treatment.rounds && treatment.rounds.length > 0 ? (
+                                    <div className={styles.phase}>
+                                        <h3 className={styles.phaseTitle}><T>2. Protocol Rounds</T></h3>
+                                        {treatment.rounds.map((round, rIndex) => (
+                                            <div key={rIndex} className={styles.roundBox}>
+                                                <div className={styles.roundHeader}>
+                                                    <T>Round</T> {rIndex + 1}: {getMLValue(round.protocolName, language)}
+                                                </div>
+                                                <div className={styles.roundContent}>
+                                                    <div className={styles.pointsContainer}>
+                                                        <h4 className={styles.innerLabel}>
+                                                            <Syringe size={14} />
+                                                            <T>Stung Points</T>
+                                                        </h4>
+                                                        <ul className={styles.pointsList}>
+                                                            {round.stungPoints.length > 0 ? (
+                                                                round.stungPoints.map((point) => (
+                                                                    <li key={point.id} className={styles.pointItem} dir={direction}>
+                                                                        <div className={styles.pointDetails}>
+                                                                            <MapPin size={14} className={styles.pointIcon} />
+                                                                            <span className="text-sm">
+                                                                                <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </li>
+                                                                ))
+                                                            ) : (
+                                                                <li><T>No points for treatment</T></li>
+                                                            )}
+                                                        </ul>
+                                                    </div>
+                                                    {round.postRoundVitals && (
+                                                        <div className={styles.roundVitals}>
+                                                            <VitalSignsDisplay
+                                                                title="Post-round Vitals"
+                                                                vitals={round.postRoundVitals}
+                                                                icon={<Activity size={14} />}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    /* Legacy Stung Points View */
+                                    treatment.stungPoints && treatment.stungPoints.length > 0 && (
+                                        <div className={styles.phase}>
+                                            <h3 className={styles.phaseTitle}><T>2. Protocol Rounds (Legacy)</T></h3>
+                                            <div className={styles.pointsContainer}>
+                                                <ul className={styles.pointsList}>
+                                                    {treatment.stungPoints.map((point) => (
+                                                        <li key={point.id} className={styles.pointItem} dir={direction}>
+                                                            <div className={styles.pointDetails}>
+                                                                <MapPin size={14} className={styles.pointIcon} />
+                                                                <span className="text-sm">
+                                                                    <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
+                                                                </span>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )
+                                )}
+
+                                {/* Phase 3: Finish Session */}
+                                <div className={styles.phase}>
+                                    <h3 className={styles.phaseTitle}><T>3. Finish Session</T></h3>
+                                    <div className={styles.detailsGrid}>
+                                        <div className={styles.detailItem}>
+                                            <VitalSignsDisplay
+                                                title="Post-session Vitals"
+                                                vitals={treatment.finalVitals}
+                                                icon={<Activity size={14} />}
+                                            />
+                                        </div>
+                                        <div className={styles.detailItem}>
+                                            <h4 className={styles.detailLabel}>
+                                                <FileText size={16} />
+                                                <T>Final Notes</T>
+                                            </h4>
+                                            <p className={styles.notesContent}>{renderSafe(treatment.finalNotes) || tNoNotes}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     ))}

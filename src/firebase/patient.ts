@@ -1,6 +1,7 @@
-import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc, query, orderBy, getDocs, QueryDocumentSnapshot, limit, where } from 'firebase/firestore';
+import { doc, collection, serverTimestamp, getDoc, setDoc, query, orderBy, getDocs, QueryDocumentSnapshot, limit, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { PatientData, MedicalData, QuestionnaireResponse, MeasuredValueReading, Treatment } from '../types/patient';
+import { PatientData, MedicalData, QuestionnaireResponse, MeasuredValueReading } from '../types/patient';
+import { TreatmentSession } from '../types/treatmentSession';
 
 /**
  * Saves or updates patient personal details in the 'patients' collection.
@@ -31,7 +32,6 @@ export const savePatient = async (patientData: Partial<PatientData>, patientId?:
  * Saves or updates medical data in the root 'patient_medical_data' collection.
  */
 export const saveMedicalData = async (patientId: string, medicalData: Partial<MedicalData>) => {
-    // We use patientId as the document ID for singleton medical data for easy lookup
     const medicalDocRef = doc(db, 'patient_medical_data', patientId);
     const timestamp = serverTimestamp();
 
@@ -52,7 +52,6 @@ export const saveMedicalData = async (patientId: string, medicalData: Partial<Me
 
 /**
  * Upserts a questionnaire response using a deterministic doc ID ({patientId}_{domain}).
- * This ensures only one response exists per patient per domain, regardless of how many times it is called.
  */
 export const addQuestionnaireResponse = async (patientId: string, response: Partial<QuestionnaireResponse>) => {
     const domain = response.domain;
@@ -60,7 +59,6 @@ export const addQuestionnaireResponse = async (patientId: string, response: Part
         console.warn('addQuestionnaireResponse: no domain set, skipping save.');
         return;
     }
-    // Use a deterministic ID to prevent duplicates
     const docId = `${patientId}_${domain}`;
     const docRef = doc(db, 'questionnaire_responses', docId);
     const timestamp = serverTimestamp();
@@ -74,44 +72,62 @@ export const addQuestionnaireResponse = async (patientId: string, response: Part
 
 /**
  * Adds a measured value reading using a patientId-prefixed document ID.
- * Format: {patientId}_{timestamp} — allows fetching the latest reading for a
- * patient via a __name__ range query without requiring a composite index.
+ * Format: {patientId}_{timestamp} — lexicographically sortable, no composite index needed.
  */
-export const addMeasuredValueReading = async (patientId: string, reading: Partial<MeasuredValueReading>) => {
-    // We use a fixed length for the timestamp (e.g., 13 digits) to ensure correct lexicographical ordering
+export const addMeasuredValueReading = async (patientId: string, reading: Partial<MeasuredValueReading>): Promise<string> => {
     const timestamp = Date.now();
     const docId = `${patientId}_${timestamp}`;
     const docRef = doc(db, 'measured_values', docId);
     const serverTs = serverTimestamp();
 
-    return await setDoc(docRef, {
+    await setDoc(docRef, {
         ...reading,
         patientId,
         createdTimestamp: serverTs,
         updatedTimestamp: serverTs
     });
+    return docId;
 };
 
 /**
- * Saves a treatment to the root 'treatments' collection.
+ * Saves a full treatment session to the root 'treatments' collection.
+ * Document ID: {patientId}_{Date.now()} — composite key, same pattern as measured_values.
  */
-export const saveTreatment = async (patientId: string, treatment: Partial<Treatment>) => {
+export const saveTreatment = async (
+    patientId: string,
+    session: Omit<TreatmentSession, 'id' | 'createdTimestamp' | 'updatedTimestamp'>
+): Promise<string> => {
     const timestamp = Date.now();
     const docId = `${patientId}_${timestamp}`;
     const docRef = doc(db, 'treatments', docId);
     const serverTs = serverTimestamp();
 
     await setDoc(docRef, {
-        ...treatment,
+        ...session,
         patientId,
         createdTimestamp: serverTs,
-        updatedTimestamp: serverTs
+        updatedTimestamp: serverTs,
     });
     return docRef.id;
 };
 
 /**
- * Fetches measured value readings for a patient from the root collection using document ID range query.
+ * Returns the number of treatment sessions recorded for a patient.
+ * Uses a __name__ range query — no composite Firestore index required.
+ */
+export const getTreatmentCount = async (patientId: string): Promise<number> => {
+    const colRef = collection(db, 'treatments');
+    const q = query(
+        colRef,
+        where('__name__', '>=', `${patientId}_`),
+        where('__name__', '<=', `${patientId}_\uf8ff`)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+};
+
+/**
+ * Fetches all measured value readings for a patient, ordered ascending by document ID (= time).
  */
 export const getMeasuredValueReadings = async (patientId: string): Promise<MeasuredValueReading[]> => {
     const colRef = collection(db, 'measured_values');

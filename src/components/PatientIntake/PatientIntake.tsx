@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import PersonalDetails from './PersonalDetails';
 import QuestionnaireStep from './QuestionnaireStep';
 import TreatmentHistory from '../TreatmentHistory';
@@ -9,12 +11,13 @@ import ConfirmationModal from '../ConfirmationModal';
 import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
 import ProblemsProtocolsTab, { ProblemsProtocolsTabHandle } from './ProblemsProtocolsTab';
-import { addMeasuredValueReading, saveTreatment, hasMeasuredValueReadings } from '../../firebase/patient';
+import { addMeasuredValueReading, saveTreatment, hasMeasuredValueReadings, getTreatmentCount } from '../../firebase/patient';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
+import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import { Protocol } from '../../types/protocol';
-import { VitalSigns } from '../../types/treatmentSession';
+import { ProtocolRound, VitalSigns } from '../../types/treatmentSession';
 import { AppUser } from '../../types/user';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
@@ -27,7 +30,7 @@ type TabKey =
     | 'treatments'
     | 'measures';
 
-type ViewState = 'tabs' | 'protocolSelection' | 'treatmentExecution';
+type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'treatmentExecution';
 
 const TAB_ORDER: TabKey[] = [
     'personal',
@@ -51,6 +54,8 @@ interface PatientIntakeProps {
     onClose: () => void;          // renamed from onBack (UX-2)
     saveStatus: 'idle' | 'saving' | 'success' | 'error';
     errorMessage: string;
+    initialViewState?: ViewState;
+    initialTab?: TabKey;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -62,10 +67,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     onClose,
     saveStatus,
     errorMessage,
+    initialViewState,
+    initialTab,
 }) => {
     // ── State ─────────────────────────────────────────────────────────────────
-    const [activeTab, setActiveTab] = useState<TabKey>('personal');
-    const [viewState, setViewState] = useState<ViewState>('tabs');
+    const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'personal');
+    const [viewState, setViewState] = useState<ViewState>(initialViewState ?? 'tabs');
     const [savedTabs, setSavedTabs] = useState<Set<TabKey>>(new Set());
     const [isDirty, setIsDirty] = useState(false);
 
@@ -76,8 +83,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [showTreatmentErrorGuard, setShowTreatmentErrorGuard] = useState(false);
     const [pendingTab, setPendingTab] = useState<TabKey | null>(null);
     const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
-    const [preStingVitals, setPreStingVitals] = useState<VitalSigns | null>(null);
-    const [patientReport, setPatientReport] = useState('');
+    const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
+    const [sessionOpeningData, setSessionOpeningData] = useState<SessionOpeningData | null>(null);
+    const [rounds, setRounds] = useState<ProtocolRound[]>([]);
+    const [isSensitivitySession, setIsSensitivitySession] = useState(false);
+    const [appConfig, setAppConfig] = useState<any>(null);
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
 
@@ -182,6 +192,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         };
 
         checkSavedStatus();
+
+        // Load appConfig for sensitivity test settings
+        getDoc(doc(db, 'cfg_app_config', 'main')).then(snap => {
+            if (snap.exists()) setAppConfig(snap.data());
+        }).catch(() => { /* non-critical */ });
     }, [patient]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
@@ -307,60 +322,116 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setActiveTab(tab);
     };
 
-    // Step 5: Start New Treatment
+    // Step 5: Start New Treatment → now goes to sessionOpening
     const handleStartNewTreatment = () => {
         if (viewState !== 'tabs' && isDirty) {
             setShowAbortTreatmentGuard(true);
             return;
         }
+        // Reset session accumulation state
+        setRounds([]);
+        setSessionOpeningData(null);
+        setSelectedProtocol(null);
+        setSelectedProblemId(null);
+        setIsSensitivitySession(false);
+        setTreatmentSaveStatus('idle');
+        setViewState('sessionOpening');
+    };
+
+    const handleSessionOpeningComplete = async (data: SessionOpeningData) => {
+        if (!patient.id) return;
+        let measureReadingId: string | undefined = undefined;
+        // Write measure reading if any values entered
+        if (data.measureReadings.length > 0) {
+            try {
+                measureReadingId = await addMeasuredValueReading(patient.id, {
+                    patientId: patient.id,
+                    readings: data.measureReadings,
+                });
+            } catch (err) {
+                console.error('Failed to write measure reading:', err);
+            }
+        }
+        setSessionOpeningData({ ...data, measureReadingId });
+        console.log('PatientIntake: Session opening complete', { measureReadingId });
+
+        // Check treatment count for sensitivity test routing
+        const count = await getTreatmentCount(patient.id);
+        const sensitivityThreshold = appConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
+        const sensitivityProtocolId = appConfig?.treatmentSettings?.sensitivityProtocolIdentifier;
+
+        if (sensitivityProtocolId && count < sensitivityThreshold) {
+            // Load the sensitivity protocol from Firestore
+            try {
+                const protSnap = await getDoc(doc(db, 'cfg_protocols', sensitivityProtocolId));
+                if (protSnap.exists()) {
+                    const sensitivityProtocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
+                    setSelectedProtocol(sensitivityProtocol);
+                    setSelectedProblemId('sensitivity');
+                    setIsSensitivitySession(true);
+                    setViewState('treatmentExecution');
+                    return;
+                }
+            } catch (err) {
+                console.error('Failed to load sensitivity protocol:', err);
+            }
+        }
+
         setViewState('protocolSelection');
     };
 
-    const handleProtocolSelect = (protocol: Protocol, report: string, vitals: VitalSigns) => {
+    const handleProtocolSelect = (protocol: Protocol, problemId: string) => {
         setSelectedProtocol(protocol);
-        setPatientReport(report);
-        setPreStingVitals(vitals);
+        setSelectedProblemId(problemId);
         setViewState('treatmentExecution');
     };
 
-    const handleTreatmentSave = async (treatmentData: any) => {
-        if (!patient.id || !selectedProtocol) return;
+    const handleRoundComplete = (round: ProtocolRound) => {
+        setRounds(prev => [...prev, round]);
+        setIsSensitivitySession(false); // After sensitivity round, allow free protocol choice
+        setSelectedProtocol(null);
+        setSelectedProblemId(null);
+        setViewState('protocolSelection');
+    };
 
+    const handleEndTreatment = async (finalRound: ProtocolRound, finalVitals: Partial<VitalSigns>, finalNotes: string) => {
+        if (!patient.id || !sessionOpeningData) return;
         setTreatmentSaveStatus('saving');
         setTreatmentErrorMessage(null);
 
+        const allRounds = [...rounds, finalRound];
+
+        console.log('PatientIntake: Saving treatment session', {
+            patientId: patient.id,
+            measureReadingId: sessionOpeningData.measureReadingId,
+            roundsCount: allRounds.length,
+            isSensitivitySession
+        });
+
         try {
-            console.log('Saving treatment to Firestore:', treatmentData);
             await saveTreatment(patient.id, {
-                protocolId: selectedProtocol.id,
+                patientId: patient.id,
                 caretakerId: user.uid,
-                patientReport: patientReport,
-                preStingVitals: preStingVitals as VitalSigns,
-                stungPointCodes: treatmentData.stungPointCodes,
-                notes: treatmentData.notes,
-                postStingVitals: treatmentData.postStingVitals,
-                finalVitals: treatmentData.finalVitals
+                patientReport: sessionOpeningData.patientReport,
+                preSessionVitals: sessionOpeningData.preSessionVitals,
+                measureReadingId: sessionOpeningData.measureReadingId,
+                rounds: allRounds,
+                finalVitals,
+                finalNotes,
+                isSensitivityTest: isSensitivitySession,
             });
             setTreatmentSaveStatus('success');
-            setIsDirty(false); // UX-2: Clear dirty state after successful save
+            setIsDirty(false);
+            setRounds([]);
+            setSessionOpeningData(null);
+            setViewState('tabs');
+            setActiveTab('treatments');
         } catch (error) {
             console.error('Error saving treatment:', error);
             setTreatmentSaveStatus('error');
             setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to save treatment');
             setShowTreatmentErrorGuard(true);
         }
-    };
-
-    const handleTreatmentFinish = () => {
-        setViewState('tabs');
-        setActiveTab('treatments');
-        setSelectedProtocol(null);
-    };
-
-    const handleNextFromTreatment = () => {
-        setViewState('tabs');
-        setActiveTab('measures');
-        setSelectedProtocol(null);
     };
 
     // X click — dirty state guard (UX-2)
@@ -374,7 +445,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     // UX-1: Start New Treatment gate
     const allFirstFiveSaved = FIRST_FIVE.every(t => savedTabs.has(t));
-    const canStartTreatment = !!(patient.id && allFirstFiveSaved);
+    const canStartTreatment = !!(patient.id && allFirstFiveSaved && viewState === 'tabs');
 
     // ── Render helpers ────────────────────────────────────────────────────────
     const isLastTab = activeTab === TAB_ORDER[TAB_ORDER.length - 1];
@@ -501,27 +572,36 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 </div>
 
                 {/* ── Content Area ──────────────────────────────────────────── */}
-                <div className={styles.contentArea}>
+                <div className={`${styles.contentArea} ${viewState !== 'tabs' ? styles.contentAreaFlow : ''}`}>
                     {viewState === 'tabs' && renderTabContent()}
-                    {viewState === 'protocolSelection' && (
-                        <ProtocolSelection
-                            patient={patientData as PatientData}
-                            onBack={() => setViewState('tabs')}
-                            onProtocolSelect={handleProtocolSelect}
-                            isModal={true}
-                        />
-                    )}
-                    {viewState === 'treatmentExecution' && selectedProtocol && (
-                        <TreatmentExecution
-                            patient={patientData as PatientData}
-                            protocol={selectedProtocol}
-                            onSave={handleTreatmentSave}
-                            onBack={() => setViewState('protocolSelection')}
-                            saveStatus={treatmentSaveStatus}
-                            onFinish={handleTreatmentFinish}
-                            treatmentOnNext={handleNextFromTreatment}
-                            isModal={true}
-                        />
+
+                    {viewState !== 'tabs' && (
+                        <>
+                            {viewState === 'sessionOpening' && (
+                                <SessionOpening
+                                    patient={patientData}
+                                    onComplete={handleSessionOpeningComplete}
+                                    onBack={() => setViewState('tabs')}
+                                />
+                            )}
+                            {viewState === 'protocolSelection' && (
+                                <ProtocolSelection
+                                    patient={patientData}
+                                    onBack={() => setViewState(sessionOpeningData ? 'sessionOpening' : 'tabs')}
+                                    onProtocolSelect={handleProtocolSelect}
+                                />
+                            )}
+                            {viewState === 'treatmentExecution' && selectedProtocol && (
+                                <TreatmentExecution
+                                    protocol={selectedProtocol}
+                                    problemId={selectedProblemId ?? ''}
+                                    isSensitivityTest={isSensitivitySession}
+                                    onRoundComplete={handleRoundComplete}
+                                    onEndTreatment={handleEndTreatment}
+                                    onBack={() => setViewState('protocolSelection')}
+                                />
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -607,8 +687,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 message={<T>Are you sure you want to leave the current treatment? Any unsaved data will be lost.</T>}
                 onConfirm={() => {
                     setShowAbortTreatmentGuard(false);
-                    setViewState('protocolSelection');
+                    setRounds([]);
+                    setSessionOpeningData(null);
                     setSelectedProtocol(null);
+                    setViewState('sessionOpening');
                 }}
                 onCancel={() => setShowAbortTreatmentGuard(false)}
                 showCancelButton

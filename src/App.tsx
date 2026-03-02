@@ -46,6 +46,8 @@ const AppInner: React.FC = () => {
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
     const [appConfig, setAppConfig] = useState<any>(null);
+    const [intakeInitialViewState, setIntakeInitialViewState] = useState<'tabs' | 'sessionOpening'>('tabs');
+    const [intakeInitialTab, setIntakeInitialTab] = useState<any>('personal');
 
     useEffect(() => {
         document.documentElement.dir = direction;
@@ -113,16 +115,10 @@ const AppInner: React.FC = () => {
                 let latestQuestionnaire: QuestionnaireResponse | undefined = undefined;
 
                 if (domain) {
-                    const qQuery = query(
-                        collection(db, 'questionnaire_responses'),
-                        where('patientId', '==', patientDoc.id),
-                        where('domain', '==', domain),
-                        orderBy('createdTimestamp', 'desc'),
-                        limit(1)
-                    );
-                    const qSnapshot = await getDocs(qQuery);
-                    if (!qSnapshot.empty) {
-                        latestQuestionnaire = { id: qSnapshot.docs[0].id, ...qSnapshot.docs[0].data() } as QuestionnaireResponse;
+                    const qDocRef = doc(db, 'questionnaire_responses', `${patientDoc.id}_${domain}`);
+                    const qSnap = await getDoc(qDocRef);
+                    if (qSnap.exists()) {
+                        latestQuestionnaire = { id: qSnap.id, ...qSnap.data() } as QuestionnaireResponse;
                         if (conditionKey && latestQuestionnaire[conditionKey]) condition = latestQuestionnaire[conditionKey];
                         if (severityKey && latestQuestionnaire[severityKey]) severity = latestQuestionnaire[severityKey];
                     }
@@ -201,6 +197,7 @@ const AppInner: React.FC = () => {
 
     const handleUpdatePatient = (patient: JoinedPatientData) => {
         setSelectedPatient(patient);
+        setIntakeInitialViewState('tabs');
         setCurrentView('patient_intake');
     };
 
@@ -308,62 +305,23 @@ const AppInner: React.FC = () => {
         setCurrentView('dashboard');
         setSaveStatus('idle');
         setErrorMessage('');
+        setIntakeInitialViewState('tabs');
+        setIntakeInitialTab('personal');
     };
 
     const handleStartTreatmentFlow = (patient: JoinedPatientData) => {
         setSelectedPatient(patient);
-        setCurrentView('protocol_selection');
+        setIntakeInitialViewState('sessionOpening');
+        setCurrentView('patient_intake');
     };
 
     const handleShowTreatments = (patient: JoinedPatientData) => {
         setSelectedPatient(patient);
-        setCurrentView('treatment_history');
+        setIntakeInitialViewState('tabs');
+        setIntakeInitialTab('treatments');
+        setCurrentView('patient_intake');
     };
 
-    const handleProtocolSelection = (protocol: Protocol, patientReport: string, preStingVitals: VitalSigns) => {
-        if (!appUser || !selectedPatient) return;
-        setActiveProtocol(protocol);
-        setActiveTreatmentSession({
-            patientId: selectedPatient.id,
-            date: new Date().toISOString(),
-            protocolId: protocol.id,
-            protocolName: typeof protocol.name === 'object'
-                ? (protocol.name[language] || (protocol.name as any)['en'] || Object.values(protocol.name)[0] || '')
-                : protocol.name,
-            patientReport: patientReport,
-            preStingVitals: preStingVitals,
-            caretakerId: appUser.uid,
-        });
-        setCurrentView('treatment_execution');
-    };
-
-    const handleSaveTreatment = async (data: { stungPointCodes: string[]; notes: string; postStingVitals?: Partial<VitalSigns>; finalVitals?: Partial<VitalSigns>; }) => {
-        if (!selectedPatient || !selectedPatient.id || !activeTreatmentSession) return;
-        setSaveStatus('saving');
-        try {
-            await saveTreatment(selectedPatient.id, {
-                protocolId: activeTreatmentSession.protocolId!,
-                caretakerId: appUser!.uid,
-                patientReport: activeTreatmentSession.patientReport!,
-                preStingVitals: activeTreatmentSession.preStingVitals! as VitalSigns,
-                stungPointCodes: data.stungPointCodes,
-                notes: data.notes,
-                postStingVitals: data.postStingVitals as VitalSigns,
-                finalVitals: data.finalVitals as VitalSigns
-            });
-
-            // Update singleton medical record lastTreatment
-            await saveMedicalData(selectedPatient.id, {
-                lastTreatment: new Date().toISOString().split('T')[0]
-            });
-
-            await fetchInitialData(appUser!);
-            setSaveStatus('success');
-        } catch (error) {
-            console.error("Error saving new treatment:", error);
-            setSaveStatus('error');
-        }
-    };
 
     const renderContent = () => {
         if (!authReady) return <div className="flex justify-center items-center h-screen"><div><T>Initializing...</T></div></div>;
@@ -386,19 +344,17 @@ const AppInner: React.FC = () => {
                                 </Modal>
                                 : currentView === 'onboarding_test' ?
                                     <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} onBack={() => { }} />
-                                    : currentView === 'treatment_execution' && selectedPatient && activeProtocol && activeTreatmentSession ?
-                                        <TreatmentExecution patient={selectedPatient as JoinedPatientData} protocol={activeProtocol} onSave={handleSaveTreatment} onBack={() => setCurrentView('protocol_selection')} saveStatus={saveStatus} onFinish={handleBackToDashboard} />
-                                        : currentView === 'admin_protocols' ?
-                                            <ProtocolAdmin />
-                                            : currentView === 'admin_points' ?
-                                                <PointsAdmin />
-                                                : currentView === 'admin_measures' ?
-                                                    <MeasureAdmin />
-                                                    : currentView === 'admin_problems' ?
-                                                        <ProblemAdmin />
-                                                        : currentView === 'admin_questionnaires' ?
-                                                            <QuestionnaireAdmin />
-                                                            : null
+                                    : currentView === 'admin_protocols' ?
+                                        <ProtocolAdmin />
+                                        : currentView === 'admin_points' ?
+                                            <PointsAdmin />
+                                            : currentView === 'admin_measures' ?
+                                                <MeasureAdmin />
+                                                : currentView === 'admin_problems' ?
+                                                    <ProblemAdmin />
+                                                    : currentView === 'admin_questionnaires' ?
+                                                        <QuestionnaireAdmin />
+                                                        : null
                     }
 
                     {currentView === 'patient_intake' && selectedPatient && appUser &&
@@ -410,13 +366,9 @@ const AppInner: React.FC = () => {
                             saveStatus={saveStatus}
                             errorMessage={errorMessage}
                             onUpdate={(patientData) => handleSavePatient(patientData, false)}
+                            initialViewState={intakeInitialViewState}
+                            initialTab={intakeInitialTab}
                         />
-                    }
-                    {currentView === 'protocol_selection' && selectedPatient &&
-                        <ProtocolSelection patient={selectedPatient as JoinedPatientData} onBack={handleBackToDashboard} onProtocolSelect={handleProtocolSelection} />
-                    }
-                    {currentView === 'treatment_history' && selectedPatient &&
-                        <TreatmentHistory patient={selectedPatient as JoinedPatientData} onBack={handleBackToDashboard} />
                     }
 
                     {appUser && isSettingsModalOpen && (

@@ -20,8 +20,8 @@ export const useTreatments = (patientId: string) => {
                 const fetchedTreatments = await getTreatmentsByPatientId(patientId);
                 // The service function is mistyped, so we cast to the correct type.
                 const treatmentSessions = fetchedTreatments as unknown as TreatmentSession[];
-                // Sort treatments by date in descending order
-                const sortedTreatments = treatmentSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                // Sort treatments by id descending — id is {patientId}_{Date.now()} so lexicographic desc == time desc
+                const sortedTreatments = treatmentSessions.sort((a, b) => (b.id ?? '').localeCompare(a.id ?? ''));
                 setTreatments(sortedTreatments);
                 setError(null);
             } catch (err) {

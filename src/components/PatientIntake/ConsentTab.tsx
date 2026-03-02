@@ -4,15 +4,15 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import SignaturePad from './SignaturePad';
 import styles from './PatientIntake.module.css';
-import { PatientData } from '../../types/patient';
+import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
 import { uploadFile } from '../../services/storageService';
 
 interface ConsentTabProps {
-    patientData: Partial<PatientData>;
+    patientData: Partial<JoinedPatientData>;
     user: AppUser | null;
-    onDataChange: (data: Partial<PatientData>, isInternal?: boolean) => void;
+    onDataChange: (data: Partial<JoinedPatientData>, isInternal?: boolean) => void;
 }
 
 export interface ConsentTabHandle {
@@ -29,6 +29,8 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
     const noTemplateMsg = useT('No consent template found for this language.');
     const errorMsg = useT('Error loading consent template.');
     const provideSigMsg = useT('Please provide patient signature.');
+    const tPatientSignatureLabel = useT('Patient Signature:');
+    const tCaretakerSignatureLabel = useT('Caretaker Signature:');
 
     useEffect(() => {
         const fetchTemplate = async () => {
@@ -120,15 +122,14 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
             try {
                 const signatures = [
                     {
-                        label: direction === 'rtl' ? 'חתימת המטופל:' : 'Patient Signature:',
+                        label: tPatientSignatureLabel,
                         dataUrl: patientSignature,
                         name: patientData.fullName || ''
                     }
                 ];
-
                 if (caretakerSignature) {
                     signatures.push({
-                        label: direction === 'rtl' ? 'חתימת המטפל:' : 'Caretaker Signature:',
+                        label: tCaretakerSignatureLabel,
                         dataUrl: caretakerSignature,
                         name: caretakerName
                     });

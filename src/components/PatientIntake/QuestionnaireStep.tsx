@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { PatientData, QuestionnaireResponse as QuestionnaireResponseType } from '../../types/patient';
+import { JoinedPatientData, PatientData, QuestionnaireResponse as QuestionnaireResponseType } from '../../types/patient';
 import styles from './QuestionnaireStep.module.css';
 import { getQuestionnaire } from '../../firebase/questionnaire';
 import { Questionnaire, Question } from '../../types/questionnaire';
@@ -7,8 +7,8 @@ import SignaturePad from './SignaturePad';
 import { T, useT, useTranslationContext } from '../T';
 
 interface QuestionnaireStepProps {
-  patientData: Partial<PatientData>;
-  onDataChange: (data: Partial<PatientData>, isInternal?: boolean) => void;
+  patientData: Partial<JoinedPatientData>;
+  onDataChange: (data: Partial<JoinedPatientData>, isInternal?: boolean) => void;
 }
 
 interface AutosizedTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { }
@@ -122,7 +122,7 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
   };
 
   if (isLoading) {
-    return <div>Loading questions...</div>
+    return <div><T>Loading questions...</T></div>
   }
 
   return (
