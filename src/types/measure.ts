@@ -12,4 +12,6 @@ export interface Measure {
         max?: number;
     };
     documentUrl?: string | { [key: string]: string };
+    status: 'active' | 'inactive';
+    reference_count: number;
 }

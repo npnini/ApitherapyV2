@@ -133,7 +133,14 @@ const MeasureAdmin: React.FC = () => {
 
     const handleAddNew = () => {
         setFormError(null);
-        const newMeasure: Measure = { id: '', name: {}, description: {}, type: 'Category' };
+        const newMeasure: Measure = {
+            id: '',
+            name: {},
+            description: {},
+            type: 'Category',
+            status: 'active',
+            reference_count: 0
+        };
         setEditingMeasure(newMeasure);
         setOriginalMeasure(newMeasure);
         setIsDirty(false);
@@ -207,6 +214,8 @@ const MeasureAdmin: React.FC = () => {
                 description: measureToSave.description,
                 type: measureToSave.type,
                 documentUrl: Object.keys(newUrls).length > 0 ? newUrls : null,
+                status: measureToSave.status || 'active',
+                reference_count: measureToSave.reference_count || 0,
                 updatedAt: serverTimestamp(),
             };
 
@@ -373,6 +382,7 @@ const MeasureAdmin: React.FC = () => {
                                 <th scope="col" className={styles.headerCell}><T>Name</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Type</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Description</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Status</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
                                     <T>Actions</T>
@@ -390,6 +400,11 @@ const MeasureAdmin: React.FC = () => {
                                         <td className={`${styles.cell} ${styles.codeCell}`}>{measure.name[currentLang] || measure.name['en'] || ''}</td>
                                         <td className={styles.cell}>{getTranslation(measure.type)}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={measure.description[currentLang] || measure.description['en'] || ''}>{measure.description[currentLang] || measure.description['en'] || ''}</td>
+                                        <td className={styles.cell}>
+                                            <span className={`${formStyles.statusBadge} ${measure.status === 'active' ? formStyles.badgeActive : formStyles.badgeInactive}`}>
+                                                <T>{measure.status === 'active' ? 'Active' : 'Inactive'}</T>
+                                            </span>
+                                        </td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {measure.documentUrl && getDocumentUrl(measure.documentUrl) && (
                                                 <Tooltip text={useT('View Document')}>
@@ -404,9 +419,17 @@ const MeasureAdmin: React.FC = () => {
                                                 <Tooltip text={useT('Edit Measure')}>
                                                     <button onClick={() => handleStartEditing(measure)} className={styles.actionButton}><Edit size={18} /></button>
                                                 </Tooltip>
-                                                <Tooltip text={useT('Delete Measure')}>
-                                                    <button onClick={() => setDeletingMeasure(measure)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
-                                                </Tooltip>
+                                                {measure.reference_count > 0 ? (
+                                                    <Tooltip text={getTranslation('Cannot delete: measure is referenced in protocols or problems')}>
+                                                        <button className={`${styles.actionButton} ${formStyles.deleteButtonDisabled}`} disabled>
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip text={useT('Delete Measure')}>
+                                                        <button onClick={() => setDeletingMeasure(measure)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
+                                                    </Tooltip>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -618,6 +641,26 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                 <form onSubmit={handleSubmit} className={formStyles.form}>
                     <div className={formStyles.scrollableArea}>
                         {(error || localError) && <p className={formStyles.formError}>{error || localError}</p>}
+
+                        <div className={formStyles.statusToggleContainer}>
+                            <span className={formStyles.statusLabel}><T>Status</T>:</span>
+                            <label className={formStyles.switch}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.status === 'active'}
+                                    onChange={(e) => {
+                                        const updatedStatus: 'active' | 'inactive' = e.target.checked ? 'active' : 'inactive';
+                                        const updatedMeasure: Measure = { ...formData, status: updatedStatus };
+                                        setFormData(updatedMeasure);
+                                        onUpdate(updatedMeasure);
+                                    }}
+                                />
+                                <span className={formStyles.slider}></span>
+                            </label>
+                            <span className={`${formStyles.statusText} ${formData.status === 'active' ? formStyles.statusActive : formStyles.statusInactive}`}>
+                                <T>{formData.status === 'active' ? 'Active' : 'Inactive'}</T>
+                            </span>
+                        </div>
 
                         <div>
                             <div className={formStyles.labelWrapper}>

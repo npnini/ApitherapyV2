@@ -12,6 +12,8 @@ export interface StingPoint {
   description: { [key: string]: string };
   position: Vector3Pos;
   documentUrl?: { [key: string]: string } | string;
+  status: 'active' | 'inactive';
+  reference_count: number;
 }
 
 export interface Protocol {
@@ -20,4 +22,6 @@ export interface Protocol {
   description: { [key: string]: string };
   rationale: { [key: string]: string };
   points: StingPoint[];
+  status: 'active' | 'inactive';
+  reference_count: number;
 }

@@ -128,7 +128,16 @@ const PointsAdmin: React.FC = () => {
 
     const handleAddNew = () => {
         setFormError(null);
-        const newPoint: Partial<StingPoint> = { id: '', code: '', label: {}, description: {}, position: { x: 0, y: 0, z: 0 }, documentUrl: {} };
+        const newPoint: Partial<StingPoint> = {
+            id: '',
+            code: '',
+            label: {},
+            description: {},
+            position: { x: 0, y: 0, z: 0 },
+            documentUrl: {},
+            status: 'active',
+            reference_count: 0
+        };
         setEditingPoint(newPoint);
         setOriginalPoint(newPoint);
     };
@@ -142,7 +151,7 @@ const PointsAdmin: React.FC = () => {
             try {
                 // Determine the folder name based on the point ID (use 'new' if ID is missing)
                 const folderName = updatedPoint.id || 'new';
-                
+
                 // If a file for the current language already exists, we could delete it, 
                 // but uploadFile might overwrite or we can rely on handleSave to clean up orphaned files if we want.
                 // However, for immediate feedback, we just upload.
@@ -179,7 +188,7 @@ const PointsAdmin: React.FC = () => {
             if (originalDocUrls) {
                 const oldUrls: Record<string, string> = typeof originalDocUrls === 'string' ? { en: originalDocUrls } : originalDocUrls as Record<string, string>;
                 const currentUrls: Record<string, string> = (pointToSave.documentUrl as Record<string, string>) || {};
-                
+
                 for (const [l, url] of Object.entries(oldUrls)) {
                     if (url && !currentUrls[l]) {
                         await deleteFile(url).catch(err => console.error("Error deleting orphaned file:", err));
@@ -193,6 +202,8 @@ const PointsAdmin: React.FC = () => {
                 description: pointToSave.description,
                 position: pointToSave.position || { x: 0, y: 0, z: 0 },
                 documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
+                status: pointToSave.status || 'active',
+                reference_count: pointToSave.reference_count || 0,
                 updatedAt: serverTimestamp(),
             };
 
@@ -310,6 +321,7 @@ const PointsAdmin: React.FC = () => {
                             <th scope="col" className={styles.headerCell}><T>Label</T></th>
                             <th scope="col" className={styles.headerCell}><T>Description</T></th>
                             <th scope="col" className={styles.headerCell}><T>Position</T></th>
+                            <th scope="col" className={styles.headerCell}><T>Status</T></th>
                             <th scope="col" className={styles.headerCell}><T>Document</T></th>
                             <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
                                 <T>Actions</T>
@@ -330,6 +342,11 @@ const PointsAdmin: React.FC = () => {
                                         <td className={styles.cell}>{point.label[currentLang] || point.label['en'] || ''}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description[currentLang] || point.description['en'] || ''}>{point.description[currentLang] || point.description['en'] || ''}</td>
                                         <td className={styles.cell}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
+                                        <td className={styles.cell}>
+                                            <span className={`${styles.statusBadge} ${point.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                                <T>{point.status === 'active' ? 'Active' : 'Inactive'}</T>
+                                            </span>
+                                        </td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {docUrlForCurrentLang && (
                                                 <Tooltip text={getTranslation('View Document')}>
@@ -344,9 +361,19 @@ const PointsAdmin: React.FC = () => {
                                                 <Tooltip text={getTranslation('Edit Point')}>
                                                     <button onClick={() => handleStartEditing(point)} className={styles.actionButton}><Edit size={18} /></button>
                                                 </Tooltip>
-                                                <Tooltip text={getTranslation('Delete Point')}>
-                                                    <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
-                                                </Tooltip>
+                                                {point.reference_count > 0 ? (
+                                                    <Tooltip text={getTranslation('Cannot delete: point is referenced in protocols')}>
+                                                        <button className={`${styles.actionButton} ${styles.deleteButtonDisabled}`} disabled>
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip text={getTranslation('Delete Point')}>
+                                                        <button onClick={() => setDeletingPoint(point)} className={`${styles.actionButton} ${styles.deleteButton}`}>
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </Tooltip>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -400,7 +427,10 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         'Edit Point',
         'Add New Point',
         'e.g., Hundred Meetings',
-        "Describe the point's purpose"
+        "Describe the point's purpose",
+        "Active",
+        "Inactive",
+        "Status"
     ], []);
 
     useEffect(() => {
@@ -480,6 +510,24 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <div className={styles.scrollableArea}>
                         {error && <p className={styles.formError}>{error}</p>}
+
+                        <div className={styles.statusToggleContainer}>
+                            <span className={styles.statusLabel}><T>Status</T>:</span>
+                            <label className={styles.switch}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.status === 'active'}
+                                    onChange={(e) => {
+                                        setFormData(prev => ({ ...prev, status: e.target.checked ? 'active' : 'inactive' }));
+                                        setIsDirty(true);
+                                    }}
+                                />
+                                <span className={styles.slider}></span>
+                            </label>
+                            <span className={`${styles.statusText} ${formData.status === 'active' ? styles.statusActive : styles.statusInactive}`}>
+                                <T>{formData.status === 'active' ? 'Active' : 'Inactive'}</T>
+                            </span>
+                        </div>
 
                         <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
                             <div>

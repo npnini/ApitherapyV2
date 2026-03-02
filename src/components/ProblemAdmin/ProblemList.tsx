@@ -16,7 +16,7 @@ interface ProblemListProps {
 }
 
 const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
-  const { language: currentLang } = useTranslationContext();
+  const { language: currentLang, getTranslation } = useTranslationContext();
   const [problemsCollection, loading, error] = useCollection(collection(db, 'cfg_problems'));
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -86,6 +86,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
           <tr>
             <th><T>Name</T></th>
             <th><T>Description</T></th>
+            <th><T>Status</T></th>
             <th><T>Document</T></th>
             <th><T>Actions</T></th>
           </tr>
@@ -99,6 +100,11 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
               <tr key={problem.id}>
                 <td>{name}</td>
                 <td>{description}</td>
+                <td>
+                  <span className={`${styles.statusBadge || ''} ${problem.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                    <T>{problem.status === 'active' ? 'Active' : 'Inactive'}</T>
+                  </span>
+                </td>
                 <td className={styles.documentCell}>
                   {documentUrl && (
                     <Tooltip text={useT('View Document')}>
@@ -114,11 +120,19 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
                       <Edit size={18} />
                     </button>
                   </Tooltip>
-                  <Tooltip text={useT('Delete Problem')}>
-                    <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
-                      <Trash2 size={18} />
-                    </button>
-                  </Tooltip>
+                  {problem.reference_count > 0 ? (
+                    <Tooltip text={getTranslation('Cannot delete: problem is referenced in other objects')}>
+                      <button className={`${styles.iconButton} ${styles.deleteButtonDisabled}`} disabled>
+                        <Trash2 size={18} />
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip text={useT('Delete Problem')}>
+                      <button onClick={() => handleDeleteClick(problem.id)} className={styles.iconButton}>
+                        <Trash2 size={18} />
+                      </button>
+                    </Tooltip>
+                  )}
                 </td>
               </tr>
             );
