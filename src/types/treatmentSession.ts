@@ -11,9 +11,8 @@ export interface VitalSigns {
  */
 export interface ProtocolRound {
   protocolId: string;
-  protocolName: string | Record<string, string>;
   problemId: string;
-  stungPointCodes: string[];
+  stungPointIds: string[];
   postRoundVitals?: Partial<VitalSigns>; // optional BP+HR after this round's stings
 }
 

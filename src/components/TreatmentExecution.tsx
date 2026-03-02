@@ -112,9 +112,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const buildRound = (): ProtocolRound => ({
         protocolId: protocol.id,
-        protocolName: protocol.name,
         problemId,
-        stungPointCodes: stungPoints.map(p => p.code),
+        stungPointIds: stungPoints.map(p => p.id),
         postRoundVitals: Object.keys(postRoundVitals).length > 0 ? postRoundVitals : undefined,
     });
 

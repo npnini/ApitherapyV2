@@ -99,7 +99,8 @@ interface StoredTreatmentDoc {
 }
 
 // Explicit type for the hydrated data used for rendering
-interface HydratedRound extends Omit<ProtocolRound, 'stungPointCodes'> {
+interface HydratedRound extends Omit<ProtocolRound, 'stungPointIds' | 'stungPointCodes'> {
+    protocolName?: string | Record<string, string>;
     stungPoints: StingPoint[];
 }
 
@@ -159,10 +160,19 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             });
 
             // Fetch measures labels
-            const measuresSnapshot = await getDocs(collection(db, 'cfg_measures'));
+            const [measuresSnapshot, protocolsSnapshot] = await Promise.all([
+                getDocs(collection(db, 'cfg_measures')),
+                getDocs(collection(db, 'cfg_protocols'))
+            ]);
+
             const measuresMap = new Map<string, string | Record<string, string>>();
             measuresSnapshot.docs.forEach(doc => {
                 measuresMap.set(doc.id, doc.data().name);
+            });
+
+            const protocolsMap = new Map<string, string | Record<string, string>>();
+            protocolsSnapshot.docs.forEach(doc => {
+                protocolsMap.set(doc.id, doc.data().name);
             });
 
             setTreatments([]); // Clear old state
@@ -171,12 +181,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 const rounds = treatment.rounds || [];
                 const hasRounds = rounds.length > 0;
 
-                const hydratedRounds: HydratedRound[] = rounds.map(round => ({
-                    ...round,
-                    stungPoints: (round.stungPointCodes || [])
-                        .map((code: string) => pointsMap.get(code))
-                        .filter((p: StingPoint | undefined): p is StingPoint => p !== undefined)
-                }));
+                const hydratedRounds: HydratedRound[] = rounds.map(round => {
+                    const stungPointIds = (round as any).stungPointIds || round.stungPointCodes || [];
+                    return {
+                        ...round,
+                        protocolName: protocolsMap.get(round.protocolId),
+                        stungPoints: stungPointIds
+                            .map((idOrCode: string) => pointsMap.get(idOrCode))
+                            .filter((p: StingPoint | undefined): p is StingPoint => p !== undefined)
+                    };
+                });
 
                 // Handle legacy hydration if needed
                 const legacyPoints = !hasRounds && Array.isArray(treatment.stungPoints)

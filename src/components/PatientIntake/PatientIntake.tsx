@@ -370,14 +370,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         const sensitivityThreshold = appConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
         const sensitivityProtocolId = appConfig?.treatmentSettings?.sensitivityProtocolIdentifier;
 
-        if (sensitivityProtocolId && count < sensitivityThreshold) {
+        if (sensitivityProtocolId && count <= sensitivityThreshold) {
             // Load the sensitivity protocol from Firestore
             try {
                 const protSnap = await getDoc(doc(db, 'cfg_protocols', sensitivityProtocolId));
                 if (protSnap.exists()) {
                     const sensitivityProtocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
                     setSelectedProtocol(sensitivityProtocol);
-                    setSelectedProblemId('sensitivity');
+                    setSelectedProblemId(''); // Empty string for sensitivity
                     setIsSensitivitySession(true);
                     setViewState('treatmentExecution');
                     return;

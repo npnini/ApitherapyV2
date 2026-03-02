@@ -9,6 +9,13 @@ import { TreatmentSession } from '../types/treatmentSession';
  */
 const stripUndefined = (obj: any): any => {
     if (obj && typeof obj === 'object') {
+        // If it looks like a Firestore FieldValue (internal structure often has _methodName or similar)
+        // or other non-plain objects we want to preserve, return it as is.
+        if (obj.constructor?.name === 'FieldValue' ||
+            (obj._methodName && typeof obj._methodName === 'string')) {
+            return obj;
+        }
+
         const newObj: any = Array.isArray(obj) ? [] : {};
         Object.keys(obj).forEach(key => {
             if (obj[key] !== undefined) {
