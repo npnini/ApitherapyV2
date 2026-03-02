@@ -217,8 +217,8 @@ const AppInner: React.FC = () => {
         setCurrentView('patient_intake');
     };
 
-    const handleSavePatient = async (patientData: JoinedPatientData, closeModal: boolean = true) => {
-        if (!appUser) return;
+    const handleSavePatient = async (patientData: JoinedPatientData, closeModal: boolean = true): Promise<boolean> => {
+        if (!appUser) return false;
         setSaveStatus('saving');
         setErrorMessage('');
 
@@ -277,11 +277,13 @@ const AppInner: React.FC = () => {
                 setSaveStatus('success');
                 setTimeout(() => setSaveStatus('idle'), 2000);
             }
+            return true;
 
         } catch (error) {
             console.error("Error saving patient data:", error);
             setErrorMessage(error instanceof Error ? error.message : "Failed to save patient data.");
             setSaveStatus('error');
+            return false;
         }
     };
 

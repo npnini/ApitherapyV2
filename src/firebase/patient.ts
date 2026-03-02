@@ -4,6 +4,23 @@ import { PatientData, MedicalData, QuestionnaireResponse, MeasuredValueReading }
 import { TreatmentSession } from '../types/treatmentSession';
 
 /**
+ * Recursively removes keys with 'undefined' values from an object.
+ * Firestore does not support 'undefined' values.
+ */
+const stripUndefined = (obj: any): any => {
+    if (obj && typeof obj === 'object') {
+        const newObj: any = Array.isArray(obj) ? [] : {};
+        Object.keys(obj).forEach(key => {
+            if (obj[key] !== undefined) {
+                newObj[key] = stripUndefined(obj[key]);
+            }
+        });
+        return newObj;
+    }
+    return obj;
+};
+
+/**
  * Saves or updates patient personal details in the 'patients' collection.
  */
 export const savePatient = async (patientData: Partial<PatientData>, patientId?: string) => {
@@ -24,7 +41,7 @@ export const savePatient = async (patientData: Partial<PatientData>, patientId?:
         (dataToSave as any).createdTimestamp = timestamp;
     }
 
-    await setDoc(patientDocRef, dataToSave, { merge: true });
+    await setDoc(patientDocRef, stripUndefined(dataToSave), { merge: true });
     return patientDocRef.id;
 };
 
@@ -46,7 +63,7 @@ export const saveMedicalData = async (patientId: string, medicalData: Partial<Me
         (dataToSave as any).createdTimestamp = timestamp;
     }
 
-    await setDoc(medicalDocRef, dataToSave, { merge: true });
+    await setDoc(medicalDocRef, stripUndefined(dataToSave), { merge: true });
     return patientId;
 };
 
@@ -63,11 +80,13 @@ export const addQuestionnaireResponse = async (patientId: string, response: Part
     const docRef = doc(db, 'questionnaire_responses', docId);
     const timestamp = serverTimestamp();
 
-    return await setDoc(docRef, {
+    const dataToSave = {
         ...response,
         patientId,
         updatedTimestamp: timestamp,
-    }, { merge: true });
+    };
+
+    return await setDoc(docRef, stripUndefined(dataToSave), { merge: true });
 };
 
 /**
@@ -80,12 +99,14 @@ export const addMeasuredValueReading = async (patientId: string, reading: Partia
     const docRef = doc(db, 'measured_values', docId);
     const serverTs = serverTimestamp();
 
-    await setDoc(docRef, {
+    const dataToSave = {
         ...reading,
         patientId,
         createdTimestamp: serverTs,
         updatedTimestamp: serverTs
-    });
+    };
+
+    await setDoc(docRef, stripUndefined(dataToSave));
     return docId;
 };
 
@@ -102,12 +123,14 @@ export const saveTreatment = async (
     const docRef = doc(db, 'treatments', docId);
     const serverTs = serverTimestamp();
 
-    await setDoc(docRef, {
+    const dataToSave = {
         ...session,
         patientId,
         createdTimestamp: serverTs,
         updatedTimestamp: serverTs,
-    });
+    };
+
+    await setDoc(docRef, stripUndefined(dataToSave));
     return docRef.id;
 };
 

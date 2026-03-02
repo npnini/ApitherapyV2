@@ -6,7 +6,7 @@ import { Measure } from '../../types/measure';
 import { VitalSigns } from '../../types/treatmentSession';
 import VitalsInputGroup from '../VitalsInputGroup';
 import { T, useT, useTranslationContext } from '../T';
-import { Loader, ChevronRight } from 'lucide-react';
+import { Loader, ChevronRight, ChevronLeft } from 'lucide-react';
 import styles from './SessionOpening.module.css';
 
 export interface SessionOpeningData {
@@ -15,6 +15,10 @@ export interface SessionOpeningData {
     preSessionVitals: Partial<VitalSigns>;
     measureReadingId?: string; // Captures the ID after saving to Firestore
 }
+
+const NextIcon: React.FC<{ direction: 'ltr' | 'rtl'; size?: number }> = ({ direction, size = 16 }) => {
+    return direction === 'rtl' ? <ChevronLeft size={size} /> : <ChevronRight size={size} />;
+};
 
 interface SessionOpeningProps {
     patient: Partial<JoinedPatientData>;
@@ -185,7 +189,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                         disabled={!isFormValid}
                         className={styles.btnPrimary}
                     >
-                        {tNextSelectProtocol} <ChevronRight size={16} />
+                        {tNextSelectProtocol} <NextIcon direction={direction} />
                     </button>
                 </div>
             </div>

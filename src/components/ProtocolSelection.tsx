@@ -38,6 +38,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
     const tBackToProblem = useT('Back to Problems');
 
     const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
+    const NextIcon = direction === 'rtl' ? ChevronLeft : ChevronRight;
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -127,7 +128,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                                         <div className={styles.itemDescription}>
                                             {getMLValue(problem.description, language)}
                                         </div>
-                                        <ChevronRight size={18} className={styles.itemChevron} />
+                                        <NextIcon size={18} className={styles.itemChevron} />
                                     </button>
                                 ))}
                             </div>
@@ -163,7 +164,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                                         <div className={styles.itemDescription}>
                                             {getMLValue(protocol.description, language)}
                                         </div>
-                                        <ChevronRight size={18} className={styles.itemChevron} />
+                                        <NextIcon size={18} className={styles.itemChevron} />
                                     </button>
                                 ))}
                             </div>

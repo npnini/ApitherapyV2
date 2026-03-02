@@ -49,9 +49,9 @@ const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'consent', 'instructi
 interface PatientIntakeProps {
     patient: Partial<JoinedPatientData>;
     user: AppUser;
-    onSave: (patientData: any) => void;
-    onUpdate: (patientData: any) => void;
-    onClose: () => void;          // renamed from onBack (UX-2)
+    onSave: (patientData: any) => Promise<boolean>;
+    onUpdate: (patientData: any) => Promise<boolean>;
+    onClose: () => void;
     saveStatus: 'idle' | 'saving' | 'success' | 'error';
     errorMessage: string;
     initialViewState?: ViewState;
@@ -212,13 +212,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setIsDirty(false);
     };
 
-    const handleUpdate = async () => {
+    const handleUpdate = async (): Promise<boolean> => {
         setHasAttemptedSubmit(true);
         let finalData = { ...patientData };
 
         if (activeTab === 'consent' && consentTabRef.current) {
             const signatureUrl = await consentTabRef.current.onSave();
-            if (!signatureUrl) return; // ConsentTab handles validation/alerts
+            if (!signatureUrl) return false;
 
             finalData = {
                 ...finalData,
@@ -235,7 +235,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
         if (activeTab === 'instructions' && instructionsTabRef.current) {
             const signatureUrl = await instructionsTabRef.current.onSave();
-            if (!signatureUrl) return;
+            if (!signatureUrl) return false;
 
             finalData = {
                 ...finalData,
@@ -257,11 +257,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             }
         }
 
-        await onUpdate(finalData);
-        if (problemsTabRef.current) {
-            problemsTabRef.current.clearDirty();
+        const success = await onUpdate(finalData);
+        if (success) {
+            if (problemsTabRef.current) {
+                problemsTabRef.current.clearDirty();
+            }
+            markTabSaved(activeTab);
         }
-        markTabSaved(activeTab);
+        return success;
     };
 
     // Save (new patient last step → full submission)
@@ -301,7 +304,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
     // Tab navigation: advance to next tab
-    const handleNextTab = () => {
+    const handleNextTab = async () => {
+        // If we are on a tab that requires saving (like Personal Details), or if isDirty,
+        // we should attempt to update/validate before moving.
+        if (activeTab === 'personal' || isDirty) {
+            const success = await handleUpdate();
+            if (!success) return; // Stay on current tab if validation fails
+        }
+
         const idx = TAB_ORDER.indexOf(activeTab);
         if (idx < TAB_ORDER.length - 1) {
             setActiveTab(TAB_ORDER[idx + 1]);
@@ -616,7 +626,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 <span className={styles.statusSuccess}><T>Saved successfully!</T></span>
                             )}
                             {saveStatus === 'error' && errorMessage && (
-                                <span className={styles.statusError}>{errorMessage}</span>
+                                <span className={styles.statusError}><T>{errorMessage}</T></span>
                             )}
                         </div>
                         <div className={styles.bottomActions}>
