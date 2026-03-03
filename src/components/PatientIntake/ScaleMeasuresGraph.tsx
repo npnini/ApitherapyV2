@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { GroupedReading, getMeasureColor } from '../../services/measureService';
 import { Measure } from '../../types/measure';
-import { useTranslationContext } from '../T';
+import { useTranslationContext, useT } from '../T';
 
 interface ScaleMeasuresGraphProps {
     data: GroupedReading[];
@@ -48,7 +48,7 @@ const ScaleMeasuresGraph: React.FC<ScaleMeasuresGraphProps> = ({ data, measures,
     if (data.length === 0 || scaleMeasures.length === 0) {
         return (
             <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                {getTranslation('No scale measures data available')}
+                {useT('No scale measures data available')}
             </div>
         );
     }

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { GroupedReading } from '../../services/measureService';
 import { Measure } from '../../types/measure';
-import { useTranslationContext } from '../T';
+import { useTranslationContext, useT, T } from '../T';
 import styles from './PatientIntake.module.css';
 
 interface CategoryMeasuresTableProps {
@@ -28,7 +28,7 @@ const CategoryMeasuresTable: React.FC<CategoryMeasuresTableProps> = ({ data, mea
     if (data.length === 0 || categoryMeasures.length === 0) {
         return (
             <div style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                {getTranslation('No category measures data available')}
+                {useT('No category measures data available')}
             </div>
         );
     }
@@ -81,7 +81,7 @@ const CategoryMeasuresTable: React.FC<CategoryMeasuresTableProps> = ({ data, mea
 
 const headerCellStyle: React.CSSProperties = {
     padding: '0.75rem 1rem',
-    textAlign: 'left',
+    textAlign: 'inherit',
     fontSize: '0.875rem',
     fontWeight: 600,
     color: '#475569',
@@ -94,11 +94,6 @@ const cellStyle: React.CSSProperties = {
     fontSize: '0.875rem',
     color: '#1e293b',
     whiteSpace: 'nowrap'
-};
-
-const T: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { getTranslation } = useTranslationContext();
-    return <>{getTranslation(children as string)}</>;
 };
 
 export default CategoryMeasuresTable;

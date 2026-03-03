@@ -142,6 +142,36 @@ export const saveTreatment = async (
 };
 
 /**
+ * Fetches the most recent treatment for a patient.
+ */
+export const getLatestTreatment = async (patientId: string): Promise<TreatmentSession | null> => {
+    const colRef = collection(db, 'treatments');
+    const q = query(
+        colRef,
+        where('__name__', '>=', `${patientId}_`),
+        where('__name__', '<=', `${patientId}_\uf8ff`),
+        orderBy('__name__', 'desc'),
+        limit(1)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    const d = snapshot.docs[0];
+    return { ...d.data(), id: d.id } as unknown as TreatmentSession;
+};
+
+/**
+ * Updates a treatment session with a feedback measure reading ID and feedback text.
+ */
+export const updateTreatmentFeedback = async (treatmentId: string, feedbackReadingId: string, feedbackText: string): Promise<void> => {
+    const docRef = doc(db, 'treatments', treatmentId);
+    await setDoc(docRef, {
+        patientFeedbackMeasureReadingId: feedbackReadingId,
+        patientFeedback: feedbackText,
+        updatedTimestamp: serverTimestamp()
+    }, { merge: true });
+};
+
+/**
  * Returns the number of treatment sessions recorded for a patient.
  * Uses a __name__ range query — no composite Firestore index required.
  */

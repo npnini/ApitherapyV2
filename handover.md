@@ -1,55 +1,26 @@
-# Handover - Referential Integrity & Status Management
+# Handover: Treatment Feedback Form Implementation
 
-## Objective
-To prevent accidental deletion of referenced objects and provide a way to mark configurations as `active` or `inactive`.
+## Completed Milestones
+- [x] Initial research and functional spec evaluation.
+- [x] Implementation plan drafted and approved by the user.
+- [x] Created git branch `feature/TreatmentFeedback`.
+- [x] Implemented `TreatmentFeedback.tsx` and `TreatmentFeedback.module.css` in `src/components/PatientIntake/`.
+- [x] Integrated "Treatment Feedback" button and view state into `PatientIntake.tsx`.
+- [x] Updated Firebase functions in `src/firebase/patient.ts` (`getLatestTreatment`, `updateTreatmentFeedback`).
+- [x] Updated `MeasuredValueReading` type in `src/types/patient.ts` to include optional `note` field.
+- [x] Fixed all identification lint and syntax errors in the modified components.
 
 ## Implementation Details
+- **Field Names:** Used `patientFeedbackMeasureReadingId` and `patientFeedback` in the `treatments` collection to match the `TreatmentSession` interface.
+- **Data Persistence:** Feedback measures are saved to the `measured_values` collection, and the resulting ID is saved back to the relevant treatment document.
+- **RTL Support:** The component fully supports the project's RTL direction and uses the translation system (`T`, `useT`).
 
-### Data Model Changes
-The following fields were added to `cfg_acupuncture_points`, `cfg_protocols`, `cfg_measures`, and `cfg_problems`:
-- `status`: `'active' | 'inactive'` (string)
-- `reference_count`: `number` (numeric)
+## Next Steps
+1. **User Testing:** The user should test the "Treatment Feedback" flow within the `PatientIntake` modal.
+    - Select a patient who has a past treatment.
+    - Verify the "Treatment Feedback" button appears.
+    - Fill out the form and save.
+    - Verify data is correctly saved in Firestore.
+2. **Merge:** After successful testing, the branch `feature/TreatmentFeedback` can be merged into `main`.
 
-### Logic Patterns
-
-#### 1. Deletion Protection (List View)
-In all Admin components, the delete button is disabled if `reference_count > 0`.
-```typescript
-{item.reference_count > 0 ? (
-  <Tooltip text={getTranslation('Cannot delete: item is referenced')}>
-    <button className={styles.deleteButtonDisabled} disabled>
-      <Trash2 size={18} />
-    </button>
-  </Tooltip>
-) : (
-  <button onClick={() => handleDelete(item)} className={styles.deleteButton}>
-    <Trash2 size={18} />
-  </button>
-)}
-```
-
-#### 2. Status Toggling (Edit Form)
-Status is managed via a switch in the edit form only. New items default to `active` with `reference_count: 0`.
-
-#### 3. Selection Filtering
-Forms that reference other objects (e.g., Protocols referencing Points) should filter available items by `status === 'active'`.
-**Pattern**:
-```typescript
-const availableItems = allItems.filter(p => p.status === 'active' || currentlySelectedIds.includes(p.id));
-```
-This ensures that `inactive` items can't be *newly* picked, but *previously* picked ones aren't hidden from the UI.
-
-#### 4. Reference Count Updates
-When an object is saved or deleted, it must update the `reference_count` of its children.
-- **On Save**: Calculate diff between `original` and `new` refs. Increment/decrement children accordingly using Firestore `increment(1)` or `increment(-1)`.
-- **On Delete**: Decrement all children refs.
-
-### Files Impacted
-- `src/types/*.ts`: Interface updates.
-- `src/components/*Admin.tsx`: Logic updates.
-- `src/components/*Admin.module.css`: UI styles.
-- `scripts/migrate_referential_integrity.js`: Initial migration.
-
-## Future Recommendations
-- Ensure any new collection that joins the configuration layer follows this pattern.
-- Consider a generic `useReferentialIntegrity` hook to centralize the increment/decrement logic if the project grows further.
+**Status:** Implementation complete, pending user verification.

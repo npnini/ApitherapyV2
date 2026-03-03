@@ -16,9 +16,11 @@ import MeasuresHistoryTab from './MeasuresHistoryTab';
 import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
+import TreatmentFeedback from './TreatmentFeedback';
 import { Protocol } from '../../types/protocol';
-import { ProtocolRound, VitalSigns } from '../../types/treatmentSession';
+import { ProtocolRound, VitalSigns, TreatmentSession } from '../../types/treatmentSession';
 import { AppUser } from '../../types/user';
+import { getLatestTreatment } from '../../firebase/patient';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
 type TabKey =
@@ -30,7 +32,7 @@ type TabKey =
     | 'treatments'
     | 'measures';
 
-type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'treatmentExecution';
+type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'treatmentExecution' | 'treatmentFeedback';
 
 const TAB_ORDER: TabKey[] = [
     'personal',
@@ -90,6 +92,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [appConfig, setAppConfig] = useState<any>(null);
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
+    const [latestTreatment, setLatestTreatment] = useState<TreatmentSession | null>(null);
 
     const consentTabRef = useRef<ConsentTabHandle>(null);
     const instructionsTabRef = useRef<InstructionsTabHandle>(null);
@@ -107,6 +110,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tUpdate = useT('Update');
     const tNextStep = useT('Next Step');
     const tDone = useT('Done');
+    const tTreatmentFeedback = useT('Treatment Feedback');
 
     const tabLabels: Record<TabKey, string> = {
         personal: tPersonal,
@@ -189,6 +193,16 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             }
 
             setSavedTabs(initialSaved);
+
+            // 8. Fetch latest treatment for feedback button gating
+            if (patient.id) {
+                try {
+                    const latest = await getLatestTreatment(patient.id);
+                    setLatestTreatment(latest);
+                } catch (err) {
+                    console.error('Failed to fetch latest treatment:', err);
+                }
+            }
         };
 
         checkSavedStatus();
@@ -519,9 +533,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
     // ── Modal header title (UX-7: name updates live) ─────────────────────────
-    const headerTitle = isExistingPatient
-        ? <><T>Patient Details</T> — {patientData.fullName || patient.fullName}</>
-        : <T>Patient Intake Process</T>;
+    const headerTitle = viewState === 'treatmentFeedback'
+        ? tTreatmentFeedback
+        : isExistingPatient
+            ? <><T>Patient Details</T> — {patientData.fullName || patient.fullName}</>
+            : <T>Patient Intake Process</T>;
 
     // ── Bottom bar visibility (UX-8) ─────────────────────────────────────────
     const showBottomBar = viewState === 'tabs';
@@ -570,15 +586,28 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         ))}
                     </div>
 
-                    {/* Start New Treatment (UX-1) */}
-                    <button
-                        type="button"
-                        className={styles.startTreatmentButton}
-                        disabled={!canStartTreatment}
-                        onClick={handleStartNewTreatment}
-                    >
-                        {tStartNewTreatment}
-                    </button>
+                    <div className={styles.tabActions}>
+                        {/* Start New Treatment (UX-1) */}
+                        <button
+                            type="button"
+                            className={styles.startTreatmentButton}
+                            disabled={!canStartTreatment}
+                            onClick={handleStartNewTreatment}
+                        >
+                            {tStartNewTreatment}
+                        </button>
+
+                        {/* Treatment Feedback (UX-9) */}
+                        {latestTreatment && !latestTreatment.patientFeedbackMeasureReadingId && (
+                            <button
+                                type="button"
+                                className={styles.startTreatmentButton}
+                                onClick={() => setViewState('treatmentFeedback')}
+                            >
+                                {tTreatmentFeedback}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* ── Content Area ──────────────────────────────────────────── */}
@@ -609,6 +638,21 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     onRoundComplete={handleRoundComplete}
                                     onEndTreatment={handleEndTreatment}
                                     onBack={() => setViewState('protocolSelection')}
+                                />
+                            )}
+                            {viewState === 'treatmentFeedback' && latestTreatment && (
+                                <TreatmentFeedback
+                                    patient={patientData as JoinedPatientData}
+                                    treatment={latestTreatment}
+                                    onComplete={() => {
+                                        setViewState('tabs');
+                                        setActiveTab('treatments');
+                                        // Refresh latest treatment state
+                                        if (patient.id) {
+                                            getLatestTreatment(patient.id).then(setLatestTreatment);
+                                        }
+                                    }}
+                                    onBack={() => setViewState('tabs')}
                                 />
                             )}
                         </>

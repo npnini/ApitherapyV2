@@ -20,6 +20,7 @@ export interface MedicalData extends BaseDocument {
 
 export interface MeasuredValueReading extends BaseDocument {
     patientId: string;
+    note?: string;
     readings: Array<{
         measureId: string;
         type: 'Category' | 'Scale';
