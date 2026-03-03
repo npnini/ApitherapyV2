@@ -15,12 +15,6 @@
 - **Data Persistence:** Feedback measures are saved to the `measured_values` collection, and the resulting ID is saved back to the relevant treatment document.
 - **RTL Support:** The component fully supports the project's RTL direction and uses the translation system (`T`, `useT`).
 
-## Next Steps
-1. **User Testing:** The user should test the "Treatment Feedback" flow within the `PatientIntake` modal.
-    - Select a patient who has a past treatment.
-    - Verify the "Treatment Feedback" button appears.
-    - Fill out the form and save.
-    - Verify data is correctly saved in Firestore.
-2. **Merge:** After successful testing, the branch `feature/TreatmentFeedback` can be merged into `main`.
-
-**Status:** Implementation complete, pending user verification.
+## Status
+- **Implementation:** Complete
+- **Status:** Merged into `main` and synced to GitHub.
