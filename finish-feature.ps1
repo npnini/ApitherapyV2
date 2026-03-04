@@ -39,7 +39,11 @@ try {
     Write-Host "⬆️ Pushing main to origin..." -ForegroundColor Yellow
     git push origin main
 
-    Write-Host "`n✅ Feature '$currentBranch' successfully merged into main and pushed to GitHub!" -ForegroundColor Green
+    # 6. Cleanup local branch
+    Write-Host "🧹 Deleting local feature branch $currentBranch..." -ForegroundColor Yellow
+    git branch -d $currentBranch
+
+    Write-Host "`n✅ Feature '$currentBranch' successfully merged, pushed, and cleaned up!" -ForegroundColor Green
     Write-Host "You are now on branch: main" -ForegroundColor Gray
 }
 catch {

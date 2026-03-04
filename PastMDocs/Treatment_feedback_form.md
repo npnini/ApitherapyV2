@@ -34,3 +34,6 @@ An update success (green) or failure (red) message shall be displayed following 
 
 Note for UI-UX considerations:
 A scheduled process is planned to sent an email with a url to the patient a day after the treatment, allowing him to enter himself the feedback. The url is supposed to be a url to an identical page, that displays only the modal, on a clear background, with an empty sidebar, showing only the logo on the top left corner of the sidebar. The patient shall be able to enter data and submit the form, provided the feedback for the treatment was not entered yet.
+
+
+
