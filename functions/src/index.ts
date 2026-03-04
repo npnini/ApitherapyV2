@@ -210,7 +210,7 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
       measureId: m.id,
       type: m.type,
       value: responses[m.id],
-    })).filter((r: { value: any }) => r.value !== undefined);
+    })).filter((r: { value: unknown }) => r.value !== undefined);
 
     await db.collection("measured_values").doc(readingId).set({
       patientId: patientId,
