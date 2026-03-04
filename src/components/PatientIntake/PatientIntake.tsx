@@ -371,6 +371,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 measureReadingId = await addMeasuredValueReading(patient.id, {
                     patientId: patient.id,
                     readings: data.measureReadings,
+                    note: data.patientReport,
                 });
             } catch (err) {
                 console.error('Failed to write measure reading:', err);

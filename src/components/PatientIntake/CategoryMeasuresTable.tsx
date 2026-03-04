@@ -17,7 +17,7 @@ const CategoryMeasuresTable: React.FC<CategoryMeasuresTableProps> = ({ data, mea
         const hasData = new Set<string>();
         data.forEach(reading => {
             Object.keys(reading).forEach(key => {
-                if (key !== 'date' && key !== 'label' && key !== 'displayDate' && key !== 'timestamp') {
+                if (key !== 'date' && key !== 'label' && key !== 'displayDate' && key !== 'timestamp' && key !== 'notes') {
                     hasData.add(key);
                 }
             });
@@ -25,7 +25,18 @@ const CategoryMeasuresTable: React.FC<CategoryMeasuresTableProps> = ({ data, mea
         return measures.filter(m => m.type === 'Category' && hasData.has(m.id));
     }, [measures, data]);
 
-    if (data.length === 0 || categoryMeasures.length === 0) {
+    const getLocalizedName = (measure: Measure) => {
+        const { name } = measure;
+        if (typeof name === 'string') return name;
+        if (name && typeof name === 'object') {
+            return name[currentLang] || name['en'] || Object.values(name)[0] || measure.id;
+        }
+        return measure.id;
+    };
+
+    const hasNotes = useMemo(() => data.some(r => r.notes && r.notes.length > 0), [data]);
+
+    if (data.length === 0 || (categoryMeasures.length === 0 && !hasNotes)) {
         return (
             <div style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
                 {useT('No category measures data available')}
@@ -64,7 +75,7 @@ const CategoryMeasuresTable: React.FC<CategoryMeasuresTableProps> = ({ data, mea
                     {categoryMeasures.map(measure => (
                         <tr key={measure.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                             <td style={cellStyle}>
-                                {measure.name[currentLang] || measure.name['en'] || measure.id}
+                                {getLocalizedName(measure)}
                             </td>
                             {data.map(reading => (
                                 <td key={reading.date} style={cellStyle}>
@@ -73,6 +84,24 @@ const CategoryMeasuresTable: React.FC<CategoryMeasuresTableProps> = ({ data, mea
                             ))}
                         </tr>
                     ))}
+                    {hasNotes && (
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                            <td style={{ ...cellStyle, fontWeight: 600 }}>
+                                <T>Notes / Feedback</T>
+                            </td>
+                            {data.map(reading => (
+                                <td key={reading.date} style={{ ...cellStyle, whiteSpace: 'normal', minWidth: '200px', fontSize: '0.8rem' }}>
+                                    {reading.notes && reading.notes.length > 0 ? (
+                                        <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                                            {reading.notes.map((note: string, i: number) => (
+                                                <li key={i}>{note}</li>
+                                            ))}
+                                        </ul>
+                                    ) : '-'}
+                                </td>
+                            ))}
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>

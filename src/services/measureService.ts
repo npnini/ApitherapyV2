@@ -9,6 +9,7 @@ export interface GroupedReading {
     label: string; // The human readable label (e.g. "2025-45 (2025-11-02)")
     displayDate?: string; // Optional secondary label
     timestamp: number;
+    notes?: string[]; // Notes collected from readings in this group
     [key: string]: any; // measureId: value
 }
 
@@ -64,10 +65,16 @@ export const groupReadingsByDensity = (
                 date: mainKey,
                 label: labelText,
                 timestamp: groupDate.getTime(),
+                notes: [],
             });
         }
 
         const group = groups.get(mainKey)!;
+        if (reading.note && reading.note.trim() !== '') {
+            if (!group.notes!.includes(reading.note.trim())) {
+                group.notes!.push(reading.note.trim());
+            }
+        }
         reading.readings.forEach(r => {
             // Only include if it's a known measure
             if (validMeasureIds.size > 0 && !validMeasureIds.has(r.measureId)) return;

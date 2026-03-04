@@ -1,0 +1,202 @@
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f8fafc;
+    color: #475569;
+    font-size: 1.125rem;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+    color: #3b82f6;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.cardContainer {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    background-color: #f1f5f9;
+    padding: 2rem 1rem;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    width: 100%;
+    max-width: 600px;
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    color: #1e293b;
+}
+
+.headerIcon {
+    color: #3b82f6;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.subtitle {
+    color: #64748b;
+    margin-bottom: 2rem;
+    font-size: 1.05rem;
+}
+
+.formContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.measuresGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.measureItem {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.measureHeader {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+}
+
+.measureName {
+    font-weight: 500;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+.measureDesc {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.measureInput {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    background-color: white;
+}
+
+.measureInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #334155;
+    margin-bottom: 0.75rem;
+}
+
+.textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.submitBtn {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: 500;
+    font-size: 1.1rem;
+    padding: 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s;
+    margin-top: 1rem;
+}
+
+.submitBtn:hover:not(:disabled) {
+    background-color: #2563eb;
+}
+
+.submitBtn:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.errorMessage {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #ef4444;
+    font-size: 0.95rem;
+    background-color: #fef2f2;
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.successIcon {
+    color: #22c55e;
+    margin-bottom: 1rem;
+    align-self: center;
+}
+
+.errorIcon {
+    color: #f59e0b;
+    margin-bottom: 1rem;
+    align-self: center;
+}
+
+.message {
+    color: #475569;
+    font-size: 1.1rem;
+    text-align: center;
+}

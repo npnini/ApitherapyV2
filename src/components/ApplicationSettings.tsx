@@ -55,6 +55,24 @@ const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<s
     return defaults;
 };
 
+const deepMerge = (target: any, source: any) => {
+    const output = { ...target };
+    if (source && typeof source === 'object' && !Array.isArray(source)) {
+        Object.keys(source).forEach(key => {
+            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                if (!(key in target)) {
+                    Object.assign(output, { [key]: source[key] });
+                } else {
+                    output[key] = deepMerge(target[key], source[key]);
+                }
+            } else {
+                Object.assign(output, { [key]: source[key] });
+            }
+        });
+    }
+    return output;
+};
+
 const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose }) => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [initialSettings, setInitialSettings] = useState<Record<string, any>>({});
@@ -127,7 +145,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
                 if (docSnap.exists()) {
                     const fetchedData = docSnap.data();
-                    mergedSettings = { ...defaults, ...fetchedData };
+                    mergedSettings = deepMerge(defaults, fetchedData);
                 }
 
                 setSettings(mergedSettings);
@@ -529,7 +547,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                             const fileUrl = typeof fileValues === 'object' ? fileValues[lang] : undefined;
                             const langName = allLanguages.find(l => l.id === lang)?.name || lang;
                             const isConsent = path[0] === 'consentSettings';
-                            
+
                             const rawUrlFilename = getFilenameFromUrl(fileUrl) || 'document';
                             const finalExtension = isConsent ? 'txt' : 'pdf';
                             const hasExtension = /\.[a-zA-Z0-9]+$/.test(rawUrlFilename);

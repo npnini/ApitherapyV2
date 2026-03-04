@@ -24,6 +24,7 @@ import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
 import PatientIntake from './components/PatientIntake/PatientIntake';
+import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandaloneView';
 import Modal from './components/common/Modal';
 import './globals.css';
 
@@ -348,6 +349,14 @@ const AppInner: React.FC = () => {
 
 
     const renderContent = () => {
+        const path = window.location.pathname;
+        if (path.startsWith('/feedback/')) {
+            const sessionId = path.split('/')[2];
+            if (sessionId) {
+                return <FeedbackStandaloneView sessionId={sessionId} />;
+            }
+        }
+
         if (!authReady) return <div className="flex justify-center items-center h-screen"><div><T>Initializing...</T></div></div>;
         if (!appUser) return <Login />;
         if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div><T>Loading Patient Data...</T></div></div>;

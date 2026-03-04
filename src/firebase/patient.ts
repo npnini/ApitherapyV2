@@ -198,10 +198,27 @@ export const getMeasuredValueReadings = async (patientId: string): Promise<Measu
         orderBy('__name__', 'asc')
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc: QueryDocumentSnapshot) => ({
-        ...doc.data(),
-        id: doc.id
-    })) as unknown as MeasuredValueReading[];
+    return snapshot.docs.map((doc) => {
+        const data = doc.data();
+        let readings = data.readings;
+
+        // Backward compatibility: Handle legacy map-based readings
+        if (readings && !Array.isArray(readings) && typeof readings === 'object') {
+            readings = Object.entries(readings).map(([measureId, value]) => ({
+                measureId,
+                value: value as string | number,
+                // We'll default to 'Scale' if unknown; most tracked measures are scales/categories
+                // The UI will still render simple values correctly.
+                type: 'Scale'
+            }));
+        }
+
+        return {
+            ...data,
+            readings: readings || [],
+            id: doc.id
+        } as MeasuredValueReading;
+    });
 };
 
 /**

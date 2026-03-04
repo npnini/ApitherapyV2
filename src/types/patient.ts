@@ -54,5 +54,5 @@ export interface JoinedPatientData extends PatientData {
     };
     questionnaireResponse?: QuestionnaireResponse;
     /** Readings collected in ProblemsProtocolsTab, to be written after patient ID is resolved. */
-    pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number }>;
+    pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number; note?: string }>;
 }

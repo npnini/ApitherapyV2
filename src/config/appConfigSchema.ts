@@ -128,4 +128,46 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       },
     },
   },
+  feedbackLoop: {
+    label: 'Patient Feedback Loop',
+    description: 'Manage the automated post-treatment feedback outreach.',
+    children: {
+      feedbackRetentionDays: {
+        label: 'Feedback Link Expiry (Days)',
+        description: 'Number of days a feedback link remains valid before expiring.',
+        type: 'number',
+        defaultValue: 7,
+      },
+      sendgridApiKey: {
+        label: 'SendGrid API Key',
+        description: 'Your SendGrid API key for sending automated emails.',
+        type: 'string',
+        defaultValue: '',
+      },
+      feedbackEmailTemplateId_he: {
+        label: 'SendGrid Template ID (Hebrew)',
+        description: 'The dynamic template ID in SendGrid for the Hebrew feedback outreach.',
+        type: 'string',
+        defaultValue: '',
+      },
+      feedbackEmailTemplateId_en: {
+        label: 'SendGrid Template ID (English)',
+        description: 'The dynamic template ID in SendGrid for the English feedback outreach.',
+        type: 'string',
+        defaultValue: '',
+      },
+      sendgridSenderEmail: {
+        label: 'SendGrid Sender Email',
+        description: 'The verified sender email address in your SendGrid account (e.g., beelive.admin@beelive.biz).',
+        type: 'string',
+        defaultValue: '',
+      },
+      frontendDomain: {
+        label: 'Frontend URL Domain',
+        description: 'The domain where your app is hosted, used for rendering the feedback link in emails (e.g., beelive.biz).',
+        type: 'string',
+        defaultValue: 'beelive.biz',
+      },
+    },
+  },
 };
