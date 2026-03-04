@@ -58,6 +58,7 @@ interface PatientIntakeProps {
     errorMessage: string;
     initialViewState?: ViewState;
     initialTab?: TabKey;
+    onTreatmentComplete?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     errorMessage,
     initialViewState,
     initialTab,
+    onTreatmentComplete,
 }) => {
     // ── State ─────────────────────────────────────────────────────────────────
     const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'personal');
@@ -451,6 +453,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setSessionOpeningData(null);
             setViewState('tabs');
             setActiveTab('treatments');
+            if (onTreatmentComplete) onTreatmentComplete();
         } catch (error) {
             console.error('Error saving treatment:', error);
             setTreatmentSaveStatus('error');

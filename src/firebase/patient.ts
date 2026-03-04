@@ -138,6 +138,14 @@ export const saveTreatment = async (
     };
 
     await setDoc(docRef, stripUndefined(dataToSave));
+
+    // Synchronize lastTreatment date in medical record for dashboard quick-view
+    const medicalDocRef = doc(db, 'patient_medical_data', patientId);
+    await setDoc(medicalDocRef, {
+        lastTreatment: new Date().toISOString(),
+        updatedTimestamp: serverTs
+    }, { merge: true });
+
     return docRef.id;
 };
 

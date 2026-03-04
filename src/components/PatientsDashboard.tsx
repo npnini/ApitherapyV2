@@ -113,7 +113,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                 </div>
                 <div className={styles.lastTreatment}>
                   {patient.medicalRecord?.patient_level_data?.lastTreatment
-                    ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString()
+                    ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
                     : <T>N/A</T>}
                 </div>
                 <div className={styles.actionsContainer}>

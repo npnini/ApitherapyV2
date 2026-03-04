@@ -18,7 +18,7 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
-import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment } from './firebase/patient';
+import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
@@ -109,6 +109,19 @@ const AppInner: React.FC = () => {
                 const medicalDataRef = doc(db, 'patient_medical_data', patientDoc.id);
                 const medicalDataSnap = await getDoc(medicalDataRef);
                 const medicalData = medicalDataSnap.exists() ? medicalDataSnap.data() as MedicalData : {} as MedicalData;
+
+                // Fallback for missing lastTreatment date if any previous sessions exist
+                if (!medicalData.lastTreatment) {
+                    const latest = await getLatestTreatment(patientDoc.id);
+                    if (latest && latest.createdTimestamp) {
+                        const ts = latest.createdTimestamp;
+                        if (ts && typeof ts.toDate === 'function') {
+                            medicalData.lastTreatment = ts.toDate().toISOString();
+                        } else if (ts) {
+                            medicalData.lastTreatment = new Date(ts).toISOString();
+                        }
+                    }
+                }
 
                 // 3. Fetch Latest Questionnaire Response (for dashboard summary)
                 let condition = 'N/A';
@@ -401,6 +414,7 @@ const AppInner: React.FC = () => {
                             onUpdate={(patientData) => handleSavePatient(patientData, false)}
                             initialViewState={intakeInitialViewState}
                             initialTab={intakeInitialTab}
+                            onTreatmentComplete={() => fetchInitialData(appUser)}
                         />
                     }
 
