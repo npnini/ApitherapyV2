@@ -21,7 +21,7 @@ interface TreatmentExecutionProps {
     problemId: string;
     isSensitivityTest: boolean;
     onRoundComplete: (round: ProtocolRound) => void;
-    onEndTreatment: (finalRound: ProtocolRound, finalVitals: Partial<VitalSigns>, finalNotes: string) => void;
+    onEndTreatment: (finalRound: ProtocolRound, postStingingVitals: Partial<VitalSigns>, finalVitals: Partial<VitalSigns>, finalNotes: string) => void;
     onBack: () => void;
 }
 
@@ -57,6 +57,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const tStungPoints = useT('Stung Points');
     const tPostStingingMeasures = useT('Post-Stinging Measures (Optional)');
     const tFinalNotes = useT('Final Notes');
+    const tSensDirectiveFallback = useT('Wait 10 minutes. If there is an allergic reaction, press End Treatment. If there is no allergic reaction, press Another Protocol');
+    const tStdDirectiveFallback = useT('Wait 15 minutes before removing the stingers, then measure the final vitals');
 
     const [hydratedProtocol, setHydratedProtocol] = useState<HydratedProtocol | null>(null);
     const [isHydrating, setIsHydrating] = useState(true);
@@ -65,12 +67,28 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
     const [activePointId, setActivePointId] = useState<string | null>(null);
     const [isRolling, setIsRolling] = useState(true);
-    const [postRoundVitals, setPostRoundVitals] = useState<Partial<VitalSigns>>({});
 
-    // End-treatment final fields (shown when "End Treatment" is clicked)
+    // End-treatment fields (shown when "End Treatment" is clicked)
     const [showEndPanel, setShowEndPanel] = useState(false);
+    const [postStingingVitals, setPostStingingVitals] = useState<Partial<VitalSigns>>({});
     const [finalVitals, setFinalVitals] = useState<Partial<VitalSigns>>({});
     const [finalNotes, setFinalNotes] = useState('');
+
+    const [appConfig, setAppConfig] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
+                if (configDoc.exists()) {
+                    setAppConfig(configDoc.data());
+                }
+            } catch (err) {
+                console.error('Error fetching app config:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     const hydrateProtocol = useCallback(async () => {
         setIsHydrating(true);
@@ -114,7 +132,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         protocolId: protocol.id,
         problemId,
         stungPointIds: stungPoints.map(p => p.id),
-        postRoundVitals: Object.keys(postRoundVitals).length > 0 ? postRoundVitals : undefined,
     });
 
     const handleAnotherProtocol = () => {
@@ -122,7 +139,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     };
 
     const handleEndTreatmentConfirm = () => {
-        onEndTreatment(buildRound(), finalVitals, finalNotes);
+        onEndTreatment(buildRound(), postStingingVitals, finalVitals, finalNotes);
     };
 
     const canCompleteRound = stungPoints.length > 0;
@@ -271,16 +288,29 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         </div>
                     </div>
 
-                    {/* Post-round vitals (optional) */}
-                    <VitalsInputGroup
-                        title={tPostStingingMeasures}
-                        vitals={postRoundVitals}
-                        onVitalsChange={setPostRoundVitals}
-                    />
+                    {/* Directives and Vitals */}
+                    {isSensitivityTest && !showEndPanel && (
+                        <div className={styles.directiveBox}>
+                            <AlertTriangle size={16} />
+                            <span>
+                                {getMLValue(appConfig?.treatmentSettings?.sensitivityWaitDirective, language) || tSensDirectiveFallback}
+                            </span>
+                        </div>
+                    )}
 
                     {/* End Treatment expansion panel */}
                     {showEndPanel && (
                         <div className={styles.endPanel}>
+                            <VitalsInputGroup
+                                title={useT('Post-Stinging Measures (Optional)')}
+                                vitals={postStingingVitals}
+                                onVitalsChange={setPostStingingVitals}
+                            />
+
+                            <div className={styles.standardDirective}>
+                                {getMLValue(appConfig?.treatmentSettings?.standardWaitDirective, language) || tStdDirectiveFallback}
+                            </div>
+
                             <VitalsInputGroup
                                 title={useT('Stinger Removal Measures (Optional)')}
                                 vitals={finalVitals}

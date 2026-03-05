@@ -31,11 +31,13 @@ export interface TreatmentSession {
   patientReport: string;        // case story entered at session opening
   preSessionVitals: Partial<VitalSigns>;  // BP + HR measured at session start
   measureReadingId?: string;    // FK → measured_values/{docId} written at session open
+  preTreatmentImage?: string;   // URL of uploaded photo from session opening
 
   // Protocol rounds (one entry per executed protocol)
   rounds: ProtocolRound[];
 
   // Post-session data
+  postStingingVitals?: Partial<VitalSigns>; // BP + HR measured after all stings, before removal
   finalVitals?: Partial<VitalSigns>;   // stinger-removal BP + HR (~15 min post session)
   finalNotes?: string;
 

@@ -311,3 +311,36 @@ input:checked+.slider:before {
 .uploadBtn:hover {
     background-color: var(--color-primary-dark);
 }
+
+/* ML String Settings Styling */
+.mlSettingsList {
+    grid-area: control;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    width: 100%;
+    margin-top: var(--space-sm);
+}
+
+.mlSettingRow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    background-color: var(--color-background-muted);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.mlSettingRow .langLabel {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+
+.mlSettingRow textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 60px;
+}

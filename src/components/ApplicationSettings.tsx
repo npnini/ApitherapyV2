@@ -602,6 +602,33 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     </div>
                 );
                 break;
+            case 'mlString':
+                const supportedMLangs = settings.languageSettings?.supportedLanguages || ['en'];
+                const mlValues = value || {};
+
+                control = (
+                    <div className={styles.mlSettingsList}>
+                        {supportedMLangs.map((lang: string) => {
+                            const mlValue = typeof mlValues === 'object' ? mlValues[lang] : '';
+                            const langName = allLanguages.find(l => l.id === lang)?.name || lang;
+                            return (
+                                <div key={lang} className={styles.mlSettingRow}>
+                                    <span className={styles.langLabel}><T>{langName}</T></span>
+                                    <textarea
+                                        className={styles.input}
+                                        rows={2}
+                                        value={mlValue || ''}
+                                        onChange={e => {
+                                            const newVal = { ...mlValues, [lang]: e.target.value };
+                                            handleSettingChange(path, newVal);
+                                        }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+                break;
             case 'string':
             default:
                 control = (

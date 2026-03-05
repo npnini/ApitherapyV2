@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString';
   defaultValue: string | number | boolean | string[] | Record<string, any>;
 };
 
@@ -101,6 +101,24 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'If on, the system will suggest a treatment protocol based on patient data.',
         type: 'boolean',
         defaultValue: false,
+      },
+      standardWaitDirective: {
+        label: 'Standard Wait Directive',
+        description: 'Guidance text shown before removing stingers in standard treatments.',
+        type: 'mlString',
+        defaultValue: {
+          en: 'Wait 15 minutes before removing the stingers, then measure the final vitals',
+          he: 'יש להמתין 15 דקות לפני הוצאת העוקצים, ולאחר מכן למדוד מדדים סופיים'
+        },
+      },
+      sensitivityWaitDirective: {
+        label: 'Sensitivity Test Directive',
+        description: 'Guidance text shown during sensitivity test sessions.',
+        type: 'mlString',
+        defaultValue: {
+          en: 'Wait 10 minutes. If there is an allergic reaction, press End Treatment. If there is no allergic reaction, press Another Protocol',
+          he: 'יש להמתין 10 דקות. אם מופיעה תגובה אלרגית, לחץ על סיום טיפול. אם אין תגובה אלרגית, לחץ על פרוטוקול נוסף'
+        },
       },
     },
   },

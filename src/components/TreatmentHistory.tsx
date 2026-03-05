@@ -88,10 +88,14 @@ interface StoredTreatmentDoc {
     preSessionVitals?: Partial<VitalSigns>;
     preStingVitals?: Partial<VitalSigns>; // legacy
     rounds: ProtocolRound[];
+    postStingingVitals?: Partial<VitalSigns>;
     finalVitals?: Partial<VitalSigns>;
     finalNotes?: string;
     isSensitivityTest?: boolean;
     measureReadingId?: string; // Link to KPI readings
+    patientFeedback?: string; // Patient's subjective feedback
+    patientFeedbackMeasureReadingId?: string; // Link to patient feedback KPI readings
+    preTreatmentImage?: string; // URL of the uploaded image
     vitals?: string; // legacy
     protocolId?: string; // legacy
     protocolName?: string | Record<string, string>; // legacy
@@ -108,6 +112,8 @@ interface HydratedTreatment extends Omit<StoredTreatmentDoc, 'rounds' | 'stungPo
     rounds: HydratedRound[];
     stungPoints?: StingPoint[]; // legacy
     measuredValues?: Array<{ label: string; value: string | number }>;
+    feedbackMeasuredValues?: Array<{ label: string; value: string | number }>;
+    preTreatmentImage?: string;
 }
 
 interface TreatmentHistoryProps {
@@ -182,7 +188,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 const hasRounds = rounds.length > 0;
 
                 const hydratedRounds: HydratedRound[] = rounds.map(round => {
-                    const stungPointIds = (round as any).stungPointIds || round.stungPointCodes || [];
+                    const roundAny = round as any;
+                    const stungPointIds = roundAny.stungPointIds || roundAny.stungPointCodes || [];
                     return {
                         ...round,
                         protocolName: protocolsMap.get(round.protocolId),
@@ -214,11 +221,29 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     }
                 }
 
+                // Fetch patient feedback measured values
+                let feedbackMeasuredValues: Array<{ label: string; value: string | number }> = [];
+                if (treatment.patientFeedbackMeasureReadingId) {
+                    try {
+                        const readingDoc = await getDoc(doc(db, 'measured_values', treatment.patientFeedbackMeasureReadingId));
+                        if (readingDoc.exists()) {
+                            const data = readingDoc.data();
+                            feedbackMeasuredValues = (data.readings || []).map((r: any) => ({
+                                label: getMLValue(measuresMap.get(r.measureId), language),
+                                value: r.value
+                            }));
+                        }
+                    } catch (err) {
+                        console.error("Error fetching patient feedback measure reading:", err);
+                    }
+                }
+
                 return {
                     ...treatment,
                     rounds: hydratedRounds,
                     stungPoints: legacyPoints,
-                    measuredValues: measuredValues.length > 0 ? measuredValues : undefined
+                    measuredValues: measuredValues.length > 0 ? measuredValues : undefined,
+                    feedbackMeasuredValues: feedbackMeasuredValues.length > 0 ? feedbackMeasuredValues : undefined
                 };
             }));
 
@@ -226,7 +251,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
             // Fetch caretaker names
             const uniqueCaretakerIds = Array.from(new Set(rawTreatments.map(t => t.caretakerId)));
-            const newNamesMap = new Map(caretakerNames);
+            const newNamesMap = new Map<string, string>(Array.from(caretakerNames.entries()));
             let mapChanged = false;
 
             await Promise.all(uniqueCaretakerIds.map(async (id) => {
@@ -392,6 +417,19 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                 icon={<Activity size={14} />}
                                             />
                                         </div>
+
+                                        {treatment.preTreatmentImage && (
+                                            <div className={styles.imageDetailItem}>
+                                                <h4 className={styles.detailLabel}>
+                                                    <T>Pre-Treatment Photo</T>
+                                                </h4>
+                                                <img
+                                                    src={treatment.preTreatmentImage}
+                                                    alt="Pre-treatment"
+                                                    className={styles.treatmentPhoto}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -469,7 +507,14 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     <div className={styles.detailsGrid}>
                                         <div className={styles.detailItem}>
                                             <VitalSignsDisplay
-                                                title="Post-session Vitals"
+                                                title="Post-Stinging Vitals"
+                                                vitals={treatment.postStingingVitals}
+                                                icon={<Activity size={14} />}
+                                            />
+                                        </div>
+                                        <div className={styles.detailItem}>
+                                            <VitalSignsDisplay
+                                                title="Final Vitals"
                                                 vitals={treatment.finalVitals}
                                                 icon={<Activity size={14} />}
                                             />
@@ -483,6 +528,43 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Phase 4: Treatment Feedback */}
+                                {(treatment.patientFeedback || (treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0)) && (
+                                    <div className={styles.phase}>
+                                        <h3 className={styles.phaseTitle}><T>4. Treatment Feedback</T></h3>
+                                        <div className={styles.detailsGrid}>
+                                            {treatment.patientFeedback && (
+                                                <div className={styles.detailItem}>
+                                                    <h4 className={styles.detailLabel}>
+                                                        <FileText size={16} />
+                                                        <T>Patient Feedback</T>
+                                                    </h4>
+                                                    <p className={styles.notesContent}>{renderSafe(treatment.patientFeedback)}</p>
+                                                </div>
+                                            )}
+
+                                            {(treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0) && (
+                                                <div className={styles.detailItem}>
+                                                    <h4 className={styles.detailLabel}>
+                                                        <Activity size={16} />
+                                                        <T>Feedback Measures</T>
+                                                    </h4>
+                                                    <div className={styles.measuredValuesGrid}>
+                                                        {treatment.feedbackMeasuredValues.map((mv, idx) => (
+                                                            <div key={idx} className={styles.kpiItem}>
+                                                                <span className={styles.kpiLabel}>{mv.label}:</span>
+                                                                <span className={styles.kpiValue}>
+                                                                    {renderSafe(mv.value)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

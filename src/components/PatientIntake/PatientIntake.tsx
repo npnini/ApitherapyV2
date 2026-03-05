@@ -483,7 +483,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setViewState('protocolSelection');
     };
 
-    const handleEndTreatment = async (finalRound: ProtocolRound, finalVitals: Partial<VitalSigns>, finalNotes: string) => {
+    const handleEndTreatment = async (
+        finalRound: ProtocolRound,
+        postStingingVitals: Partial<VitalSigns>,
+        finalVitals: Partial<VitalSigns>,
+        finalNotes: string
+    ) => {
         if (!patient.id || !sessionOpeningData) return;
         setTreatmentSaveStatus('saving');
         setTreatmentErrorMessage(null);
@@ -503,8 +508,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 caretakerId: user.uid,
                 patientReport: sessionOpeningData.patientReport,
                 preSessionVitals: sessionOpeningData.preSessionVitals,
+                preTreatmentImage: sessionOpeningData.preTreatmentImage,
                 measureReadingId: sessionOpeningData.measureReadingId,
                 rounds: allRounds,
+                postStingingVitals,
                 finalVitals,
                 finalNotes,
                 isSensitivityTest: isSensitivitySession,

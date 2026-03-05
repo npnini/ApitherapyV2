@@ -502,3 +502,42 @@
     margin: auto;
     text-align: center;
 }
+
+.directiveBox {
+    background: #fdf2f2;
+    border: 2px solid #fecaca;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    color: #991b1b;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.standardDirective {
+    background: #fffbeb;
+    border-inline-start: 4px solid #f59e0b;
+    padding: 0.75rem 1rem;
+    color: #92400e;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 0.375rem;
+    margin: 0.5rem 0;
+}
