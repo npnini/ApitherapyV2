@@ -19,7 +19,7 @@
  */
 
 import React, { useState, useEffect, useContext, createContext, useCallback, useRef } from 'react';
-import { db } from '../firebase'; // ← VERIFY: adjust this path to match your project's firebase init file
+import { db, auth } from '../firebase'; // ← VERIFY: adjust this path to match your project's firebase init file
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -228,10 +228,14 @@ async function translateBatch(
         });
 
         // ── Step 4: Persist new translations back to Firestore ───────────────
-        try {
-            await setDoc(firestoreRef, { ...firestoreCache, ...newTranslations }, { merge: true });
-        } catch (e) {
-            console.warn('[T] Firestore cache write failed (translations still work this session):', e);
+        if (auth.currentUser) {
+            try {
+                await setDoc(firestoreRef, { ...firestoreCache, ...newTranslations }, { merge: true });
+            } catch (e) {
+                console.warn('[T] Firestore cache write failed (translations still work this session):', e);
+            }
+        } else {
+            console.log('[T] Skipping Firestore cache update: user not authenticated.');
         }
 
     } catch (e) {

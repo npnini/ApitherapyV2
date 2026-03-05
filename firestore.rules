@@ -53,7 +53,7 @@ service cloud.firestore {
     }
 
     match /cfg_translations/{document=**} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAuthenticated();
     }
 
@@ -88,19 +88,16 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isCaretaker() || isAdmin();
     }
-
-    // 6. Feedback Sessions (Unauthenticated access for patients)
+    
     match /feedback_sessions/{sessionId} {
-      // Patients can only read their pending session docs
-      allow read: if resource.data.status == 'pending';
-      // Patients can only update the session once to submit feedback
-      allow update: if resource.data.status == 'pending' 
-                   && request.resource.data.status == 'completed'
-                   && request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['responses', 'status', 'completedAt', 'feedbackText']);
-      
-      // Admin/Caretaker has full control
-      allow read, write: if isCaretaker() || isAdmin();
-    }
+  	// Allow the patient to read their specific session if it's still pending
+  	allow get: if resource.data.status == 'pending';
+  
+  	// Allow the patient to update only the responses and status to 'completed'
+  	allow update: if resource.data.status == 'pending' 
+               && request.resource.data.status == 'completed'
+               && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['responses', 'status', 'completedAt', 'feedbackText']);
+		}
   }
 }
