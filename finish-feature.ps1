@@ -1,78 +1,70 @@
-# Usage: .\finish-feature.ps1 -CommitMessage "feat: your descriptive commit message"
+# Usage: .\finish-feature.ps1 -Message "feat: your descriptive commit message"
 param (
     [Parameter(Mandatory = $true)]
-    [string]$CommitMessage
+    [string]$Message
 )
 
-# Stop on errors
+# Stop on errors for PowerShell commands
 $ErrorActionPreference = "Stop"
-
-function Check-Git {
-    if ($LASTEXITCODE -ne 0) {
-        throw "Git command failed with exit code $LASTEXITCODE. Please check the error above."
-    }
-}
 
 try {
     # 1. Get current branch name
     $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($currentBranch -eq "main" -or $currentBranch -eq "master") {
-        Write-Host "❌ Error: You are already on main/master." -ForegroundColor Red
+        Write-Host "❌ Error: You are already on main/master. Please run this from a feature branch." -ForegroundColor Red
         return
     }
 
-    Write-Host "🚀 Finishing feature: $currentBranch" -ForegroundColor Cyan
+    Write-Host "🚀 Finishing feature on branch: $currentBranch" -ForegroundColor Cyan
 
     # 2. Stage and commit
     Write-Host "📝 1. Staging and committing changes..." -ForegroundColor Yellow
     git add .
-    Check-Git
+    if ($LASTEXITCODE -ne 0) { throw "git add failed" }
     
-    # Direct commit with quotes is more reliable in PowerShell
-    git commit -m "$CommitMessage" --allow-empty
-    Check-Git
+    git commit -m "$Message" --allow-empty
+    if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
     
     # 3. Push feature branch
     Write-Host "☁️ 2. Pushing $currentBranch to origin..." -ForegroundColor Yellow
     git push origin $currentBranch
-    Check-Git
+    if ($LASTEXITCODE -ne 0) { throw "git push feature branch failed" }
 
     # 4. Switch to main
     Write-Host "🔄 3. Switching to main and pulling latest..." -ForegroundColor Yellow
     git checkout main
-    Check-Git
+    if ($LASTEXITCODE -ne 0) { throw "git checkout main failed" }
     
-    # VERIFY we are actually on main
-    $newBranch = (git rev-parse --abbrev-ref HEAD).Trim()
-    if ($newBranch -ne "main") {
-        throw "Failed to switch to main. You are still on $newBranch. Aborting merge."
+    # Double check we are actually on main
+    $targetBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ($targetBranch -ne "main") {
+        throw "Failed to switch to main branch. Currently on: $targetBranch"
     }
 
     git pull origin main
-    Check-Git
+    if ($LASTEXITCODE -ne 0) { throw "git pull main failed" }
 
     # 5. Merge feature branch
     Write-Host "🔀 4. Merging $currentBranch into main..." -ForegroundColor Yellow
     git merge $currentBranch
-    Check-Git
+    if ($LASTEXITCODE -ne 0) { throw "git merge failed" }
 
     # 6. Push main
     Write-Host "⬆️ 5. Pushing main to origin..." -ForegroundColor Yellow
     git push origin main
-    Check-Git
+    if ($LASTEXITCODE -ne 0) { throw "git push main failed" }
 
     # 7. Cleanup local branch
     Write-Host "🧹 6. Deleting local feature branch $currentBranch..." -ForegroundColor Yellow
-    # We switch back to main just in case before deleting
-    git checkout main
     git branch -d $currentBranch
 
     Write-Host "`n✅ Feature '$currentBranch' successfully merged and pushed!" -ForegroundColor Green
     Write-Host "You are now on branch: main" -ForegroundColor Gray
 }
 catch {
-    Write-Host "`n❌ ERROR: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Current Status:" -ForegroundColor Yellow
+    Write-Host "`n❌ An error occurred:" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Host "`nStatus summary:" -ForegroundColor Yellow
     git status -s
-    Write-Host "Current Branch: $((git rev-parse --abbrev-ref HEAD))" -ForegroundColor Yellow
+    Write-Host "Current Branch: $((git rev-parse --abbrev-ref HEAD))"
 }
