@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Questionnaire, Question, QuestionGroup, Condition, Translation } from '../../types/questionnaire';
 import { Save, X, Plus, Trash2, GripVertical, ChevronDown, ChevronRight, ChevronLeft, Layers, ListTodo } from 'lucide-react';
 import styles from './QuestionnaireForm.module.css';
-import { T, useT } from '../T';
+import { T, useT, useTranslationContext } from '../T';
 
 interface QuestionnaireFormProps {
     questionnaire: Questionnaire | null;
@@ -17,6 +17,7 @@ interface QuestionnaireFormProps {
 }
 
 const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, onSave, onCancel, isSubmitting, error, supportedLanguages }) => {
+    const { language, direction } = useTranslationContext();
     const [formData, setFormData] = useState<Questionnaire | null>(questionnaire);
     const [activeStep, setActiveStep] = useState<'groups' | 'questions'>('groups');
 
@@ -243,7 +244,11 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
                                         supportedLanguages={supportedLanguages}
                                     />
                                 ))}
-                                <button type="button" onClick={addGroup} className={styles.addButton}><Plus size={18} /> <T>Add Group</T></button>
+                                <button type="button" onClick={addGroup} className={styles.addButton}>
+                                    {direction === 'ltr' && <Plus size={18} />}
+                                    <span><T>Add Group</T></span>
+                                    {direction === 'rtl' && <Plus size={18} />}
+                                </button>
                             </div>
                         ) : (
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -275,32 +280,46 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ questionnaire, on
                                         </table>
                                     </div>
                                 </SortableContext>
-                                <button type="button" onClick={addQuestion} className={styles.addButton}><Plus size={18} /> <T>Add Question</T></button>
+                                <button type="button" onClick={addQuestion} className={styles.addButton}>
+                                    {direction === 'ltr' && <Plus size={18} />}
+                                    <span><T>Add Question</T></span>
+                                    {direction === 'rtl' && <Plus size={18} />}
+                                </button>
                             </DndContext>
                         )}
                     </div>
 
                     <div className={styles.formActions}>
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}><X size={16} /><T>Cancel</T></button>
+                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}>
+                            {direction === 'ltr' && <X size={16} />}
+                            <span><T>Cancel</T></span>
+                            {direction === 'rtl' && <X size={16} />}
+                        </button>
 
                         {activeStep === 'groups' ? (
                             <button type="button" onClick={() => setActiveStep('questions')} className={styles.nextButton}>
-                                <T>Next</T> <ChevronRight size={16} />
+                                {direction === 'ltr' && <ChevronRight size={16} className={styles.nextArrow} />}
+                                <span><T>Next</T></span>
+                                {direction === 'rtl' && <ChevronRight size={16} className={styles.nextArrow} />}
                             </button>
                         ) : (
                             <>
                                 <button type="button" onClick={() => setActiveStep('groups')} className={styles.cancelButton}>
-                                    <ChevronLeft size={16} /> <T>Back</T>
+                                    {direction === 'ltr' && <ChevronLeft size={16} className={styles.backArrow} />}
+                                    <span><T>Back</T></span>
+                                    {direction === 'rtl' && <ChevronLeft size={16} className={styles.backArrow} />}
                                 </button>
                                 <button type="submit" disabled={isSubmitting} className={styles.saveButton}>
-                                    <Save size={16} />{isSubmitting ? <T>Saving...</T> : <T>Save</T>}
+                                    {direction === 'ltr' && <Save size={16} />}
+                                    <span>{isSubmitting ? <T>Saving...</T> : <T>Save</T>}</span>
+                                    {direction === 'rtl' && <Save size={16} />}
                                 </button>
                             </>
                         )}
                     </div>
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
@@ -321,25 +340,24 @@ const QuestionGroupEditor: React.FC<QuestionGroupEditorProps> = ({
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
+    const { language } = useTranslationContext();
     return (
         <div className={styles.groupSection}>
             <div className={styles.groupHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                    <input
-                        type="text"
-                        value={group.translations.find(t => t.language === 'en')?.text || ''}
-                        onChange={e => onTranslationChange(group.id, 0, 'en', e.target.value)}
-                        placeholder="Group Name (EN)"
-                        className={styles.groupNameInput}
-                    />
-                    <select
-                        value={group.logic}
-                        onChange={e => onGroupChange(group.id, 'logic', e.target.value)}
-                        className={styles.logicSelect}
-                    >
-                        <option value="AND">AND</option>
-                        <option value="OR">OR</option>
-                    </select>
+                <div className={styles.groupHeaderLeft}>
+                    <h3 className={styles.localizedGroupName}>
+                        {group.translations.find(t => t.language === language)?.text || group.translations.find(t => t.language === 'en')?.text || group.id}
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <select
+                            value={group.logic}
+                            onChange={e => onGroupChange(group.id, 'logic', e.target.value)}
+                            className={styles.logicSelect}
+                        >
+                            <option value="AND">AND</option>
+                            <option value="OR">OR</option>
+                        </select>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => setIsExpanded(!isExpanded)} className={styles.expandButton}>
@@ -402,7 +420,7 @@ const QuestionGroupEditor: React.FC<QuestionGroupEditorProps> = ({
                     </div>
                 ))}
                 <button type="button" onClick={() => addCondition(group.id)} className={styles.addButton} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}>
-                    <Plus size={14} /> <T>Add Condition</T>
+                    <Plus size={14} /> <span><T>Add Condition</T></span>
                 </button>
             </div>
         </div>

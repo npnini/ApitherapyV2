@@ -273,7 +273,7 @@
 }
 
 :global([dir="rtl"]) .formActions {
-    justify-content: flex-start;
+    justify-content: flex-end;
 }
 
 :global([dir="rtl"]) .translationsHeader {
@@ -385,4 +385,42 @@
     font-weight: 700;
     border: none;
     cursor: pointer;
+}
+
+.nextButton,
+.cancelButton,
+.saveButton,
+.addButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* flex-direction is handled via JSX order for better reliability in RTL buttons */
+
+:global([dir="rtl"]) .nextArrow,
+:global([dir="rtl"]) .backArrow {
+    transform: rotate(180deg);
+}
+
+.localizedGroupName {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 0.5rem;
+}
+
+.groupHeaderLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+:global([dir="rtl"]) .localizedGroupName {
+    text-align: right;
+}
+
+:global([dir="rtl"]) .groupNameInput {
+    text-align: right;
 }
