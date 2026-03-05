@@ -12,6 +12,9 @@ import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
 import ProblemsProtocolsTab, { ProblemsProtocolsTabHandle } from './ProblemsProtocolsTab';
 import { addMeasuredValueReading, saveTreatment, hasMeasuredValueReadings, getTreatmentCount } from '../../firebase/patient';
+import { getQuestionnaire } from '../../firebase/questionnaire';
+import { Questionnaire } from '../../types/questionnaire';
+import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
@@ -95,6 +98,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
     const [latestTreatment, setLatestTreatment] = useState<TreatmentSession | null>(null);
+    const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
 
     const consentTabRef = useRef<ConsentTabHandle>(null);
     const instructionsTabRef = useRef<InstructionsTabHandle>(null);
@@ -209,6 +213,21 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
         checkSavedStatus();
 
+        // Fetch questionnaire
+        getQuestionnaire("apitherapy").then(q => {
+            setQuestionnaire(q);
+            if (q) {
+                setPatientData(prev => {
+                    const updatedQuestionnaireResponse = {
+                        ...(prev.questionnaireResponse || {}),
+                        domain: q.domain,
+                        version: q.versionNumber
+                    };
+                    return { ...prev, questionnaireResponse: updatedQuestionnaireResponse as any };
+                });
+            }
+        });
+
         // Load appConfig for sensitivity test settings
         getDoc(doc(db, 'cfg_app_config', 'main')).then(snap => {
             if (snap.exists()) setAppConfig(snap.data());
@@ -228,8 +247,46 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setIsDirty(false);
     };
 
+    const isTabValid = (tab: TabKey): boolean => {
+        if (tab === 'personal') {
+            const d = patientData;
+            return !!(d.fullName?.trim() && d.identityNumber?.trim() && d.mobile?.trim() && d.birthDate && d.gender);
+        }
+        if (tab === 'questionnaire') {
+            if (!questionnaire) return true;
+            const qResponse = (patientData.questionnaireResponse || {}) as any;
+
+            // Determine which groups are visible for this patient
+            const visibleGroupIds = new Set(
+                (questionnaire.groups || []).filter(g => evaluateGroupVisibility(g, patientData as any)).map(g => g.id)
+            );
+
+            // Only validate questions that are visible (no group, or group is visible)
+            const visibleQuestions = questionnaire.questions.filter(
+                q => !q.groupId || visibleGroupIds.has(q.groupId)
+            );
+
+            return visibleQuestions.every(q => {
+                const answer = qResponse[q.name];
+                if (q.type === 'boolean') {
+                    return answer === true || answer === false;
+                }
+                if (q.required) {
+                    return answer !== undefined && answer !== null && answer !== '';
+                }
+                return true;
+            });
+        }
+        return true;
+    };
+
     const handleUpdate = async (): Promise<boolean> => {
         setHasAttemptedSubmit(true);
+        if (!isTabValid(activeTab)) {
+            console.log('PatientIntake: Validation failed for tab', activeTab);
+            return false;
+        }
+
         let finalData = { ...patientData };
 
         if (activeTab === 'consent' && consentTabRef.current) {
@@ -286,6 +343,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // Save (new patient last step → full submission)
     const handleCompleteSubmission = async () => {
         setHasAttemptedSubmit(true);
+        if (!isTabValid(activeTab)) {
+            console.log('PatientIntake: Validation failed for tab', activeTab);
+            return;
+        }
+
         let finalData = { ...patientData };
 
         if (activeTab === 'consent' && consentTabRef.current) {
@@ -494,6 +556,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     <QuestionnaireStep
                         patientData={patientData}
                         onDataChange={handleDataChange}
+                        showErrors={hasAttemptedSubmit}
+                        questionnaire={questionnaire}
                     />
                 );
             case 'consent':

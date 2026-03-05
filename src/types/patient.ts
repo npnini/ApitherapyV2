@@ -46,6 +46,7 @@ export interface PatientData extends BaseDocument {
     email: string;
     mobile: string;
     caretakerId: string;
+    gender?: 'male' | 'female';
 }
 
 export interface JoinedPatientData extends PatientData {

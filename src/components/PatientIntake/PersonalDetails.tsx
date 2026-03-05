@@ -98,6 +98,35 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                 <input type="text" id="age" name="age" value={age} className={styles.input} disabled />
             </div>
 
+            <div className="md:col-span-2">
+                <label className={`${styles.label} ${showErrors && !patientData.gender ? styles.errorLabel : ''}`}>
+                    <T>Gender</T> <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={patientData.gender === 'male'}
+                            onChange={() => onDataChange({ ...patientData, gender: 'male' })}
+                        />
+                        <T>Male</T>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={patientData.gender === 'female'}
+                            onChange={() => onDataChange({ ...patientData, gender: 'female' })}
+                        />
+                        <T>Female</T>
+                    </label>
+                </div>
+                {showErrors && !patientData.gender && (
+                    <p className={styles.errorMessage}>
+                        <T>Gender selection is required</T>
+                    </p>
+                )}
+            </div>
+
             {renderInput('profession', 'Profession', 'Profession cannot be empty')}
             {renderInput('address', 'Address', 'Address cannot be empty', 'text', true, true)}
         </form>
