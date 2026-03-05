@@ -40,15 +40,15 @@ type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'treatmentExe
 const TAB_ORDER: TabKey[] = [
     'personal',
     'questionnaire',
-    'consent',
     'instructions',
+    'consent',
     'problems',
     'treatments',
     'measures',
 ];
 
 // The first 5 tabs must all be saved before "Start New Treatment" is enabled (UX-1)
-const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'consent', 'instructions', 'problems'];
+const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'instructions', 'consent', 'problems'];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface PatientIntakeProps {
@@ -108,7 +108,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tPersonal = useT('Personal Details');
     const tQuestionnaire = useT('Questionnaire');
     const tConsent = useT('Consent');
-    const tInstructions = useT('Instructions');
+    const tInstructions = useT('Guidelines');
     const tProblems = useT('Problems & Protocols');
     const tTreatments = useT('Treatments History');
     const tMeasures = useT('Measures History');

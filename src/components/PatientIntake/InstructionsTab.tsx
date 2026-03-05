@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { T, useT, useTranslationContext } from '../T';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase';
+import { ref as sRef, getDownloadURL } from 'firebase/storage';
 import SignaturePad from './SignaturePad';
 import styles from './PatientIntake.module.css';
 import { JoinedPatientData, PatientData } from '../../types/patient';
@@ -24,11 +25,13 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
     const [template, setTemplate] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [patientSignature, setPatientSignature] = useState<string>('');
+    const [imgError, setImgError] = useState(false);
+    const [displayUrl, setDisplayUrl] = useState<string>('');
     // Note: Caretaker signature pad removed as per user comment #2 (Patient only)
     // If both are needed later, simply add caretakerSignature state and pad here.
 
-    const noTemplateMsg = useT('No instructions template found for this language.');
-    const errorMsg = useT('Error loading instructions template.');
+    const noTemplateMsg = useT('No guidelines template found for this language.');
+    const errorMsg = useT('Error loading guidelines template.');
     const provideSigMsg = useT('Please provide patient signature.');
     const tPatientSignatureLabel = useT('Patient Signature:');
 
@@ -60,6 +63,29 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
             fetchTemplate();
         }
     }, [language, noTemplateMsg, errorMsg]);
+
+    const instructionsSignedUrl = patientData.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl;
+
+    useEffect(() => {
+        if (instructionsSignedUrl) {
+            setDisplayUrl(instructionsSignedUrl);
+            setImgError(false);
+        }
+    }, [instructionsSignedUrl]);
+
+    const handleImageError = async () => {
+        if (displayUrl && !imgError) {
+            try {
+                console.log('InstructionsTab: Refreshing stale storage URL...');
+                const storageRef = sRef(storage, displayUrl);
+                const freshUrl = await getDownloadURL(storageRef);
+                setDisplayUrl(freshUrl);
+            } catch (err) {
+                console.error('InstructionsTab: Failed to refresh download URL:', err);
+                setImgError(true);
+            }
+        }
+    };
 
     const injectData = (text: string) => {
         if (!text) return '';
@@ -120,20 +146,22 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
         }
     }));
 
-    const instructionsSignedUrl = patientData.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl;
-
     if (isLoading) return <div className={styles.placeholderTab}><T>Loading template...</T></div>;
 
-    if (instructionsSignedUrl) {
+    if (instructionsSignedUrl && !imgError) {
         return (
             <div className={styles.consentContainer}>
                 <div className={styles.signedView}>
-                    <img src={instructionsSignedUrl} alt="Signed Instructions" className={styles.signedDocumentImage} />
+                    <img
+                        src={displayUrl || instructionsSignedUrl}
+                        alt="Signed Instructions"
+                        className={styles.signedDocumentImage}
+                        onError={handleImageError}
+                    />
                     <button
                         className={styles.btnSecondary}
                         style={{ marginTop: '1rem' }}
                         onClick={async () => {
-                            // Delete the old file from storage first
                             if (instructionsSignedUrl) {
                                 await deleteFile(instructionsSignedUrl);
                             }
@@ -150,6 +178,37 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                         }}
                     >
                         <T>Clear & Re-sign</T>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Signed URL exists but image failed to load (stale/revoked token)
+    if (instructionsSignedUrl && imgError) {
+        return (
+            <div className={styles.consentContainer}>
+                <div className={styles.signedView}>
+                    <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>
+                        <T>The signed document could not be loaded. Please re-sign.</T>
+                    </p>
+                    <button
+                        className={styles.btnSecondary}
+                        onClick={() => {
+                            onDataChange({
+                                ...patientData,
+                                medicalRecord: {
+                                    ...(patientData.medicalRecord || {}),
+                                    patient_level_data: {
+                                        ...(patientData.medicalRecord?.patient_level_data || {}),
+                                        treatmentInstructionsSignedUrl: ''
+                                    }
+                                }
+                            });
+                            setImgError(false);
+                        }}
+                    >
+                        <T>Re-sign Guidelines</T>
                     </button>
                 </div>
             </div>

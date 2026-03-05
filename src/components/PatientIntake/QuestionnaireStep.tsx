@@ -174,7 +174,7 @@ const QuestionnaireStep: React.FC<QuestionnaireStepProps> = ({ patientData, onDa
         <fieldset className={styles.consentSection}>
           <legend className={styles.consentTitle}><T>Patient Consent</T></legend>
           <p className={styles.consentText}>
-            <T>I hereby confirm that all the information I have provided in the attached questionnaire is true.</T>
+            <T>I hereby confirm that all the information I have provided in the attached questionnaire is the truth.</T>
           </p>
         </fieldset>
         <fieldset className={styles.signaturePadWrapper}>

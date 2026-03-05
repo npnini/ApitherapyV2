@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { T, useT, useTranslationContext } from '../T';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase';
+import { ref as sRef, getDownloadURL } from 'firebase/storage';
 import SignaturePad from './SignaturePad';
 import styles from './PatientIntake.module.css';
 import { JoinedPatientData, PatientData } from '../../types/patient';
@@ -25,6 +26,8 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
     const [isLoading, setIsLoading] = useState(true);
     const [patientSignature, setPatientSignature] = useState<string>('');
     const [caretakerSignature, setCaretakerSignature] = useState<string>('');
+    const [imgError, setImgError] = useState(false);
+    const [displayUrl, setDisplayUrl] = useState<string>('');
 
     const noTemplateMsg = useT('No consent template found for this language.');
     const errorMsg = useT('Error loading consent template.');
@@ -61,6 +64,29 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
             fetchTemplate();
         }
     }, [language, noTemplateMsg, errorMsg]);
+
+    const consentSignedUrl = patientData.medicalRecord?.patient_level_data?.consentSignedUrl;
+
+    useEffect(() => {
+        if (consentSignedUrl) {
+            setDisplayUrl(consentSignedUrl);
+            setImgError(false);
+        }
+    }, [consentSignedUrl]);
+
+    const handleImageError = async () => {
+        if (displayUrl && !imgError) {
+            try {
+                console.log('ConsentTab: Refreshing stale storage URL...');
+                const storageRef = sRef(storage, displayUrl);
+                const freshUrl = await getDownloadURL(storageRef);
+                setDisplayUrl(freshUrl);
+            } catch (err) {
+                console.error('ConsentTab: Failed to refresh download URL:', err);
+                setImgError(true);
+            }
+        }
+    };
 
     const injectData = (text: string) => {
         if (!text) return '';
@@ -154,24 +180,25 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
         }
     }));
 
-    const consentSignedUrl = patientData.medicalRecord?.patient_level_data?.consentSignedUrl;
-
     if (isLoading) return <div className={styles.placeholderTab}><T>Loading template...</T></div>;
 
-    if (consentSignedUrl) {
+    if (consentSignedUrl && !imgError) {
         return (
             <div className={styles.consentContainer}>
                 <div className={styles.signedView}>
-                    <img src={consentSignedUrl} alt="Signed Consent" className={styles.signedDocumentImage} />
+                    <img
+                        src={displayUrl || consentSignedUrl}
+                        alt="Signed Consent"
+                        className={styles.signedDocumentImage}
+                        onError={handleImageError}
+                    />
                     <button
                         className={styles.btnSecondary}
                         style={{ marginTop: '1rem' }}
                         onClick={async () => {
-                            // Delete the old file from storage first
                             if (consentSignedUrl) {
                                 await deleteFile(consentSignedUrl);
                             }
-                            // Clear the URL in parent data to allow re-signing
                             onDataChange({
                                 ...patientData,
                                 medicalRecord: {
@@ -185,6 +212,37 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                         }}
                     >
                         <T>Clear & Re-sign</T>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Signed URL exists but the image failed to load (stale/revoked token)
+    if (consentSignedUrl && imgError) {
+        return (
+            <div className={styles.consentContainer}>
+                <div className={styles.signedView}>
+                    <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>
+                        <T>The signed document could not be loaded. Please re-sign.</T>
+                    </p>
+                    <button
+                        className={styles.btnSecondary}
+                        onClick={() => {
+                            onDataChange({
+                                ...patientData,
+                                medicalRecord: {
+                                    ...(patientData.medicalRecord || {}),
+                                    patient_level_data: {
+                                        ...(patientData.medicalRecord?.patient_level_data || {}),
+                                        consentSignedUrl: ''
+                                    }
+                                }
+                            });
+                            setImgError(false);
+                        }}
+                    >
+                        <T>Re-sign Consent</T>
                     </button>
                 </div>
             </div>
