@@ -4,11 +4,13 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
 import { ref as sRef, getDownloadURL } from 'firebase/storage';
 import SignaturePad from './SignaturePad';
+import ConfirmationModal from '../ConfirmationModal';
 import styles from './PatientIntake.module.css';
 import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
 import { uploadFile, deleteFile } from '../../services/storageService';
+import { sendDocumentEmail } from '../../services/emailService';
 
 interface ConsentTabProps {
     patientData: Partial<JoinedPatientData>;
@@ -28,12 +30,23 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
     const [caretakerSignature, setCaretakerSignature] = useState<string>('');
     const [imgError, setImgError] = useState(false);
     const [displayUrl, setDisplayUrl] = useState<string>('');
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    });
 
     const noTemplateMsg = useT('No consent template found for this language.');
     const errorMsg = useT('Error loading consent template.');
     const provideSigMsg = useT('Please provide patient signature.');
     const tPatientSignatureLabel = useT('Patient Signature:');
     const tCaretakerSignatureLabel = useT('Caretaker Signature:');
+    const tSentSuccess = useT('Consent form sent to patient successfully.');
+    const tSentError = useT('Failed to send consent form to patient.');
+    const tSuccessTitle = useT('Success');
+    const tErrorTitle = useT('Error');
+    const tWarningTitle = useT('Warning');
 
     useEffect(() => {
         const fetchTemplate = async () => {
@@ -132,6 +145,32 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
 
     const caretakerName = user?.fullName || (user as any)?.name || user?.displayName || '';
 
+    const handleSendToPatient = async () => {
+        if (!consentSignedUrl || !patientData.id) return;
+        setIsSendingEmail(true);
+        try {
+            await sendDocumentEmail({
+                patientId: patientData.id,
+                documentUrl: consentSignedUrl,
+                language: language
+            });
+            setModalConfig({
+                isOpen: true,
+                title: tSuccessTitle,
+                message: tSentSuccess
+            });
+        } catch (error) {
+            console.error('Failed to send consent:', error);
+            setModalConfig({
+                isOpen: true,
+                title: tErrorTitle,
+                message: tSentError
+            });
+        } finally {
+            setIsSendingEmail(false);
+        }
+    };
+
     useImperativeHandle(ref, () => ({
         onSave: async () => {
             // Priority 1: If we have an existing signed URL and no new signature input, return it
@@ -141,7 +180,11 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
 
             // Priority 2: New signature processing
             if (!patientSignature) {
-                alert(provideSigMsg);
+                setModalConfig({
+                    isOpen: true,
+                    title: tWarningTitle,
+                    message: provideSigMsg
+                });
                 return null;
             }
 
@@ -180,11 +223,11 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
         }
     }));
 
-    if (isLoading) return <div className={styles.placeholderTab}><T>Loading template...</T></div>;
-
-    if (consentSignedUrl && !imgError) {
-        return (
-            <div className={styles.consentContainer}>
+    return (
+        <div className={styles.consentContainer}>
+            {isLoading ? (
+                <div className={styles.placeholderTab}><T>Loading template...</T></div>
+            ) : consentSignedUrl && !imgError ? (
                 <div className={styles.signedView}>
                     <img
                         src={displayUrl || consentSignedUrl}
@@ -192,36 +235,37 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                         className={styles.signedDocumentImage}
                         onError={handleImageError}
                     />
-                    <button
-                        className={styles.btnSecondary}
-                        style={{ marginTop: '1rem' }}
-                        onClick={async () => {
-                            if (consentSignedUrl) {
-                                await deleteFile(consentSignedUrl);
-                            }
-                            onDataChange({
-                                ...patientData,
-                                medicalRecord: {
-                                    ...(patientData.medicalRecord || {}),
-                                    patient_level_data: {
-                                        ...(patientData.medicalRecord?.patient_level_data || {}),
-                                        consentSignedUrl: ''
-                                    }
+                    <div className={styles.fileActions} style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                        <button
+                            className={styles.btnSecondary}
+                            onClick={async () => {
+                                if (consentSignedUrl) {
+                                    await deleteFile(consentSignedUrl);
                                 }
-                            });
-                        }}
-                    >
-                        <T>Clear & Re-sign</T>
-                    </button>
+                                onDataChange({
+                                    ...patientData,
+                                    medicalRecord: {
+                                        ...(patientData.medicalRecord || {}),
+                                        patient_level_data: {
+                                            ...(patientData.medicalRecord?.patient_level_data || {}),
+                                            consentSignedUrl: ''
+                                        }
+                                    }
+                                });
+                            }}
+                        >
+                            <T>Clear & Re-sign</T>
+                        </button>
+                        <button
+                            className={styles.btnPrimary}
+                            disabled={isSendingEmail}
+                            onClick={handleSendToPatient}
+                        >
+                            {isSendingEmail ? <T>Sending...</T> : <T>Send to Patient</T>}
+                        </button>
+                    </div>
                 </div>
-            </div>
-        );
-    }
-
-    // Signed URL exists but the image failed to load (stale/revoked token)
-    if (consentSignedUrl && imgError) {
-        return (
-            <div className={styles.consentContainer}>
+            ) : consentSignedUrl && imgError ? (
                 <div className={styles.signedView}>
                     <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>
                         <T>The signed document could not be loaded. Please re-sign.</T>
@@ -245,34 +289,40 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                         <T>Re-sign Consent</T>
                     </button>
                 </div>
-            </div>
-        );
-    }
+            ) : (
+                <>
+                    <div className={styles.documentView}>
+                        <div className={styles.documentPaper}>
+                            <div dangerouslySetInnerHTML={{ __html: injectData(template).replace(/\n/g, '<br/>') }} />
+                        </div>
+                    </div>
 
-    return (
-        <div className={styles.consentContainer}>
-            <div className={styles.documentView}>
-                <div className={styles.documentPaper}>
-                    <div dangerouslySetInnerHTML={{ __html: injectData(template).replace(/\n/g, '<br/>') }} />
-                </div>
-            </div>
+                    <div className={styles.signatureSection}>
+                        <div className={styles.signatureBlock}>
+                            <label className={styles.signatureLabel}><T>Patient Signature</T></label>
+                            <SignaturePad
+                                onSave={setPatientSignature}
+                                initialSignature={patientSignature}
+                            />
+                        </div>
+                        <div className={styles.signatureBlock}>
+                            <label className={styles.signatureLabel}><T>Caretaker Signature</T></label>
+                            <SignaturePad
+                                onSave={setCaretakerSignature}
+                                initialSignature={caretakerSignature}
+                            />
+                        </div>
+                    </div>
+                </>
+            )}
 
-            <div className={styles.signatureSection}>
-                <div className={styles.signatureBlock}>
-                    <label className={styles.signatureLabel}><T>Patient Signature</T></label>
-                    <SignaturePad
-                        onSave={setPatientSignature}
-                        initialSignature={patientSignature}
-                    />
-                </div>
-                <div className={styles.signatureBlock}>
-                    <label className={styles.signatureLabel}><T>Caretaker Signature</T></label>
-                    <SignaturePad
-                        onSave={setCaretakerSignature}
-                        initialSignature={caretakerSignature}
-                    />
-                </div>
-            </div>
+            <ConfirmationModal
+                isOpen={modalConfig.isOpen}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                onConfirm={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                showCancelButton={false}
+            />
         </div>
     );
 });

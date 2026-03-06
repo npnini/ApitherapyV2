@@ -1,5 +1,6 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import sgMail from "@sendgrid/mail";
@@ -228,5 +229,85 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
     });
 
     logger.info(`Processed completed feedback session: ${event.params.sessionId}`);
+  }
+});
+
+/**
+ * 3. Callable: sendDocumentEmail
+ * Sends a signed document to a patient via SendGrid.
+ */
+export const sendDocumentEmail = onCall(async (request) => {
+  // Check authentication
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Only authenticated users can send documents."
+    );
+  }
+
+  const { patientId, documentUrl, language } = request.data;
+
+  if (!patientId || !documentUrl || !language) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required parameters: patientId, documentUrl, or language."
+    );
+  }
+
+  try {
+    // 1. Fetch Config
+    const configDoc = await db.collection("cfg_app_config").doc("main").get();
+    const configData = configDoc.data() || {};
+    const feedbackConfig = configData.feedbackLoop || {};
+    const sendDocsConfig = configData.sendPatientDocuments || {};
+
+    const apiKey = (feedbackConfig.sendgridApiKey || "").trim();
+    const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim() || "noreply@apitherapy-system.com";
+    const templateId = (sendDocsConfig.templateId?.[language] || "").trim();
+
+    if (!apiKey || !templateId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "SendGrid or Template configuration missing."
+      );
+    }
+
+    // 2. Fetch Patient Data
+    const patientDoc = await db.collection("patients").doc(patientId).get();
+    if (!patientDoc.exists) {
+      throw new HttpsError("not-found", "Patient not found.");
+    }
+    const patientData = patientDoc.data() || {};
+    const patientEmail = patientData.email;
+
+    if (!patientEmail) {
+      throw new HttpsError("failed-precondition", "Patient has no email address.");
+    }
+
+    // 3. Fetch Caretaker (Sender) Data
+    const caretakerId = request.auth.uid;
+    const caretakerDoc = await db.collection("users").doc(caretakerId).get();
+    const caretakerData = caretakerDoc.data() || {};
+    const caretakerName = caretakerData.fullName || caretakerData.displayName || "Your Caretaker";
+
+    // 4. Send Email
+    sgMail.setApiKey(apiKey);
+    await sgMail.send({
+      to: patientEmail,
+      from: senderEmail,
+      templateId: templateId,
+      dynamicTemplateData: {
+        fullName: patientData.fullName || "Patient",
+        caretakerName: caretakerName,
+        documentUrl: documentUrl,
+      },
+    });
+
+    logger.info(`Document email sent to patient ${patientId} by user ${caretakerId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error("Error sending document email:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", "Failed to send email.");
   }
 });

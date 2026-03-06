@@ -74,6 +74,18 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       }
     }
   },
+  sendPatientDocuments: {
+    label: 'Send Patient Documents',
+    description: 'Configure SendGrid templates for sending signed documents to patients.',
+    children: {
+      templateId: {
+        label: 'Email Template ID',
+        description: 'SendGrid template ID for sending documents. Supports multiple languages.',
+        type: 'mlString',
+        defaultValue: {},
+      },
+    }
+  },
   treatmentSettings: {
     label: 'Treatment Process',
     description: 'Settings that control the logic and flow of patient treatments.',
