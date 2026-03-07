@@ -14,6 +14,6 @@ npm run build
 # 3. DEPLOY
 Write-Host "Deploying to Firebase (Hosting, Functions, Storage, Firestore)..." -ForegroundColor Cyan
 # Using --project to ensure it targets the correct Firebase project
-firebase deploy --only hosting, functions, storage, firestore --project apitherapyv2
+firebase deploy --only "hosting,functions,storage,firestore" --project apitherapyv2
 
 Write-Host "Deployment successful!" -ForegroundColor Green

@@ -15,6 +15,6 @@ npm run build
 
 # 3. DEPLOY
 echo "Deploying to Firebase (Hosting, Functions, Storage, Firestore)..."
-firebase deploy --only hosting,functions,storage,firestore --project apitherapyv2
+firebase deploy --only "hosting,functions,storage,firestore" --project apitherapyv2
 
 echo "Deployment successful!"
