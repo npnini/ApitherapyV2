@@ -13,8 +13,9 @@ export interface AppUser {
   fullName: string;
   displayName: string;
   mobile: string;
-  role: 'admin' | 'caretaker' | 'patient';
+  role: 'admin' | 'superadmin' | 'caretaker' | 'patient';
   preferredLanguage?: string;
+  canImpersonate?: boolean;
   address?: string;
   city?: string;
   country?: string;

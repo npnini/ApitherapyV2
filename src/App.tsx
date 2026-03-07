@@ -17,6 +17,7 @@ import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
+import UserManagement from './components/UserManagement';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
@@ -28,7 +29,7 @@ import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandalon
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'treatment_history' | 'user_details' | 'onboarding_test';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -41,6 +42,7 @@ const AppInner: React.FC = () => {
     const [activeProtocol, setActiveProtocol] = useState<Protocol | null>(null);
     const [activeTreatmentSession, setActiveTreatmentSession] = useState<Partial<TreatmentSession> | null>(null);
     const [currentView, setCurrentView] = useState<View>('dashboard');
+    const [viewAsCaretakerId, setViewAsCaretakerId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [authReady, setAuthReady] = useState<boolean>(false);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -85,8 +87,9 @@ const AppInner: React.FC = () => {
         }
     };
 
-    const fetchInitialData = useCallback(async (user: AppUser) => {
+    const fetchInitialData = useCallback(async (user: AppUser, targetCaretakerId?: string) => {
         if (!user || !user.uid || !appConfig) return;
+        const effectiveCaretakerId = targetCaretakerId || user.uid;
         setIsLoading(true);
         try {
             const protocolsQuery = query(collection(db, 'cfg_protocols'));
@@ -94,7 +97,7 @@ const AppInner: React.FC = () => {
             const measuresQuery = query(collection(db, 'cfg_measures'));
             const questionnairesQuery = query(collection(db, 'cfg_questionnaires'));
             // 1. Fetch PII from 'patients'
-            const patientQuery = query(collection(db, "patients"), where("caretakerId", "==", user.uid));
+            const patientQuery = query(collection(db, "patients"), where("caretakerId", "==", effectiveCaretakerId));
             const patientQuerySnapshot = await getDocs(patientQuery);
 
             const dashboardConfig = appConfig.patientDashboard || {};
@@ -184,9 +187,9 @@ const AppInner: React.FC = () => {
 
     useEffect(() => {
         if (appUser && appConfig) {
-            fetchInitialData(appUser);
+            fetchInitialData(appUser, viewAsCaretakerId || undefined);
         }
-    }, [appUser, appConfig, fetchInitialData]);
+    }, [appUser, appConfig, fetchInitialData, viewAsCaretakerId]);
 
     const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
@@ -225,7 +228,7 @@ const AppInner: React.FC = () => {
             mobile: '',
             medicalRecord: { patient_level_data: {} },
             questionnaireResponse: undefined,
-            caretakerId: appUser.uid,
+            caretakerId: viewAsCaretakerId || appUser.uid,
         };
         setSelectedPatient(newPatient);
         setCurrentView('patient_intake');
@@ -379,7 +382,22 @@ const AppInner: React.FC = () => {
 
         return (
             <div className="flex h-screen">
-                <Sidebar user={appUser} onLogout={handleLogout} onAdminClick={handleAdminClick} onPointsAdminClick={handlePointsAdminClick} onUserDetailsClick={handleUserDetailsClick} onPatientsClick={handleBackToDashboard} onAppSettingsClick={handleAppSettingsClick} onMeasuresAdminClick={handleMeasuresAdminClick} onProblemsAdminClick={handleProblemsAdminClick} onQuestionnaireAdminClick={handleQuestionnaireAdminClick} />
+                <Sidebar
+                    user={appUser}
+                    onLogout={handleLogout}
+                    onAdminClick={handleAdminClick}
+                    onPointsAdminClick={handlePointsAdminClick}
+                    onUserDetailsClick={handleUserDetailsClick}
+                    onPatientsClick={handleBackToDashboard}
+                    onAppSettingsClick={handleAppSettingsClick}
+                    onMeasuresAdminClick={handleMeasuresAdminClick}
+                    onProblemsAdminClick={handleProblemsAdminClick}
+                    onQuestionnaireAdminClick={handleQuestionnaireAdminClick}
+                    onUserManagementClick={() => setCurrentView('admin_users')}
+                    viewAsCaretakerId={viewAsCaretakerId}
+                    onViewAsCaretakerChange={setViewAsCaretakerId}
+                    appConfig={appConfig}
+                />
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {
                         isDashboardView ?
@@ -400,7 +418,9 @@ const AppInner: React.FC = () => {
                                                     <ProblemAdmin />
                                                     : currentView === 'admin_questionnaires' ?
                                                         <QuestionnaireAdmin />
-                                                        : null
+                                                        : currentView === 'admin_users' ?
+                                                            <UserManagement />
+                                                            : null
                     }
 
                     {currentView === 'patient_intake' && selectedPatient && appUser &&
@@ -414,7 +434,7 @@ const AppInner: React.FC = () => {
                             onUpdate={(patientData) => handleSavePatient(patientData, false)}
                             initialViewState={intakeInitialViewState}
                             initialTab={intakeInitialTab}
-                            onTreatmentComplete={() => fetchInitialData(appUser)}
+                            onTreatmentComplete={() => fetchInitialData(appUser, viewAsCaretakerId || undefined)}
                         />
                     }
 

@@ -200,4 +200,16 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       },
     },
   },
+  adminSettings: {
+    label: 'Admin Settings',
+    description: 'System-wide administrative settings (SuperAdmin only)',
+    children: {
+      enableGlobalImpersonation: {
+        label: 'Enable Global Impersonation',
+        description: 'If enabled, authorized admins can view data as other caretakers.',
+        type: 'boolean',
+        defaultValue: false,
+      },
+    },
+  },
 };

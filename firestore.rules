@@ -7,17 +7,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isSuperAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
     function isCaretaker() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caretaker';
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caretaker';
     }
 
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return isAuthenticated() && (role == 'admin' || role == 'superadmin');
     }
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      // Only superadmins can change roles or impersonation flags.
+      // Regular users can only update their own profile EXCEPT for those fields.
+      allow write: if isAuthenticated() && (
+        isSuperAdmin() || (
+          request.auth.uid == userId && 
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'canImpersonate'])
+        )
+      );
     }
 
     // --- CONFIGURATION COLLECTIONS (LONG-TERM) ---

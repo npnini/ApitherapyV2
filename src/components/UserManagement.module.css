@@ -1,0 +1,104 @@
+.container {
+    padding: 2rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.searchBar {
+    display: flex;
+    align-items: center;
+    background: #f5f7fb;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+}
+
+.searchBar input {
+    border: none;
+    background: transparent;
+    margin-left: 0.5rem;
+    outline: none;
+    width: 250px;
+    font-size: 0.9rem;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.table th {
+    padding: 1rem;
+    border-bottom: 2px solid #f0f3f8;
+    color: #6d7f92;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f0f3f8;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.updating {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.roleSelect {
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.toggleBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.toggleBtn.active {
+    background: #e8f5e9;
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 4rem;
+    font-style: italic;
+    color: #666;
+}

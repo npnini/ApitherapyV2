@@ -666,13 +666,15 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         <div className={styles.container}>
             <main className={styles.mainContent}>
                 <div className={styles.form}>
-                    {Object.entries(appConfigSchema).map(([key, group]) => (
-                        <fieldset key={key} className={styles.group}>
-                            <legend className={styles.groupLabel}><T>{group.label}</T></legend>
-                            <p className={styles.groupDescription}><T>{group.description}</T></p>
-                            {renderGroup(group, [key])}
-                        </fieldset>
-                    ))}
+                    {Object.entries(appConfigSchema)
+                        .filter(([key]) => key !== 'adminSettings' || user.role === 'superadmin')
+                        .map(([key, group]) => (
+                            <fieldset key={key} className={styles.group}>
+                                <legend className={styles.groupLabel}><T>{group.label}</T></legend>
+                                <p className={styles.groupDescription}><T>{group.description}</T></p>
+                                {renderGroup(group, [key])}
+                            </fieldset>
+                        ))}
                 </div>
             </main>
             <div className={styles.actions}>
