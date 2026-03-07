@@ -117,6 +117,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tNextStep = useT('Next Step');
     const tDone = useT('Done');
     const tTreatmentFeedback = useT('Treatment Feedback');
+    const tSaveError = useT('Failed to save signed document. Please check your connection and try again.');
 
     const tabLabels: Record<TabKey, string> = {
         personal: tPersonal,
@@ -290,37 +291,51 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         let finalData = { ...patientData };
 
         if (activeTab === 'consent' && consentTabRef.current) {
-            const signatureUrl = await consentTabRef.current.onSave();
-            if (!signatureUrl) return false;
+            try {
+                const signatureUrl = await consentTabRef.current.onSave();
+                if (!signatureUrl) return false;
 
-            finalData = {
-                ...finalData,
-                medicalRecord: {
-                    ...(finalData.medicalRecord || {}),
-                    patient_level_data: {
-                        ...(finalData.medicalRecord?.patient_level_data || {}),
-                        consentSignedUrl: signatureUrl
+                finalData = {
+                    ...finalData,
+                    medicalRecord: {
+                        ...(finalData.medicalRecord || {}),
+                        patient_level_data: {
+                            ...(finalData.medicalRecord?.patient_level_data || {}),
+                            consentSignedUrl: signatureUrl
+                        }
                     }
-                }
-            };
-            setPatientData(finalData);
+                };
+                setPatientData(finalData);
+            } catch (err) {
+                console.error('Failed to save consent:', err);
+                setShowTreatmentErrorGuard(true);
+                setTreatmentErrorMessage(tSaveError);
+                return false;
+            }
         }
 
         if (activeTab === 'instructions' && instructionsTabRef.current) {
-            const signatureUrl = await instructionsTabRef.current.onSave();
-            if (!signatureUrl) return false;
+            try {
+                const signatureUrl = await instructionsTabRef.current.onSave();
+                if (!signatureUrl) return false;
 
-            finalData = {
-                ...finalData,
-                medicalRecord: {
-                    ...(finalData.medicalRecord || {}),
-                    patient_level_data: {
-                        ...(finalData.medicalRecord?.patient_level_data || {}),
-                        treatmentInstructionsSignedUrl: signatureUrl
+                finalData = {
+                    ...finalData,
+                    medicalRecord: {
+                        ...(finalData.medicalRecord || {}),
+                        patient_level_data: {
+                            ...(finalData.medicalRecord?.patient_level_data || {}),
+                            treatmentInstructionsSignedUrl: signatureUrl
+                        }
                     }
-                }
-            };
-            setPatientData(finalData);
+                };
+                setPatientData(finalData);
+            } catch (err) {
+                console.error('Failed to save guidelines:', err);
+                setShowTreatmentErrorGuard(true);
+                setTreatmentErrorMessage(tSaveError);
+                return false;
+            }
         }
 
         if (activeTab === 'problems' && problemsTabRef.current) {
