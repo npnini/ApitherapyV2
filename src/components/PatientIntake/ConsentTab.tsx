@@ -67,7 +67,12 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                 }
             } catch (err) {
                 console.error('Failed to fetch consent template:', err);
-                setTemplate(errorMsg);
+                const isFetchError = err instanceof TypeError && err.message === 'Failed to fetch';
+                if (isFetchError) {
+                    setTemplate(errorMsg + ' (Possible CORS or Connectivity error)');
+                } else {
+                    setTemplate(errorMsg);
+                }
             } finally {
                 setIsLoading(false);
             }

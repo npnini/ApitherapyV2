@@ -365,6 +365,10 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             }
         } catch (err) {
             console.warn('Failed to fetch blob for viewer, falling back to direct link:', err);
+            const isCorsError = err instanceof TypeError && err.message === 'Failed to fetch';
+            if (isCorsError) {
+                console.error('CORS error detected. The Storage bucket requires a CORS policy to allow this origin.');
+            }
             window.open(url, '_blank');
         }
     };

@@ -66,7 +66,13 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 }
             } catch (err) {
                 console.error('Failed to fetch instructions template:', err);
-                setTemplate(errorMsg);
+                // Check if it's potentially a CORS or networking error
+                const isFetchError = err instanceof TypeError && err.message === 'Failed to fetch';
+                if (isFetchError) {
+                    setTemplate(errorMsg + ' (Possible CORS or Connectivity error)');
+                } else {
+                    setTemplate(errorMsg);
+                }
             } finally {
                 setIsLoading(false);
             }
