@@ -43,6 +43,7 @@ const AppInner: React.FC = () => {
     const [activeTreatmentSession, setActiveTreatmentSession] = useState<Partial<TreatmentSession> | null>(null);
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [viewAsCaretakerId, setViewAsCaretakerId] = useState<string | null>(null);
+    const [impersonatedUser, setImpersonatedUser] = useState<AppUser | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [authReady, setAuthReady] = useState<boolean>(false);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -186,6 +187,21 @@ const AppInner: React.FC = () => {
     }, [appUser?.preferredLanguage, language, setLanguage]);
 
     useEffect(() => {
+        const fetchImpersonatedUser = async () => {
+            if (viewAsCaretakerId) {
+                const userRef = doc(db, 'users', viewAsCaretakerId);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    setImpersonatedUser({ uid: viewAsCaretakerId, ...userSnap.data() } as AppUser);
+                }
+            } else {
+                setImpersonatedUser(null);
+            }
+        };
+        fetchImpersonatedUser();
+    }, [viewAsCaretakerId]);
+
+    useEffect(() => {
         if (appUser && appConfig) {
             fetchInitialData(appUser, viewAsCaretakerId || undefined);
         }
@@ -203,11 +219,17 @@ const AppInner: React.FC = () => {
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
         setSaveStatus('saving');
-        const userRef = doc(db, 'users', appUser.uid);
+        const userRef = doc(db, 'users', updatedUser.uid);
         const { uid, ...userDataToSave } = updatedUser;
         await updateDoc(userRef, userDataToSave);
-        setAppUser(updatedUser);
-        setLanguage(updatedUser.preferredLanguage || 'en');
+
+        if (updatedUser.uid === appUser.uid) {
+            setAppUser(updatedUser);
+            setLanguage(updatedUser.preferredLanguage || 'en');
+        } else {
+            setImpersonatedUser(updatedUser);
+        }
+
         setSaveStatus('idle');
         setCurrentView('dashboard');
     };
@@ -379,6 +401,7 @@ const AppInner: React.FC = () => {
 
         const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
         const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
+        const effectiveUser = impersonatedUser || appUser;
 
         return (
             <div className="flex h-screen">
@@ -402,9 +425,9 @@ const AppInner: React.FC = () => {
                     {
                         isDashboardView ?
                             <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
-                            : currentView === 'user_details' && appUser ?
+                            : currentView === 'user_details' && effectiveUser ?
                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile}>
-                                    <UserDetails user={appUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
+                                    <UserDetails user={effectiveUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
                                 </Modal>
                                 : currentView === 'onboarding_test' ?
                                     <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} onBack={() => { }} />
