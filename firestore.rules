@@ -24,12 +24,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       // Only superadmins can change roles or impersonation flags.
       // Regular users can only update their own profile EXCEPT for those fields.
-      allow write: if isAuthenticated() && (
+      allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.role == 'caretaker' && !('canImpersonate' in request.resource.data);
+      allow update: if isAuthenticated() && (
         isSuperAdmin() || (
           request.auth.uid == userId && 
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'canImpersonate'])
         )
       );
+      allow delete: if isSuperAdmin();
     }
 
     // --- CONFIGURATION COLLECTIONS (LONG-TERM) ---

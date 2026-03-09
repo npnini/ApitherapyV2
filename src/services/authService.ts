@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   signOut,
   type UserCredential
@@ -49,9 +49,9 @@ export const signInWithEmail = (email: string, password: string): Promise<UserCr
   return signInWithEmailAndPassword(auth, email, password);
 };
 
-export const signInWithGoogle = (): Promise<void> => {
+export const signInWithGoogle = (): Promise<UserCredential> => {
   const provider = new GoogleAuthProvider();
-  return signInWithRedirect(auth, provider);
+  return signInWithPopup(auth, provider);
 };
 
 /**
