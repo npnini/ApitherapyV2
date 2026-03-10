@@ -1,7 +1,7 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '../firebase';
 
-const functions = getFunctions(app);
+const functions = getFunctions(app, 'me-west1');
 
 interface SendDocumentEmailParams {
     patientId: string;

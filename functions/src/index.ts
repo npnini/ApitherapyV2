@@ -1,10 +1,13 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import sgMail from "@sendgrid/mail";
 import { randomUUID } from "crypto";
+
+setGlobalOptions({ region: "me-west1" });
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -14,7 +17,7 @@ const db = admin.firestore();
  * Runs daily at 5:00 AM to sweep yesterday's treatments, clean up old sessions,
  * and dispatch emails via SendGrid.
  */
-export const dailyFeedbackSweeper = onSchedule("0 5 * * *", async () => {
+export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: "europe-west1" }, async () => {
   const now = admin.firestore.Timestamp.now();
 
   // A. Cleanup expired sessions
