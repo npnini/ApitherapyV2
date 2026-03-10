@@ -734,6 +734,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     onRoundComplete={handleRoundComplete}
                                     onEndTreatment={handleEndTreatment}
                                     onBack={() => setViewState('protocolSelection')}
+                                    preferredModel={user?.preferredModel}
                                 />
                             )}
                             {viewState === 'treatmentFeedback' && latestTreatment && (

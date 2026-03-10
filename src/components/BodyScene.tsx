@@ -3,8 +3,11 @@ import React, { Suspense, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, OrbitControls, Environment, ContactShadows, PerspectiveCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { Protocol, StingPoint } from '../types';
-import { DEMO_HUMAN_MODEL_URL } from '../constants';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { useLoader } from '@react-three/fiber';
+import { Protocol } from '../types/protocol';
+import { StingPoint } from '../types/apipuncture';
+import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL, CORPO_TEXTURE_URL } from '../constants';
 import { T } from './T';
 import StingPointMarker from './StingPointMarker';
 
@@ -13,26 +16,29 @@ interface BodySceneProps {
   onPointSelect: (point: StingPoint) => void;
   activePointId: string | null;
   isRolling: boolean;
+  selectedModel: 'xbot' | 'corpo';
 }
 
-const HumanModel = ({ url }: { url: string }) => {
+const HumanModel = ({ url, children }: { url: string; children?: React.ReactNode }) => {
   const { scene } = useGLTF(url);
+  const groupRef = useRef<THREE.Group>(null);
+  const [modelScale, setModelScale] = React.useState(1);
 
-  useMemo(() => {
+  React.useLayoutEffect(() => {
+    if (!groupRef.current) return;
+
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-
         if (mesh.material) {
-          const mat = new THREE.MeshStandardMaterial({
-            color: '#e2e8f0', // Brighter medical white-grey
+          mesh.material = new THREE.MeshStandardMaterial({
+            color: '#e2e8f0',
             roughness: 0.6,
             metalness: 0.1,
             flatShading: false
           });
-          mesh.material = mat;
         }
       }
     });
@@ -43,14 +49,74 @@ const HumanModel = ({ url }: { url: string }) => {
 
     const targetHeight = 1.8;
     const scale = targetHeight / size.y;
-    scene.scale.setScalar(scale);
+    setModelScale(scale);
 
-    scene.position.x = -center.x * scale;
-    scene.position.y = -box.min.y * scale;
-    scene.position.z = -center.z * scale;
+    groupRef.current.position.x = -center.x * scale;
+    groupRef.current.position.y = -box.min.y * scale;
+    groupRef.current.position.z = -center.z * scale;
   }, [scene]);
 
-  return <primitive object={scene} />;
+  return (
+    <group ref={groupRef}>
+      <primitive object={scene} scale={modelScale} />
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child as React.ReactElement<any>, { parentScale: modelScale });
+        }
+        return child;
+      })}
+    </group>
+  );
+};
+
+const CorpoModel = ({ url, textureUrl, children }: { url: string; textureUrl: string; children?: React.ReactNode }) => {
+  const obj = useLoader(OBJLoader, url);
+  const texture = useLoader(THREE.TextureLoader, textureUrl);
+  const groupRef = useRef<THREE.Group>(null);
+  const [modelScale, setModelScale] = React.useState(1);
+
+  React.useLayoutEffect(() => {
+    if (!groupRef.current) return;
+
+    obj.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.material = new THREE.MeshStandardMaterial({
+          map: texture,
+          color: '#ffffff',
+          roughness: 0.7,
+          metalness: 0.0,
+          flatShading: false
+        });
+      }
+    });
+
+    const box = new THREE.Box3().setFromObject(obj);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    const targetHeight = 1.8;
+    const scale = targetHeight / size.y;
+    setModelScale(scale);
+
+    groupRef.current.position.x = -center.x * scale;
+    groupRef.current.position.y = -box.min.y * scale;
+    groupRef.current.position.z = -center.z * scale;
+  }, [obj, texture]);
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={obj} scale={modelScale} />
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child as React.ReactElement<any>, { parentScale: modelScale });
+        }
+        return child;
+      })}
+    </group>
+  );
 };
 
 const LoadingOverlay = () => (
@@ -64,7 +130,7 @@ const LoadingOverlay = () => (
   </Html>
 );
 
-const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling }) => {
+const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling, selectedModel }) => {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
@@ -90,16 +156,31 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
 
       <Suspense fallback={<LoadingOverlay />}>
         <group ref={groupRef}>
-          <HumanModel url={DEMO_HUMAN_MODEL_URL} />
-
-          {protocol?.points.map((point) => (
-            <StingPointMarker
-              key={point.id}
-              point={point}
-              onClick={onPointSelect}
-              isHighlighted={activePointId === point.id}
-            />
-          ))}
+          {selectedModel === 'xbot' ? (
+            <HumanModel url={DEMO_HUMAN_MODEL_URL}>
+              {protocol?.points.map((point: StingPoint) => (
+                <StingPointMarker
+                  key={point.id}
+                  point={point}
+                  onClick={onPointSelect}
+                  isHighlighted={activePointId === point.id}
+                  selectedModel={selectedModel}
+                />
+              ))}
+            </HumanModel>
+          ) : (
+            <CorpoModel url={CORPO_MODEL_URL} textureUrl={CORPO_TEXTURE_URL}>
+              {protocol?.points.map((point: StingPoint) => (
+                <StingPointMarker
+                  key={point.id}
+                  point={point}
+                  onClick={onPointSelect}
+                  isHighlighted={activePointId === point.id}
+                  selectedModel={selectedModel}
+                />
+              ))}
+            </CorpoModel>
+          )}
         </group>
 
         <Environment preset="city" />

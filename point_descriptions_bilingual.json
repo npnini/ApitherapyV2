@@ -1,0 +1,398 @@
+{
+    "VC2": {
+        "en": "Addresses genito-urinary issues, urinary retention, and menstrual irregularities.",
+        "he": "מטפל בבעיות במערכת השתן והמין, אצירת שתן ואי-סדירות במחזור החודשי."
+    },
+    "VC3": {
+        "en": "Treats genito-urinary disorders, cystitis, and damp-heat in the genital area. Front-Mu of Bladder.",
+        "he": "מטפל בהפרעות במערכת השתן והמין, דלקת בשלפוחית השתן ולחות-חום באזור הגניטלי. נקודת התראה (Mu) של שלפוחית השתן."
+    },
+    "VC4": {
+        "en": "Nourishes Kidney Qi, tonifies original Qi, and treats reproductive/urinary issues. Front-Mu of Small Intestine.",
+        "he": "מזין את הצ'י של הכליות, מחזק צ'י מקורי ומטפל בבעיות רבייה ושתן. נקודת התראה (Mu) של המעי הדק."
+    },
+    "VC5": {
+        "en": "Regulates the Water Passages and treats edema, urinary issues, and abdominal pain.",
+        "he": "מווסת את מעברי המים ומטפל בבצקות, בעיות שתן וכאבי בטן."
+    },
+    "VC6": {
+        "en": "Known as 'Sea of Qi'. Tonifies Qi and Yang, treats fatigue, and regulates lower jiao.",
+        "he": "ידועה כ-'ים הצ'י'. מחזקת צ'י ויאנג, מטפלת בעייפות ומווסתת את המחמם התחתון."
+    },
+    "VC7": {
+        "en": "Regulates menstruation and treats abdominal pain and urogenital issues.",
+        "he": "מווסתת את המחזור החודשי ומטפלת בכאבי בטן ובעיות אורוגניטליות."
+    },
+    "VC8": {
+        "en": "Located at the umbilicus. Rescues Yang, treats extreme fatigue and chronic digestive issues.",
+        "he": "ממוקמת בטבור. מצילה את היאנג, מטפלת בעייפות קיצונית ובעיות עיכול כרוניות."
+    },
+    "VC9": {
+        "en": "Regulates the Water Passages and treats edema and abdominal distension.",
+        "he": "מווסתת את מעברי המים ומטפלת בבצקות ונפיחות בבטן."
+    },
+    "VC10": {
+        "en": "Aids digestion and treats stomach pain, gas, and indigestion.",
+        "he": "מסייעת לעיכול ומטפלת בכאבי בטן, גזים וקשיים בעיכול."
+    },
+    "VC11": {
+        "en": "Strengthens the Spleen and Stomach, treats abdominal distension and vomiting.",
+        "he": "מחזקת את הטחול והקיבה, מטפלת בנפיחות בבטן ובהקאות."
+    },
+    "VC12": {
+        "en": "Major point for digestive issues (reflux, gas, nausea). Tonifies Stomach/Spleen. Front-Mu of Stomach.",
+        "he": "נקודה מרכזית לבעיות עיכול (רפלקס, גזים, בחילה). מחזקת קיבה/טחול. נקודת התראה (Mu) של הקיבה."
+    },
+    "VC13": {
+        "en": "Regulates Heart Qi and treats reflux, nausea, and emotional anxiety.",
+        "he": "מווסתת את צ'י הלב ומטפלת ברפלקס, בחילות וחרדה רגשית."
+    },
+    "VC14": {
+        "en": "Front-Mu of the Heart. Treats heart pain, palpitations, and mental/emotional issues.",
+        "he": "נקודת התראה (Mu) של הלב. מטפלת בכאבי לב, דפיקות לב ובעיות מנטליות/רגשיות."
+    },
+    "VC15": {
+        "en": "Luo-Connecting of Ren. Calms the mind and treats chest pain and anxiety.",
+        "he": "נקודת חיבור (Luo) של ערוץ ה-Ren. מרגיעה את הנפש ומטפלת בכאבי חזה וחרדה."
+    },
+    "VC16": {
+        "en": "Unbinds the chest and treats local pain and cough.",
+        "he": "משחררת את החזה ומטפלת בכאב מקומי ושיעול."
+    },
+    "VC17": {
+        "en": "Treats asthma, chest pain, palpitations, and anxiety. Influential point of Qi.",
+        "he": "מטפלת באסתמה, כאבי חזה, דפיקות לב וחרדה. נקודת השפעה על הצ'י."
+    },
+    "VC18": {
+        "en": "Unbinds the chest and treats local pain and difficulty swallowing.",
+        "he": "משחררת את החזה ומטפלת בכאב מקומי וקשיי בליעה."
+    },
+    "VC19": {
+        "en": "Treats cough, asthma, and chest pain.",
+        "he": "מטפלת בשיעול, אסתמה וכאבי חזה."
+    },
+    "VC20": {
+        "en": "Unbinds the chest and treats cough and local pressure.",
+        "he": "משחררת את החזה ומטפלת בשיעול ולחץ מקומי."
+    },
+    "VC21": {
+        "en": "Treats cough, asthma, and difficulty swallowing.",
+        "he": "מטפלת בשיעול, אסתמה וקשיי בליעה."
+    },
+    "VC22": {
+        "en": "Indicated for cough, asthma, sore throat, and 'plum pit' sensation in the throat.",
+        "he": "מיועדת לשיעול, אסתמה, כאב גרון ותחושת 'גרעין שזיף' (תקיעות) בגרון."
+    },
+    "VC23": {
+        "en": "Benefits the tongue and throat. Used for difficulty swallowing and speech issues.",
+        "he": "מיטיבה עם הלשון והגרון. משמשת לקשיי בליעה ובעיות דיבור."
+    },
+    "VC24": {
+        "en": "Used for facial paralysis (Bell's palsy), dental pain, and dry mouth.",
+        "he": "משמשת לשיתוק פנים (Bell's palsy), כאבי שיניים ויובש בפה."
+    },
+    "P1": {
+        "en": "Treats chest congestion, chronic cough, and breast disorders.",
+        "he": "מטפלת בגודש בחזה, שיעול כרוני והפרעות בשד."
+    },
+    "P2": {
+        "en": "Indicated for chest pain, palpitations, and local arm pain.",
+        "he": "מיועדת לכאבי חזה, דפיקות לב וכאב מקומי בזרוע."
+    },
+    "P3": {
+        "en": "Clears heat, treats heart pain, and addresses summer-heat digestive issues.",
+        "he": "מנקה חום, מטפלת בכאבי לב ומטפלת בבעיות עיכול של חום קיץ."
+    },
+    "P4": {
+        "en": "Xi-Cleft point. Effective for acute heart pain, blood stagnation, and emotional trauma.",
+        "he": "נקודת הצטברות (Xi-Cleft). יעילה לכאבי לב אקוטיים, סטגנציה של דם וטראומה רגשית."
+    },
+    "P5": {
+        "en": "Transforms phlegm, treats nausea, and regulates emotional mania/anxiety.",
+        "he": "מתמרת ליחה, מטפלת בבחילות ומווסתת מאניה/חרדה רגשית."
+    },
+    "P6": {
+        "en": "Highly effective for nausea, motion sickness, anxiety, and insomnia. Luo-Connecting point.",
+        "he": "יעילה מאוד לבחילות, מחלת נסיעה, חרדה ונדודי שינה. נקודת חיבור (Luo)."
+    },
+    "P7": {
+        "en": "Clears Heart heat and calms the spirit. Used for insomnia and emotional distress.",
+        "he": "מנקה חום מהלב ומרגיעה את הנפש. משמשת לנדודי שינה ומצוקה רגשית."
+    },
+    "P8": {
+        "en": "Addresses mental restlessness, mouth ulcers, and high blood pressure. Clears heart fire.",
+        "he": "מטפלת באי-שקט מנטלי, כיבים בפה ויתר לחץ דם. מנקה אש מהלב."
+    },
+    "P9": {
+        "en": "Jing-Well point. Used to revive consciousness and clear heart fire.",
+        "he": "נקודת באר (Jing-Well). משמשת להחזרת הכרה וניקוי אש מהלב."
+    },
+    "P10": {
+        "en": "Clears heat and treats palm heat and local hand issues.",
+        "he": "מנקה חום ומטפלת בחום בכפות הידיים ובעיות ידיים מקומיות."
+    },
+    "P11": {
+        "en": "Jing-Well point. Treats throat pain and clears heat.",
+        "he": "נקודת באר (Jing-Well). מטפלת בכאבי גרון ומנקה חום."
+    },
+    "IG1": {
+        "en": "Jing-Well point. Treats breast disorders, insufficient lactation, and mastitis.",
+        "he": "נקודת באר (Jing-Well). מטפלת בהפרעות בשד, מחסור בחלב אם ודלקת בשד (מסטיטיס)."
+    },
+    "IG2": {
+        "en": "Ying-Spring point. Treats ear problems, scapula pain, and local hand issues.",
+        "he": "נקודת מעיין (Ying-Spring). מטפלת בבעיות אוזניים, כאבי שכמות ובעיות ידיים מקומיות."
+    },
+    "IG3": {
+        "en": "Shu-Stream point. Key for neck and back pain, and spinal well-being.",
+        "he": "נקודת פלג (Shu-Stream). נקודת מפתח לכאבי צוואר וגב ולבריאות עמוד השדרה."
+    },
+    "IG4": {
+        "en": "Yuan-Source point. Treats nasal obstruction, jaundice, and local wrist issues.",
+        "he": "נקודת מקור (Yuan-Source). מטפלת בחסימה אפית, צהבת ובעיות מקומיות בפרק כף היד."
+    },
+    "IG5": {
+        "en": "Jing-River point. Treats neck pain, jaw swelling, and wrist issues.",
+        "he": "נקודת נהר (Jing-River). מטפלת בכאבי צוואר, נפיחות בלסת ובעיות בפרק כף היד."
+    },
+    "IG6": {
+        "en": "Xi-Cleft point. Benefits the eyes and treats shoulder/arm pain.",
+        "he": "נקודת הצטברות (Xi-Cleft). מיטיבה עם העיניים ומטפלת בכאבי כתף וזרוע."
+    },
+    "IG7": {
+        "en": "Luo-Connecting point. Calms the spirit and treats neck/arm pain.",
+        "he": "נקודת חיבור (Luo). מרגיעה את הנפש ומטפלת בכאבי צוואר וזרוע."
+    },
+    "IG8": {
+        "en": "He-Sea point. Clears heat and treats swelling of the neck and check.",
+        "he": "נקודת ים (He-Sea). מנקה חום ומטפלת בנפיחות בצוואר ובלחי."
+    },
+    "IG9": {
+        "en": "Expels wind and treats shoulder and arm pain.",
+        "he": "מסלקת רוח ומטפלת בכאבי כתף וזרוע."
+    },
+    "IG10": {
+        "en": "Benefits the shoulder and treats local stiffness/pain.",
+        "he": "מיטיבה עם הכתף ומטפלת בנוקשות וכאב מקומי."
+    },
+    "IG11": {
+        "en": "Mid-way through the scapula. Treats shoulder and upper back tension.",
+        "he": "במרכז השכמה. מטפלת במתח בכתף ובגב העליון."
+    },
+    "IG12": {
+        "en": "Expels wind and treats pain in the shoulder and arm.",
+        "he": "מסלקת רוח ומטפלת בכאב בכתף ובזרוע."
+    },
+    "IG13": {
+        "en": "Treats stiffness and pain in the shoulder and upper back.",
+        "he": "מטפלת בנוקשות וכאב בכתף ובגב העליון."
+    },
+    "IG14": {
+        "en": "Expels wind and cold, treats neck and shoulder pain.",
+        "he": "מסלקת רוח וקור, מטפלת בכאבי צוואר וכתף."
+    },
+    "IG15": {
+        "en": "Treats shoulder/neck stiffness and supports Lung function.",
+        "he": "מטפלת בנוקשות בכתף/צוואר ותומכת בתפקוד הריאות."
+    },
+    "IG16": {
+        "en": "Benefits the throat and ears, treats neck pain.",
+        "he": "מיטיבה עם הגרון והאוזניים, מטפלת בכאבי צוואר."
+    },
+    "IG17": {
+        "en": "Benefits the ears and jaw, treats local swelling/pain.",
+        "he": "מיטיבה עם האוזניים והלסת, מטפלת בנפיחות/כאב מקומי."
+    },
+    "IG18": {
+        "en": "Treats facial paralysis, toothache, and sinus issues.",
+        "he": "מטפלת בשיתוק פנים, כאבי שיניים ובעיות בסינוסים."
+    },
+    "IG19": {
+        "en": "In front of the ear. Employed for ear disorders like tinnitus and jaw pain.",
+        "he": "לפני האוזן. משמשת להפרעות באוזן כמו טינטון וכאבי לסת."
+    },
+    "IG20": {
+        "en": "Treats nasal obstruction and sinus issues.",
+        "he": "מטפלת בחסימה אפית ובעיות סינוסים."
+    },
+    "E1": {
+        "en": "Benefits the eyes, clears wind, and treats eyelid twitching.",
+        "he": "מיטיבה עם העיניים, מנקה רוח ומטפלת בקפיצות עפעף."
+    },
+    "E2": {
+        "en": "Eliminates wind and clears vision. Used for facial paralysis.",
+        "he": "מסלקת רוח ומנקה את הראייה. משמשת לשיתוק פנים."
+    },
+    "E3": {
+        "en": "Reduces facial swelling and relieves sinus congestion.",
+        "he": "מפחיתה נפיחות בפנים ומשחררת גודש בסינוסים."
+    },
+    "E4": {
+        "en": "Benefits the mouth and treats Bell's palsy or facial paralysis.",
+        "he": "מיטיבה עם הפה ומטפלת בשיתוק פנים (Bell's palsy)."
+    },
+    "E5": {
+        "en": "Eliminates wind and treats jaw pain and facial swelling.",
+        "he": "מסלקת רוח ומטפלת בכאבי לסת ונפיחות בפנים."
+    },
+    "E6": {
+        "en": "Relieves TMJ and jaw pain. Used for dental issues.",
+        "he": "משחררת כאבים במפרק הלסת ולסת. משמשת לבעיות שיניים."
+    },
+    "E7": {
+        "en": "Best point for trigeminal neuralgia and jaw tension.",
+        "he": "הנקודה הטובה ביותר לנוירלגיה טריגמינלית ומתח בלסת."
+    },
+    "E8": {
+        "en": "Clears headaches (especially frontal) and relieves dizziness.",
+        "he": "מנקה כאבי ראש (במיוחד פרונטליים) ומקלה על סחרחורת."
+    },
+    "E9": {
+        "en": "Regulates Qi, benefits the throat, and stabilizes blood pressure.",
+        "he": "מווסתת צ'י, מיטיבה עם הגרון ומייצבת לחץ דם."
+    },
+    "E10": {
+        "en": "Benefits the throat and stops cough.",
+        "he": "מיטיבה עם הגרון ומפסיקה שיעול."
+    },
+    "E11": {
+        "en": "Benefits the throat and unbinds the chest.",
+        "he": "מיטיבה עם הגרון ומשחררת את החזה."
+    },
+    "E12": {
+        "en": "Treats cough, asthma, and local neck/shoulder tension.",
+        "he": "מטפלת בשיעול, אסתמה ומתח מקומי בצוואר/כתף."
+    },
+    "E13": {
+        "en": "Unbinds the chest and treats local pressure/pain.",
+        "he": "משחררת את החזה ומטפלת בלחץ/כאב מקומי."
+    },
+    "E14": {
+        "en": "Unbinds the chest and treats local pain and cough.",
+        "he": "משחררת את החזה ומטפלת בכאב מקומי ושיעול."
+    },
+    "E15": {
+        "en": "Treats chest pain and breast disorders.",
+        "he": "מטפלת בכאבי חזה והפרעות בשד."
+    },
+    "E16": {
+        "en": "Treats breast pain and chest congestion.",
+        "he": "מטפלת בכאבים בשד וגודש בחזה."
+    },
+    "E17": {
+        "en": "Located at the nipple (not for needling). Treats breast issues.",
+        "he": "ממוקמת בפטמה (לא לדיקור). מטפלת בבעיות שד."
+    },
+    "E18": {
+        "en": "Beneficial for breast disorders and unbinding the chest.",
+        "he": "מיטיבה עם הפרעות בשד ומשחררת את החזה."
+    },
+    "E19": {
+        "en": "Harmonizes the Stomach and treats reflux, gas, and nausea.",
+        "he": "מהרמנת את הקיבה ומטפלת ברפלקס, גזים ובחילה."
+    },
+    "E20": {
+        "en": "Harmonizes the Middle Jiao and treats abdominal distension.",
+        "he": "מהרמנת את המחמם האמצעי ומטפלת בנפיחות בבטן."
+    },
+    "E21": {
+        "en": "Major point for digestive issues, nausea, and stomach pain.",
+        "he": "נקודה מרכזית לבעיות עיכול, בחילה וכאבי בטן."
+    },
+    "E22": {
+        "en": "Treats abdominal pain, distension, and acute digestive issues.",
+        "he": "מטפלת בכאבי בטן, נפיחות ובעיות עיכול אקוטיות."
+    },
+    "E23": {
+        "en": "Treats abdominal pain and mental restlessness.",
+        "he": "מטפלת בכאבי בטן ואי-שקט מנטלי."
+    },
+    "E24": {
+        "en": "Harmonizes the Stomach and treats abdominal pain.",
+        "he": "מהרמנת את הקיבה ומטפלת בכאבי בטן."
+    },
+    "E25": {
+        "en": "Regulates the large intestine, treats constipation and diarrhea. Front-Mu of Large Intestine.",
+        "he": "מווסתת את המעי הגס, מטפלת בעצירות ושלשול. נקודת התראה (Mu) של המעי הגס."
+    },
+    "E26": {
+        "en": "Treats abdominal pain and hernia issues.",
+        "he": "מטפלת בכאבי בטן ובעיות בקע (הרניה)."
+    },
+    "E27": {
+        "en": "Benefits the Kidneys and treats abdominal pain and urogenital issues.",
+        "he": "מיטיבה עם הכליות ומטפלת בכאבי בטן ובעיות אורוגניטליות."
+    },
+    "E28": {
+        "en": "Treats lower abdominal pain and urogenital disorders.",
+        "he": "מטפלת בכאבי בטן תחתונה והפרעות אורוגניטליות."
+    },
+    "E29": {
+        "en": "Benefits the uterus and treats menstrual pain.",
+        "he": "מיטיבה עם הרחם ומטפלת בכאבי מחזור."
+    },
+    "E30": {
+        "en": "Harmonizes the lower jiao and treats urogenital pain.",
+        "he": "מהרמנת את המחמם התחתון ומטפלת בכאב אורוגניטלי."
+    },
+    "E31": {
+        "en": "Treats local pain in the thigh and hip.",
+        "he": "מטפלת בכאב מקומי בירך ובאגן."
+    },
+    "E32": {
+        "en": "Expels wind and treats local leg pain.",
+        "he": "מסלקת רוח ומטפלת בכאב רגליים מקומי."
+    },
+    "E33": {
+        "en": "Treats local knee pain and leg weakness.",
+        "he": "מטפלת בכאבי ברכיים מקומיים וחולשת רגליים."
+    },
+    "E34": {
+        "en": "Xi-Cleft point of the Stomach. Treats acute knee pain and gastric pain.",
+        "he": "נקודת הצטברות (Xi-Cleft) של הקיבה. מטפלת בכאבי ברכיים אקוטיים ובכאב קיבה."
+    },
+    "E35": {
+        "en": "Major point for knee pain and swelling.",
+        "he": "נקודה מרכזית לכאבי ברכיים ונפיחות."
+    },
+    "E36": {
+        "en": "Major point for digestion, immunity, and longevity. Regulates Qi and Blood. Command point of abdomen.",
+        "he": "נקודה מרכזית לעיכול, חיסון ואריכות ימים. מווסתת צ'י ודם. נקודת פיקוד על הבטן."
+    },
+    "E37": {
+        "en": "He-Sea point for Large Intestine. Treats diarrhea and abdominal pain.",
+        "he": "נקודת ים (He-Sea) של המעי הגס. מטפלת בשלשול וכאבי בטן."
+    },
+    "E38": {
+        "en": "Indicated for shoulder pain/stiffness and lower leg weakness/atrophy.",
+        "he": "מיועדת לכאבי כתף/נוקשות וחולשה/אטרופיה של הרגל התחתונה."
+    },
+    "E39": {
+        "en": "He-Sea point for Small Intestine. Treats lower abdominal pain.",
+        "he": "נקודת ים (He-Sea) של המעי הדק. מטפלת בכאבי בטן תחתונה."
+    },
+    "E40": {
+        "en": "Major point for resolving phlegm. Also treats mental health conditions and asthma.",
+        "he": "נקודה מרכזית להתמרת ליחה. מטפלת גם במצבים מנטליים ואסתמה."
+    },
+    "E41": {
+        "en": "Clears heat from the Stomach and treats ankle pain/weakness.",
+        "he": "מנקה חום מהקיבה ומטפלת בכאבי קרסול/חולשה."
+    },
+    "E42": {
+        "en": "Yuan-Source point. Strengthens the Spleen/Stomach and treats local foot pain.",
+        "he": "נקודת מקור (Yuan-Source). מחזקת את הטחול/קיבה ומטפלת בכאבי רגליים מקומיים."
+    },
+    "E43": {
+        "en": "Shu-Stream point. Treats abdominal pain and swelling of the foot.",
+        "he": "נקודת פלג (Shu-Stream). מטפלת בכאבי בטן ונפיחות בכף הרגל."
+    },
+    "E44": {
+        "en": "Ying-Spring point. Clears Stomach heat and alleviates toothache/facial pain.",
+        "he": "נקודת מעיין (Ying-Spring). מנקה חום מהקיבה ומקלה על כאבי שיניים/פנים."
+    },
+    "E45": {
+        "en": "Jing-Well point. Calms the mind and clears heat (e.g., toothache, epistaxis).",
+        "he": "נקודת באר (Jing-Well). מרגיעה את הנפש ומנקה חום (למשל: כאבי שיניים, דימום מהאף)."
+    }
+}

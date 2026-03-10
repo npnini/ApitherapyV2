@@ -1,0 +1,26 @@
+.confirmDeleteButton:disabled {
+    background-color: #fca5a5;
+}
+
+.multiPos {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.positionsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+}
+
+.modelPositionBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}

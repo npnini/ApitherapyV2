@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search } from 'lucide-react';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
@@ -32,6 +32,7 @@ const PointsAdmin: React.FC = () => {
     const [originalPoint, setOriginalPoint] = useState<Partial<StingPoint> | null>(null);
     const [deletingPoint, setDeletingPoint] = useState<StingPoint | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
@@ -107,10 +108,41 @@ const PointsAdmin: React.FC = () => {
         if (user) fetchPoints();
     }, [user, fetchPoints]);
 
+    const filteredPoints = useMemo(() => {
+        if (!searchTerm.trim()) return points;
+
+        const term = searchTerm.toLowerCase().trim();
+        return points.filter(point => {
+            // Search in code
+            if (point.code.toLowerCase().includes(term)) return true;
+
+            // Search in labels (Hebrew and English)
+            const labelMatches = Object.values(point.label || {}).some(val =>
+                typeof val === 'string' && val.toLowerCase().includes(term)
+            );
+            if (labelMatches) return true;
+
+            // Search in descriptions (Hebrew and English)
+            const descMatches = Object.values(point.description || {}).some(val =>
+                typeof val === 'string' && val.toLowerCase().includes(term)
+            );
+            if (descMatches) return true;
+
+            return false;
+        });
+    }, [points, searchTerm]);
+
     const handleStartEditing = (point: StingPoint) => {
         setFormError(null);
-        // Normalize legacy fields to the new object format upon editing
+        // Normalize legacy fields and handle migration to 'positions'
         const pointToEdit = { ...point };
+
+        if (!pointToEdit.positions) {
+            pointToEdit.positions = {
+                xbot: (point as any).position || { x: 0, y: 0, z: 0 },
+                corpo: { x: 0, y: 0, z: 0 }
+            };
+        }
 
         if (typeof pointToEdit.label === 'string') {
             pointToEdit.label = { en: pointToEdit.label };
@@ -133,7 +165,10 @@ const PointsAdmin: React.FC = () => {
             code: '',
             label: {},
             description: {},
-            position: { x: 0, y: 0, z: 0 },
+            positions: {
+                xbot: { x: 0, y: 0, z: 0 },
+                corpo: { x: 0, y: 0, z: 0 }
+            },
             documentUrl: {},
             status: 'active',
             reference_count: 0
@@ -200,7 +235,7 @@ const PointsAdmin: React.FC = () => {
                 code: pointToSave.code!.trim(),
                 label: pointToSave.label,
                 description: pointToSave.description,
-                position: pointToSave.position || { x: 0, y: 0, z: 0 },
+                positions: pointToSave.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } },
                 documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
                 status: pointToSave.status || 'active',
                 reference_count: pointToSave.reference_count || 0,
@@ -268,9 +303,26 @@ const PointsAdmin: React.FC = () => {
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}><T>Acupuncture Points</T></h1>
-                <button onClick={handleAddNew} className={styles.addButton}>
-                    <PlusCircle size={18} className={styles.addButtonIcon} /> <T>Add New Point</T>
-                </button>
+                <div className={styles.headerActions}>
+                    <div className={styles.searchContainer}>
+                        <Search size={18} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder={getTranslation('Search points...')}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                        {searchTerm && (
+                            <button className={styles.clearSearch} onClick={() => setSearchTerm('')}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                    <button onClick={handleAddNew} className={styles.addButton}>
+                        <PlusCircle size={18} className={styles.addButtonIcon} /> <T>Add New Point</T>
+                    </button>
+                </div>
             </div>
 
             {error && <p className={styles.errorBox}>{error}</p>}
@@ -320,7 +372,6 @@ const PointsAdmin: React.FC = () => {
                             <th scope="col" className={styles.headerCell}><T>Code</T></th>
                             <th scope="col" className={styles.headerCell}><T>Label</T></th>
                             <th scope="col" className={styles.headerCell}><T>Description</T></th>
-                            <th scope="col" className={styles.headerCell}><T>Position</T></th>
                             <th scope="col" className={styles.headerCell}><T>Status</T></th>
                             <th scope="col" className={styles.headerCell}><T>Document</T></th>
                             <th scope="col" className={`${styles.headerCell} ${styles.actionsCell}`}>
@@ -334,14 +385,13 @@ const PointsAdmin: React.FC = () => {
                         ) : points.length === 0 ? (
                             <tr><td colSpan={6} className={styles.emptyCell}>{!user ? <T>Please log in</T> : <T>No points found</T>}</td></tr>
                         ) : (
-                            points.map(point => {
+                            filteredPoints.map(point => {
                                 const docUrlForCurrentLang = getDocumentUrlForLang(point.documentUrl, currentLang);
                                 return (
                                     <tr key={point.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.codeCell}`}>{point.code}</td>
                                         <td className={styles.cell}>{point.label[currentLang] || point.label['en'] || ''}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description[currentLang] || point.description['en'] || ''}>{point.description[currentLang] || point.description['en'] || ''}</td>
-                                        <td className={styles.cell}>{`(${point.position.x}, ${point.position.y}, ${point.position.z})`}</td>
                                         <td className={styles.cell}>
                                             <span className={`${styles.statusBadge} ${point.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
                                                 <T>{point.status === 'active' ? 'Active' : 'Inactive'}</T>
@@ -456,12 +506,16 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         setIsDirty(true);
     };
 
-    const handlePosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const currentPosition = formData.position || { x: 0, y: 0, z: 0 };
+    const handlePosChange = (modelId: 'xbot' | 'corpo', field: 'x' | 'y' | 'z', value: string) => {
+        const currentPositions = formData.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } };
+        const currentModelPos = currentPositions[modelId] || { x: 0, y: 0, z: 0 };
+
         setFormData(prev => ({
             ...prev,
-            position: { ...currentPosition, [name]: parseFloat(value) || 0 }
+            positions: {
+                ...currentPositions,
+                [modelId]: { ...currentModelPos, [field]: parseFloat(value) || 0 }
+            }
         }));
         setIsDirty(true);
     };
@@ -588,20 +642,40 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                                 rows={3}
                             ></textarea>
                         </div>
-                        <div>
-                            <label className={styles.label}><T>3D Position</T></label>
-                            <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
-                                <div>
-                                    <label htmlFor="x" className={styles.coordinateLabel}><T>X-axis</T></label>
-                                    <input id="x" type="number" name="x" step="0.01" value={formData.position?.x || 0} onChange={handlePosChange} placeholder="X" className={styles.input} />
+                        <div className={styles.positionsSection}>
+                            <div className={styles.modelPositionBlock}>
+                                <label className={styles.label}><T>Xbot Position (Legacy/Mannequin)</T></label>
+                                <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
+                                    <div>
+                                        <label htmlFor="x_xbot" className={styles.coordinateLabel}>X</label>
+                                        <input id="x_xbot" type="number" step="0.01" value={formData.positions?.xbot?.x || 0} onChange={(e) => handlePosChange('xbot', 'x', e.target.value)} className={styles.input} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="y_xbot" className={styles.coordinateLabel}>Y</label>
+                                        <input id="y_xbot" type="number" step="0.01" value={formData.positions?.xbot?.y || 0} onChange={(e) => handlePosChange('xbot', 'y', e.target.value)} className={styles.input} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="z_xbot" className={styles.coordinateLabel}>Z</label>
+                                        <input id="z_xbot" type="number" step="0.01" value={formData.positions?.xbot?.z || 0} onChange={(e) => handlePosChange('xbot', 'z', e.target.value)} className={styles.input} />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label htmlFor="y" className={styles.coordinateLabel}><T>Y-axis</T></label>
-                                    <input id="y" type="number" name="y" step="0.01" value={formData.position?.y || 0} onChange={handlePosChange} placeholder="Y" className={styles.input} />
-                                </div>
-                                <div>
-                                    <label htmlFor="z" className={styles.coordinateLabel}><T>Z-axis</T></label>
-                                    <input id="z" type="number" name="z" step="0.01" value={formData.position?.z || 0} onChange={handlePosChange} placeholder="Z" className={styles.input} />
+                            </div>
+
+                            <div className={styles.modelPositionBlock}>
+                                <label className={styles.label}><T>Corpo Position (Anatomical)</T></label>
+                                <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
+                                    <div>
+                                        <label htmlFor="x_corpo" className={styles.coordinateLabel}>X</label>
+                                        <input id="x_corpo" type="number" step="0.01" value={formData.positions?.corpo?.x || 0} onChange={(e) => handlePosChange('corpo', 'x', e.target.value)} className={styles.input} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="y_corpo" className={styles.coordinateLabel}>Y</label>
+                                        <input id="y_corpo" type="number" step="0.01" value={formData.positions?.corpo?.y || 0} onChange={(e) => handlePosChange('corpo', 'y', e.target.value)} className={styles.input} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="z_corpo" className={styles.coordinateLabel}>Z</label>
+                                        <input id="z_corpo" type="number" step="0.01" value={formData.positions?.corpo?.z || 0} onChange={(e) => handlePosChange('corpo', 'z', e.target.value)} className={styles.input} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
