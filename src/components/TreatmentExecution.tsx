@@ -23,6 +23,7 @@ interface TreatmentExecutionProps {
     onRoundComplete: (round: ProtocolRound) => void;
     onEndTreatment: (finalRound: ProtocolRound, postStingingVitals: Partial<VitalSigns>, finalVitals: Partial<VitalSigns>, finalNotes: string) => void;
     onBack: () => void;
+    preferredModel?: 'xbot' | 'corpo';
 }
 
 const getMLValue = (value: any, lang: string): string => {
@@ -45,6 +46,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     onRoundComplete,
     onEndTreatment,
     onBack,
+    preferredModel = 'xbot',
 }) => {
     const { language, direction } = useTranslationContext();
 
@@ -66,6 +68,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
     const [activePointId, setActivePointId] = useState<string | null>(null);
+    const [selectedModel, setSelectedModel] = useState<'xbot' | 'corpo'>(preferredModel);
     const [isRolling, setIsRolling] = useState(true);
 
     // End-treatment fields (shown when "End Treatment" is clicked)
@@ -210,6 +213,22 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             <div className={`${styles.toggleThumb} ${isRolling ? styles.toggleThumbOn : ''}`} />
                         </div>
                     </label>
+
+                    {/* Model Switcher */}
+                    <div className={styles.modelSwitcher}>
+                        <button
+                            className={`${styles.modelTab} ${selectedModel === 'xbot' ? styles.modelTabActive : ''}`}
+                            onClick={() => setSelectedModel('xbot')}
+                        >
+                            <T>Xbot</T>
+                        </button>
+                        <button
+                            className={`${styles.modelTab} ${selectedModel === 'corpo' ? styles.modelTabActive : ''}`}
+                            onClick={() => setSelectedModel('corpo')}
+                        >
+                            <T>Corpo</T>
+                        </button>
+                    </div>
                     <p className={styles.hintText}><T>Click a point to mark it as stung.</T></p>
                     <div className={styles.pointsList}>
                         {hydratedProtocol?.points.map(p => {
@@ -256,6 +275,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             onPointSelect={handlePointSelect}
                             activePointId={activePointId}
                             isRolling={isRolling}
+                            selectedModel={selectedModel}
                         />
                     </Canvas>
                 </div>

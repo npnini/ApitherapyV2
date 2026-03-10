@@ -141,6 +141,13 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                     </select>
                 </div>
                 <div className={styles.field}>
+                    <label className={styles.label} htmlFor="preferredModel"><T>Preferred 3D Model</T></label>
+                    <select id="preferredModel" name="preferredModel" value={formData.preferredModel || 'xbot'} onChange={handleChange} className={styles.input}>
+                        <option value="xbot"><T>Xbot (Mannequin)</T></option>
+                        <option value="corpo"><T>Corpo (Anatomical)</T></option>
+                    </select>
+                </div>
+                <div className={styles.field}>
                     <label className={styles.label}><T>Role</T></label>
                     <p className={`${styles.readOnlyField} ${styles.capitalize}`}><T>{formData.role}</T></p>
                 </div>

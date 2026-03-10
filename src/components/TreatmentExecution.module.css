@@ -151,6 +151,33 @@
     margin: 0;
 }
 
+.modelSwitcher {
+    display: flex;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.modelTab {
+    flex: 1;
+    padding: 0.4rem;
+    border: none;
+    background: transparent;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 0.4rem;
+    transition: all 0.2s;
+}
+
+.modelTabActive {
+    background: white;
+    color: var(--color-primary, #c0392b);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .pointsList {
     flex: 1;
     overflow-y: auto;

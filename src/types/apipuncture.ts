@@ -10,7 +10,10 @@ export interface StingPoint {
   code: string;
   label: { [key: string]: string };
   description: { [key: string]: string };
-  position: Vector3Pos;
+  positions: {
+    xbot?: Vector3Pos;
+    corpo?: Vector3Pos;
+  };
   documentUrl?: { [key: string]: string } | string;
   status: 'active' | 'inactive';
   reference_count: number;
