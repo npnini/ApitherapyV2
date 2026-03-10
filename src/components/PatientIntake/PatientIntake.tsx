@@ -147,7 +147,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [patientData, setPatientData] = useState<Partial<JoinedPatientData>>(
         initializePatientData(patient)
     );
-    const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+    const [tabsWithAttemptedSubmit, setTabsWithAttemptedSubmit] = useState<Set<TabKey>>(new Set());
+    const [globalAttemptedSubmit, setGlobalAttemptedSubmit] = useState(false);
 
     useEffect(() => {
         const data = initializePatientData(patient);
@@ -282,7 +283,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
     const handleUpdate = async (): Promise<boolean> => {
-        setHasAttemptedSubmit(true);
+        setTabsWithAttemptedSubmit(prev => new Set(prev).add(activeTab));
         if (!isTabValid(activeTab)) {
             console.log('PatientIntake: Validation failed for tab', activeTab);
             return false;
@@ -357,9 +358,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     // Save (new patient last step → full submission)
     const handleCompleteSubmission = async () => {
-        setHasAttemptedSubmit(true);
-        if (!isTabValid(activeTab)) {
-            console.log('PatientIntake: Validation failed for tab', activeTab);
+        setGlobalAttemptedSubmit(true);
+
+        const mandatoryTabs: TabKey[] = ['personal', 'questionnaire', 'instructions', 'consent', 'problems'];
+        const firstInvalidTab = mandatoryTabs.find(tab => !isTabValid(tab));
+
+        if (firstInvalidTab) {
+            console.log('PatientIntake: Validation failed for registration on tab', firstInvalidTab);
+            setActiveTab(firstInvalidTab); // Direct user to the first error
             return;
         }
 
@@ -398,9 +404,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     // Tab navigation: advance to next tab
     const handleNextTab = async () => {
-        // If we are on a tab that requires saving (like Personal Details), or if isDirty,
+        // If we are on a mandatory tab, or if isDirty,
         // we should attempt to update/validate before moving.
-        if (activeTab === 'personal' || isDirty) {
+        if (FIRST_FIVE.includes(activeTab) || isDirty) {
             const success = await handleUpdate();
             if (!success) return; // Stay on current tab if validation fails
         }
@@ -570,7 +576,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     <PersonalDetails
                         patientData={patientData}
                         onDataChange={handleDataChange}
-                        showErrors={hasAttemptedSubmit}
+                        showErrors={globalAttemptedSubmit || tabsWithAttemptedSubmit.has('personal')}
                     />
                 );
             case 'questionnaire':
@@ -578,7 +584,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     <QuestionnaireStep
                         patientData={patientData}
                         onDataChange={handleDataChange}
-                        showErrors={hasAttemptedSubmit}
+                        showErrors={globalAttemptedSubmit || tabsWithAttemptedSubmit.has('questionnaire')}
                         questionnaire={questionnaire}
                     />
                 );

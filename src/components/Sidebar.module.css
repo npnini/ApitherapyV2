@@ -1,4 +1,3 @@
-/* --- BASE SIDEBAR & BACKGROUND --- */
 .sidebar {
     width: 16rem;
     /* Narrower for smaller screens */
@@ -9,30 +8,15 @@
     position: relative;
     overflow: hidden;
     background-color: #FFFBEB;
-    /* Honeycomb Pattern - Small cells */
-    background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="56" height="100" viewBox="0 0 56 100"%3E%3Cpath d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="%23fcd34d" stroke-width="1" stroke-opacity="0.3"/%3E%3Cpath d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66" fill="%23f59e0b" fill-opacity="0.15"/%3E%3C/svg%3E');
-    background-size: 40px 70px;
 }
 
-/* The Warm Glow Overlay */
-.sidebar::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.3) 0%, transparent 70%),
-        linear-gradient(to bottom, transparent, rgba(251, 191, 36, 0.1));
-    pointer-events: none;
-    z-index: 0;
-}
+
+
 
 /* --- HEADER --- */
 .header {
     padding: 1.25rem;
-    border-bottom: 1px solid rgba(217, 119, 6, 0.2);
-    background-color: rgba(255, 251, 235, 0.5);
+    background-color: transparent;
     backdrop-filter: blur(4px);
     position: relative;
     z-index: 1;
@@ -200,8 +184,7 @@
 /* --- FOOTER & USER INFO --- */
 .footer {
     padding: 1.25rem;
-    border-top: 1px solid rgba(217, 119, 6, 0.2);
-    background-color: rgba(255, 251, 235, 0.5);
+    background-color: transparent;
     position: relative;
     z-index: 1;
 }
@@ -250,10 +233,17 @@
     justify-content: center;
     padding: 0.85rem;
     border-radius: 0.75rem;
-    background-color: #DC2626;
-    color: white;
+    background-color: #FBBF24;
+    color: #1F2937;
     font-size: 0.95rem;
-    font-weight: 600;
-    border: none;
+    font-weight: 700;
+    border: 1px solid rgba(217, 119, 6, 0.2);
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.logoutButton:hover {
+    background-color: #F59E0B;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
