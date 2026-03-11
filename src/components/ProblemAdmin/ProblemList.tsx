@@ -4,7 +4,7 @@ import { collection, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Problem } from '../../types/problem';
 import styles from './ProblemList.module.css';
-import { Edit, Trash2, FileCheck2 } from 'lucide-react';
+import { Plus, Trash2, Edit, Search, X, FileCheck2 } from 'lucide-react';
 import Modal from '../shared/Modal';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
@@ -15,18 +15,13 @@ interface ProblemListProps {
   appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
+const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }) => {
   const { language: currentLang, getTranslation } = useTranslationContext();
   const [problemsCollection, loading, error] = useCollection(collection(db, 'cfg_problems'));
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [problemToDelete, setProblemToDelete] = useState<string | null>(null);
 
-  const searchPlaceholder = useT('Search...');
-  const modalTitle = useT('Delete Problem');
-  const modalMessage = useT('Are you sure you want to delete this problem? This action cannot be undone.');
-  const confirmText = useT('Delete');
-  const cancelText = useT('Cancel');
 
   const problems = useMemo(() => {
     if (!problemsCollection) return [];
@@ -45,13 +40,23 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
   };
 
   const filteredProblems = useMemo(() => {
+    if (!searchTerm.trim()) return problems;
+
+    const term = searchTerm.toLowerCase().trim();
     return problems.filter(problem => {
-      const name = typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string);
-      const description = typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string);
-      return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        description.toLowerCase().includes(searchTerm.toLowerCase());
+      const name = typeof problem.name === 'object'
+        ? (problem.name[currentLang] || problem.name[appConfig.defaultLanguage] || Object.values(problem.name)[0] || '')
+        : (problem.name as string);
+      if (name.toLowerCase().includes(term)) return true;
+
+      const description = typeof problem.description === 'object'
+        ? (problem.description[currentLang] || problem.description[appConfig.defaultLanguage] || Object.values(problem.description)[0] || '')
+        : (problem.description as string);
+      if (description.toLowerCase().includes(term)) return true;
+
+      return false;
     });
-  }, [problems, searchTerm, currentLang]);
+  }, [problems, searchTerm, currentLang, appConfig.defaultLanguage]);
 
   const handleDeleteClick = (id: string) => {
     setProblemToDelete(id);
@@ -69,16 +74,28 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}><T>Problems list</T></h2>
-        <button onClick={onAddNew} className={styles.addNewButton}><T>Add new problem</T></button>
+        <h1 className={styles.title}><T>Problems Configuration</T></h1>
+        <div className={styles.headerActions}>
+          <div className={styles.searchContainer}>
+            <Search size={18} className={styles.searchIcon} />
+            <input
+              type="text"
+              placeholder={getTranslation('Search problems...')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+            {searchTerm && (
+              <button className={styles.clearSearch} onClick={() => setSearchTerm('')}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button onClick={onAddNew} className={styles.addNewButton}>
+            <Plus size={18} /> <T>Add Problem</T>
+          </button>
+        </div>
       </div>
-      <input
-        type="text"
-        placeholder={searchPlaceholder}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className={styles.searchInput}
-      />
       {loading && <p className={styles.loadingText}><T>Loading problems...</T></p>}
       {error && <p className={styles.errorText}><T>Error loading problems.</T></p>}
       <table className={styles.table}>
@@ -101,7 +118,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
                 <td>{name}</td>
                 <td>{description}</td>
                 <td>
-                  <span className={`${styles.statusBadge || ''} ${problem.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                  <span className={`${styles.statusBadge || ''} ${problem.status === 'active' ? styles.badgeActive : styles.badgeInactive} `}>
                     <T>{problem.status === 'active' ? 'Active' : 'Inactive'}</T>
                   </span>
                 </td>
@@ -122,13 +139,13 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
                   </Tooltip>
                   {problem.reference_count > 0 ? (
                     <Tooltip text={getTranslation('Cannot delete: problem is referenced in other objects')}>
-                      <button className={`${styles.iconButton} ${styles.deleteButtonDisabled}`} disabled>
+                      <button className={`${styles.iconButton} ${styles.deleteButtonDisabled} `} disabled>
                         <Trash2 size={18} />
                       </button>
                     </Tooltip>
                   ) : (
                     <Tooltip text={useT('Delete Problem')}>
-                      <button onClick={() => handleDeleteClick(problem.id)} className={`${styles.iconButton} ${styles.deleteButton}`}>
+                      <button onClick={() => handleDeleteClick(problem.id)} className={`${styles.iconButton} ${styles.deleteButton} `}>
                         <Trash2 size={18} />
                       </button>
                     </Tooltip>
@@ -144,10 +161,10 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew }) => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title={modalTitle}
-        message={modalMessage}
-        confirmText={confirmText}
-        cancelText={cancelText}
+        title={getTranslation('Delete Problem')}
+        message={getTranslation('Are you sure you want to delete this problem? This action cannot be undone.')}
+        confirmText={getTranslation('Delete')}
+        cancelText={getTranslation('Cancel')}
       />
     </div>
   );

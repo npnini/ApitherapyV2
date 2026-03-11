@@ -18,12 +18,12 @@
 .addPatientButton {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     background-color: var(--primary-color-600, #007bff);
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 10px 16px;
+    border-radius: 0.5rem;
+    padding: 0.6rem 1.2rem;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -34,38 +34,71 @@
     background-color: var(--primary-color-700, #0056b3);
 }
 
+.headerActions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
 .searchContainer {
     position: relative;
-    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0 0.75rem;
+    width: 300px;
+    transition: all 0.2s;
+}
+
+.searchContainer:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 .searchIcon {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--neutral-color-400, #ced4da);
+    color: #9ca3af;
+    flex-shrink: 0;
 }
 
 [dir="ltr"] .searchIcon {
-    left: 16px;
+    margin-right: 0.5rem;
 }
 
 [dir="rtl"] .searchIcon {
-    right: 16px;
+    margin-left: 0.5rem;
 }
 
 .searchInput {
+    border: none;
+    background: none;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.875rem;
     width: 100%;
-    padding: 12px 48px;
-    border: 1px solid var(--neutral-color-200, #e9ecef);
-    border-radius: 8px;
-    background-color: white;
-    font-size: 14px;
-    color: var(--neutral-color-700, #495057);
+    color: #1f2937;
+    outline: none;
 }
 
 .searchInput::placeholder {
     color: var(--neutral-color-400, #ced4da);
+}
+
+.clearSearch {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 50%;
+}
+
+.clearSearch:hover {
+    background-color: #f3f4f6;
+    color: #4b5563;
 }
 
 .tableContainer {
@@ -119,7 +152,12 @@
     border-bottom-right-radius: 8px;
 }
 
-.patientInfo, .contactInfo, .conditionInfo, .severityInfo, .lastTreatment, .actionsContainer {
+.patientInfo,
+.contactInfo,
+.conditionInfo,
+.severityInfo,
+.lastTreatment,
+.actionsContainer {
     font-size: 14px;
     color: var(--neutral-color-700, #495057);
     min-width: 0;
@@ -334,7 +372,8 @@
     gap: 12px;
 }
 
-.modalCancelButton, .modalConfirmButton {
+.modalCancelButton,
+.modalConfirmButton {
     padding: 10px 20px;
     border-radius: 8px;
     border: 1px solid;

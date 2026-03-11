@@ -44,15 +44,18 @@ const PointsAdmin: React.FC = () => {
         'Failed to fetch points',
         'Point code and label (in at least one language) are required',
         'Failed to save the point',
+        'Close',
         'Failed to delete the point',
         'Deleting...',
+        'Saving...',
         'Confirm Delete',
+        'Search points...',
         'Please log in',
         'No points found',
         'Edit Point',
         'Delete Point',
         'View Document'
-    ], []);
+    ], [registerString]);
 
     useEffect(() => {
         stringsToRegister.forEach(s => registerString(s));

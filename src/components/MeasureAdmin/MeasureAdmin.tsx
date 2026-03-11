@@ -3,7 +3,7 @@ import { db } from '../../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Measure } from '../../types/measure';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search } from 'lucide-react';
 import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
@@ -23,6 +23,7 @@ const MeasureAdmin: React.FC = () => {
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
 
     // Register all strings used in callbacks or non-T components
@@ -56,7 +57,9 @@ const MeasureAdmin: React.FC = () => {
         'Add a new category',
         'Edit Measure',
         'Delete Measure',
-        'View Document'
+        'View Document',
+        'Search measures...', // Added
+        'Could not fetch measures and categories' // Added
     ], []);
 
     useEffect(() => {
@@ -101,8 +104,8 @@ const MeasureAdmin: React.FC = () => {
 
         setIsLoading(true);
         try {
-            const data = await getDocs(measuresCollectionRef);
-            const fetchedMeasures = data.docs.map(doc => ({ ...(doc.data() as Omit<Measure, 'id'>), id: doc.id }));
+            const measureSnapshot = await getDocs(measuresCollectionRef);
+            const fetchedMeasures = measureSnapshot.docs.map(doc => ({ ...(doc.data() as Omit<Measure, 'id'>), id: doc.id }));
             fetchedMeasures.sort((a, b) =>
                 (a.name[currentLang] || a.name['en'] || '').localeCompare(b.name[currentLang] || b.name['en'] || '')
             );
@@ -118,6 +121,41 @@ const MeasureAdmin: React.FC = () => {
     useEffect(() => {
         fetchMeasures();
     }, [fetchMeasures]);
+
+    const filteredMeasures = useMemo(() => { // Added
+        if (!searchTerm.trim()) return measures;
+
+        const term = searchTerm.toLowerCase().trim();
+        return measures.filter(measure => {
+            // Search in name
+            const name = typeof measure.name === 'object'
+                ? (measure.name[currentLang] || measure.name[appConfig.defaultLanguage] || Object.values(measure.name)[0] || '')
+                : (measure.name as string);
+            if (name.toLowerCase().includes(term)) return true;
+
+            // Search in description
+            const description = typeof measure.description === 'object'
+                ? (measure.description[currentLang] || measure.description[appConfig.defaultLanguage] || Object.values(measure.description)[0] || '')
+                : (measure.description as string);
+            if (description.toLowerCase().includes(term)) return true;
+
+            // Search in categories (options)
+            if (measure.type === 'Category' && measure.categories && Array.isArray(measure.categories)) {
+                const matchesCategory = measure.categories.some(cat => {
+                    const catName = typeof cat === 'object'
+                        ? (cat[currentLang] || cat[appConfig.defaultLanguage] || Object.values(cat)[0] || '')
+                        : (cat as string);
+                    return catName.toLowerCase().includes(term);
+                });
+                if (matchesCategory) return true;
+            }
+
+            // Search in type
+            if (getTranslation(measure.type).toLowerCase().includes(term)) return true;
+
+            return false;
+        });
+    }, [measures, searchTerm, currentLang, appConfig.defaultLanguage, getTranslation]);
 
     const handleStartEditing = (measure: Measure) => {
         setFormError(null);
@@ -326,7 +364,22 @@ const MeasureAdmin: React.FC = () => {
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}><T>Measure Configuration</T></h1>
-                <div>
+                <div className={styles.headerActions}> {/* Added wrapper div */}
+                    <div className={styles.searchContainer}> {/* Added search container */}
+                        <Search size={18} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder={getTranslation('Search measures...')}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                        {searchTerm && (
+                            <button className={styles.clearSearch} onClick={() => setSearchTerm('')}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
                     <button onClick={handleAddNew} className={styles.addButton}>
                         <PlusCircle size={18} className={styles.addButtonIcon} /> <T>Add New Measure</T>
                     </button>
@@ -391,13 +444,15 @@ const MeasureAdmin: React.FC = () => {
                         </thead>
                         <tbody className={styles.tableBody}>
                             {isLoading ? (
-                                <tr><td colSpan={5} className={styles.loaderCell}><Loader className={styles.loader} size={32} /></td></tr>
-                            ) : error ? null : measures.length === 0 ? (
-                                <tr><td colSpan={5} className={styles.emptyCell}>{!user ? <T>Please log in</T> : <T>No measures found</T>}</td></tr>
+                                <tr><td colSpan={6} className={styles.loaderCell}><Loader className={styles.loader} size={32} /></td></tr>
+                            ) : error ? (
+                                <tr><td colSpan={6} className={styles.emptyCell}>{error}</td></tr>
+                            ) : filteredMeasures.length === 0 ? (
+                                <tr><td colSpan={6} className={styles.emptyCell}>{!user ? <T>Please log in</T> : <T>No measures found</T>}</td></tr>
                             ) : (
-                                measures.map(measure => (
+                                filteredMeasures.map(measure => (
                                     <tr key={measure.id} className={styles.tableRow}>
-                                        <td className={`${styles.cell} ${styles.codeCell}`}>{measure.name[currentLang] || measure.name['en'] || ''}</td>
+                                        <td className={styles.cell}>{measure.name[currentLang] || measure.name['en'] || ''}</td>
                                         <td className={styles.cell}>{getTranslation(measure.type)}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={measure.description[currentLang] || measure.description['en'] || ''}>{measure.description[currentLang] || measure.description['en'] || ''}</td>
                                         <td className={styles.cell}>

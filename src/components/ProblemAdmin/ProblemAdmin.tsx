@@ -28,7 +28,8 @@ const ProblemAdmin: React.FC = () => {
     'Error:',
     'Edit Problem',
     'Delete Problem',
-    'View Document'
+    'View Document',
+    'Search problems...'
   ], []);
 
   useEffect(() => {

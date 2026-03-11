@@ -4,7 +4,7 @@ import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
-import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe } from 'lucide-react';
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe, Search } from 'lucide-react';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
@@ -27,6 +27,7 @@ const ProtocolAdmin: React.FC = () => {
     const [isFormLoading, setIsFormLoading] = useState<boolean>(false);
     const [editingProtocol, setEditingProtocol] = useState<Partial<ProtocolFormState> | null>(null);
     const [deletingProtocol, setDeletingProtocol] = useState<Protocol | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [formError, setFormError] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -65,7 +66,9 @@ const ProtocolAdmin: React.FC = () => {
         'Explain rationale',
         'Are you sure you want to delete the protocol',
         'Delete Protocol',
-        'Edit Protocol'
+        'Edit Protocol',
+        'Search protocols...',
+        'Could not fetch protocols and points'
     ], []);
 
     useEffect(() => {
@@ -130,6 +133,33 @@ const ProtocolAdmin: React.FC = () => {
         }
         setIsLoading(false);
     }, [user, getTranslation, appConfig.defaultLanguage]);
+
+    const filteredProtocols = useMemo(() => {
+        if (!searchTerm.trim()) return protocols;
+
+        const term = searchTerm.toLowerCase().trim();
+        return protocols.filter(protocol => {
+            // Search in name
+            const name = typeof protocol.name === 'object'
+                ? (protocol.name[currentLang] || protocol.name[appConfig.defaultLanguage] || Object.values(protocol.name)[0] || '')
+                : (protocol.name as string);
+            if (name.toLowerCase().includes(term)) return true;
+
+            // Search in description
+            const description = typeof protocol.description === 'object'
+                ? (protocol.description[currentLang] || protocol.description[appConfig.defaultLanguage] || Object.values(protocol.description)[0] || '')
+                : (protocol.description as string);
+            if (description.toLowerCase().includes(term)) return true;
+
+            // Search in rationale
+            const rationale = typeof protocol.rationale === 'object'
+                ? (protocol.rationale[currentLang] || protocol.rationale[appConfig.defaultLanguage] || Object.values(protocol.rationale)[0] || '')
+                : (protocol.rationale as string);
+            if (rationale && rationale.toLowerCase().includes(term)) return true;
+
+            return false;
+        });
+    }, [protocols, searchTerm, currentLang, appConfig.defaultLanguage]);
 
     useEffect(() => {
         fetchProtocolsAndPoints();
@@ -347,9 +377,26 @@ const ProtocolAdmin: React.FC = () => {
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}><T>Protocol Configuration</T></h1>
-                <button onClick={handleStartNew} className={styles.addButton}>
-                    <Plus size={18} className={styles.addButtonIcon} /><T>Add New Protocol</T>
-                </button>
+                <div className={styles.headerActions}>
+                    <div className={styles.searchContainer}>
+                        <Search size={18} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder={getTranslation('Search protocols...')}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                        {searchTerm && (
+                            <button className={styles.clearSearch} onClick={() => setSearchTerm('')}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                    <button onClick={handleStartNew} className={styles.addButton}>
+                        <Plus size={18} className={styles.addButtonIcon} /><T>Add New Protocol</T>
+                    </button>
+                </div>
             </div>
             {formError && <p className={styles.errorBox}>{formError}</p>}
 
@@ -368,9 +415,9 @@ const ProtocolAdmin: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className={styles.tableBody}>
-                            {protocols.length === 0 ? (
-                                <tr><td colSpan={4} className={styles.emptyCell}><T>No protocols found</T></td></tr>
-                            ) : protocols.map(protocol => {
+                            {filteredProtocols.length === 0 ? (
+                                <tr><td colSpan={5} className={styles.emptyCell}><T>No protocols found</T></td></tr>
+                            ) : filteredProtocols.map(protocol => {
                                 const docUrlObject = protocol.documentUrl;
                                 let docUrlForLang: string | undefined;
                                 let docUrlEn: string | undefined;

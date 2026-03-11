@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
 import { JoinedPatientData } from '../types/patient';
-import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle, X } from 'lucide-react';
 import styles from './PatientsDashboard.module.css';
 import Tooltip from './common/Tooltip';
 import { T, useT, useTranslationContext } from '../components/T';
@@ -22,7 +22,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<JoinedPatientData | null>(null);
 
-  const tSearchPlaceholder = useT('Search by name, ID, or email...');
+  const tSearchPlaceholder = useT('Search patients...');
   const tEditPatient = useT('Edit Patient Details');
   const tDeletePatient = useT('Delete Patient');
   const tViewHistory = useT('View Treatment History');
@@ -50,21 +50,30 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     <div className={styles.dashboardContainer}>
       <div className={styles.header}>
         <h2 className={styles.title}><T>Patients</T></h2>
-        <button onClick={onAddPatient} className={styles.addPatientButton}>
-          <PlusCircle size={16} />
-          <T>Add New Patient</T>
-        </button>
-      </div>
-
-      <div className={styles.searchContainer}>
-        <Search size={16} className={styles.searchIcon} />
-        <input
-          type="text"
-          placeholder={tSearchPlaceholder}
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className={styles.searchInput}
-        />
+        <div className={styles.headerActions}>
+          <div className={styles.searchContainer}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              placeholder={tSearchPlaceholder}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+            {searchTerm && (
+              <button
+                className={styles.clearSearch}
+                onClick={() => setSearchTerm('')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button onClick={onAddPatient} className={styles.addPatientButton}>
+            <PlusCircle size={16} />
+            <T>Add New Patient</T>
+          </button>
+        </div>
       </div>
 
       <div className={styles.tableContainer}>
