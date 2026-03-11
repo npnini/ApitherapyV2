@@ -20,8 +20,10 @@ import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import TreatmentFeedback from './TreatmentFeedback';
+import FreeProtocolPointSelection from '../FreeProtocolPointSelection';
 import { Protocol } from '../../types/protocol';
 import { ProtocolRound, VitalSigns, TreatmentSession } from '../../types/treatmentSession';
+import { StingPoint } from '../../types/apipuncture';
 import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
 
@@ -35,7 +37,7 @@ type TabKey =
     | 'treatments'
     | 'measures';
 
-type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'treatmentExecution' | 'treatmentFeedback';
+type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'freeProtocolPointSelection' | 'treatmentExecution' | 'treatmentFeedback';
 
 const TAB_ORDER: TabKey[] = [
     'personal',
@@ -92,6 +94,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
     const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
     const [sessionOpeningData, setSessionOpeningData] = useState<SessionOpeningData | null>(null);
+    const [freeProtocolPoints, setFreeProtocolPoints] = useState<StingPoint[]>([]);
     const [rounds, setRounds] = useState<ProtocolRound[]>([]);
     const [isSensitivitySession, setIsSensitivitySession] = useState(false);
     const [appConfig, setAppConfig] = useState<any>(null);
@@ -443,6 +446,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setSelectedProtocol(null);
         setSelectedProblemId(null);
         setIsSensitivitySession(false);
+        setFreeProtocolPoints([]);
         setTreatmentSaveStatus('idle');
         setViewState('sessionOpening');
     };
@@ -493,6 +497,17 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const handleProtocolSelect = (protocol: Protocol, problemId: string) => {
         setSelectedProtocol(protocol);
         setSelectedProblemId(problemId);
+
+        const freeProtocolId = appConfig?.treatmentSettings?.freeProtocolIdentifier;
+        if (freeProtocolId && protocol.id === freeProtocolId) {
+            setViewState('freeProtocolPointSelection');
+        } else {
+            setViewState('treatmentExecution');
+        }
+    };
+
+    const handleFreeProtocolPointsSelected = (points: StingPoint[]) => {
+        setFreeProtocolPoints(points);
         setViewState('treatmentExecution');
     };
 
@@ -501,6 +516,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setIsSensitivitySession(false); // After sensitivity round, allow free protocol choice
         setSelectedProtocol(null);
         setSelectedProblemId(null);
+        setFreeProtocolPoints([]);
         setViewState('protocolSelection');
     };
 
@@ -733,8 +749,16 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     isSensitivityTest={isSensitivitySession}
                                     onRoundComplete={handleRoundComplete}
                                     onEndTreatment={handleEndTreatment}
-                                    onBack={() => setViewState('protocolSelection')}
+                                    onBack={() => setViewState(selectedProtocol.id === appConfig?.treatmentSettings?.freeProtocolIdentifier ? 'freeProtocolPointSelection' : 'protocolSelection')}
                                     preferredModel={user?.preferredModel}
+                                    customPoints={selectedProtocol.id === appConfig?.treatmentSettings?.freeProtocolIdentifier ? freeProtocolPoints : undefined}
+                                    previousRounds={rounds}
+                                />
+                            )}
+                            {viewState === 'freeProtocolPointSelection' && (
+                                <FreeProtocolPointSelection
+                                    onBack={() => setViewState('protocolSelection')}
+                                    onPointsSelected={handleFreeProtocolPointsSelected}
                                 />
                             )}
                             {viewState === 'treatmentFeedback' && latestTreatment && (

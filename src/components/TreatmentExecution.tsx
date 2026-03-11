@@ -24,6 +24,8 @@ interface TreatmentExecutionProps {
     onEndTreatment: (finalRound: ProtocolRound, postStingingVitals: Partial<VitalSigns>, finalVitals: Partial<VitalSigns>, finalNotes: string) => void;
     onBack: () => void;
     preferredModel?: 'xbot' | 'corpo';
+    customPoints?: StingPoint[];
+    previousRounds?: ProtocolRound[];
 }
 
 const getMLValue = (value: any, lang: string): string => {
@@ -47,6 +49,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     onEndTreatment,
     onBack,
     preferredModel = 'xbot',
+    customPoints,
+    previousRounds = [],
 }) => {
     const { language, direction } = useTranslationContext();
 
@@ -70,6 +74,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [activePointId, setActivePointId] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState<'xbot' | 'corpo'>(preferredModel);
     const [isRolling, setIsRolling] = useState(true);
+
+    // History data for summary
+    const [pastPoints, setPastPoints] = useState<StingPoint[]>([]);
+    const [isHydratingPast, setIsHydratingPast] = useState(false);
 
     // End-treatment fields (shown when "End Treatment" is clicked)
     const [showEndPanel, setShowEndPanel] = useState(false);
@@ -97,9 +105,16 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         setIsHydrating(true);
         setHydrationError(null);
         try {
+            if (customPoints && customPoints.length > 0) {
+                setHydratedProtocol({ ...(protocol as any), points: customPoints });
+                setIsHydrating(false);
+                return;
+            }
+
             const pointIds = (protocol as any).points as string[];
             if (!pointIds || pointIds.length === 0) {
                 setHydratedProtocol({ ...(protocol as any), points: [] });
+                setIsHydrating(false);
                 return;
             }
             const pointDocs = await Promise.all(pointIds.map(id => getDoc(doc(db, 'cfg_acupuncture_points', id))));
@@ -115,11 +130,31 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         } finally {
             setIsHydrating(false);
         }
-    }, [protocol, tFailedToLoadModel]);
+    }, [protocol, tFailedToLoadModel, customPoints]);
 
     useEffect(() => {
         hydrateProtocol();
     }, [hydrateProtocol]);
+
+    // Hydrate past rounds for the summary
+    useEffect(() => {
+        const hydratePast = async () => {
+            if (!previousRounds || previousRounds.length === 0) return;
+            setIsHydratingPast(true);
+            try {
+                const allPastIds = previousRounds.flatMap(r => r.stungPointIds);
+                const uniqueIds = Array.from(new Set(allPastIds));
+                const pointDocs = await Promise.all(uniqueIds.map(id => getDoc(doc(db, 'cfg_acupuncture_points', id))));
+                const points: StingPoint[] = pointDocs.map(d => ({ ...d.data(), id: d.id } as StingPoint));
+                setPastPoints(points);
+            } catch (err) {
+                console.error('Error hydrating past points:', err);
+            } finally {
+                setIsHydratingPast(false);
+            }
+        };
+        hydratePast();
+    }, [previousRounds]);
 
     const handlePointSelect = useCallback((pointToAdd: StingPoint) => {
         setStungPoints(prev => prev.some(p => p.id === pointToAdd.id) ? prev : [...prev, pointToAdd]);
@@ -326,6 +361,22 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 vitals={postStingingVitals}
                                 onVitalsChange={setPostStingingVitals}
                             />
+
+                            {/* Session Summary: show all points from previous rounds + current */}
+                            <div className={styles.sessionSummary}>
+                                <label className={styles.sectionLabel}><T>Session Summary</T></label>
+                                <div className={styles.cumulativeList}>
+                                    {[...pastPoints, ...stungPoints].reduce((acc, p) => {
+                                        if (!acc.some(existing => existing.id === p.id)) acc.push(p);
+                                        return acc;
+                                    }, [] as StingPoint[]).map(p => (
+                                        <div key={p.id} className={styles.summaryItem}>
+                                            <CheckCircle size={12} className={styles.summaryIcon} />
+                                            <span>{p.code} – {getMLValue(p.label, language)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div className={styles.standardDirective}>
                                 {getMLValue(appConfig?.treatmentSettings?.standardWaitDirective, language) || tStdDirectiveFallback}

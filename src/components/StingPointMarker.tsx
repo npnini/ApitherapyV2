@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Html } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import { StingPoint } from '../types/apipuncture';
-import { T } from './T';
 
 interface StingPointMarkerProps {
   point: StingPoint;
@@ -20,13 +19,10 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   parentScale = 1
 }) => {
   // Transform coordinates for the Corpo model specifically
-  // Transform coordinates dynamically based on the model's actual pose
   const getTransformedPosition = () => {
     const raw = point.positions?.[selectedModel] || { x: 0, y: 0, z: 0 };
 
     if (selectedModel === 'corpo') {
-      // Corpo mesh is A-pose (arms down), and original coordinates are A-pose.
-      // We only need the scene origin shift (+95 on Y) to match the model.
       return {
         x: raw.x,
         y: raw.y + 95,
@@ -37,12 +33,9 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
     if (selectedModel === 'xbot') {
       let { x, y, z } = raw;
 
-      // Xbot mesh is T-pose (arms out), but its DB coordinates were linearly mapped 
-      // from the A-pose Corpo points. We must swing the arm points up to match the mesh.
       const armPrefixes = ['LI', 'LU', 'SI', 'HT', 'PC', 'TE'];
       const isArmPoint = armPrefixes.some(pref => point.code.startsWith(pref));
 
-      // Xbot is scaled to ~1.8 max height. Shoulders are around y=1.45, x=±0.18.
       if (isArmPoint && y < 1.4 && Math.abs(x) > 0.1) {
         const sign = Math.sign(x) || 1;
         const shoulderX = 0.18 * sign;
@@ -51,16 +44,10 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
         const dx = x - shoulderX;
         const dy = y - shoulderY;
 
-        // Calculate actual arm point distance from shoulder
         const armLength = Math.sqrt(dx * dx + dy * dy);
 
-        // Swing the arm outwards horizontally (T-pose)
         x = shoulderX + (armLength * sign);
-
-        // Add tiny natural droop proportional to arm length
         y = shoulderY - (armLength * 0.05);
-
-        // Slightly push arms forward on Z axis (to rest on the mesh surface)
         z += (armLength * 0.1);
       }
       return { x, y, z };
@@ -79,6 +66,15 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   // Safety check for display
   if (!point.positions?.[selectedModel] && selectedModel !== 'xbot') return null;
 
+  // Dynamic label position logic
+  // We want the label to be at a fixed X gutter (e.g. ±0.8) but at the same Y as the point
+  const gutterX = position.x >= 0 ? 0.8 : -0.8;
+  const labelOffsetX = gutterX - position.x;
+
+  // Highlight colors
+  const highlightColor = "#ef4444"; // Stronger Red
+  const defaultColor = "#2563eb";
+
   return (
     <group position={[position.x, position.y, position.z]} renderOrder={999}>
       <mesh
@@ -88,11 +84,11 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
         }}
         renderOrder={1000}
       >
-        <sphereGeometry args={[isHighlighted ? 0.035 : 0.02, 16, 16]} />
+        <sphereGeometry args={[isHighlighted ? 0.04 : 0.02, 16, 16]} />
         <meshStandardMaterial
-          color={isHighlighted ? "#ffb617" : "#2563eb"}
-          emissive={isHighlighted ? "#ffb617" : "#2563eb"}
-          emissiveIntensity={isHighlighted ? 1.5 : 0.8}
+          color={isHighlighted ? highlightColor : defaultColor}
+          emissive={isHighlighted ? highlightColor : defaultColor}
+          emissiveIntensity={isHighlighted ? 2.5 : 0.8}
           transparent={!isHighlighted}
           opacity={isHighlighted ? 1 : 0.6}
           depthTest={false}
@@ -104,7 +100,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
       <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={1001}>
         <ringGeometry args={[0.035, 0.045, 32]} />
         <meshBasicMaterial
-          color={isHighlighted ? "#ffb617" : "#94a3b8"}
+          color={isHighlighted ? highlightColor : "#94a3b8"}
           transparent
           opacity={isHighlighted ? 0.8 : 0.3}
           depthTest={false}
@@ -113,11 +109,34 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
       </mesh>
 
       {isHighlighted && (
-        <Html distanceFactor={5} position={[0.06, 0.06, 0]}>
-          <div className="bg-white/95 text-slate-900 px-3 py-1.5 rounded-lg border-2 border-red-500 text-[10px] font-black whitespace-nowrap shadow-2xl backdrop-blur-sm animate-bounce">
-            {point.code}
-          </div>
-        </Html>
+        <>
+          {/* Connection Line from point to label gutter */}
+          <Line
+            points={[[0, 0, 0], [labelOffsetX, 0, 0]]}
+            color={highlightColor}
+            lineWidth={1}
+            transparent
+            opacity={0.5}
+            depthTest={false}
+          />
+
+          {/* Outer label at the gutter */}
+          <Html
+            distanceFactor={5}
+            position={[labelOffsetX, 0, 0]}
+            center
+            className="pointer-events-none"
+          >
+            <div
+              style={{
+                transform: `translateX(${position.x >= 0 ? '50%' : '-50%'})`,
+              }}
+              className="bg-white/95 text-slate-900 px-3 py-1.5 rounded-lg border-2 border-red-500 text-[11px] font-black whitespace-nowrap shadow-2xl backdrop-blur-sm animate-in fade-in zoom-in duration-200"
+            >
+              {point.code}
+            </div>
+          </Html>
+        </>
       )}
     </group>
   );
