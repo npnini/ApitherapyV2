@@ -5,6 +5,7 @@ import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc, serverT
 import { Protocol } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
 import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe, Search } from 'lucide-react';
+import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
@@ -68,7 +69,9 @@ const ProtocolAdmin: React.FC = () => {
         'Delete Protocol',
         'Edit Protocol',
         'Search protocols...',
-        'Could not fetch protocols and points'
+        'Could not fetch protocols and points',
+        'Available points',
+        'Selected points'
     ], []);
 
     useEffect(() => {
@@ -542,16 +545,34 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
     const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
         .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
 
-    const handlePointSelection = (pointId: string) => {
-        const currentPoints = protocol.points || [];
-        const newPoints =
-            currentPoints.includes(pointId)
-                ? currentPoints.filter(id => id !== pointId)
-                : [...currentPoints, pointId];
-        onUpdate({ ...protocol, points: newPoints });
-    };
+    const availablePointsForShuttle = useMemo(() => {
+        // Build a fresh pool of all possible points
+        return allAcuPoints
+            .filter(p => p.status === 'active' || (protocol.points || []).includes(p.id))
+            .map(p => ({
+                id: String(p.id),
+                name: `${p.code} - ${typeof p.label === 'object' ? (p.label[currentLang] || p.label[appConfig.defaultLanguage] || Object.values(p.label)[0]) : p.label}`
+            }));
+    }, [allAcuPoints, protocol.points, currentLang, appConfig.defaultLanguage]);
 
-    // No internal selectedFileName state needed anymore as we upload immediately
+    const selectedPointsForShuttle = useMemo(() => {
+        const selectedIds = new Set((protocol.points || []).map(String));
+        // We only want to show items that are actually in protocol.points
+        // To preserve order, we map the points array itself
+        return (protocol.points || []).map(String).map(id => {
+            const point = allAcuPoints.find(p => String(p.id) === id);
+            return {
+                id,
+                name: point
+                    ? `${point.code} - ${typeof point.label === 'object' ? (point.label[currentLang] || point.label[appConfig.defaultLanguage] || Object.values(point.label)[0]) : point.label}`
+                    : id
+            };
+        });
+    }, [allAcuPoints, protocol.points, currentLang, appConfig.defaultLanguage]);
+
+    const handleShuttleChange = (newSelection: ShuttleItem[]) => {
+        onUpdate({ ...protocol, points: newSelection.map(item => item.id) });
+    };
 
     const getLangDisplayName = (lang: string) => {
         switch (lang) {
@@ -697,34 +718,14 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                     <T>Select Points</T>
                                     <span className={styles.requiredAsterisk}>*</span>
                                 </h3>
-                                <div className={styles.pointsSelectionContainer}>
-                                    {allAcuPoints.map(point => {
-                                        const isSelected = (protocol.points || []).includes(point.id);
-                                        const isDisabled = point.status === 'inactive' && !isSelected;
-                                        return (
-                                            <label
-                                                key={point.id}
-                                                className={`
-                                                    ${styles.pointLabel} 
-                                                    ${isSelected ? styles.pointLabelSelected : ''} 
-                                                    ${isDisabled ? styles.pointLabelInactive : ''}
-                                                `}
-                                                title={isDisabled ? getTranslation('Point is inactive and cannot be selected') : ''}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isSelected}
-                                                    onChange={() => !isDisabled && handlePointSelection(point.id)}
-                                                    className={styles.pointCheckbox}
-                                                    disabled={isDisabled}
-                                                />
-                                                <span className={styles.pointCode}>{point.code}</span>
-                                                <span className={styles.pointLabelText}>
-                                                    {typeof point.label === 'object' ? (point.label[currentLang] || point.label[appConfig.defaultLanguage] || Object.values(point.label)[0]) : point.label}
-                                                </span>
-                                            </label>
-                                        );
-                                    })}
+                                <div className={styles.shuttleContainer}>
+                                    <ShuttleSelector
+                                        availableItems={availablePointsForShuttle}
+                                        selectedItems={selectedPointsForShuttle}
+                                        onSelectionChange={handleShuttleChange}
+                                        availableTitle="Available points"
+                                        selectedTitle="Selected points"
+                                    />
                                 </div>
                             </div>
 
