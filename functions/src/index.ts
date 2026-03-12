@@ -1,6 +1,6 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
@@ -313,4 +313,53 @@ export const sendDocumentEmail = onCall(async (request) => {
     if (error instanceof HttpsError) throw error;
     throw new HttpsError("internal", "Failed to send email.");
   }
+});
+
+/**
+ * 4. BigQuery Sync - Data Exclusion (PII Filter)
+ * Target Region: europe-west1 (Belgium)
+ * This function serves as a transform hook for the Firestore-to-BigQuery extension.
+ */
+export const filterPiiTransform = onRequest({ region: "europe-west1" }, (req, res) => {
+  const payload = req.body;
+
+  if (!payload || !payload.data) {
+    res.status(200).send({ data: [] });
+    return;
+  }
+
+  // The extension sends data in an array called 'data'
+  const transformedData = payload.data.map((record: any) => {
+    // 1. Get the raw Firestore data from the record
+    const docData = record.json.data;
+
+    // 2. Define the PII fields to exclude
+    const piiFields = [
+      "identityNumber",
+      "email",
+      "mobile",
+      "address",
+      "fullName",
+      "profession",
+    ];
+
+    // 3. Remove the sensitive fields
+    piiFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(docData, field)) {
+        delete docData[field];
+      }
+    });
+
+    // 4. Return the record with the modified 'data' stringified
+    return {
+      insertId: record.insertId,
+      json: {
+        ...record.json,
+        data: JSON.stringify(docData),
+      },
+    };
+  });
+
+  // Send the batch back to the extension
+  res.status(200).send({ data: transformedData });
 });
