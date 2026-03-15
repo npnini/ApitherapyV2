@@ -51,12 +51,12 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
           </div>
         )}
 
-        {problem.protocolIds && problem.protocolIds.length > 0 && (
+        {problem.protocolId && (
           <div className={styles.section}>
-            <h3 className={styles.sectionTitle}><T>Protocols</T></h3>
+            <h3 className={styles.sectionTitle}><T>Protocol</T></h3>
             {/* Future implementation: Display protocol names instead of IDs */}
             <ul className={styles.list}>
-              {problem.protocolIds.map(id => <li key={id}>{id}</li>)}
+              <li>{problem.protocolId}</li>
             </ul>
           </div>
         )}

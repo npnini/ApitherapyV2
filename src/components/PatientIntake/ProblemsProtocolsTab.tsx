@@ -35,19 +35,6 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
     const [protocolsSnap, protocolsLoading] = useCollection(query(collection(db, 'cfg_protocols')));
     const [measuresSnap, measuresLoading] = useCollection(query(collection(db, 'cfg_measures')));
 
-    // Fetch latest readings for this patient from root measured_values collection using document ID range
-    const [readingsSnap, readingsLoading] = useCollection(
-        patientData.id
-            ? query(
-                collection(db, 'measured_values'),
-                where('__name__', '>=', `${patientData.id}_`),
-                where('__name__', '<=', `${patientData.id}_\uf8ff`),
-                orderBy('__name__', 'desc'),
-                limit(1)
-            )
-            : null
-    );
-
     const problems = useMemo(() => problemsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Problem)) || [], [problemsSnap]);
     const protocols = useMemo(() => protocolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protocol)) || [], [protocolsSnap]);
     const measures = useMemo(() => measuresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Measure)) || [], [measuresSnap]);
@@ -75,230 +62,111 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
     }, [measures, currentLang]);
 
     // Selection state
-    const [selectedProblems, setSelectedProblems] = useState<ShuttleItem[]>([]);
-    const [selectedProtocols, setSelectedProtocols] = useState<ShuttleItem[]>([]);
-    const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
-    const [readings, setReadings] = useState<Record<string, string | number>>({});
+    const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
-    const [readingsDirty, setReadingsDirty] = useState(false);
-    const [lastReadingTimestamp, setLastReadingTimestamp] = useState<Date | null>(null);
 
-    // Filtered lists (Funneling)
+    // Filtered lists (Funneling) based on single selected problem
     const availableProtocolItems = useMemo(() => {
-        if (selectedProblems.length === 0) return protocolItems;
-        const allowedIds = new Set<string>();
-        const selectedIds = new Set(selectedProblems.map(p => p.id));
-        problems.filter(p => selectedIds.has(p.id)).forEach(p => {
-            p.protocolIds?.forEach(id => allowedIds.add(id));
-        });
-        return protocolItems.filter(p => allowedIds.has(p.id));
-    }, [selectedProblems, problems, protocolItems]);
+        if (!selectedProblemId) return [];
+        const problem = problems.find(p => p.id === selectedProblemId);
+        if (!problem || !problem.protocolId) return [];
+        return protocolItems.filter(p => p.id === problem.protocolId);
+    }, [selectedProblemId, problems, protocolItems]);
 
     const availableMeasureItems = useMemo(() => {
-        if (selectedProblems.length === 0) return measureItems;
-        const allowedIds = new Set<string>();
-        const selectedIds = new Set(selectedProblems.map(p => p.id));
-        problems.filter(p => selectedIds.has(p.id)).forEach(p => {
-            p.measureIds?.forEach(id => allowedIds.add(id));
-        });
+        if (!selectedProblemId) return [];
+        const problem = problems.find(p => p.id === selectedProblemId);
+        if (!problem || !problem.measureIds) return [];
+        const allowedIds = new Set(problem.measureIds);
         return measureItems.filter(m => allowedIds.has(m.id));
-    }, [selectedProblems, problems, measureItems]);
+    }, [selectedProblemId, problems, measureItems]);
 
     useEffect(() => {
-        if (!isInitialized && !problemsLoading && !protocolsLoading && !measuresLoading && !readingsLoading && problemItems.length > 0) {
-            const plan = patientData.medicalRecord?.patient_level_data?.treatment_plan;
-            if (plan) {
-                if (plan.problemIds) {
-                    setSelectedProblems(problemItems.filter(item => plan.problemIds?.includes(item.id)));
-                }
-                if (plan.protocolIds) {
-                    setSelectedProtocols(protocolItems.filter(item => plan.protocolIds?.includes(item.id)));
-                }
-                if (plan.measureIds) {
-                    setSelectedMeasures(measureItems.filter(item => plan.measureIds?.includes(item.id)));
-                }
-            }
-            if (readingsSnap && !readingsSnap.empty) {
-                const latestReadingsDoc = readingsSnap.docs[0].data() as MeasuredValueReading;
-                const initialReadings: Record<string, string | number> = {};
-                latestReadingsDoc.readings?.forEach(r => {
-                    initialReadings[r.measureId] = r.value;
-                });
-                setReadings(initialReadings);
-                // Store the timestamp for display
-                const ts = latestReadingsDoc.createdTimestamp;
-                if (ts) {
-                    const date = ts.toDate ? ts.toDate() : new Date(ts);
-                    setLastReadingTimestamp(date);
-                }
+        if (!isInitialized && !problemsLoading && !protocolsLoading && !measuresLoading && problemItems.length > 0) {
+            const pld = patientData.medicalRecord;
+            if (pld?.problemId) {
+                setSelectedProblemId(pld.problemId);
             }
             setIsInitialized(true);
         }
-    }, [problemsLoading, protocolsLoading, measuresLoading, readingsLoading, problemItems, protocolItems, measureItems, readingsSnap, patientData, isInitialized]);
+    }, [problemsLoading, protocolsLoading, measuresLoading, problemItems, protocolItems, measureItems, patientData, isInitialized]);
 
     useImperativeHandle(ref, () => ({
-        getReadings: () => {
-            return Object.entries(readings).map(([measureId, value]) => {
-                const measure = measures.find(m => m.id === measureId);
-                return {
-                    measureId,
-                    type: measure?.type || 'Scale',
-                    value
-                };
-            }).filter(r => r.value !== undefined && r.value !== null && r.value !== '');
-        },
-        isDirty: readingsDirty,
-        clearDirty: () => setReadingsDirty(false)
+        getReadings: () => [],
+        isDirty: false,
+        clearDirty: () => { }
     }));
 
     // Sync selections to parent
     useEffect(() => {
         if (!isInitialized) return;
 
-        const currentPlan = patientData.medicalRecord?.patient_level_data?.treatment_plan;
-        const newProblemIds = selectedProblems.map(p => p.id);
-        const newProtocolIds = selectedProtocols.map(p => p.id);
-        const newMeasureIds = selectedMeasures.map(p => p.id);
+        const pld = patientData.medicalRecord;
+        const newProblemId = selectedProblemId || undefined;
+        const newProtocolId = availableProtocolItems.length > 0 ? availableProtocolItems[0].id : undefined;
+        const newMeasureIds = availableMeasureItems.map(m => m.id);
 
         const hasChanged =
-            JSON.stringify(currentPlan?.problemIds || []) !== JSON.stringify(newProblemIds) ||
-            JSON.stringify(currentPlan?.protocolIds || []) !== JSON.stringify(newProtocolIds) ||
-            JSON.stringify(currentPlan?.measureIds || []) !== JSON.stringify(newMeasureIds);
+            pld?.problemId !== newProblemId ||
+            pld?.protocolId !== newProtocolId ||
+            JSON.stringify(pld?.measureIds || []) !== JSON.stringify(newMeasureIds);
 
         if (hasChanged) {
             onDataChange({
                 ...patientData,
                 medicalRecord: {
                     ...patientData.medicalRecord,
-                    patient_level_data: {
-                        ...patientData.medicalRecord?.patient_level_data,
-                        treatment_plan: {
-                            problemIds: newProblemIds,
-                            protocolIds: newProtocolIds,
-                            measureIds: newMeasureIds
-                        }
-                    }
+                    problemId: newProblemId,
+                    protocolId: newProtocolId,
+                    measureIds: newMeasureIds
                 }
             }, false);
         }
-    }, [selectedProblems, selectedProtocols, selectedMeasures, isInitialized]);
+    }, [selectedProblemId, availableProtocolItems, availableMeasureItems, isInitialized]);
 
-    const handleReadingChange = (measureId: string, value: string | number) => {
-        setReadings(prev => ({ ...prev, [measureId]: value }));
-        setReadingsDirty(true);
-        // Deeply ensure we're sending a fresh object and marking as dirty
-        onDataChange({ ...patientData }, false);
-    };
+
 
 
     return (
         <div className={styles.tabContainer}>
             <fieldset className={styles.section}>
-                <legend><T>Problems Selection</T></legend>
-                <ShuttleSelector
-                    availableItems={problemItems}
-                    selectedItems={selectedProblems}
-                    onSelectionChange={setSelectedProblems}
-                    availableTitle={tAvailableProblems}
-                    selectedTitle={tSelectedProblems}
-                />
+                <legend><T>Problem Selection</T></legend>
+                <div className={styles.formGroup}>
+                    <label className={styles.label}><T>Select a Problem</T></label>
+                    <select
+                        className={styles.inputControl}
+                        value={selectedProblemId || ''}
+                        onChange={(e) => setSelectedProblemId(e.target.value)}
+                    >
+                        <option value="">{tAvailableProblems}</option>  {/* Reusing existing translation optionally, or adding a new "Select a problem..." */}
+                        {problemItems.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                </div>
             </fieldset>
 
-            <fieldset className={styles.section}>
-                <legend><T>Protocols Selection</T></legend>
-                <ShuttleSelector
-                    availableItems={availableProtocolItems}
-                    selectedItems={selectedProtocols}
-                    onSelectionChange={setSelectedProtocols}
-                    availableTitle={tAvailableProtocols}
-                    selectedTitle={tSelectedProtocols}
-                />
-            </fieldset>
-
-            <fieldset className={styles.section}>
-                <legend><T>Measures Selection</T></legend>
-                <ShuttleSelector
-                    availableItems={availableMeasureItems}
-                    selectedItems={selectedMeasures}
-                    onSelectionChange={setSelectedMeasures}
-                    availableTitle={tAvailableMeasures}
-                    selectedTitle={tSelectedMeasures}
-                />
-            </fieldset>
-
-            {selectedMeasures.length > 0 && (
+            {selectedProblemId && availableProtocolItems.length > 0 && (
                 <fieldset className={styles.section}>
-                    <legend>
-                        <T>Measures values</T>
-                        {lastReadingTimestamp && (
-                            <span className={styles.lastReadingTimestamp}>
-                                {' '}(<T>last reading at</T>{' '}
-                                {String(lastReadingTimestamp.getDate()).padStart(2, '0')}/
-                                {String(lastReadingTimestamp.getMonth() + 1).padStart(2, '0')}/
-                                {lastReadingTimestamp.getFullYear()}{' '}
-                                {String(lastReadingTimestamp.getHours()).padStart(2, '0')}:
-                                {String(lastReadingTimestamp.getMinutes()).padStart(2, '0')})
-                            </span>
-                        )}
-                    </legend>
-                    <div className={styles.measuresTableContainer}>
-                        <table className={styles.measuresTable}>
-                            <thead>
-                                <tr>
-                                    <th><T>Measure Name</T></th>
-                                    <th><T>Description</T></th>
-                                    <th><T>Value</T></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {measures.filter(m => selectedMeasures.some(sm => sm.id === m.id)).map(measure => (
-                                    <tr key={measure.id}>
-                                        <td>
-                                            <div className={styles.measureName}>{measure.name[currentLang] || measure.name['en']}</div>
-                                        </td>
-                                        <td>
-                                            <div className={styles.measureDesc}>{measure.description[currentLang] || measure.description['en']}</div>
-                                        </td>
-                                        <td>
-                                            {measure.type === 'Category' ? (
-                                                <select
-                                                    className={styles.inputControl}
-                                                    value={readings[measure.id] || ''}
-                                                    onChange={e => handleReadingChange(measure.id, e.target.value)}
-                                                >
-                                                    <option value=""><T>Select...</T></option>
-                                                    {measure.categories?.map((cat, idx) => {
-                                                        const catValue = cat[currentLang] || cat['en'] || Object.values(cat)[0];
-                                                        return (
-                                                            <option key={idx} value={catValue}>
-                                                                {catValue}
-                                                            </option>
-                                                        );
-                                                    })}
-                                                </select>
-                                            ) : (
-                                                <div>
-                                                    <input
-                                                        type="number"
-                                                        className={styles.inputControl}
-                                                        min={measure.scale?.min}
-                                                        max={measure.scale?.max}
-                                                        value={readings[measure.id] || ''}
-                                                        onChange={e => handleReadingChange(measure.id, parseFloat(e.target.value))}
-                                                    />
-                                                    <div className={styles.scaleHint}>
-                                                        Range: {measure.scale?.min} - {measure.scale?.max}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <legend><T>Protocol</T></legend>
+                    <div className={styles.infoBox}>
+                        <strong>{availableProtocolItems[0].name}</strong>
                     </div>
                 </fieldset>
             )}
+
+            {selectedProblemId && availableMeasureItems.length > 0 && (
+                <fieldset className={styles.section}>
+                    <legend><T>Measures</T></legend>
+                    <ul className={styles.measureList}>
+                        {availableMeasureItems.map(m => (
+                            <li key={m.id}>{m.name}</li>
+                        ))}
+                    </ul>
+                </fieldset>
+            )}
+
+
         </div>
     );
 });

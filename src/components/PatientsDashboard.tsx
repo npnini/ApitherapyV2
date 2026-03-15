@@ -109,20 +109,20 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   </a>
                 </div>
                 <div className={styles.conditionInfo}>
-                  <Tooltip text={patient.medicalRecord?.patient_level_data?.condition || ''} className={styles.conditionTooltip}>
+                  <Tooltip text={patient.medicalRecord?.condition || ''} className={styles.conditionTooltip}>
                     <span className={styles.truncate}>
-                      {patient.medicalRecord?.patient_level_data?.condition}
+                      {patient.medicalRecord?.condition}
                     </span>
                   </Tooltip>
                 </div>
                 <div className={styles.severityInfo}>
                   <span className={styles.truncate}>
-                    {patient.medicalRecord?.patient_level_data?.severity}
+                    {patient.medicalRecord?.severity}
                   </span>
                 </div>
                 <div className={styles.lastTreatment}>
-                  {patient.medicalRecord?.patient_level_data?.lastTreatment
-                    ? new Date(patient.medicalRecord.patient_level_data.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
+                  {patient.medicalRecord?.lastTreatment
+                    ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
                     : <T>N/A</T>}
                 </div>
                 <div className={styles.actionsContainer}>
@@ -131,8 +131,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <button
                     onClick={() => handleDeleteClick(patient)}
                     className={`${styles.actionButton} ${styles.deleteButton}`}
-                    style={{ visibility: patient.medicalRecord?.patient_level_data?.lastTreatment ? 'hidden' : 'visible' }}
-                    disabled={!!patient.medicalRecord?.patient_level_data?.lastTreatment}
+                    style={{ visibility: patient.medicalRecord?.lastTreatment ? 'hidden' : 'visible' }}
+                    disabled={!!patient.medicalRecord?.lastTreatment}
                     title={tDeletePatient}>
                     <Trash2 size={14} />
                   </button>

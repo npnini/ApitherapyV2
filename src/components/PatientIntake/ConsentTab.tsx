@@ -83,7 +83,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
         }
     }, [language, noTemplateMsg, errorMsg]);
 
-    const consentSignedUrl = patientData.medicalRecord?.patient_level_data?.consentSignedUrl;
+    const consentSignedUrl = patientData.medicalRecord?.consentSignedUrl;
 
     useEffect(() => {
         if (consentSignedUrl) {
@@ -220,6 +220,8 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                 const fileName = `consent.png`;
                 const folderPath = `Patients/${patientData.id || 'new'}`;
                 const url = await uploadFile(new File([blob], fileName, { type: 'image/png' }), folderPath, fileName);
+                setPatientSignature(''); // Clear signatures to prevent redundant uploads
+                setCaretakerSignature('');
                 return url;
             } catch (err) {
                 console.error('Consent generation/upload failed:', err);
@@ -251,10 +253,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                                     ...patientData,
                                     medicalRecord: {
                                         ...(patientData.medicalRecord || {}),
-                                        patient_level_data: {
-                                            ...(patientData.medicalRecord?.patient_level_data || {}),
-                                            consentSignedUrl: ''
-                                        }
+                                        consentSignedUrl: ''
                                     }
                                 });
                             }}
@@ -282,10 +281,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                                 ...patientData,
                                 medicalRecord: {
                                     ...(patientData.medicalRecord || {}),
-                                    patient_level_data: {
-                                        ...(patientData.medicalRecord?.patient_level_data || {}),
-                                        consentSignedUrl: ''
-                                    }
+                                    consentSignedUrl: ''
                                 }
                             });
                             setImgError(false);

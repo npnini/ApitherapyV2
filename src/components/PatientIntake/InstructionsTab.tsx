@@ -83,7 +83,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
         }
     }, [language, noTemplateMsg, errorMsg]);
 
-    const instructionsSignedUrl = patientData.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl;
+    const instructionsSignedUrl = patientData.medicalRecord?.treatmentInstructionsSignedUrl;
 
     useEffect(() => {
         if (instructionsSignedUrl) {
@@ -199,6 +199,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 const fileName = `treatment_instructions.png`;
                 const folderPath = `Patients/${patientData.id || 'new'}`;
                 const url = await uploadFile(new File([blob], fileName, { type: 'image/png' }), folderPath, fileName);
+                setPatientSignature(''); // Clear signature to prevent redundant uploads
                 return url;
             } catch (err) {
                 console.error('Instructions generation/upload failed:', err);
@@ -230,10 +231,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                                     ...patientData,
                                     medicalRecord: {
                                         ...(patientData.medicalRecord || {}),
-                                        patient_level_data: {
-                                            ...(patientData.medicalRecord?.patient_level_data || {}),
-                                            treatmentInstructionsSignedUrl: ''
-                                        }
+                                        treatmentInstructionsSignedUrl: ''
                                     }
                                 });
                             }}
@@ -261,10 +259,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                                 ...patientData,
                                 medicalRecord: {
                                     ...(patientData.medicalRecord || {}),
-                                    patient_level_data: {
-                                        ...(patientData.medicalRecord?.patient_level_data || {}),
-                                        treatmentInstructionsSignedUrl: ''
-                                    }
+                                    treatmentInstructionsSignedUrl: ''
                                 }
                             });
                             setImgError(false);

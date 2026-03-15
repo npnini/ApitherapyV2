@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { JoinedPatientData } from '../../types/patient';
@@ -13,10 +13,11 @@ import styles from './SessionOpening.module.css';
 export interface SessionOpeningData {
     patientReport: string;
     measureReadings: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number }>;
-    preSessionVitals: Partial<VitalSigns>;
-    measureReadingId?: string; // Captures the ID after saving to Firestore
+    preTreatmentVitals: Partial<VitalSigns>;
+    preTreatmentMeasureReadingId?: string; // Captures the ID after saving to Firestore
     preTreatmentImage?: string; // URL of the uploaded image
 }
+
 
 const NextIcon: React.FC<{ direction: 'ltr' | 'rtl'; size?: number }> = ({ direction, size = 16 }) => {
     return direction === 'rtl' ? <ChevronLeft size={size} /> : <ChevronRight size={size} />;
@@ -43,17 +44,19 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
     // Form state
     const [patientReport, setPatientReport] = useState('');
     const [measureValues, setMeasureValues] = useState<Record<string, string | number>>({});
-    const [preSessionVitals, setPreSessionVitals] = useState<Partial<VitalSigns>>({});
+    const [preTreatmentVitals, setPreTreatmentVitals] = useState<Partial<VitalSigns>>({});
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imageCaption, setImageCaption] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [uploadPreview, setUploadPreview] = useState<string | null>(null);
 
+
     const tPatientReport = useT('Patient Report');
     const tPatientReportPlaceholder = useT('Enter patient feedback or symptoms...');
     const tTrackingMeasures = useT('Tracking Measures');
-    const tPreSessionVitals = useT('Pre-Session Blood Pressure & Heart Rate');
-    const tNextSelectProtocol = useT('Next: Select Protocol');
+    const tPreSessionVitals = useT('Pre-Treatment Blood Pressure & Heart Rate');
+
+    const tNextStep = useT('Next Step');
     const tLoading = useT('Loading...');
     const tBack = useT('Back');
     const tAddPhoto = useT('Add Pre-Treatment Photo');
@@ -71,11 +74,25 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                 id: doc.id,
             }));
 
-            const measureIds = patient.medicalRecord?.patient_level_data?.treatment_plan?.measureIds;
-            if (measureIds && measureIds.length > 0) {
-                setMeasures(allMeasures.filter(m => measureIds.includes(m.id)));
+            let targetMeasureIds: string[] = [];
+            const problemId = patient.medicalRecord?.problemId;
+
+            if (problemId) {
+                const probSnap = await getDoc(doc(db, 'cfg_problems', problemId));
+                if (probSnap.exists()) {
+                    targetMeasureIds = probSnap.data().measureIds || [];
+                }
+            }
+
+            // Fallback to patient's measureIds if no problem-specific ones
+            if (targetMeasureIds.length === 0) {
+                targetMeasureIds = patient.medicalRecord?.measureIds || [];
+            }
+
+            if (targetMeasureIds.length > 0) {
+                setMeasures(allMeasures.filter(m => targetMeasureIds.includes(m.id)));
             } else {
-                setMeasures(allMeasures);
+                setMeasures([]);
             }
         } catch (err) {
             console.error('SessionOpening: failed to load measures', err);
@@ -93,11 +110,12 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
     };
 
     const isVitalsComplete =
-        preSessionVitals.systolic !== undefined &&
-        preSessionVitals.diastolic !== undefined &&
-        preSessionVitals.heartRate !== undefined;
+        preTreatmentVitals.systolic !== undefined &&
+        preTreatmentVitals.diastolic !== undefined &&
+        preTreatmentVitals.heartRate !== undefined;
 
     const isFormValid = patientReport.trim() !== '' && isVitalsComplete && !isUploading;
+
 
     const processImageWithCaption = async (file: File, caption: string): Promise<Blob> => {
         return new Promise((resolve, reject) => {
@@ -184,9 +202,10 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
         onComplete({
             patientReport: patientReport.trim(),
             measureReadings,
-            preSessionVitals,
+            preTreatmentVitals,
             preTreatmentImage
         });
+
     };
 
     return (
@@ -204,62 +223,15 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                     />
                 </section>
 
-                {/* 2. Tracking Measures */}
-                <section className={styles.section}>
-                    <h3 className={styles.sectionTitle}>{tTrackingMeasures}</h3>
-                    {isLoading ? (
-                        <div className={styles.loading}>
-                            <Loader size={20} className={styles.spinner} />
-                            <span>{tLoading}</span>
-                        </div>
-                    ) : (
-                        <div className={styles.measuresGrid}>
-                            {measures.map(measure => {
-                                const name = getMLValue(measure.name, language);
-                                const value = measureValues[measure.id] ?? '';
-                                return (
-                                    <div key={measure.id} className={styles.measureItem}>
-                                        <label className={styles.measureLabel}>{name}</label>
-                                        {measure.type === 'Scale' ? (
-                                            <input
-                                                type="number"
-                                                className={styles.measureInput}
-                                                value={value}
-                                                min={measure.scale?.min}
-                                                max={measure.scale?.max}
-                                                placeholder={`${measure.scale?.min ?? 0} – ${measure.scale?.max ?? 10}`}
-                                                onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                            />
-                                        ) : (
-                                            <select
-                                                className={styles.measureInput}
-                                                value={String(value)}
-                                                onChange={e => handleMeasureChange(measure.id, e.target.value)}
-                                            >
-                                                <option value="">—</option>
-                                                {measure.categories?.map((cat, idx) => {
-                                                    const catLabel = getMLValue(cat, language);
-                                                    return (
-                                                        <option key={idx} value={catLabel}>{catLabel}</option>
-                                                    );
-                                                })}
-                                            </select>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </section>
-
-                {/* 3. Pre-Session Vitals */}
+                {/* 2. Pre-Treatment Vitals */}
                 <section className={styles.section}>
                     <VitalsInputGroup
                         title={tPreSessionVitals}
-                        vitals={preSessionVitals}
-                        onVitalsChange={setPreSessionVitals}
+                        vitals={preTreatmentVitals}
+                        onVitalsChange={setPreTreatmentVitals}
                     />
                 </section>
+
 
                 {/* 4. Pre-Treatment Photo */}
                 <section className={styles.section}>
@@ -307,6 +279,56 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                     </div>
                 </section>
 
+                {/* 3. Tracking Measures (Moved to bottom) */}
+                <section className={styles.section}>
+
+                    <h3 className={styles.sectionTitle}>{tTrackingMeasures}</h3>
+                    {isLoading ? (
+                        <div className={styles.loading}>
+                            <Loader size={20} className={styles.spinner} />
+                            <span>{tLoading}</span>
+                        </div>
+                    ) : (
+                        <div className={styles.measuresGrid}>
+                            {measures.map(measure => {
+                                const name = getMLValue(measure.name, language);
+                                const value = measureValues[measure.id] ?? '';
+                                return (
+                                    <div key={measure.id} className={styles.measureItem}>
+                                        <label className={styles.measureLabel}>{name}</label>
+                                        {measure.type === 'Scale' ? (
+                                            <input
+                                                type="number"
+                                                className={styles.measureInput}
+                                                value={value}
+                                                min={measure.scale?.min}
+                                                max={measure.scale?.max}
+                                                placeholder={`${measure.scale?.min ?? 0} – ${measure.scale?.max ?? 10}`}
+                                                onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
+                                            />
+                                        ) : (
+                                            <select
+                                                className={styles.measureInput}
+                                                value={String(value)}
+                                                onChange={e => handleMeasureChange(measure.id, e.target.value)}
+                                            >
+                                                <option value="">—</option>
+                                                {measure.categories?.map((cat, idx) => {
+                                                    const catLabel = getMLValue(cat, language);
+                                                    return (
+                                                        <option key={idx} value={catLabel}>{catLabel}</option>
+                                                    );
+                                                })}
+                                            </select>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
+
+
                 {/* Actions */}
                 <div className={styles.actions}>
                     <button type="button" onClick={onBack} className={styles.btnSecondary}>
@@ -318,7 +340,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                         disabled={!isFormValid || isUploading}
                         className={styles.btnPrimary}
                     >
-                        {isUploading ? tUploading : tNextSelectProtocol} <NextIcon direction={direction} />
+                        {isUploading ? tUploading : tNextStep} <NextIcon direction={direction} />
                     </button>
                 </div>
             </div>

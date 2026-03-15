@@ -22,7 +22,7 @@ import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import TreatmentFeedback from './TreatmentFeedback';
 import FreeProtocolPointSelection from '../FreeProtocolPointSelection';
 import { Protocol } from '../../types/protocol';
-import { ProtocolRound, VitalSigns, TreatmentSession } from '../../types/treatmentSession';
+import { VitalSigns, TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
 import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
@@ -95,8 +95,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
     const [sessionOpeningData, setSessionOpeningData] = useState<SessionOpeningData | null>(null);
     const [freeProtocolPoints, setFreeProtocolPoints] = useState<StingPoint[]>([]);
-    const [rounds, setRounds] = useState<ProtocolRound[]>([]);
     const [isSensitivitySession, setIsSensitivitySession] = useState(false);
+    const [accumulatedStungPointIds, setAccumulatedStungPointIds] = useState<string[]>([]);
+    const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
+
     const [appConfig, setAppConfig] = useState<any>(null);
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
@@ -143,7 +145,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         profession: p.profession ?? '',
         address: p.address ?? '',
         caretakerId: p.caretakerId ?? user.uid,
-        medicalRecord: p.medicalRecord ?? { patient_level_data: {} },
+        medicalRecord: p.medicalRecord ?? {},
         questionnaireResponse: p.questionnaireResponse,
     });
 
@@ -156,69 +158,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     useEffect(() => {
         const data = initializePatientData(patient);
         setPatientData(data);
-
-        const checkSavedStatus = async () => {
-            // Initialize savedTabs based on existing data
-            const initialSaved = new Set<TabKey>();
-
-            // 1. Personal Details
-            if (data.fullName && data.identityNumber && data.mobile) {
-                initialSaved.add('personal');
-            }
-
-            // 2. Questionnaire
-            const qResponse = (data.questionnaireResponse || {}) as any;
-            const hasAnswers = Object.keys(qResponse).some(
-                key => key !== 'domain' && key !== 'version' && key !== 'signature' && key !== 'patientId' && key !== 'createdTimestamp' && key !== 'updatedTimestamp' && qResponse[key] !== undefined
-            );
-            if (hasAnswers) {
-                initialSaved.add('questionnaire');
-            }
-
-            // 3. Consent
-            if (data.medicalRecord?.patient_level_data?.consentSignedUrl) {
-                initialSaved.add('consent');
-            }
-
-            // 4. Instructions
-            if (data.medicalRecord?.patient_level_data?.treatmentInstructionsSignedUrl) {
-                initialSaved.add('instructions');
-            }
-
-            // 5. Problems & Protocols
-            if (data.medicalRecord?.patient_level_data?.treatment_plan?.problemIds?.length) {
-                initialSaved.add('problems');
-            }
-
-            // 6. Treatments (Check if patient has id, assuming existing patients have history)
-            if (patient.id) {
-                // In a real app, we'd check treatment count from an API call or another prop.
-                // For now, if it's an existing patient, we can assume they have history or at least the tab is "ready"
-                initialSaved.add('treatments');
-
-                // 7. Measures History - check if there are actual readings
-                const hasReadings = await hasMeasuredValueReadings(patient.id);
-                if (hasReadings) {
-                    initialSaved.add('measures');
-                }
-            }
-
-            setSavedTabs(initialSaved);
-
-            // 8. Fetch latest treatment for feedback button gating
-            if (patient.id) {
-                try {
-                    const latest = await getLatestTreatment(patient.id);
-                    setLatestTreatment(latest);
-                } catch (err) {
-                    console.error('Failed to fetch latest treatment:', err);
-                }
-            }
-        };
-
-        checkSavedStatus();
-
-        // Fetch questionnaire
+        // Load questionnaire
         getQuestionnaire("apitherapy").then(q => {
             setQuestionnaire(q);
             if (q) {
@@ -238,6 +178,55 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             if (snap.exists()) setAppConfig(snap.data());
         }).catch(() => { /* non-critical */ });
     }, [patient]);
+
+    useEffect(() => {
+        const checkSavedStatus = async () => {
+            const data = patientData;
+            const updatedSaved = new Set<TabKey>();
+
+            // 1. Personal Details
+            if (data.fullName && data.identityNumber && data.mobile) {
+                updatedSaved.add('personal');
+            }
+
+            // 2. Questionnaire
+            const qResponse = (data.questionnaireResponse || {}) as any;
+            const hasAnswers = Object.keys(qResponse).some(
+                key => key !== 'domain' && key !== 'version' && key !== 'signature' && key !== 'patientId' && key !== 'createdTimestamp' && key !== 'updatedTimestamp' && qResponse[key] !== undefined
+            );
+            if (hasAnswers) {
+                updatedSaved.add('questionnaire');
+            }
+
+            // 3. Consent
+            if (data.medicalRecord?.consentSignedUrl) {
+                updatedSaved.add('consent');
+            }
+
+            // 4. Instructions
+            if (data.medicalRecord?.treatmentInstructionsSignedUrl) {
+                updatedSaved.add('instructions');
+            }
+
+            // 5. Problems & Protocols
+            if (data.medicalRecord?.problemId) {
+                updatedSaved.add('problems');
+            }
+
+            // 6. Treatments & 7. Measures (Keep current state if not changed by data)
+            if (patient.id) {
+                updatedSaved.add('treatments');
+                const hasReadings = await hasMeasuredValueReadings(patient.id);
+                if (hasReadings) {
+                    updatedSaved.add('measures');
+                }
+            }
+
+            setSavedTabs(updatedSaved);
+        };
+
+        checkSavedStatus();
+    }, [patientData, patient.id]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleDataChange = (data: Partial<JoinedPatientData>, isInternal: boolean = false) => {
@@ -282,6 +271,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 return true;
             });
         }
+        if (tab === 'problems') {
+            return !!patientData.medicalRecord?.problemId;
+        }
         return true;
     };
 
@@ -303,10 +295,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     ...finalData,
                     medicalRecord: {
                         ...(finalData.medicalRecord || {}),
-                        patient_level_data: {
-                            ...(finalData.medicalRecord?.patient_level_data || {}),
-                            consentSignedUrl: signatureUrl
-                        }
+                        consentSignedUrl: signatureUrl
                     }
                 };
                 setPatientData(finalData);
@@ -327,10 +316,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     ...finalData,
                     medicalRecord: {
                         ...(finalData.medicalRecord || {}),
-                        patient_level_data: {
-                            ...(finalData.medicalRecord?.patient_level_data || {}),
-                            treatmentInstructionsSignedUrl: signatureUrl
-                        }
+                        treatmentInstructionsSignedUrl: signatureUrl
                     }
                 };
                 setPatientData(finalData);
@@ -382,10 +368,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 ...finalData,
                 medicalRecord: {
                     ...(finalData.medicalRecord || {}),
-                    patient_level_data: {
-                        ...(finalData.medicalRecord?.patient_level_data || {}),
-                        consentSignedUrl: signatureUrl
-                    }
+                    consentSignedUrl: signatureUrl
                 }
             };
             setPatientData(finalData);
@@ -441,7 +424,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             return;
         }
         // Reset session accumulation state
-        setRounds([]);
         setSessionOpeningData(null);
         setSelectedProtocol(null);
         setSelectedProblemId(null);
@@ -451,13 +433,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setViewState('sessionOpening');
     };
 
+
     const handleSessionOpeningComplete = async (data: SessionOpeningData) => {
         if (!patient.id) return;
-        let measureReadingId: string | undefined = undefined;
+        let preTreatmentMeasureReadingId: string | undefined = undefined;
         // Write measure reading if any values entered
         if (data.measureReadings.length > 0) {
             try {
-                measureReadingId = await addMeasuredValueReading(patient.id, {
+                preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
                     patientId: patient.id,
                     readings: data.measureReadings,
                     note: data.patientReport,
@@ -466,15 +449,15 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 console.error('Failed to write measure reading:', err);
             }
         }
-        setSessionOpeningData({ ...data, measureReadingId });
-        console.log('PatientIntake: Session opening complete', { measureReadingId });
+        setSessionOpeningData({ ...data, preTreatmentMeasureReadingId });
+        console.log('PatientIntake: Session opening complete', { preTreatmentMeasureReadingId });
 
         // Check treatment count for sensitivity test routing
         const count = await getTreatmentCount(patient.id);
         const sensitivityThreshold = appConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
         const sensitivityProtocolId = appConfig?.treatmentSettings?.sensitivityProtocolIdentifier;
 
-        if (sensitivityProtocolId && count <= sensitivityThreshold) {
+        if (sensitivityProtocolId && count < sensitivityThreshold) {
             // Load the sensitivity protocol from Firestore
             try {
                 const protSnap = await getDoc(doc(db, 'cfg_protocols', sensitivityProtocolId));
@@ -483,6 +466,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     setSelectedProtocol(sensitivityProtocol);
                     setSelectedProblemId(''); // Empty string for sensitivity
                     setIsSensitivitySession(true);
+                    setSessionIsSensitivityTest(true);
+                    setAccumulatedStungPointIds([]);
                     setViewState('treatmentExecution');
                     return;
                 }
@@ -491,8 +476,29 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             }
         }
 
+        // Not sensitivity -> Load protocol defined for the patient
+        const patientProtocolId = patient.medicalRecord?.protocolId;
+        const patientProblemId = patient.medicalRecord?.problemId;
+
+        if (patientProtocolId) {
+            try {
+                const protSnap = await getDoc(doc(db, 'cfg_protocols', patientProtocolId));
+                if (protSnap.exists()) {
+                    const protocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
+                    setSelectedProtocol(protocol);
+                    setSelectedProblemId(patientProblemId || '');
+                    setIsSensitivitySession(false);
+                    setViewState('treatmentExecution');
+                    return;
+                }
+            } catch (err) {
+                console.error('Failed to load patient protocol:', err);
+            }
+        }
+
         setViewState('protocolSelection');
     };
+
 
     const handleProtocolSelect = (protocol: Protocol, problemId: string) => {
         setSelectedProtocol(protocol);
@@ -511,52 +517,79 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setViewState('treatmentExecution');
     };
 
-    const handleRoundComplete = (round: ProtocolRound) => {
-        setRounds(prev => [...prev, round]);
-        setIsSensitivitySession(false); // After sensitivity round, allow free protocol choice
-        setSelectedProtocol(null);
-        setSelectedProblemId(null);
-        setFreeProtocolPoints([]);
-        setViewState('protocolSelection');
+    const handleRoundComplete = async (round: { stungPointIds: string[] }) => {
+        // Called when user clicks "Another Protocol"
+        // Buffer points locally and switch to the medical protocol
+        if (!patient.id || !sessionOpeningData || !selectedProtocol) return;
+
+        try {
+            // Buffer the points from this round
+            setAccumulatedStungPointIds(prev => [...prev, ...round.stungPointIds]);
+
+            // Transition to the patient's regular protocol
+            const patientProtocolId = patient.medicalRecord?.protocolId;
+            const patientProblemId = patient.medicalRecord?.problemId;
+
+            if (patientProtocolId) {
+                const protSnap = await getDoc(doc(db, 'cfg_protocols', patientProtocolId));
+                if (protSnap.exists()) {
+                    const protocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
+                    setSelectedProtocol(protocol);
+                    setSelectedProblemId(patientProblemId || '');
+                    setIsSensitivitySession(false);
+                    // Stay in treatmentExecution, TreatmentExecution component will reset its internal stungPoints
+                    return;
+                }
+            }
+            setViewState('protocolSelection');
+        } catch (error) {
+            console.error('Error transitioning to secondary protocol:', error);
+            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to load secondary protocol');
+            setShowTreatmentErrorGuard(true);
+        }
     };
 
+
     const handleEndTreatment = async (
-        finalRound: ProtocolRound,
+        executionData: { stungPointIds: string[] }, // contains stungPointIds
         postStingingVitals: Partial<VitalSigns>,
         finalVitals: Partial<VitalSigns>,
         finalNotes: string
     ) => {
-        if (!patient.id || !sessionOpeningData) return;
+        if (!patient.id || !sessionOpeningData || !selectedProtocol) return;
         setTreatmentSaveStatus('saving');
         setTreatmentErrorMessage(null);
 
-        const allRounds = [...rounds, finalRound];
-
-        console.log('PatientIntake: Saving treatment session', {
+        console.log('PatientIntake: Saving final treatment session', {
             patientId: patient.id,
-            measureReadingId: sessionOpeningData.measureReadingId,
-            roundsCount: allRounds.length,
+            protocolId: selectedProtocol.id,
             isSensitivitySession
         });
 
         try {
+            // Combine buffered points with the final round's points
+            const allStungPointIds = [...accumulatedStungPointIds, ...executionData.stungPointIds];
+
             await saveTreatment(patient.id, {
                 patientId: patient.id,
                 caretakerId: user.uid,
                 patientReport: sessionOpeningData.patientReport,
-                preSessionVitals: sessionOpeningData.preSessionVitals,
+                preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
                 preTreatmentImage: sessionOpeningData.preTreatmentImage,
-                measureReadingId: sessionOpeningData.measureReadingId,
-                rounds: allRounds,
+                preTreatmentMeasureReadingId: sessionOpeningData.preTreatmentMeasureReadingId,
+                isSensitivityTest: sessionIsSensitivityTest,
+                protocolId: selectedProtocol.id,
+                problemId: selectedProblemId || '',
+                stungPointIds: allStungPointIds,
                 postStingingVitals,
                 finalVitals,
                 finalNotes,
-                isSensitivityTest: isSensitivitySession,
             });
             setTreatmentSaveStatus('success');
             setIsDirty(false);
-            setRounds([]);
             setSessionOpeningData(null);
+            setAccumulatedStungPointIds([]);
+            setSessionIsSensitivityTest(false);
             setViewState('tabs');
             setActiveTab('treatments');
             if (onTreatmentComplete) onTreatmentComplete();
@@ -567,6 +600,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setShowTreatmentErrorGuard(true);
         }
     };
+
 
     // X click — dirty state guard (UX-2)
     const handleXClick = () => {
@@ -747,14 +781,15 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     protocol={selectedProtocol}
                                     problemId={selectedProblemId ?? ''}
                                     isSensitivityTest={isSensitivitySession}
+                                    canGoToAnother={isSensitivitySession}
                                     onRoundComplete={handleRoundComplete}
                                     onEndTreatment={handleEndTreatment}
                                     onBack={() => setViewState(selectedProtocol.id === appConfig?.treatmentSettings?.freeProtocolIdentifier ? 'freeProtocolPointSelection' : 'protocolSelection')}
                                     preferredModel={user?.preferredModel}
                                     customPoints={selectedProtocol.id === appConfig?.treatmentSettings?.freeProtocolIdentifier ? freeProtocolPoints : undefined}
-                                    previousRounds={rounds}
                                 />
                             )}
+
                             {viewState === 'freeProtocolPointSelection' && (
                                 <FreeProtocolPointSelection
                                     onBack={() => setViewState('protocolSelection')}
@@ -862,11 +897,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 message={<T>Are you sure you want to leave the current treatment? Any unsaved data will be lost.</T>}
                 onConfirm={() => {
                     setShowAbortTreatmentGuard(false);
-                    setRounds([]);
                     setSessionOpeningData(null);
                     setSelectedProtocol(null);
                     setViewState('sessionOpening');
                 }}
+
                 onCancel={() => setShowAbortTreatmentGuard(false)}
                 showCancelButton
             />

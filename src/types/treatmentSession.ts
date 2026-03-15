@@ -6,15 +6,6 @@ export interface VitalSigns {
   outOfRange?: boolean;
 }
 
-/**
- * One executed protocol round within a treatment session.
- */
-export interface ProtocolRound {
-  protocolId: string;
-  problemId: string;
-  stungPointIds: string[];
-  postRoundVitals?: Partial<VitalSigns>; // optional BP+HR after this round's stings
-}
 
 /**
  * A full treatment session (one visit) stored in the root `treatments` collection.
@@ -29,20 +20,22 @@ export interface TreatmentSession {
 
   // Pre-session data
   patientReport: string;        // case story entered at session opening
-  preSessionVitals: Partial<VitalSigns>;  // BP + HR measured at session start
-  measureReadingId?: string;    // FK → measured_values/{docId} written at session open
+  preTreatmentVitals: Partial<VitalSigns>;  // BP + HR measured at session start
+  preTreatmentMeasureReadingId?: string;    // FK → measured_values/{docId} written at session open
   preTreatmentImage?: string;   // URL of uploaded photo from session opening
 
-  // Protocol rounds (one entry per executed protocol)
-  rounds: ProtocolRound[];
+  // Session metadata
+  isSensitivityTest: boolean;   // true when this session forced the sensitivity protocol
+
+  // Flattened Treatment Data
+  protocolId: string;           // The protocol used
+  problemId: string;            // The problem treated
+  stungPointIds: string[];      // List of stung points in this session
 
   // Post-session data
   postStingingVitals?: Partial<VitalSigns>; // BP + HR measured after all stings, before removal
   finalVitals?: Partial<VitalSigns>;   // stinger-removal BP + HR (~15 min post session)
   finalNotes?: string;
-
-  // Session metadata
-  isSensitivityTest: boolean;   // true when this session forced the sensitivity protocol
 
   // Post-treatment patient response (reserved for future automation)
   patientFeedback?: string;
@@ -52,3 +45,4 @@ export interface TreatmentSession {
   createdTimestamp?: any;
   updatedTimestamp?: any;
 }
+

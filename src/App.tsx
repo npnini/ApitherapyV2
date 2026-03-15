@@ -145,15 +145,13 @@ const AppInner: React.FC = () => {
                 return {
                     ...pii,
                     medicalRecord: {
-                        patient_level_data: {
-                            ...medicalData,
-                            condition,
-                            severity
-                        }
+                        ...medicalData,
+                        condition,
+                        severity
                     },
                     questionnaireResponse: latestQuestionnaire
                 } as JoinedPatientData;
-            });
+            }, [appConfig]);
 
             const resolvedPatients = await Promise.all(patientsDataPromises);
             setPatients(resolvedPatients);
@@ -248,7 +246,7 @@ const AppInner: React.FC = () => {
             identityNumber: '',
             email: '',
             mobile: '',
-            medicalRecord: { patient_level_data: {} },
+            medicalRecord: {},
             questionnaireResponse: undefined,
             caretakerId: viewAsCaretakerId || appUser.uid,
         };
@@ -291,32 +289,31 @@ const AppInner: React.FC = () => {
             const finalPatientId = await savePatient(pii, patientData.id);
 
             // 3. Save Medical Data
-            if (medicalRecord?.patient_level_data) {
+            if (medicalRecord) {
                 // Manage Problem Reference Counts
-                const newProblemIds = medicalRecord.patient_level_data.treatment_plan?.problemIds || [];
+                const newProblemId = medicalRecord.problemId;
                 const oldMedicalDataRef = doc(db, 'patient_medical_data', finalPatientId);
                 const oldMedicalDataSnap = await getDoc(oldMedicalDataRef);
-                const oldProblemIds = oldMedicalDataSnap.exists()
-                    ? (oldMedicalDataSnap.data().treatment_plan?.problemIds || [])
-                    : [];
+                const oldData = oldMedicalDataSnap.exists() ? oldMedicalDataSnap.data() : {};
+                const oldProblemId = oldData.problemId;
 
-                const addedProblemIds = newProblemIds.filter((id: string) => !oldProblemIds.includes(id));
-                const removedProblemIds = oldProblemIds.filter((id: string) => !newProblemIds.includes(id));
-
-                for (const pId of addedProblemIds) {
-                    await updateDoc(doc(db, 'cfg_problems', pId), {
-                        reference_count: increment(1)
-                    });
-                }
-                for (const pId of removedProblemIds) {
-                    await updateDoc(doc(db, 'cfg_problems', pId), {
-                        reference_count: increment(-1)
-                    });
+                if (newProblemId !== oldProblemId) {
+                    if (newProblemId) {
+                        await updateDoc(doc(db, 'cfg_problems', newProblemId), {
+                            reference_count: increment(1)
+                        }).catch(err => console.error("Failed to increment problem ref count", err));
+                    }
+                    if (oldProblemId) {
+                        await updateDoc(doc(db, 'cfg_problems', oldProblemId), {
+                            reference_count: increment(-1)
+                        }).catch(err => console.error("Failed to decrement problem ref count", err));
+                    }
                 }
 
-                // Filter out UI-only fields
-                const { condition, severity, ...dataToSave } = medicalRecord.patient_level_data;
-                await saveMedicalData(finalPatientId, dataToSave);
+                // Filter out UI-only fields (if any remained)
+                const { condition, severity, lastTreatment, ...dataToSave } = medicalRecord as any;
+                // medicalRecord is already mostly clean, but we ensure we don't overwrite server-only fields if they exist
+                await saveMedicalData(finalPatientId, medicalRecord);
             }
 
             // 4. Save Questionnaire (if present and domain is set)

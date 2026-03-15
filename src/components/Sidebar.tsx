@@ -137,13 +137,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     <Settings size={16} className={styles.iconSecondary} />
                                     <span><T>Application Settings</T></span>
                                 </button>
-                                <button onClick={onAdminClick} className={styles.configButton}>
-                                    <FileText size={16} className={styles.iconSecondary} />
-                                    <span><T>Protocol Configuration</T></span>
-                                </button>
                                 <button onClick={onPointsAdminClick} className={styles.configButton}>
                                     <MapPin size={16} className={styles.iconSecondary} />
                                     <span><T>Points Configuration</T></span>
+                                </button>
+                                <button onClick={onAdminClick} className={styles.configButton}>
+                                    <FileText size={16} className={styles.iconSecondary} />
+                                    <span><T>Protocol Configuration</T></span>
                                 </button>
                                 <button onClick={onMeasuresAdminClick} className={styles.configButton}>
                                     <Ruler size={16} className={styles.iconSecondary} />

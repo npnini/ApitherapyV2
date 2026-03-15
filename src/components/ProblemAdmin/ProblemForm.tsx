@@ -37,7 +37,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
 
   const [names, setNames] = useState<{ [key: string]: string }>({});
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({});
-  const [selectedProtocols, setSelectedProtocols] = useState<ShuttleItem[]>([]);
+  const [protocolId, setProtocolId] = useState<string>('');
   const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
   const [documentUrl, setDocumentUrl] = useState<{ [key: string]: string } | undefined>(undefined);
   const [problemStatus, setProblemStatus] = useState<'active' | 'inactive'>('active');
@@ -61,7 +61,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     registerString('Only PDF files are allowed.');
     registerString('Default language');
     registerString('Available protocols');
-    registerString('Selected protocols');
+    registerString('Protocol');
+    registerString('Select a protocol');
     registerString('Available measures');
     registerString('Selected measures');
     registerString('Cancel');
@@ -76,13 +77,9 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     measuresCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Measure)) || []
     , [measuresCollection]);
 
-  const availableProtocolsForShuttle = useMemo(() => {
-    const activeProtocols = allProtocols.filter(p => !p.status || p.status === 'active' || initialData?.protocolIds?.includes(p.id));
-    return activeProtocols.map(p => ({
-      id: p.id,
-      name: typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)
-    }));
-  }, [allProtocols, currentLang, initialData]);
+  const activeProtocols = useMemo(() => {
+    return allProtocols.filter(p => !p.status || p.status === 'active' || initialData?.protocolId === p.id);
+  }, [allProtocols, initialData]);
 
   const availableMeasuresForShuttle = useMemo(() => {
     const activeMeasures = allMeasures.filter(m => !m.status || m.status === 'active' || initialData?.measureIds?.includes(m.id));
@@ -106,12 +103,10 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       }
       setDocumentUrl(docUrls);
 
-      if (allProtocols.length > 0) {
-        const initialProtocols = allProtocols.filter(p => initialData.protocolIds?.includes(p.id));
-        setSelectedProtocols(initialProtocols.map(p => ({
-          id: p.id,
-          name: typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)
-        })));
+      if (initialData.protocolId) {
+        setProtocolId(initialData.protocolId);
+      } else {
+        setProtocolId('');
       }
 
       if (allMeasures.length > 0) {
@@ -125,19 +120,18 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       setNames({});
       setDescriptions({});
       setDocumentUrl(undefined);
-      setSelectedProtocols([]);
+      setProtocolId('');
       setSelectedMeasures([]);
     }
   }, [initialData, allProtocols, allMeasures, currentLang]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const protocolIds = selectedProtocols.map(p => p.id);
     const measureIds = selectedMeasures.map(m => m.id);
     onSubmit({
       name: names,
       description: descriptions,
-      protocolIds,
+      protocolId: protocolId || undefined,
       measureIds,
       documentUrl,
       status: problemStatus,
@@ -151,12 +145,11 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       return;
     }
     if (file) {
-      const protocolIds = selectedProtocols.map(p => p.id);
       const measureIds = selectedMeasures.map(m => m.id);
       onFileUpdate({
         name: names,
         description: descriptions,
-        protocolIds,
+        protocolId: protocolId || undefined,
         measureIds,
         documentUrl,
         status: problemStatus,
@@ -170,8 +163,6 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
   };
 
   const isEditing = !!initialData;
-  const shuttleAvailableProtocols = useT('Available protocols');
-  const shuttleSelectedProtocols = useT('Selected protocols');
   const shuttleAvailableMeasures = useT('Available measures');
   const shuttleSelectedMeasures = useT('Selected measures');
 
@@ -289,14 +280,23 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
               />
             </div>
 
-            <div className={styles.shuttleContainer}>
-              <ShuttleSelector
-                availableItems={availableProtocolsForShuttle}
-                selectedItems={selectedProtocols}
-                onSelectionChange={setSelectedProtocols}
-                availableTitle={shuttleAvailableProtocols}
-                selectedTitle={shuttleSelectedProtocols}
-              />
+            <div className={styles.inputGroup}>
+              <label htmlFor="protocol" className={styles.formLabel}>
+                <T>Protocol</T>
+              </label>
+              <select
+                id="protocol"
+                value={protocolId}
+                onChange={(e) => setProtocolId(e.target.value)}
+                className={styles.formInput}
+              >
+                <option value="">{getTranslation('Select a protocol')}</option>
+                {activeProtocols.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className={styles.shuttleContainer}>

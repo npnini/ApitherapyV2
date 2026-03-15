@@ -10,6 +10,9 @@ export interface StingPoint {
   code: string;
   label: { [key: string]: string };
   description: { [key: string]: string };
+  longText?: { [key: string]: string };
+  sensitivity?: 'Low' | 'Medium' | 'High';
+  imageURL?: string;
   positions: {
     xbot?: Vector3Pos;
     corpo?: Vector3Pos;

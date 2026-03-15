@@ -60,10 +60,10 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
 
             setAllProtocols(fetchedProtocols);
 
-            // Filter to patient's problem IDs if defined
-            const problemIds = patient.medicalRecord?.patient_level_data?.treatment_plan?.problemIds;
-            if (problemIds && problemIds.length > 0) {
-                setProblems(allProblems.filter(p => problemIds.includes(p.id)));
+            // Filter to patient's problem ID if defined
+            const pld = patient.medicalRecord;
+            if (pld?.problemId) {
+                setProblems(allProblems.filter(p => p.id === pld.problemId));
             } else {
                 setProblems(allProblems);
             }
@@ -78,9 +78,8 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
         fetchData();
     }, [fetchData]);
 
-    // Protocols for the currently selected problem
-    const problemProtocols: Protocol[] = selectedProblem
-        ? allProtocols.filter(p => selectedProblem.protocolIds?.includes(p.id))
+    const problemProtocols: Protocol[] = selectedProblem && selectedProblem.protocolId
+        ? allProtocols.filter(p => p.id === selectedProblem.protocolId)
         : [];
 
     if (isLoading) {

@@ -54,7 +54,10 @@ const PointsAdmin: React.FC = () => {
         'No points found',
         'Edit Point',
         'Delete Point',
-        'View Document'
+        'View Document',
+        'Image URL',
+        'View Image',
+        'Close Image'
     ], [registerString]);
 
     useEffect(() => {
@@ -173,6 +176,9 @@ const PointsAdmin: React.FC = () => {
                 corpo: { x: 0, y: 0, z: 0 }
             },
             documentUrl: {},
+            longText: {},
+            sensitivity: 'Medium',
+            imageURL: '',
             status: 'active',
             reference_count: 0
         };
@@ -238,6 +244,9 @@ const PointsAdmin: React.FC = () => {
                 code: pointToSave.code!.trim(),
                 label: pointToSave.label,
                 description: pointToSave.description,
+                longText: pointToSave.longText,
+                sensitivity: pointToSave.sensitivity || 'Medium',
+                imageURL: pointToSave.imageURL || '',
                 positions: pointToSave.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } },
                 documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
                 status: pointToSave.status || 'active',
@@ -483,7 +492,15 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         "Describe the point's purpose",
         "Active",
         "Inactive",
-        "Status"
+        "Status",
+        "Long Text",
+        "Additional detailed description",
+        "Sensitivity",
+        "Low",
+        "Medium",
+        "High",
+        "Image URL",
+        "URL to image"
     ], []);
 
     useEffect(() => {
@@ -496,9 +513,9 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
     }, [point, initialIsDirty]);
 
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        if (name === 'label' || name === 'description') {
+        if (name === 'label' || name === 'description' || name === 'longText') {
             setFormData(prev => ({
                 ...prev,
                 [name]: { ...(prev[name] as Record<string, string> || {}), [activeLang]: value }
@@ -525,7 +542,14 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+
+        // Clean undefined fields to prevent Firestore errors
+        const cleanedData = { ...formData };
+        if (cleanedData.longText === undefined) delete cleanedData.longText;
+        if (cleanedData.sensitivity === undefined) delete cleanedData.sensitivity;
+        if (cleanedData.imageURL === undefined) delete cleanedData.imageURL;
+
+        onSave(cleanedData);
     };
 
     const handleFileChange = (newFile: File | null) => {
@@ -645,6 +669,76 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                                 rows={3}
                             ></textarea>
                         </div>
+
+                        <div>
+                            <div className={styles.labelWrapper}>
+                                <label htmlFor="longText" className={styles.label}><T>Long Text</T></label>
+                                <div className={styles.indicatorContainer}>
+                                    <Globe size={14} className={styles.indicatorIcon} />
+                                    <span className={styles.translationCounter}>
+                                        {Object.values(formData.longText || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                    </span>
+                                </div>
+                            </div>
+                            {activeLang !== appConfig.defaultLanguage && !((formData.longText as Record<string, string>)?.[activeLang]) && (
+                                <TranslationReference
+                                    label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
+                                    text={(formData.longText as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                />
+                            )}
+                            <textarea
+                                id="longText"
+                                name="longText"
+                                value={(formData.longText as Record<string, string>)?.[activeLang] || ''}
+                                onChange={handleChange}
+                                placeholder={useT("Additional detailed description")}
+                                className={styles.textarea}
+                                rows={6}
+                            ></textarea>
+                        </div>
+
+                        <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
+                            <div>
+                                <label htmlFor="sensitivity" className={styles.label}><T>Sensitivity</T></label>
+                                <select
+                                    id="sensitivity"
+                                    name="sensitivity"
+                                    value={formData.sensitivity || 'Medium'}
+                                    onChange={handleChange}
+                                    className={styles.input}
+                                >
+                                    <option value="Low">{getTranslation('Low')}</option>
+                                    <option value="Medium">{getTranslation('Medium')}</option>
+                                    <option value="High">{getTranslation('High')}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="imageURL" className={styles.label}><T>Image URL</T></label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        id="imageURL"
+                                        name="imageURL"
+                                        type="text"
+                                        value={formData.imageURL || ''}
+                                        onChange={handleChange}
+                                        placeholder={useT('URL to image')}
+                                        className={styles.input}
+                                    />
+                                    {formData.imageURL && (
+                                        <a
+                                            href={formData.imageURL}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={styles.actionButton}
+                                            style={{ backgroundColor: 'var(--color-primary)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.375rem', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                                        >
+                                            <T>View</T>
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                         <div className={styles.positionsSection}>
                             <div className={styles.modelPositionBlock}>
                                 <label className={styles.label}><T>Xbot Position (Legacy/Mannequin)</T></label>

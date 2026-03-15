@@ -62,7 +62,7 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                 id: doc.id,
             }));
 
-            const measureIds = patient.medicalRecord?.patient_level_data?.treatment_plan?.measureIds;
+            const measureIds = patient.medicalRecord?.measureIds;
             if (measureIds && measureIds.length > 0) {
                 setMeasures(allMeasures.filter(m => measureIds.includes(m.id)));
             }
@@ -76,10 +76,10 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
             const pointsMap = new Map();
             pointsSnapshot.docs.forEach(d => pointsMap.set(d.id, { ...d.data(), id: d.id }));
 
-            const rounds: HydratedRound[] = (treatment.rounds || []).map(r => ({
-                protocolName: getMLValue(protocolsMap.get(r.protocolId), language),
-                points: (r.stungPointIds || []).map(id => pointsMap.get(id)).filter(p => !!p)
-            }));
+            const rounds: HydratedRound[] = treatment.protocolId ? [{
+                protocolName: getMLValue(protocolsMap.get(treatment.protocolId), language),
+                points: (treatment.stungPointIds || []).map(id => pointsMap.get(id)).filter(p => !!p)
+            }] : [];
             setHydratedRounds(rounds);
 
         } catch (err) {

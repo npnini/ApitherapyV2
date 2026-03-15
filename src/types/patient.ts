@@ -11,11 +11,9 @@ export interface MedicalData extends BaseDocument {
     lastTreatment?: string;
     consentSignedUrl?: string;
     treatmentInstructionsSignedUrl?: string;
-    treatment_plan?: {
-        problemIds: string[];
-        protocolIds: string[];
-        measureIds: string[];
-    }
+    problemId?: string;
+    protocolId?: string;
+    measureIds?: string[];
 }
 
 export interface MeasuredValueReading extends BaseDocument {
@@ -50,9 +48,7 @@ export interface PatientData extends BaseDocument {
 }
 
 export interface JoinedPatientData extends PatientData {
-    medicalRecord?: {
-        patient_level_data: Partial<MedicalData>;
-    };
+    medicalRecord?: Partial<MedicalData>;
     questionnaireResponse?: QuestionnaireResponse;
     /** Readings collected in ProblemsProtocolsTab, to be written after patient ID is resolved. */
     pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number; note?: string }>;
