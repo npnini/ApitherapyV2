@@ -218,6 +218,7 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
 
     await db.collection("measured_values").doc(readingId).set({
       patientId: patientId,
+      treatmentId: treatmentId,
       readings: readings,
       note: after.feedbackText || "",
       createdTimestamp: admin.firestore.FieldValue.serverTimestamp(),

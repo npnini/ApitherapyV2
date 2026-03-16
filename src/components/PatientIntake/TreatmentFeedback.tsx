@@ -120,6 +120,7 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
 
             // 1. Save to measured_values
             const readingId = await addMeasuredValueReading(patient.id, {
+                treatmentId: treatment.id,
                 readings: readings as any,
                 note: feedbackText
             });
@@ -205,6 +206,8 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                     <div className={styles.feedbackForm}>
                         <div className={styles.section}>
                             <textarea
+                                id="patientFeedbackText"
+                                name="patientFeedbackText"
                                 className={styles.textarea}
                                 value={feedbackText}
                                 onChange={e => setFeedbackText(e.target.value)}
@@ -226,6 +229,8 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                                             </div>
                                             {measure.type === 'Scale' ? (
                                                 <input
+                                                    id={`measure-${measure.id}`}
+                                                    name={`measure-${measure.id}`}
                                                     type="number"
                                                     className={styles.measureInput}
                                                     value={value}
@@ -236,6 +241,8 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                                                 />
                                             ) : (
                                                 <select
+                                                    id={`measure-${measure.id}`}
+                                                    name={`measure-${measure.id}`}
                                                     className={styles.measureInput}
                                                     value={String(value)}
                                                     onChange={e => handleMeasureChange(measure.id, e.target.value)}

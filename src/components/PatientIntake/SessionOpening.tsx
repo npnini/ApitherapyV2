@@ -16,6 +16,7 @@ export interface SessionOpeningData {
     preTreatmentVitals: Partial<VitalSigns>;
     preTreatmentMeasureReadingId?: string; // Captures the ID after saving to Firestore
     preTreatmentImage?: string; // URL of the uploaded image
+    generatedTreatmentId?: string; // Pre-generated ID to link measured_values
 }
 
 

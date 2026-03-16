@@ -123,10 +123,11 @@ export const addMeasuredValueReading = async (patientId: string, reading: Partia
  */
 export const saveTreatment = async (
     patientId: string,
-    session: Omit<TreatmentSession, 'id' | 'createdTimestamp' | 'updatedTimestamp'>
+    session: Omit<TreatmentSession, 'id' | 'createdTimestamp' | 'updatedTimestamp'>,
+    docIdOverride?: string
 ): Promise<string> => {
     const timestamp = Date.now();
-    const docId = `${patientId}_${timestamp}`;
+    const docId = docIdOverride || `${patientId}_${timestamp}`;
     const docRef = doc(db, 'treatments', docId);
     const serverTs = serverTimestamp();
 

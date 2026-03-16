@@ -18,6 +18,7 @@ export interface MedicalData extends BaseDocument {
 
 export interface MeasuredValueReading extends BaseDocument {
     patientId: string;
+    treatmentId?: string;
     note?: string;
     readings: Array<{
         measureId: string;
@@ -25,6 +26,8 @@ export interface MeasuredValueReading extends BaseDocument {
         value: string | number;
     }>;
 }
+
+
 
 
 export interface QuestionnaireResponse extends BaseDocument {

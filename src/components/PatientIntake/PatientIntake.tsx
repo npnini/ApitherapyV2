@@ -177,6 +177,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         getDoc(doc(db, 'cfg_app_config', 'main')).then(snap => {
             if (snap.exists()) setAppConfig(snap.data());
         }).catch(() => { /* non-critical */ });
+
+        // Load latest treatment for feedback button visibility (UX-9)
+        if (patient.id) {
+            getLatestTreatment(patient.id).then(setLatestTreatment);
+        } else {
+            setLatestTreatment(null);
+        }
     }, [patient]);
 
     useEffect(() => {
@@ -436,12 +443,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     const handleSessionOpeningComplete = async (data: SessionOpeningData) => {
         if (!patient.id) return;
+        const generatedTreatmentId = `${patient.id}_${Date.now()}`;
         let preTreatmentMeasureReadingId: string | undefined = undefined;
         // Write measure reading if any values entered
         if (data.measureReadings.length > 0) {
             try {
                 preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
                     patientId: patient.id,
+                    treatmentId: generatedTreatmentId,
                     readings: data.measureReadings,
                     note: data.patientReport,
                 });
@@ -449,7 +458,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 console.error('Failed to write measure reading:', err);
             }
         }
-        setSessionOpeningData({ ...data, preTreatmentMeasureReadingId });
+        setSessionOpeningData({ ...data, preTreatmentMeasureReadingId, generatedTreatmentId });
         console.log('PatientIntake: Session opening complete', { preTreatmentMeasureReadingId });
 
         // Check treatment count for sensitivity test routing
@@ -584,12 +593,29 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 postStingingVitals,
                 finalVitals,
                 finalNotes,
-            });
+            }, sessionOpeningData.generatedTreatmentId);
             setTreatmentSaveStatus('success');
             setIsDirty(false);
             setSessionOpeningData(null);
             setAccumulatedStungPointIds([]);
             setSessionIsSensitivityTest(false);
+            setLatestTreatment({
+                id: sessionOpeningData.generatedTreatmentId,
+                patientId: patient.id,
+                caretakerId: user.uid,
+                patientReport: sessionOpeningData.patientReport,
+                preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
+                preTreatmentImage: sessionOpeningData.preTreatmentImage,
+                preTreatmentMeasureReadingId: sessionOpeningData.preTreatmentMeasureReadingId,
+                isSensitivityTest: sessionIsSensitivityTest,
+                protocolId: selectedProtocol.id,
+                problemId: selectedProblemId || '',
+                stungPointIds: allStungPointIds,
+                postStingingVitals,
+                finalVitals,
+                finalNotes,
+                createdTimestamp: Date.now(), // Local approx for immediate UI update
+            } as any);
             setViewState('tabs');
             setActiveTab('treatments');
             if (onTreatmentComplete) onTreatmentComplete();
@@ -796,19 +822,24 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     onPointsSelected={handleFreeProtocolPointsSelected}
                                 />
                             )}
-                            {viewState === 'treatmentFeedback' && latestTreatment && (
+                            {viewState === 'treatmentFeedback' && (latestTreatment || sessionOpeningData) && (
                                 <TreatmentFeedback
                                     patient={patientData as JoinedPatientData}
-                                    treatment={latestTreatment}
+                                    treatment={latestTreatment || ({
+                                        ...sessionOpeningData!.preTreatmentVitals,
+                                        id: sessionOpeningData!.generatedTreatmentId,
+                                        patientId: patient.id,
+                                        protocolId: selectedProtocol?.id,
+                                        stungPointIds: accumulatedStungPointIds,
+                                        createdTimestamp: Date.now(),
+                                        finalNotes: '',
+                                    } as any)}
                                     onComplete={() => {
                                         setViewState('tabs');
                                         setActiveTab('treatments');
-                                        // Refresh latest treatment state
-                                        if (patient.id) {
-                                            getLatestTreatment(patient.id).then(setLatestTreatment);
-                                        }
+                                        if (onTreatmentComplete) onTreatmentComplete();
                                     }}
-                                    onBack={() => setViewState('tabs')}
+                                    onBack={() => setViewState(sessionOpeningData ? 'treatmentExecution' : 'tabs')}
                                 />
                             )}
                         </>
