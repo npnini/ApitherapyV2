@@ -323,7 +323,10 @@ const AppInner: React.FC = () => {
 
             // 5. Save measure readings (if entered in ProblemsProtocolsTab)
             if (pendingReadings && pendingReadings.length > 0) {
-                await addMeasuredValueReading(finalPatientId, { readings: pendingReadings });
+                await addMeasuredValueReading(finalPatientId, {
+                    readings: pendingReadings,
+                    usedMeasureIds: pendingReadings.map((r: any) => r.measureId)
+                });
             }
 
             await fetchInitialData(appUser);

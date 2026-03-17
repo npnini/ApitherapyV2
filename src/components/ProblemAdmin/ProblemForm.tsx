@@ -131,7 +131,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     onSubmit({
       name: names,
       description: descriptions,
-      protocolId: protocolId || undefined,
+      ...(protocolId ? { protocolId } : {}),
       measureIds,
       documentUrl,
       status: problemStatus,
@@ -149,7 +149,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       onFileUpdate({
         name: names,
         description: descriptions,
-        protocolId: protocolId || undefined,
+        ...(protocolId ? { protocolId } : {}),
         measureIds,
         documentUrl,
         status: problemStatus,

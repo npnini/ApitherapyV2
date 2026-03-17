@@ -106,11 +106,29 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
         setSaveStatus(null);
 
         try {
-            const readings = measures.map(m => ({
-                measureId: m.id,
-                type: m.type as 'Category' | 'Scale',
-                value: measureValues[m.id]
-            }));
+            const readings = measures.map(m => {
+                const value = measureValues[m.id];
+                let numericValue: number | undefined = undefined;
+
+                if (m.type === 'Category') {
+                    const category = m.categories?.find(cat => {
+                        const catLabel = getMLValue(cat, language);
+                        return catLabel === value;
+                    });
+                    numericValue = category?.numericValue;
+                } else {
+                    numericValue = typeof value === 'number' ? value : undefined;
+                }
+
+                return {
+                    measureId: m.id,
+                    type: m.type as 'Category' | 'Scale',
+                    value,
+                    numericValue,
+                };
+            }).filter(r => r.value !== undefined && r.value !== '');
+
+            const usedMeasureIds = readings.map(r => r.measureId);
 
             if (!patient.id) {
                 console.error('TreatmentFeedback: patient.id is missing');
@@ -122,6 +140,7 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
             const readingId = await addMeasuredValueReading(patient.id, {
                 treatmentId: treatment.id,
                 readings: readings as any,
+                usedMeasureIds: usedMeasureIds, // Added
                 note: feedbackText
             });
 

@@ -452,6 +452,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     patientId: patient.id,
                     treatmentId: generatedTreatmentId,
                     readings: data.measureReadings,
+                    usedMeasureIds: data.usedMeasureIds, // Added
                     note: data.patientReport,
                 });
             } catch (err) {

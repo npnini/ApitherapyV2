@@ -244,3 +244,17 @@ export const hasMeasuredValueReadings = async (patientId: string): Promise<boole
     const snapshot = await getDocs(q);
     return !snapshot.empty;
 };
+/**
+ * Checks globally if a measure has been used in any measured_values document.
+ * Uses the 'usedMeasureIds' array field.
+ */
+export const isMeasureUsed = async (measureId: string): Promise<boolean> => {
+    const colRef = collection(db, 'measured_values');
+    const q = query(
+        colRef,
+        where('usedMeasureIds', 'array-contains', measureId),
+        limit(1)
+    );
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+};

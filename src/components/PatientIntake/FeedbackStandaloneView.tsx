@@ -75,6 +75,10 @@ const translations: Record<string, Record<string, string>> = {
         'en': 'Invalid link.',
         'he': 'קישור לא תקין.'
     },
+    'You have already submitted feedback for this treatment.': {
+        'en': 'You have already submitted feedback for this treatment.',
+        'he': 'כבר שלחת משוב עבור טיפול זה.'
+    },
 };
 
 const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) => {
@@ -94,7 +98,25 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    setSession(docSnap.data() as FeedbackSession);
+                    const sessionData = docSnap.data() as FeedbackSession;
+
+                    // Check if treatment already has feedback
+                    const treatmentRef = doc(db, 'treatments', sessionData.treatmentId);
+                    const treatmentSnap = await getDoc(treatmentRef);
+
+                    if (treatmentSnap.exists()) {
+                        const treatmentData = treatmentSnap.data();
+                        if (treatmentData.patientFeedbackMeasureReadingId) {
+                            // Feedback already exists, show explicit message
+                            setError('You have already submitted feedback for this treatment.');
+                            // But keep session for language/direction
+                            setSession(sessionData);
+                        } else {
+                            setSession(sessionData);
+                        }
+                    } else {
+                        setSession(sessionData);
+                    }
                 } else {
                     setError('Invalid or expired link.');
                 }

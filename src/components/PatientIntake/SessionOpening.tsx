@@ -12,11 +12,12 @@ import styles from './SessionOpening.module.css';
 
 export interface SessionOpeningData {
     patientReport: string;
-    measureReadings: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number }>;
+    measureReadings: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number; numericValue?: number }>;
     preTreatmentVitals: Partial<VitalSigns>;
     preTreatmentMeasureReadingId?: string; // Captures the ID after saving to Firestore
     preTreatmentImage?: string; // URL of the uploaded image
     generatedTreatmentId?: string; // Pre-generated ID to link measured_values
+    usedMeasureIds?: string[]; // Added: usedMeasureIds
 }
 
 
@@ -194,18 +195,37 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
 
         const measureReadings = measures
             .filter(m => measureValues[m.id] !== undefined && measureValues[m.id] !== '')
-            .map(m => ({
-                measureId: m.id,
-                type: m.type,
-                value: measureValues[m.id],
-            }));
+            .map(m => {
+                const value = measureValues[m.id];
+                let numericValue: number | undefined = undefined;
+
+                if (m.type === 'Category') {
+                    const category = m.categories?.find(cat => {
+                        const catLabel = getMLValue(cat, language);
+                        return catLabel === value;
+                    });
+                    numericValue = category?.numericValue;
+                } else {
+                    numericValue = typeof value === 'number' ? value : undefined;
+                }
+
+                return {
+                    measureId: m.id,
+                    type: m.type,
+                    value,
+                    numericValue,
+                };
+            });
+
+        const usedMeasureIds = measureReadings.map(r => r.measureId);
 
         onComplete({
             patientReport: patientReport.trim(),
             measureReadings,
             preTreatmentVitals,
-            preTreatmentImage
-        });
+            preTreatmentImage,
+            usedMeasureIds // Wait, I need to add this to the interface too if I want it passed through.
+        } as any);
 
     };
 

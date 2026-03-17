@@ -6,7 +6,7 @@ export interface Measure {
     name: { [key: string]: string };
     description: { [key: string]: string };
     type: MeasureType;
-    categories?: Array<{ [key: string]: string }>;
+    categories?: Array<{ [key: string]: any; numericValue?: number }>;
     scale?: {
         min?: number;
         max?: number;

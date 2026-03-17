@@ -20,10 +20,12 @@ export interface MeasuredValueReading extends BaseDocument {
     patientId: string;
     treatmentId?: string;
     note?: string;
+    usedMeasureIds?: string[];
     readings: Array<{
         measureId: string;
         type: 'Category' | 'Scale';
         value: string | number;
+        numericValue?: number;
     }>;
 }
 
@@ -54,5 +56,5 @@ export interface JoinedPatientData extends PatientData {
     medicalRecord?: Partial<MedicalData>;
     questionnaireResponse?: QuestionnaireResponse;
     /** Readings collected in ProblemsProtocolsTab, to be written after patient ID is resolved. */
-    pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number; note?: string }>;
+    pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number; numericValue?: number; note?: string }>;
 }

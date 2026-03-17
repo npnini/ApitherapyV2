@@ -210,16 +210,35 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
     const sessionMeasures = after.measures || [];
 
     // Transform map to array of objects as expected by the frontend
-    const readings = sessionMeasures.map((m: { id: string, type: string }) => ({
-      measureId: m.id,
-      type: m.type,
-      value: responses[m.id],
-    })).filter((r: { value: unknown }) => r.value !== undefined);
+    const readings = sessionMeasures.map((m: any) => {
+      const value = responses[m.id];
+      let numericValue: number | undefined = undefined;
+
+      if (m.type === 'Category') {
+        const category = (m.categories || []).find((cat: any) => {
+          // Check all languages for match since we don't know which one the patient used exactly
+          return Object.values(cat).some(v => v === value);
+        });
+        numericValue = category?.numericValue;
+      } else {
+        numericValue = typeof value === 'number' ? value : undefined;
+      }
+
+      return {
+        measureId: m.id,
+        type: m.type,
+        value: value,
+        numericValue: numericValue,
+      };
+    }).filter((r: { value: unknown }) => r.value !== undefined && r.value !== '');
+
+    const usedMeasureIds = readings.map((r: any) => r.measureId);
 
     await db.collection("measured_values").doc(readingId).set({
       patientId: patientId,
       treatmentId: treatmentId,
       readings: readings,
+      usedMeasureIds: usedMeasureIds, // Added
       note: after.feedbackText || "",
       createdTimestamp: admin.firestore.FieldValue.serverTimestamp(),
       updatedTimestamp: admin.firestore.FieldValue.serverTimestamp(),

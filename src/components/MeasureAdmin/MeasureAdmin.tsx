@@ -1,15 +1,33 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../../firebase';
+import { isMeasureUsed } from '../../firebase/patient';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Measure } from '../../types/measure';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, AlertCircle, Loader, FileCheck2, X, Globe, Search } from 'lucide-react';
 import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 import DocumentManagement from '../shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const MeasureAdmin: React.FC = () => {
     const { language: currentLang, getTranslation, registerString } = useTranslationContext();
@@ -25,6 +43,7 @@ const MeasureAdmin: React.FC = () => {
     const [isDirty, setIsDirty] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
+    const [isMeasureInUse, setIsMeasureInUse] = useState(false);
 
     // Register all strings used in callbacks or non-T components
     const stringsToRegister = useMemo(() => [
@@ -157,13 +176,19 @@ const MeasureAdmin: React.FC = () => {
         });
     }, [measures, searchTerm, currentLang, appConfig.defaultLanguage, getTranslation]);
 
-    const handleStartEditing = (measure: Measure) => {
+    const handleStartEditing = async (measure: Measure) => {
         setFormError(null);
         let docUrls = measure.documentUrl;
         if (typeof docUrls === 'string') {
             docUrls = { en: docUrls };
         }
         const measureToEdit = { ...measure, documentUrl: docUrls };
+
+        setIsLoading(true); // Re-use loader for use check
+        const inUse = await isMeasureUsed(measure.id);
+        setIsMeasureInUse(inUse);
+        setIsLoading(false);
+
         setEditingMeasure(measureToEdit);
         setOriginalMeasure(measureToEdit);
         setIsDirty(false);
@@ -171,6 +196,7 @@ const MeasureAdmin: React.FC = () => {
 
     const handleAddNew = () => {
         setFormError(null);
+        setIsMeasureInUse(false);
         const newMeasure: Measure = {
             id: '',
             name: {},
@@ -258,7 +284,12 @@ const MeasureAdmin: React.FC = () => {
             };
 
             if (measureToSave.type === 'Category') {
-                dataToSave.categories = measureToSave.categories;
+                // Auto-assign numeric values in increments of 100 if not in use
+                const categories = (measureToSave.categories || []).map((cat, idx) => ({
+                    ...cat,
+                    numericValue: (idx + 1) * 100
+                }));
+                dataToSave.categories = categories;
                 dataToSave.scale = null;
             } else if (measureToSave.type === 'Scale') {
                 dataToSave.scale = measureToSave.scale;
@@ -400,6 +431,7 @@ const MeasureAdmin: React.FC = () => {
                     onUpdate={handleUpdate}
                     isDirty={isDirty}
                     appConfig={appConfig}
+                    isUsed={isMeasureInUse}
                 />
             )}
 
@@ -509,7 +541,73 @@ interface EditMeasureFormProps {
     onUpdate: (measure: Measure, file?: File | null, lang?: string) => void;
     isDirty: boolean;
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
+    isUsed: boolean;
 }
+
+interface SortableCategoryItemProps {
+    index: number;
+    cat: { [key: string]: any };
+    activeLang: string;
+    getLangDisplayName: (lang: string) => string;
+    getTranslation: (key: string) => string;
+    handleEditCategory: (index: number) => void;
+    handleRemoveCategory: (index: number) => void;
+    isUsed: boolean;
+}
+
+const SortableCategoryItem: React.FC<SortableCategoryItemProps> = ({
+    index,
+    cat,
+    activeLang,
+    getLangDisplayName,
+    getTranslation,
+    handleEditCategory,
+    handleRemoveCategory,
+    isUsed
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: `cat-${index}` });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 1 : 0,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    const displayValue = cat[activeLang] || cat['en'] || Object.values(cat)[0] || '';
+    const isMissingActiveLang = !cat[activeLang];
+
+    return (
+        <div ref={setNodeRef} style={style} className={formStyles.categoryTag}>
+            <div className={formStyles.categoryTagLeft} {...(!isUsed ? { ...attributes, ...listeners } : {})}>
+                {!isUsed && <div className={formStyles.dragHandle}>⠿</div>}
+                <span>
+                    {displayValue}
+                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({getLangDisplayName(activeLang)} <T>missing</T>)</span>}
+                </span>
+            </div>
+            <div>
+                {!isUsed && (
+                    <>
+                        <button type="button" title={getTranslation('Edit')} onClick={() => handleEditCategory(index)} className={formStyles.actionButton}>
+                            <Edit size={16} />
+                        </button>
+                        <button type="button" title={getTranslation('Remove')} onClick={() => handleRemoveCategory(index)} className={formStyles.actionButton}>
+                            <Trash2 size={16} />
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const TranslationReference: React.FC<{ label: React.ReactNode; text: string | undefined }> = ({ label, text }) => {
     if (!text) return null;
@@ -521,7 +619,7 @@ const TranslationReference: React.FC<{ label: React.ReactNode; text: string | un
     );
 };
 
-const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, onSave, onCancel, error, isSubmitting, onUpdate, isDirty, appConfig }) => {
+const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, onSave, onCancel, error, isSubmitting, onUpdate, isDirty, appConfig, isUsed }) => {
     const { language: currentLang, getTranslation, registerString } = useTranslationContext();
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
@@ -532,6 +630,25 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     const [categoryInput, setCategoryInput] = useState('');
     const [editingCategoryIndex, setEditingCategoryIndex] = useState<number | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = parseInt((active.id as string).split('-')[1], 10);
+            const newIndex = parseInt((over.id as string).split('-')[1], 10);
+            const updatedCategories = arrayMove(formData.categories || [], oldIndex, newIndex);
+            const updatedMeasure = { ...formData, categories: updatedCategories };
+            setFormData(updatedMeasure);
+            onUpdate(updatedMeasure);
+        }
+    };
 
     useEffect(() => {
         setFormData(measure);
@@ -586,7 +703,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     const handleAddCategory = () => {
         if (!categoryInput.trim()) return;
 
-        let updatedCategories: Array<{ [key: string]: string }>;
+        let updatedCategories: Array<{ [key: string]: any }>;
 
         if (editingCategoryIndex !== null) {
             updatedCategories = [...(formData.categories || [])];
@@ -751,46 +868,65 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             <label htmlFor="type" className={formStyles.label}>
                                 <T>Type</T>
                             </label>
-                            <select id="type" name="type" value={formData.type} onChange={handleChange} className={formStyles.select}>
-                                <option value="Category">{useT('Category')}</option>
-                                <option value="Scale">{useT('Scale')}</option>
-                            </select>
+                            {isUsed ? (
+                                <Tooltip text={getTranslation('Cannot change type: measure has already been recorded in treatments')}>
+                                    <select id="type" name="type" value={formData.type} onChange={handleChange} className={`${formStyles.select} ${formStyles.selectDisabled}`} disabled>
+                                        <option value="Category">{useT('Category')}</option>
+                                        <option value="Scale">{useT('Scale')}</option>
+                                    </select>
+                                </Tooltip>
+                            ) : (
+                                <select id="type" name="type" value={formData.type} onChange={handleChange} className={formStyles.select}>
+                                    <option value="Category">{useT('Category')}</option>
+                                    <option value="Scale">{useT('Scale')}</option>
+                                </select>
+                            )}
                         </div>
 
                         {formData.type === 'Category' && (
                             <div>
                                 <label className={formStyles.label}><T>Categories</T></label>
-                                <div className={formStyles.categoryInputContainer}>
-                                    <input
-                                        type="text"
-                                        value={categoryInput}
-                                        onChange={(e) => setCategoryInput(e.target.value)}
-                                        placeholder={useT('Add a new category')}
-                                        className={formStyles.input}
-                                    />
-                                    <button type="button" onClick={handleAddCategory} className={`${styles.addButton} ${formStyles.addButton}`}>{editingCategoryIndex !== null ? <T>Update</T> : <T>Add</T>}</button>
+                                {!isUsed && (
+                                    <div className={formStyles.categoryInputContainer}>
+                                        <input
+                                            type="text"
+                                            value={categoryInput}
+                                            onChange={(e) => setCategoryInput(e.target.value)}
+                                            placeholder={useT('Add a new category')}
+                                            className={formStyles.input}
+                                        />
+                                        <button type="button" onClick={handleAddCategory} className={`${styles.addButton} ${formStyles.addButton}`}>{editingCategoryIndex !== null ? <T>Update</T> : <T>Add</T>}</button>
+                                    </div>
+                                )}
+                                <div className={formStyles.reorderText}>
+                                    <AlertCircle size={16} />
+                                    <T>Set the order of the categories from low to high</T>
                                 </div>
                                 <div className={formStyles.categoryList}>
-                                    {formData.categories?.map((cat, index) => {
-                                        const displayValue = cat[activeLang] || cat['en'] || Object.values(cat)[0] || '';
-                                        const isMissingActiveLang = !cat[activeLang];
-                                        return (
-                                            <div key={index} className={formStyles.categoryTag}>
-                                                <span>
-                                                    {displayValue}
-                                                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({getLangDisplayName(activeLang)} <T>missing</T>)</span>}
-                                                </span>
-                                                <div>
-                                                    <button type="button" title={getTranslation('Edit')} onClick={() => handleEditCategory(index)} className={formStyles.actionButton}>
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <button type="button" title={getTranslation('Remove')} onClick={() => handleRemoveCategory(index)} className={formStyles.actionButton}>
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleDragEnd}
+                                    >
+                                        <SortableContext
+                                            items={(formData.categories || []).map((_, i) => `cat-${i}`)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            {formData.categories?.map((cat, index) => (
+                                                <SortableCategoryItem
+                                                    key={`cat-${index}`}
+                                                    index={index}
+                                                    cat={cat}
+                                                    activeLang={activeLang}
+                                                    getLangDisplayName={getLangDisplayName}
+                                                    getTranslation={getTranslation}
+                                                    handleEditCategory={handleEditCategory}
+                                                    handleRemoveCategory={handleRemoveCategory}
+                                                    isUsed={isUsed}
+                                                />
+                                            ))}
+                                        </SortableContext>
+                                    </DndContext>
                                 </div>
                             </div>
                         )}
@@ -805,7 +941,8 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                         name="min"
                                         value={formData.scale?.min ?? ''}
                                         onChange={handleScaleChange}
-                                        className={formStyles.input}
+                                        className={`${formStyles.input} ${isUsed ? formStyles.inputDisabled : ''}`}
+                                        disabled={isUsed}
                                     />
                                 </div>
                                 <div>
@@ -816,7 +953,8 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                                         name="max"
                                         value={formData.scale?.max ?? ''}
                                         onChange={handleScaleChange}
-                                        className={formStyles.input}
+                                        className={`${formStyles.input} ${isUsed ? formStyles.inputDisabled : ''}`}
+                                        disabled={isUsed}
                                     />
                                 </div>
                             </div>
