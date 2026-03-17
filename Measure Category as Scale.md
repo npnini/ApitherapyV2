@@ -24,5 +24,5 @@ When storing a measured\_values document with the measure values entered in the 
 src\\components\\PatientIntake\\FeedbackStandaloneView.tsx:  
 Same as defined for SessionOpening.
 
-functions\\src\\[index.ts](http://index.ts):  
+functions\\src\\[index.ts]:  
 Same as defined for SessionOpening
