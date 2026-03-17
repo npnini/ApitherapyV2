@@ -210,18 +210,18 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
     const sessionMeasures = after.measures || [];
 
     // Transform map to array of objects as expected by the frontend
-    const readings = sessionMeasures.map((m: any) => {
+    const readings = sessionMeasures.map((m: { id: string; type: string; categories?: Record<string, unknown>[] }) => {
       const value = responses[m.id];
       let numericValue: number | undefined = undefined;
 
-      if (m.type === 'Category') {
-        const category = (m.categories || []).find((cat: any) => {
+      if (m.type === "Category") {
+        const category = (m.categories || []).find((cat: Record<string, unknown>) => {
           // Check all languages for match since we don't know which one the patient used exactly
-          return Object.values(cat).some(v => v === value);
+          return Object.values(cat).some((v) => v === value);
         });
-        numericValue = category?.numericValue;
+        numericValue = (category as { numericValue?: number })?.numericValue;
       } else {
-        numericValue = typeof value === 'number' ? value : undefined;
+        numericValue = typeof value === "number" ? value : undefined;
       }
 
       return {
@@ -230,9 +230,9 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
         value: value,
         numericValue: numericValue,
       };
-    }).filter((r: { value: unknown }) => r.value !== undefined && r.value !== '');
+    }).filter((r: { value: unknown }) => r.value !== undefined && r.value !== "");
 
-    const usedMeasureIds = readings.map((r: any) => r.measureId);
+    const usedMeasureIds = readings.map((r: { measureId: string }) => r.measureId);
 
     await db.collection("measured_values").doc(readingId).set({
       patientId: patientId,
@@ -349,7 +349,7 @@ export const filterPiiTransform = onRequest({ region: "europe-west1" }, (req, re
   }
 
   // The extension sends data in an array called 'data'
-  const transformedData = payload.data.map((record: any) => {
+  const transformedData = payload.data.map((record: { insertId: string; json: { data: Record<string, unknown> } }) => {
     // 1. Get the raw Firestore data from the record
     const docData = record.json.data;
 
