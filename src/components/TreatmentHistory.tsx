@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { PatientData } from '../types/patient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { JoinedPatientData } from '../types/patient';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, doc, getDoc, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { VitalSigns, ProtocolRound } from '../types/treatmentSession';
-import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight } from 'lucide-react';
+import { VitalSigns } from '../types/treatmentSession';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './TreatmentHistory.module.css';
 
@@ -22,8 +22,6 @@ const renderSafe = (value: any): React.ReactNode => {
         return String(value);
     }
     if (typeof value === 'object') {
-        // If it's a Translation object, it should have been handled by getMLValue
-        // But if it's a VitalSigns or other data object, we stringify it for safety
         return Object.entries(value as object)
             .filter(([_, v]) => v !== undefined && v !== null && typeof v !== 'function')
             .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
@@ -34,33 +32,14 @@ const renderSafe = (value: any): React.ReactNode => {
 
 interface VitalSignsDisplayProps {
     title: string;
-    vitals: Partial<VitalSigns> | string | undefined;
+    vitals: Partial<VitalSigns> | undefined;
     icon?: React.ReactNode;
 }
 
 const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals, icon }) => {
-    if (!vitals) {
-        return null;
-    }
-
-    // Handle legacy string format
-    if (typeof vitals === 'string') {
-        return (
-            <div className={styles.vitalsBlock}>
-                <h4 className={styles.innerLabel}>
-                    {icon && <span className={styles.iconWrapper}>{icon}</span>}
-                    <T>{title}</T>
-                </h4>
-                <p className={styles.detailContentShort}>{vitals}</p>
-            </div>
-        );
-    }
-
+    if (!vitals) return null;
     const { systolic, diastolic, heartRate } = vitals;
-
-    if (systolic === undefined && diastolic === undefined && heartRate === undefined) {
-        return null;
-    }
+    if (systolic === undefined && diastolic === undefined && heartRate === undefined) return null;
 
     return (
         <div className={styles.vitalsBlock}>
@@ -74,50 +53,40 @@ const VitalSignsDisplay: React.FC<VitalSignsDisplayProps> = ({ title, vitals, ic
                 {heartRate !== undefined && <div><span className={styles.vitalsLabel}><T>Heart Rate</T>:</span> {renderSafe(heartRate)}</div>}
             </div>
         </div>
-    )
-}
+    );
+};
 
-// Explicit type for documents stored in Firestore
+/** Flat Firestore treatment document — matches TreatmentSession schema exactly */
 interface StoredTreatmentDoc {
     id: string;
     patientId: string;
     caretakerId: string;
-    timestamp?: any;
-    date?: string; // legacy
+    createdTimestamp?: any;
+    updatedTimestamp?: any;
     patientReport: string;
-    preSessionVitals?: Partial<VitalSigns>;
-    preStingVitals?: Partial<VitalSigns>; // legacy
-    rounds: ProtocolRound[];
+    preTreatmentVitals?: Partial<VitalSigns>;
+    preTreatmentMeasureReadingId?: string;
+    preTreatmentImage?: string;
+    isSensitivityTest?: boolean;
+    protocolId?: string;
+    problemId?: string;
+    stungPointIds?: string[];
     postStingingVitals?: Partial<VitalSigns>;
     finalVitals?: Partial<VitalSigns>;
     finalNotes?: string;
-    isSensitivityTest?: boolean;
-    measureReadingId?: string; // Link to KPI readings
-    patientFeedback?: string; // Patient's subjective feedback
-    patientFeedbackMeasureReadingId?: string; // Link to patient feedback KPI readings
-    preTreatmentImage?: string; // URL of the uploaded image
-    vitals?: string; // legacy
-    protocolId?: string; // legacy
-    protocolName?: string | Record<string, string>; // legacy
-    stungPoints?: string[]; // legacy
+    patientFeedback?: string;
+    patientFeedbackMeasureReadingId?: string;
 }
 
-// Explicit type for the hydrated data used for rendering
-interface HydratedRound extends Omit<ProtocolRound, 'stungPointIds' | 'stungPointCodes'> {
-    protocolName?: string | Record<string, string>;
+/** Hydrated form — adds resolved point objects and fetched measure readings */
+interface HydratedTreatment extends StoredTreatmentDoc {
     stungPoints: StingPoint[];
-}
-
-interface HydratedTreatment extends Omit<StoredTreatmentDoc, 'rounds' | 'stungPoints'> {
-    rounds: HydratedRound[];
-    stungPoints?: StingPoint[]; // legacy
-    measuredValues?: Array<{ label: string; value: string | number }>;
+    measuredValues?: Array<{ measureId: string; label: string; value: string | number }>;
     feedbackMeasuredValues?: Array<{ label: string; value: string | number }>;
-    preTreatmentImage?: string;
 }
 
 interface TreatmentHistoryProps {
-    patient: PatientData;
+    patient: Partial<JoinedPatientData>;
     onBack: () => void;
     isTab?: boolean;
 }
@@ -132,6 +101,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [caretakerNames, setCaretakerNames] = useState<Map<string, string>>(new Map());
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'tabular'>('list');
+    const [patientMeasureNames, setPatientMeasureNames] = useState<{ id: string, name: string | Record<string, string> }[]>([]);
+    const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
 
     const fetchTreatments = useCallback(async () => {
         setIsLoading(true);
@@ -145,79 +117,63 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 orderBy('__name__', 'desc')
             );
             const querySnapshot = await getDocs(q);
+            const rawTreatments = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as StoredTreatmentDoc));
 
-            let rawDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StoredTreatmentDoc));
-
-            // If timestamp query returned nothing but collection might not be empty (unlikely with orderBy), 
-            // or if we need to merge with legacy 'date' field docs if they don't have timestamps:
-            // For now, most new docs have 'timestamp' from saveTreatment. 
-            // If a doc has only 'date', 'timestamp' will be undefined.
-
-            const rawTreatments = rawDocs;
-
-            // Fetch all points to handle both legacy IDs and new Codes in stungPoints
+            // Fetch all acupuncture points
             const pointsSnapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
             const pointsMap = new Map<string, StingPoint>();
-            pointsSnapshot.docs.forEach(doc => {
-                const data = doc.data() as StingPoint;
-                const point = { ...data, id: doc.id };
-                pointsMap.set(doc.id, point);
+            pointsSnapshot.docs.forEach(d => {
+                const data = d.data() as StingPoint;
+                const point = { ...data, id: d.id };
+                pointsMap.set(d.id, point);
                 pointsMap.set(data.code, point);
             });
+            pointsMapRef.current = pointsMap;
 
-            // Fetch measures labels
+            // Fetch measures and protocols
             const [measuresSnapshot, protocolsSnapshot] = await Promise.all([
                 getDocs(collection(db, 'cfg_measures')),
                 getDocs(collection(db, 'cfg_protocols'))
             ]);
 
             const measuresMap = new Map<string, string | Record<string, string>>();
-            measuresSnapshot.docs.forEach(doc => {
-                measuresMap.set(doc.id, doc.data().name);
+            const patientMeasures: { id: string, name: string | Record<string, string> }[] = [];
+            measuresSnapshot.docs.forEach(d => {
+                const data = d.data();
+                measuresMap.set(d.id, data.name);
+                if ((patient as JoinedPatientData).medicalRecord?.measureIds?.includes(d.id)) {
+                    patientMeasures.push({ id: d.id, name: data.name });
+                }
             });
+            setPatientMeasureNames(patientMeasures);
 
             const protocolsMap = new Map<string, string | Record<string, string>>();
-            protocolsSnapshot.docs.forEach(doc => {
-                protocolsMap.set(doc.id, doc.data().name);
+            protocolsSnapshot.docs.forEach(d => {
+                protocolsMap.set(d.id, d.data().name);
             });
 
-            setTreatments([]); // Clear old state
+            // Hydrate each treatment
             const hydratedTreatments = await Promise.all(rawTreatments.map(async (treatment): Promise<HydratedTreatment> => {
-                // Determine if it's new structure (rounds) or legacy (single protocol)
-                const rounds = treatment.rounds || [];
-                const hasRounds = rounds.length > 0;
+                // Resolve stungPointIds → StingPoint objects
+                const stungPoints: StingPoint[] = (treatment.stungPointIds ?? [])
+                    .map(id => pointsMap.get(id))
+                    .filter((p): p is StingPoint => p !== undefined);
 
-                const hydratedRounds: HydratedRound[] = rounds.map(round => {
-                    const roundAny = round as any;
-                    const stungPointIds = roundAny.stungPointIds || roundAny.stungPointCodes || [];
-                    return {
-                        ...round,
-                        protocolName: protocolsMap.get(round.protocolId),
-                        stungPoints: stungPointIds
-                            .map((idOrCode: string) => pointsMap.get(idOrCode))
-                            .filter((p: StingPoint | undefined): p is StingPoint => p !== undefined)
-                    };
-                });
-
-                // Handle legacy hydration if needed
-                const legacyPoints = !hasRounds && Array.isArray(treatment.stungPoints)
-                    ? treatment.stungPoints.map(id => pointsMap.get(id)).filter((p): p is StingPoint => p !== undefined)
-                    : undefined;
-
-                // Fetch measured values (KPIs)
-                let measuredValues: Array<{ label: string; value: string | number }> = [];
-                if (treatment.measureReadingId) {
+                // Fetch pre-treatment measured values
+                let measuredValues: Array<{ measureId: string; label: string; value: string | number }> = [];
+                if (treatment.preTreatmentMeasureReadingId) {
                     try {
-                        const readingDoc = await getDoc(doc(db, 'measured_values', treatment.measureReadingId));
+                        const readingDoc = await getDoc(doc(db, 'measured_values', treatment.preTreatmentMeasureReadingId));
                         if (readingDoc.exists()) {
                             const data = readingDoc.data();
                             measuredValues = (data.readings || []).map((r: any) => ({
+                                measureId: r.measureId,
                                 label: getMLValue(measuresMap.get(r.measureId), language),
                                 value: r.value
                             }));
                         }
                     } catch (err) {
-                        console.error("Error fetching measure reading:", err);
+                        console.error('Error fetching measure reading:', err);
                     }
                 }
 
@@ -234,14 +190,13 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                             }));
                         }
                     } catch (err) {
-                        console.error("Error fetching patient feedback measure reading:", err);
+                        console.error('Error fetching patient feedback measure reading:', err);
                     }
                 }
 
                 return {
                     ...treatment,
-                    rounds: hydratedRounds,
-                    stungPoints: legacyPoints,
+                    stungPoints,
                     measuredValues: measuredValues.length > 0 ? measuredValues : undefined,
                     feedbackMeasuredValues: feedbackMeasuredValues.length > 0 ? feedbackMeasuredValues : undefined
                 };
@@ -249,11 +204,10 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
             setTreatments(hydratedTreatments);
 
-            // Fetch caretaker names
+            // Fetch caretaker display names
             const uniqueCaretakerIds = Array.from(new Set(rawTreatments.map(t => t.caretakerId)));
             const newNamesMap = new Map<string, string>(Array.from(caretakerNames.entries()));
             let mapChanged = false;
-
             await Promise.all(uniqueCaretakerIds.map(async (id) => {
                 if (!newNamesMap.has(id)) {
                     try {
@@ -268,13 +222,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     }
                 }
             }));
+            if (mapChanged) setCaretakerNames(newNamesMap);
 
-            if (mapChanged) {
-                setCaretakerNames(newNamesMap);
-            }
         } catch (err) {
-            console.error("Error fetching treatment history:", err);
-            setError("Failed to load treatment history");
+            console.error('Error fetching treatment history:', err);
+            setError('Failed to load treatment history');
         } finally {
             setIsLoading(false);
         }
@@ -284,30 +236,22 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         fetchTreatments();
     }, [fetchTreatments]);
 
-    const formatDate = (treatment: StoredTreatmentDoc | HydratedTreatment) => {
-        // Prefer explicit createdTimestamp which is a Firestore Timestamp
-        const dateVal = (treatment as any).createdTimestamp || treatment.timestamp || treatment.date;
+    const formatDate = (treatment: StoredTreatmentDoc) => {
+        const dateVal = treatment.createdTimestamp;
         if (!dateVal) return tNotAvailable;
-
         try {
             let date: Date;
             if (dateVal.seconds) {
-                // Firestore Timestamp
                 date = new Date(dateVal.seconds * 1000);
             } else if (typeof dateVal === 'number') {
-                // Epoch ms
                 date = new Date(dateVal);
             } else if (typeof dateVal === 'string') {
-                // ISO String or other
                 date = new Date(dateVal);
             } else {
                 return tNotAvailable;
             }
-
-            return date.toLocaleString(language, {
-                year: 'numeric', month: 'numeric', day: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
+            const pad2 = (n: number) => String(n).padStart(2, '0');
+            return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
         } catch (e) {
             return tInvalidDate;
         }
@@ -349,23 +293,95 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 </div>
             )}
 
+            {/* View toggle */}
+            <div className={styles.viewToggle}>
+                <button
+                    onClick={() => setViewMode('list')}
+                    className={`${styles.toggleButton} ${viewMode === 'list' ? styles.activeToggle : ''}`}
+                >
+                    <List size={18} />
+                    <T>List View</T>
+                </button>
+                <button
+                    onClick={() => setViewMode('tabular')}
+                    className={`${styles.toggleButton} ${viewMode === 'tabular' ? styles.activeToggle : ''}`}
+                >
+                    <Table size={18} />
+                    <T>Tabular View</T>
+                </button>
+            </div>
+
             {treatments.length === 0 ? (
                 <div className={styles.emptyState}>
                     <p><T>No treatments recorded</T></p>
                 </div>
+
+            ) : viewMode === 'tabular' ? (
+                /* ── TABULAR VIEW ────────────────────────────────────────── */
+                <div className={styles.tableWrapper}>
+                    <table className={styles.treatmentTable}>
+                        <thead>
+                            <tr>
+                                <th><T>Date and time</T></th>
+                                <th><T>Patient Report</T></th>
+                                {patientMeasureNames.map(m => (
+                                    <th key={m.id}>{getMLValue(m.name, language)}</th>
+                                ))}
+                                <th><T>Pre treatment Vitals</T></th>
+                                <th><T>Stings</T></th>
+                                <th><T>Post treatment Vitals</T></th>
+                                <th><T>Final notes</T></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {treatments.map((t) => {
+                                const preV = t.preTreatmentVitals;
+                                const preVitalsStr = preV
+                                    ? `${preV.systolic ?? '-'}-${preV.diastolic ?? '-'}-${preV.heartRate ?? '-'}`
+                                    : '-';
+
+                                const postV = t.finalVitals;
+                                const postVitalsStr = postV
+                                    ? `${postV.systolic ?? '-'}-${postV.diastolic ?? '-'}-${postV.heartRate ?? '-'}`
+                                    : '-';
+
+                                const stingCodes = t.stungPoints.length > 0
+                                    ? t.stungPoints.map(p => p.code).join(', ')
+                                    : '-';
+
+                                return (
+                                    <tr key={t.id}>
+                                        <td className={styles.dateCell}>{formatDate(t)}</td>
+                                        <td className={styles.reportCell}>{t.patientReport || '-'}</td>
+                                        {patientMeasureNames.map(m => {
+                                            const mv = t.measuredValues?.find(mv => mv.measureId === m.id);
+                                            return <td key={m.id} className={styles.measureCell}>{mv?.value ?? '-'}</td>;
+                                        })}
+                                        <td className={styles.vitalsCell}>{preVitalsStr}</td>
+                                        <td className={styles.stingsCell}>{stingCodes}</td>
+                                        <td className={styles.vitalsCell}>{postVitalsStr}</td>
+                                        <td className={styles.notesCell}>{t.finalNotes || '-'}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
             ) : (
+                /* ── LIST VIEW ───────────────────────────────────────────── */
                 <div className={styles.treatmentsList}>
                     {treatments.map((treatment) => (
                         <div key={treatment.id} className={styles.treatmentCard}>
                             <div className={styles.cardHeader} dir={direction}>
                                 <div className={styles.metaInfo}>
                                     <h2 className={styles.protocolName}>
-                                        {treatment.rounds?.length > 0
-                                            ? (treatment.rounds.length === 1
-                                                ? getMLValue(treatment.rounds[0].protocolName, language)
-                                                : <T>Multi-protocol session</T>)
-                                            : getMLValue(treatment.protocolName, language)}
-                                        {treatment.isSensitivityTest && <span className={styles.sensitivityBadge}> (<T>Sensitivity Test</T>)</span>}
+                                        {treatment.isSensitivityTest
+                                            ? <><T>Sensitivity Test</T></>
+                                            : (treatment.protocolId || <T>Treatment</T>)
+                                        }
+                                        {treatment.isSensitivityTest &&
+                                            <span className={styles.sensitivityBadge}> (<T>Sensitivity Test</T>)</span>}
                                     </h2>
                                     <div className={styles.metaRow}>
                                         <Calendar size={16} />
@@ -391,7 +407,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                             <p className={styles.detailContent}>{renderSafe(treatment.patientReport) || tNotProvided}</p>
                                         </div>
 
-                                        {(treatment.measuredValues && treatment.measuredValues.length > 0) && (
+                                        {treatment.measuredValues && treatment.measuredValues.length > 0 && (
                                             <div className={styles.detailItem}>
                                                 <h4 className={styles.detailLabel}>
                                                     <Activity size={16} />
@@ -401,9 +417,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                     {treatment.measuredValues.map((mv, idx) => (
                                                         <div key={idx} className={styles.kpiItem}>
                                                             <span className={styles.kpiLabel}>{mv.label}:</span>
-                                                            <span className={styles.kpiValue}>
-                                                                {renderSafe(mv.value)}
-                                                            </span>
+                                                            <span className={styles.kpiValue}>{renderSafe(mv.value)}</span>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -413,16 +427,14 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         <div className={styles.detailItem}>
                                             <VitalSignsDisplay
                                                 title="Pre-session Vitals"
-                                                vitals={treatment.preSessionVitals || treatment.preStingVitals || treatment.vitals}
+                                                vitals={treatment.preTreatmentVitals}
                                                 icon={<Activity size={14} />}
                                             />
                                         </div>
 
                                         {treatment.preTreatmentImage && (
                                             <div className={styles.imageDetailItem}>
-                                                <h4 className={styles.detailLabel}>
-                                                    <T>Pre-Treatment Photo</T>
-                                                </h4>
+                                                <h4 className={styles.detailLabel}><T>Pre-Treatment Photo</T></h4>
                                                 <img
                                                     src={treatment.preTreatmentImage}
                                                     alt="Pre-treatment"
@@ -433,72 +445,27 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     </div>
                                 </div>
 
-                                {/* Phase 2: Protocol Rounds */}
-                                {treatment.rounds && treatment.rounds.length > 0 ? (
+                                {/* Phase 2: Stung Points */}
+                                {treatment.stungPoints.length > 0 && (
                                     <div className={styles.phase}>
-                                        <h3 className={styles.phaseTitle}><T>2. Protocol Rounds</T></h3>
-                                        {treatment.rounds.map((round, rIndex) => (
-                                            <div key={rIndex} className={styles.roundBox}>
-                                                <div className={styles.roundHeader}>
-                                                    <T>Round</T> {rIndex + 1}: {getMLValue(round.protocolName, language)}
-                                                </div>
-                                                <div className={styles.roundContent}>
-                                                    <div className={styles.pointsContainer}>
-                                                        <h4 className={styles.innerLabel}>
-                                                            <Syringe size={14} />
-                                                            <T>Stung Points</T>
-                                                        </h4>
-                                                        <ul className={styles.pointsList}>
-                                                            {round.stungPoints.length > 0 ? (
-                                                                round.stungPoints.map((point) => (
-                                                                    <li key={point.id} className={styles.pointItem} dir={direction}>
-                                                                        <div className={styles.pointDetails}>
-                                                                            <MapPin size={14} className={styles.pointIcon} />
-                                                                            <span className="text-sm">
-                                                                                <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </li>
-                                                                ))
-                                                            ) : (
-                                                                <li><T>No points for treatment</T></li>
-                                                            )}
-                                                        </ul>
-                                                    </div>
-                                                    {round.postRoundVitals && (
-                                                        <div className={styles.roundVitals}>
-                                                            <VitalSignsDisplay
-                                                                title="Post-round Vitals"
-                                                                vitals={round.postRoundVitals}
-                                                                icon={<Activity size={14} />}
-                                                            />
+                                        <h3 className={styles.phaseTitle}><T>2. Stung Points</T></h3>
+                                        <div className={styles.pointsContainer}>
+                                            <ul className={styles.pointsList}>
+                                                {treatment.stungPoints.map((point) => (
+                                                    <li key={point.id} className={styles.pointItem} dir={direction}>
+                                                        <div className={styles.pointDetails}>
+                                                            <MapPin size={14} className={styles.pointIcon} />
+                                                            <span className="text-sm">
+                                                                <span className={styles.pointCode}>{point.code}</span>
+                                                                {' - '}
+                                                                <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
+                                                            </span>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    /* Legacy Stung Points View */
-                                    treatment.stungPoints && treatment.stungPoints.length > 0 && (
-                                        <div className={styles.phase}>
-                                            <h3 className={styles.phaseTitle}><T>2. Protocol Rounds (Legacy)</T></h3>
-                                            <div className={styles.pointsContainer}>
-                                                <ul className={styles.pointsList}>
-                                                    {treatment.stungPoints.map((point) => (
-                                                        <li key={point.id} className={styles.pointItem} dir={direction}>
-                                                            <div className={styles.pointDetails}>
-                                                                <MapPin size={14} className={styles.pointIcon} />
-                                                                <span className="text-sm">
-                                                                    <span className={styles.pointCode}>{point.code}</span> - <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
-                                                                </span>
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         </div>
-                                    )
+                                    </div>
                                 )}
 
                                 {/* Phase 3: Finish Session */}
@@ -543,8 +510,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                     <p className={styles.notesContent}>{renderSafe(treatment.patientFeedback)}</p>
                                                 </div>
                                             )}
-
-                                            {(treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0) && (
+                                            {treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0 && (
                                                 <div className={styles.detailItem}>
                                                     <h4 className={styles.detailLabel}>
                                                         <Activity size={16} />
@@ -554,9 +520,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                         {treatment.feedbackMeasuredValues.map((mv, idx) => (
                                                             <div key={idx} className={styles.kpiItem}>
                                                                 <span className={styles.kpiLabel}>{mv.label}:</span>
-                                                                <span className={styles.kpiValue}>
-                                                                    {renderSafe(mv.value)}
-                                                                </span>
+                                                                <span className={styles.kpiValue}>{renderSafe(mv.value)}</span>
                                                             </div>
                                                         ))}
                                                     </div>

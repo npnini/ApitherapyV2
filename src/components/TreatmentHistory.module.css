@@ -565,3 +565,151 @@
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     align-self: flex-start;
 }
+
+/* ── View Toggle ─────────────────────────────────────────────────────────── */
+
+.viewToggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    background-color: #f1f5f9;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    width: fit-content;
+}
+
+.toggleButton {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background-color: transparent;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.toggleButton:hover {
+    background-color: #e2e8f0;
+    color: #334155;
+}
+
+.activeToggle {
+    background-color: #1e293b;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+.activeToggle:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+/* ── Tabular View ─────────────────────────────────────────────────────────── */
+
+.tableWrapper {
+    overflow: auto;
+    max-height: calc(100vh - 280px);
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+    background-color: #ffffff;
+}
+
+.treatmentTable {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 900px;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.treatmentTable th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem;
+    padding: 0.65rem 0.85rem;
+    text-align: start;
+    border-bottom: 2px solid #334155;
+    white-space: nowrap;
+}
+
+.treatmentTable td {
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+.treatmentTable tbody tr:nth-child(odd) {
+    background-color: #f8fafc;
+}
+
+.treatmentTable tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.treatmentTable tbody tr:hover {
+    background-color: #eff6ff;
+}
+
+.treatmentTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Cell-specific styles */
+
+.dateCell {
+    white-space: nowrap;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.reportCell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.measureCell {
+    text-align: center;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.vitalsCell {
+    white-space: nowrap;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.82rem;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.stingsCell {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #b91c1c;
+    font-weight: 600;
+}
+
+.notesCell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #475569;
+}
