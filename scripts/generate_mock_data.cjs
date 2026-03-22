@@ -5,11 +5,45 @@ const fs = require('fs');
 /**
  * MOCK DATA GENERATOR FOR APITHERAPY V2
  * 
+ * --- GENERATION RULES ---
+ * 
+ * 1. CARETAKERS (--step=caretakers):
+ *    - Generates 10 caretakers with Hebrew names.
+ *    - Auth: Creates/Updates accounts with email 'caretaker_{i}@gmail.com' and password 'Password123!'.
+ *    - Firestore: Creates 'users' docs with 'caretaker' role and random Israeli cities.
+ * 
+ * 2. PATIENTS (--step=patients):
+ *    - Generates 10 patients per mock caretaker (email ends in @gmail.com).
+ *    - Identities: Hebrew names, birthdates (1950-2015), email ends in '@test.com'.
+ *    - Medical: Assigns 1 random active problem from 'cfg_problems'.
+ *    - Docs: Creates 'patients' doc and 'patient_medical_data' doc. pay attention to set the selected problemId, the protcolId from the problem document, ahte measureIds from the problem to the patient_medical_data document.
+ * 
+ * 3. TREATMENTS (--step=treatments):
+ *    - Timeline: Treatments spread over the last 6 months.   
+ *    - Generate 10 treatments per mock patient (@test.com), once a week for 5 weeks, within the timeline
+ *    - Logic: Uses the patient's assigned problem, protocol and measures from their medical data.
+ *    - Sensitivity: The first 2 treatments shall be marked as 'isSensitivityTest: true'.
+ *    - Points: set stung points as those with Medium Sensitivity from the protocol definition.
+ *    - Vitals: Randomly generated realistic vitals for all session stages.
+ *    - Measure reading: 
+ *      - create TWO 'measured_values' docs per treatment, one simulting pre treatment reading, the other representing post treatment reading.
+ *      - the measure ids are those defined for the patient in patient_medical_data
+ *      - make sure to set also the numeric value when a categorial measure is selected
+ *      - measure value: Random value based on measure type (Scale range or random Category). 
+ *      - Feedback: Create the measure reading simulating 1 day after the treatment.
+ *    
+ * 
+ * 4. FEEDBACK (--step=feedback):
+ *    - Batch updates 'patientFeedback' text for treatments of the first 10 mock patients.
+ *    - Sets a random Hebrew feedback string simulating a report 24h later.
+ * 
  * Usage:
  * node scripts/generate_mock_data.cjs --step=caretakers
  * node scripts/generate_mock_data.cjs --step=patients
  * node scripts/generate_mock_data.cjs --step=treatments
  * node scripts/generate_mock_data.cjs --step=feedback
+ * node scripts/generate_mock_data.cjs --step=clear-treatments
+ * node scripts/generate_mock_data.cjs --step=clear-measured_values
  */
 
 const projectId = "apitherapyv2";
@@ -33,6 +67,17 @@ const randomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const randomHebrewName = () => `${randomElement(HEBREW_FIRST_NAMES)} ${randomElement(HEBREW_LAST_NAMES)}`;
 const randomDate = (start, end) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+const computeAge = (birthDateStr) => {
+    if (!birthDateStr) return '';
+    const birthDate = new Date(birthDateStr);
+    const today = new Date();
+    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+    }
+    return calculatedAge >= 0 ? calculatedAge.toString() : '';
+};
 
 // --- COMMAND LINE ARGS ---
 const args = process.argv.slice(2);
@@ -59,6 +104,13 @@ async function run() {
             break;
         case 'feedback':
             await generateFeedback();
+            break;
+        case 'clear-treatments':
+            await clearTreatments();
+            break;
+        case 'clear-measured-values':
+        case 'clear-measured_values':
+            await clearMeasuredValues();
             break;
         default:
             console.error("Unknown step:", step);
@@ -139,29 +191,31 @@ async function generatePatients() {
     }
     const problems = problemSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    console.log(`Generating 30 patients per caretaker (${caretakers.length * 30} total)...`);
+    console.log(`Generating 10 patients per caretaker (${caretakers.length * 10} total)...`);
 
     for (const caretakerDoc of caretakers) {
         const caretakerId = caretakerDoc.id;
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 10; i++) {
             const name = randomHebrewName();
             const problem = randomElement(problems);
 
-            // Random ID (9 digits)
-            const idNumber = Math.floor(100000000 + Math.random() * 900000000).toString();
+            // 1. Create Patient Document with Deterministic ID
+            const patientId = `mock_p_${caretakerId.slice(-5)}_${i}`;
+            const patientRef = db.collection('patients').doc(patientId);
 
-            // 1. Create Patient Document
-            const patientRef = db.collection('patients').doc();
-            const patientId = patientRef.id;
+            // Deterministic identity number for mock patients
+            const idNumber = `999${caretakerId.slice(-3)}${i}`.padEnd(9, '0');
 
+            const birthDateStr = randomDate(new Date(1950, 0, 1), new Date(2015, 0, 1)).toISOString().split('T')[0];
             const patientData = {
                 id: patientId,
                 fullName: name,
-                birthDate: randomDate(new Date(1950, 0, 1), new Date(2015, 0, 1)).toISOString().split('T')[0],
+                birthDate: birthDateStr,
+                age: computeAge(birthDateStr),
                 profession: randomElement(['מהנדס/ת', 'מורה', 'רופא/ה', 'עצמאי/ת', 'פנסיונר/ית', 'סטודנט/ית', 'מנהל/ת', 'אדריכל/ית', 'עורך/ת דין']),
                 address: `רחוב ${randomElement(HEBREW_LAST_NAMES)} ${randomInt(1, 100)}, ${randomElement(['תל אביב', 'ירושלים', 'חיפה', 'רמת גן', 'פתח תקווה', 'חולון'])}`,
                 identityNumber: idNumber,
-                email: `patient_${patientId.slice(-4)}@test.com`,
+                email: `patient_${caretakerId.slice(-4)}_${i}@test.com`,
                 mobile: `05${randomInt(0, 9)}-${randomInt(1000000, 9999999)}`,
                 caretakerId: caretakerId,
                 gender: randomElement(GENDERS),
@@ -174,18 +228,18 @@ async function generatePatients() {
                 patientId: patientId,
                 condition: (problem.name && (problem.name.he || problem.name.en || Object.values(problem.name)[0])) || 'Unknown',
                 severity: randomElement(SEVERITIES),
-                treatment_plan: {
-                    problemIds: [problem.id],
-                    protocolIds: problem.protocolIds || [],
-                    measureIds: problem.measureIds || []
-                },
+                problemId: problem.id,
+                protocolId: problem.protocolId || (problem.protocolIds && problem.protocolIds[0]) || null,
+                measureIds: problem.measureIds || [],
                 createdTimestamp: admin.firestore.FieldValue.serverTimestamp(),
                 updatedTimestamp: admin.firestore.FieldValue.serverTimestamp()
             };
 
+            if (medicalData.protocolId === null) delete medicalData.protocolId;
+
             await patientRef.set(patientData);
             await db.collection('patient_medical_data').doc(patientId).set(medicalData);
-            console.log(`  Patient ${i + 1}/30 for caretaker ${caretakerId} created: ${name}`);
+            console.log(`  Patient ${i + 1}/10 for caretaker ${caretakerId} created: ${name}`);
         }
     }
 }
@@ -218,37 +272,51 @@ async function generateTreatments() {
     const measuresConfig = {};
     measureSnap.forEach(doc => { measuresConfig[doc.id] = doc.data(); });
 
-    console.log(`Generating 5 treatments per patient (${patients.length * 5} total)...`);
+    // 5. Fetch all points for sensitivity filtering
+    const pointsSnap = await db.collection('cfg_acupuncture_points').get();
+    const pointsMap = {};
+    pointsSnap.forEach(doc => { pointsMap[doc.id] = doc.data(); });
+
+    console.log(`Generating 10 treatments per patient (${patients.length * 10} total)...`);
 
     for (const patient of patients) {
         const medical = medicalMap[patient.id];
-        if (!medical || !medical.treatment_plan || !medical.treatment_plan.problemIds) continue;
+        if (!medical || !medical.problemId) continue;
 
-        const problemId = medical.treatment_plan.problemIds[0];
-        const possibleProtocolIds = medical.treatment_plan.protocolIds || [];
+        const problemId = medical.problemId;
+        const selectedProtocolId = medical.protocolId;
 
-        for (let j = 0; j < 5; j++) {
-            // Random date in last 6 months, spaced out
-            const daysAgo = (5 - j) * 15 + randomInt(0, 5);
-            const treatmentDate = new Date();
-            treatmentDate.setDate(treatmentDate.getDate() - daysAgo);
+        for (let j = 0; j < 10; j++) {
+            // Stable date: Spaced out (~1 treatment per week), independent of current run time
+            // We use a fixed reference point (e.g., March 20, 2026) to calculate back
+            const baseDate = new Date(2026, 2, 20); // Mar 20, 2026
+            const daysAgo = (10 - j) * 7;
+            const treatmentDate = new Date(baseDate);
+            treatmentDate.setDate(treatmentDate.getDate() - daysAgo - randomInt(0, 2)); // Add small random shift for realism but mostly stable
 
-            const treatmentId = `${patient.id}_${treatmentDate.getTime()}`;
+            const treatmentId = `mock_t_${patient.id.slice(-5)}_${j}`;
 
-            const selectedProtocolId = randomElement(possibleProtocolIds);
-            const protocol = protocols[selectedProtocolId];
+            const protocol = selectedProtocolId ? protocols[selectedProtocolId] : null;
 
-            // Random points from the protocol
+            // Only pick Medium sensitivity points from the protocol
             let stungPointIds = [];
-            if (protocol && protocol.stingingPoints) {
-                // protocol.stingingPoints is usually an array of objects {id, ...}
-                stungPointIds = protocol.stingingPoints
-                    .slice(0, randomInt(1, Math.min(3, protocol.stingingPoints.length)))
-                    .map(p => p.id || p);
+            if (protocol && protocol.points) {
+                const mediumPoints = protocol.points.filter(pId => {
+                    const pointCfg = pointsMap[pId];
+                    if (!pointCfg) return false;
+                    const sens = pointCfg.sensitivity || pointCfg.Sensitivity;
+                    return sens === 'Medium' || sens === 'medium' || sens === 'בינונית';
+                });
+                if (mediumPoints.length > 0) {
+                    stungPointIds = mediumPoints.slice(0, randomInt(1, Math.min(3, mediumPoints.length)));
+                } else {
+                    // Fallback to random if no medium points available
+                    stungPointIds = protocol.points.slice(0, randomInt(1, Math.min(3, protocol.points.length)));
+                }
             }
 
             // Generate measure readings
-            const assignedMeasureIds = medical.treatment_plan.measureIds || [];
+            const assignedMeasureIds = medical.measureIds || [];
             let measureReadingId = null;
             let patientFeedbackMeasureReadingId = null;
 
@@ -260,39 +328,43 @@ async function generateTreatments() {
                         if (!measureCfg) return null;
 
                         let val;
+                        let numericValue;
                         if (measureCfg.type === 'Scale' && measureCfg.scale) {
                             const min = measureCfg.scale.min || 0;
                             const max = measureCfg.scale.max || 10;
                             val = randomInt(min, max);
+                            numericValue = val;
                         } else if (measureCfg.type === 'Category' && measureCfg.categories && measureCfg.categories.length > 0) {
-                            // categories is an array of options
-                            const categoryObj = { ...randomElement(measureCfg.categories) };
-                            delete categoryObj.en;
-                            val = categoryObj;
+                            const categoryObj = randomElement(measureCfg.categories);
+                            // Set value to the Hebrew label if available, otherwise any label
+                            val = categoryObj.he || categoryObj.en || Object.values(categoryObj).find(v => typeof v === 'string') || 'N/A';
+                            numericValue = categoryObj.numericValue;
                         } else {
                             val = 'N/A';
+                            numericValue = 0;
                         }
-                        return { measureId: mId, type: measureCfg.type, value: val };
+                        return { measureId: mId, type: measureCfg.type, value: val, numericValue: numericValue };
                     }).filter(r => r !== null);
 
                     return {
                         patientId: patient.id,
                         note: 'אוטומטי מאפליקציית דמה',
                         readings: readings,
+                        usedMeasureIds: readings.map(r => r.measureId),
                         createdTimestamp: admin.firestore.Timestamp.fromDate(timestamp),
                         updatedTimestamp: admin.firestore.Timestamp.fromDate(timestamp)
                     };
                 };
 
-                // Pre-session reading
-                const readingRef1 = db.collection('measured_values').doc();
+                // Pre-session reading (Deterministic ID)
+                const readingRef1 = db.collection('measured_values').doc(`${patient.id}_t${j}_pre`);
                 await readingRef1.set(generateReadingDoc(treatmentDate));
                 measureReadingId = readingRef1.id;
 
-                // Feedback reading (simulating 1 day later)
+                // Feedback reading (simulating 1 day later, Deterministic ID)
                 const feedbackDate = new Date(treatmentDate);
                 feedbackDate.setDate(feedbackDate.getDate() + 1);
-                const readingRef2 = db.collection('measured_values').doc();
+                const readingRef2 = db.collection('measured_values').doc(`${patient.id}_t${j}_post`);
                 await readingRef2.set(generateReadingDoc(feedbackDate));
                 patientFeedbackMeasureReadingId = readingRef2.id;
             }
@@ -302,23 +374,16 @@ async function generateTreatments() {
                 patientId: patient.id,
                 caretakerId: patient.caretakerId,
                 patientReport: `הרגשה ${randomElement(['טובה', 'שיפור קל', 'ללא שינוי', 'כאבים עמומים', 'שינה טובה יותר', 'פחות לחץ'])}`,
-                preSessionVitals: {
+                preTreatmentVitals: {
                     systolic: randomInt(110, 140),
                     diastolic: randomInt(70, 90),
                     heartRate: randomInt(60, 90)
                 },
-                rounds: [
-                    {
-                        protocolId: selectedProtocolId || 'unknown',
-                        problemId: problemId,
-                        stungPointIds: stungPointIds,
-                        postRoundVitals: {
-                            systolic: randomInt(115, 145),
-                            diastolic: randomInt(75, 95),
-                            heartRate: randomInt(65, 95)
-                        }
-                    }
-                ],
+                preTreatmentMeasureReadingId: measureReadingId || null,
+                isSensitivityTest: j < 2, // First 2 treatments are sensitivity tests
+                protocolId: selectedProtocolId || 'unknown',
+                problemId: problemId,
+                stungPointIds: stungPointIds,
                 postStingingVitals: {
                     systolic: randomInt(110, 135),
                     diastolic: randomInt(70, 85),
@@ -330,16 +395,15 @@ async function generateTreatments() {
                     heartRate: randomInt(65, 80)
                 },
                 finalNotes: randomElement(["טיפול עבר ללא אירועים מיוחדים", "המטופל דיווח על רגישות קלה", "שיפור ניכר לעומת פעם קודמת", "בוצע לפי הפרוטוקול"]),
-                isSensitivityTest: j === 0, // First treatment is sensitivity test
-                measureReadingId: measureReadingId,
-                patientFeedbackMeasureReadingId: patientFeedbackMeasureReadingId,
+                patientFeedback: null,
+                patientFeedbackMeasureReadingId: patientFeedbackMeasureReadingId || null,
                 createdTimestamp: admin.firestore.Timestamp.fromDate(treatmentDate),
                 updatedTimestamp: admin.firestore.Timestamp.fromDate(treatmentDate)
             };
 
             await db.collection('treatments').doc(treatmentId).set(treatment);
         }
-        console.log(`  5 treatments for patient ${patient.id} created.`);
+        console.log(`  10 treatments for patient ${patient.id} created.`);
     }
 }
 
@@ -375,6 +439,54 @@ async function generateFeedback() {
         });
     }
     console.log("Feedback generation complete for initial batch.");
+}
+
+async function getMockPatientIds() {
+    const patientSnap = await db.collection('patients').get();
+    return patientSnap.docs
+        .filter(doc => doc.data().email && doc.data().email.includes('test.com'))
+        .map(doc => doc.id);
+}
+
+async function clearByPatientIds(collectionName, patientIds) {
+    console.log(`Clearing ${collectionName} for ${patientIds.length} mock patients...`);
+    let totalDeleted = 0;
+
+    // Use Firestore 'in' query for each batch of 30 patient IDs (Firestore limit for 'in' is 30, not 10 anymore but 30 is safe)
+    // Actually, querying 'patientId' in patientIds is better.
+    // If patientIds is large, we loop through them in chunks.
+    const CHUNK_SIZE = 30;
+    for (let i = 0; i < patientIds.length; i += CHUNK_SIZE) {
+        const chunk = patientIds.slice(i, i + CHUNK_SIZE);
+        const snap = await db.collection(collectionName).where('patientId', 'in', chunk).get();
+
+        if (!snap.empty) {
+            const batch = db.batch();
+            snap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            totalDeleted += snap.size;
+            console.log(`  Deleted ${snap.size} from ${collectionName}...`);
+        }
+    }
+    console.log(`Total ${collectionName} deleted: ${totalDeleted}`);
+}
+
+async function clearTreatments() {
+    const mockPatientIds = await getMockPatientIds();
+    if (mockPatientIds.length === 0) {
+        console.log("No mock patients found.");
+        return;
+    }
+    await clearByPatientIds('treatments', mockPatientIds);
+}
+
+async function clearMeasuredValues() {
+    const mockPatientIds = await getMockPatientIds();
+    if (mockPatientIds.length === 0) {
+        console.log("No mock patients found.");
+        return;
+    }
+    await clearByPatientIds('measured_values', mockPatientIds);
 }
 
 run().catch(console.error);

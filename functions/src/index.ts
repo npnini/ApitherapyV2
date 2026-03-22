@@ -375,7 +375,7 @@ export const filterPiiTransform = onRequest({ region: "europe-west1" }, (req, re
       insertId: record.insertId,
       json: {
         ...record.json,
-        data: JSON.stringify(docData),
+        data: docData,
       },
     };
   });

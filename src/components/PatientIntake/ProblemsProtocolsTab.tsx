@@ -69,8 +69,9 @@ const ProblemsProtocolsTab = forwardRef<ProblemsProtocolsTabHandle, ProblemsProt
     const availableProtocolItems = useMemo(() => {
         if (!selectedProblemId) return [];
         const problem = problems.find(p => p.id === selectedProblemId);
-        if (!problem || !problem.protocolId) return [];
-        return protocolItems.filter(p => p.id === problem.protocolId);
+        const activeProtocolId = problem?.protocolId || (problem?.protocolIds && problem.protocolIds.length > 0 ? problem.protocolIds[0] : null);
+        if (!problem || !activeProtocolId) return [];
+        return protocolItems.filter(p => p.id === activeProtocolId);
     }, [selectedProblemId, problems, protocolItems]);
 
     const availableMeasureItems = useMemo(() => {

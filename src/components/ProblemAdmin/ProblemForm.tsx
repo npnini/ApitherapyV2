@@ -78,7 +78,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     , [measuresCollection]);
 
   const activeProtocols = useMemo(() => {
-    return allProtocols.filter(p => !p.status || p.status === 'active' || initialData?.protocolId === p.id);
+    const initProtoId = initialData?.protocolId || (initialData?.protocolIds && initialData.protocolIds.length > 0 ? initialData.protocolIds[0] : null);
+    return allProtocols.filter(p => !p.status || p.status === 'active' || initProtoId === p.id);
   }, [allProtocols, initialData]);
 
   const availableMeasuresForShuttle = useMemo(() => {
@@ -105,6 +106,8 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
 
       if (initialData.protocolId) {
         setProtocolId(initialData.protocolId);
+      } else if (initialData.protocolIds && initialData.protocolIds.length > 0) {
+        setProtocolId(initialData.protocolIds[0]);
       } else {
         setProtocolId('');
       }
@@ -131,7 +134,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     onSubmit({
       name: names,
       description: descriptions,
-      ...(protocolId ? { protocolId } : {}),
+      ...(protocolId ? { protocolId, protocolIds: [protocolId] } : {}),
       measureIds,
       documentUrl,
       status: problemStatus,
@@ -149,7 +152,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       onFileUpdate({
         name: names,
         description: descriptions,
-        ...(protocolId ? { protocolId } : {}),
+        ...(protocolId ? { protocolId, protocolIds: [protocolId] } : {}),
         measureIds,
         documentUrl,
         status: problemStatus,

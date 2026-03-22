@@ -12,19 +12,21 @@ interface PersonalDetailsProps {
 const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataChange, showErrors = false }) => {
     const [age, setAge] = useState<string>('');
 
-    useEffect(() => {
-        if (patientData.birthDate) {
-            const birthDate = new Date(patientData.birthDate);
-            const today = new Date();
-            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                calculatedAge--;
-            }
-            setAge(calculatedAge >= 0 ? calculatedAge.toString() : '');
-        } else {
-            setAge('');
+    const calculateAge = (birthDateStr: string): string => {
+        if (!birthDateStr) return '';
+        const birthDate = new Date(birthDateStr);
+        const today = new Date();
+        let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            calculatedAge--;
         }
+        return calculatedAge >= 0 ? calculatedAge.toString() : '';
+    };
+
+    useEffect(() => {
+        const newAge = calculateAge(patientData.birthDate || '');
+        setAge(newAge);
     }, [patientData.birthDate]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -34,7 +36,8 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { value } = e.target;
-        onDataChange({ ...patientData, birthDate: value });
+        const newAge = calculateAge(value);
+        onDataChange({ ...patientData, birthDate: value, age: newAge });
     };
 
     const isFieldMissing = (value: any) => !value || (typeof value === 'string' && !value.trim());
