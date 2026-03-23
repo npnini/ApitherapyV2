@@ -4,18 +4,49 @@
       "collectionGroup": "questionnaire_responses",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "domain", "order": "ASCENDING" },
-        { "fieldPath": "patientId", "order": "ASCENDING" },
-        { "fieldPath": "createdTimestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "domain",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "patientId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdTimestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "treatments",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "__name__", "order": "DESCENDING" }
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "measured_values",
+      "fieldPath": "usedMeasureIds",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    }
+  ]
 }
