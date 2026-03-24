@@ -8,9 +8,12 @@ interface ModalProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
+  bodyClassName?: string;
+  bodyStyle?: React.CSSProperties;
+  isFlex?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, subtitle }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, subtitle, bodyClassName, bodyStyle, isFlex }) => {
   if (!isOpen) return null;
 
   return (
@@ -23,7 +26,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, subtitl
           {title && <h2 className={styles.modalTitle}>{title}</h2>}
           {subtitle && <p className={styles.modalSubtitle}>{subtitle}</p>}
         </div>
-        <div className={styles.modalBody}>{children}</div>
+        <div className={`${styles.modalBody} ${isFlex ? styles.flexBody : ''} ${bodyClassName || ''}`} style={bodyStyle}>{children}</div>
       </div>
     </div>
   );

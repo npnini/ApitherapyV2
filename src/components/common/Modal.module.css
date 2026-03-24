@@ -61,6 +61,14 @@
   flex-grow: 1;
 }
 
+.modalBody.flexBody {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-grow: 1;
+  min-height: 0;
+}
+
 .modalFooter {
   padding: 1.5rem;
   background-color: #f8f9fa;

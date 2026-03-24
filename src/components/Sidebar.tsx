@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2 } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
@@ -11,6 +11,7 @@ interface SidebarProps {
     onAdminClick: () => void;
     onUserDetailsClick: () => void;
     onPatientsClick: () => void;
+    onDataAnalysisClick: () => void;
     onPointsAdminClick: () => void;
     onMeasuresAdminClick: () => void;
     onProblemsAdminClick: () => void;
@@ -28,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onAdminClick,
     onUserDetailsClick,
     onPatientsClick,
+    onDataAnalysisClick,
     onPointsAdminClick,
     onMeasuresAdminClick,
     onProblemsAdminClick,
@@ -40,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const [configOpen, setConfigOpen] = useState(false);
     const [superAdminOpen, setSuperAdminOpen] = useState(false);
+    const [dataAnalysisOpen, setDataAnalysisOpen] = useState(false);
     const [caretakers, setCaretakers] = useState<{ id: string, fullName: string }[]>([]);
     const [loadingCaretakers, setLoadingCaretakers] = useState(false);
     const { language } = useTranslationContext();
@@ -101,6 +104,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <Users size={18} className={styles.iconPrimary} />
                     <span><T>Patients</T></span>
                 </button>
+
+                <div>
+                    <button onClick={() => setDataAnalysisOpen(!dataAnalysisOpen)} className={styles.configDropdownButton}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <BarChart2 size={18} className={styles.iconPrimary} />
+                            <span><T>Data Analysis</T></span>
+                        </div>
+                        <ChevronDown size={16} className={`${styles.chevron} ${dataAnalysisOpen ? styles.chevronOpen : ''}`} />
+                    </button>
+                    {dataAnalysisOpen && (
+                        <div className={styles.configSubMenu}>
+                            <button onClick={onDataAnalysisClick} className={styles.configButton}>
+                                <BarChart2 size={16} className={styles.iconSecondary} />
+                                <span><T>Treatment Effectiveness</T></span>
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {canImpersonate && (
                     <div className={styles.impersonationBox}>

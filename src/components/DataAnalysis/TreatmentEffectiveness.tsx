@@ -1,0 +1,320 @@
+import React, { useState, useEffect } from 'react';
+import { AppUser } from '../../types/user';
+import { T, useT } from '../T';
+import { getTreatmentEffectiveness, TreatmentEffectivenessParams } from '../../services/dataAnalysisService';
+import { RotateCcw, ArrowLeft, BarChart2 } from 'lucide-react';
+import styles from './TreatmentEffectiveness.module.css';
+
+interface Props {
+    user: AppUser;
+}
+
+type DrillDownLevel = 'high-level' | 'caretaker' | 'patient' | 'gender' | 'age_group' | 'age_group_drilldown';
+
+interface HistoryState {
+    viewLevel: DrillDownLevel;
+    caretakerId?: string;
+    ageLow?: number;
+    ageHigh?: number;
+    data: any[];
+    title: string;
+}
+
+const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const [startDate, setStartDate] = useState(oneYearAgo.toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState(yesterday.toISOString().split('T')[0]);
+
+    const [history, setHistory] = useState<HistoryState[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const tNoEffect = useT('No effect');
+    const tDegradation = useT('Degradation');
+    const tImprovement = useT('Improvement');
+
+    const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+
+    const fetchLevel = async (
+        level: DrillDownLevel,
+        params: Partial<TreatmentEffectivenessParams> = {},
+        title: string
+    ) => {
+        setIsLoading(true);
+        setError('');
+        try {
+            const res = await getTreatmentEffectiveness({
+                startDate,
+                endDate,
+                viewLevel: level,
+                ...params
+            });
+            setHistory(prev => [...prev, { viewLevel: level, data: res.data || [], title, ...params }]);
+        } catch (err: any) {
+            console.error("Analysis Fetch Error:", err);
+            // Show more detail if available
+            const detail = err.details?.message || err.message || 'Failed to fetch data';
+            setError(detail);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleHighLevel = () => {
+        setHistory([]);
+        fetchLevel('high-level', {}, 'High Level');
+    };
+
+    useEffect(() => {
+        if (history.length === 0 && user) {
+            handleHighLevel();
+        }
+    }, [user]);
+
+    const handleBack = () => {
+        setHistory(prev => prev.slice(0, prev.length - 1));
+    };
+
+    const currentState = history.length > 0 ? history[history.length - 1] : null;
+
+    const renderEffectiveness = (val: number) => {
+        if (val === undefined || val === null) return null;
+        let color = '#f59e0b'; // yellow
+        let text = tNoEffect;
+        if (val > 0) {
+            color = '#ef4444'; // red
+            text = tDegradation;
+        } else if (val < 0) {
+            color = '#10b981'; // green
+            text = tImprovement;
+        }
+        return (
+            <span style={{ backgroundColor: color, color: '#fff', padding: '0.2rem 0.5rem', borderRadius: '4px', display: 'inline-block' }}>
+                {text} ({val.toFixed(2)})
+            </span>
+        );
+    };
+
+    const renderRowButtons = (row: any) => {
+        if (!currentState) return null;
+        const { viewLevel } = currentState;
+
+        const rowParams = {
+            problemNameEn: row.problem_name_en,
+            measureNameEn: row.measure_name_en
+        };
+
+        if (viewLevel === 'high-level') {
+            return null; // Moved to global header
+        }
+
+        if (viewLevel === 'caretaker' || viewLevel === 'gender') {
+            return (
+                <button
+                    className={styles.actionButton}
+                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id || currentState.caretakerId, gender: row.patient_gender }, 'Patient')}
+                >
+                    <T>Patient</T>
+                </button>
+            );
+        }
+
+        if (viewLevel === 'age_group') {
+            const parts = row.age_group ? row.age_group.split('-') : [];
+            let ageLow = 0, ageHigh = 9;
+            if (parts.length === 2) {
+                ageLow = parseInt(parts[0], 10);
+                ageHigh = parseInt(parts[1], 10);
+            }
+            return (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        className={styles.actionButton}
+                        onClick={() => fetchLevel('age_group_drilldown', { ...rowParams, ageLow, ageHigh }, `Age (${row.age_group})`)}
+                    >
+                        <T>Age</T>
+                    </button>
+                    <button
+                        className={styles.actionButton}
+                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, 'Patient')}
+                    >
+                        <T>Patient</T>
+                    </button>
+                </div>
+            );
+        }
+
+        if (viewLevel === 'age_group_drilldown') {
+            return (
+                <button
+                    className={styles.actionButton}
+                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, 'Patient')}
+                >
+                    <T>Patient</T>
+                </button>
+            );
+        }
+
+        return null;
+    };
+
+    const renderTableHeaders = () => {
+        if (!currentState) return null;
+        const { viewLevel } = currentState;
+
+        return (
+            <tr>
+                {viewLevel === 'caretaker' && <th className={styles.th}><T>Caretaker ID</T></th>}
+                {viewLevel === 'patient' && <th className={styles.th}><T>Patient ID</T></th>}
+                {viewLevel === 'gender' && <th className={styles.th}><T>Gender</T></th>}
+                {viewLevel === 'age_group' && <th className={styles.th}><T>Age Group</T></th>}
+                {viewLevel === 'age_group_drilldown' && <th className={styles.th}><T>Age</T></th>}
+
+                <th className={styles.th}><T>Problem Name</T></th>
+                <th className={styles.th}><T>Measure Name</T></th>
+                <th className={styles.th}><T>Effectiveness</T></th>
+                {viewLevel !== 'patient' && viewLevel !== 'high-level' && <th className={styles.th}><T>Actions</T></th>}
+            </tr>
+        );
+    };
+
+    const renderTableBody = () => {
+        if (!currentState || !currentState.data) return null;
+        const { viewLevel, data } = currentState;
+
+        return data.map((row, idx) => {
+            const isHe = document.documentElement.dir === 'rtl';
+            const probName = isHe ? row.problem_name_he || row.problem_name_en : row.problem_name_en;
+            const measureName = isHe ? row.measure_name_he || row.measure_name_en : row.measure_name_en;
+
+            const effValue = viewLevel === 'patient' ? row.effectiveness : row.avg_effectiveness;
+
+            return (
+                <tr key={idx}>
+                    {viewLevel === 'caretaker' && <td className={styles.td}>{row.caretaker_id}</td>}
+                    {viewLevel === 'patient' && <td className={styles.td}>{row.patient_id}</td>}
+                    {viewLevel === 'gender' && <td className={styles.td}><T>{row.patient_gender || 'Unknown'}</T></td>}
+                    {viewLevel === 'age_group' && <td className={styles.td}>{row.age_group}</td>}
+                    {viewLevel === 'age_group_drilldown' && <td className={styles.td}>{row.patient_age}</td>}
+
+                    <td className={styles.td}>{probName}</td>
+                    <td className={styles.td}>{measureName}</td>
+                    <td className={styles.td}>{renderEffectiveness(effValue)}</td>
+                    {viewLevel !== 'patient' && viewLevel !== 'high-level' && <td className={styles.td}>{renderRowButtons(row)}</td>}
+                </tr>
+            );
+        });
+    };
+
+    return (
+        <div className={styles.container}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 className={styles.title}>
+                    <BarChart2 size={24} />
+                    <T>Treatment Effectiveness Analysis</T>
+                </h2>
+            </div>
+
+            <div className={styles.filterBar}>
+                <div className={styles.inputGroup}>
+                    <label><T>Start Date</T></label>
+                    <input
+                        type="date"
+                        className={styles.datePicker}
+                        value={startDate}
+                        onChange={e => setStartDate(e.target.value)}
+                    />
+                </div>
+                <div className={styles.inputGroup}>
+                    <label><T>End Date</T></label>
+                    <input
+                        type="date"
+                        className={styles.datePicker}
+                        value={endDate}
+                        onChange={e => setEndDate(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <button
+                        className={styles.refreshButton}
+                        onClick={handleHighLevel}
+                        disabled={isLoading}
+                    >
+                        <RotateCcw size={16} />
+                        <T>Reset to High Level</T>
+                    </button>
+                </div>
+
+                {currentState?.viewLevel === 'high-level' && (
+                    <div className={styles.globalDrilldown}>
+                        <span className={styles.drilldownLabel}><T>Drill Down By:</T></span>
+                        {isAdmin && (
+                            <button className={styles.actionButton} onClick={() => fetchLevel('caretaker', {}, 'All Caretakers')}>
+                                <T>Caretaker</T>
+                            </button>
+                        )}
+                        <button className={styles.actionButton} onClick={() => fetchLevel('gender', {}, 'By Gender')}>
+                            <T>Gender</T>
+                        </button>
+                        <button className={styles.actionButton} onClick={() => fetchLevel('age_group', {}, 'By Age Group')}>
+                            <T>Age Group</T>
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {error && (
+                <div className={styles.errorBox}>
+                    <strong><T>Error:</T></strong> <T>{error}</T>
+                </div>
+            )}
+
+            {history.length > 0 && (
+                <div className={styles.historyBar}>
+                    {history.length > 1 && (
+                        <button className={styles.backButton} onClick={handleBack} disabled={isLoading}>
+                            <ArrowLeft size={16} />
+                            <T>Back</T>
+                        </button>
+                    )}
+                    <h3 className={styles.breadcrumb}>
+                        {history.map((h, i) => (
+                            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {i > 0 ? <span style={{ color: 'var(--color-text-secondary)' }}>&gt;</span> : ''}
+                                <T>{h.title}</T>
+                            </span>
+                        ))}
+                    </h3>
+                    {isLoading && <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}><T>Loading...</T></span>}
+                </div>
+            )}
+
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead className={styles.thead}>
+                        {renderTableHeaders()}
+                    </thead>
+                    <tbody>
+                        {!isLoading && (!currentState || !currentState.data || currentState.data.length === 0) ? (
+                            <tr>
+                                <td colSpan={10} className={styles.noData}>
+                                    <T>No data found for the selected date range.</T>
+                                </td>
+                            </tr>
+                        ) : (
+                            renderTableBody()
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+export default TreatmentEffectiveness;

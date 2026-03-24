@@ -18,6 +18,7 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
 import UserManagement from './components/UserManagement';
+import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
@@ -29,13 +30,14 @@ import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandalon
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
     const { language, setLanguage, direction } = useTranslationContext();
     const tMyProfile = useT('My Profile');
     const tAppSettings = useT('Application Settings');
+    const tTreatmentEffectiveness = useT('Treatment Effectiveness');
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<JoinedPatientData[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<Partial<JoinedPatientData> | null>(null);
@@ -213,6 +215,7 @@ const AppInner: React.FC = () => {
     const handleQuestionnaireAdminClick = () => { setCurrentView('admin_questionnaires'); };
     const handleAppSettingsClick = () => { setIsSettingsModalOpen(true); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
+    const handleDataAnalysisClick = () => { setCurrentView('data_analysis'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
@@ -412,6 +415,7 @@ const AppInner: React.FC = () => {
                     onPointsAdminClick={handlePointsAdminClick}
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard}
+                    onDataAnalysisClick={handleDataAnalysisClick}
                     onAppSettingsClick={handleAppSettingsClick}
                     onMeasuresAdminClick={handleMeasuresAdminClick}
                     onProblemsAdminClick={handleProblemsAdminClick}
@@ -443,7 +447,11 @@ const AppInner: React.FC = () => {
                                                         <QuestionnaireAdmin />
                                                         : currentView === 'admin_users' ?
                                                             <UserManagement />
-                                                            : null
+                                                            : currentView === 'data_analysis' && effectiveUser ?
+                                                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} isFlex={true}>
+                                                                    <TreatmentEffectiveness user={effectiveUser} />
+                                                                </Modal>
+                                                                : null
                     }
 
                     {currentView === 'patient_intake' && selectedPatient && appUser &&

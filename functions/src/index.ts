@@ -6,6 +6,7 @@ import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import sgMail from "@sendgrid/mail";
 import { randomUUID } from "crypto";
+import { BigQuery } from "@google-cloud/bigquery";
 
 setGlobalOptions({ region: "me-west1" });
 
@@ -382,4 +383,191 @@ export const filterPiiTransform = onRequest({ region: "europe-west1" }, (req, re
 
   // Send the batch back to the extension
   res.status(200).send({ data: transformedData });
+});
+
+/**
+ * 5. Data Analysis: Treatment Effectiveness
+ * Securely queries the BigQuery view based on user role and drill-down level.
+ */
+export const getTreatmentEffectiveness = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "User must be authenticated to run analytics."
+    );
+  }
+
+  const {
+    startDate,
+    endDate,
+    viewLevel,
+    caretakerId,
+    ageLow,
+    ageHigh,
+    problemNameEn,
+    measureNameEn,
+    gender,
+    patientId,
+  } = request.data;
+
+  if (!startDate || !endDate || !viewLevel) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required parameters: startDate, endDate, viewLevel."
+    );
+  }
+
+  // Determine user role and data access restriction
+  const uid = request.auth.uid;
+  const userDoc = await db.collection("users").doc(uid).get();
+  const userData = userDoc.data();
+
+  if (!userData) {
+    throw new HttpsError("internal", "User data not found.");
+  }
+
+  const role = userData.role; // 'admin', 'superadmin', 'caretaker', etc.
+  const isAdmin = role === "admin" || role === "superadmin";
+
+  let actualCaretakerId = null;
+  if (!isAdmin) {
+    // Caretakers can only query their own data
+    actualCaretakerId = uid;
+  } else if (caretakerId) {
+    // Admin is drilling down into a specific caretaker
+    actualCaretakerId = caretakerId;
+  }
+
+  const bq = new BigQuery();
+  let query = "";
+  const queryParams: Record<string, unknown> = {
+    startDate: startDate,
+    endDate: endDate,
+  };
+
+  if (actualCaretakerId) queryParams.caretakerId = actualCaretakerId;
+  if (ageLow !== undefined) queryParams.ageLow = ageLow;
+  if (ageHigh !== undefined) queryParams.ageHigh = ageHigh;
+  if (problemNameEn) queryParams.problemNameEn = problemNameEn;
+  if (measureNameEn) queryParams.measureNameEn = measureNameEn;
+  if (gender) queryParams.gender = gender;
+  if (patientId) queryParams.patientId = patientId;
+
+  // Build Filter Clauses
+  const filters = [];
+  filters.push("(initial_session_start BETWEEN @startDate AND @endDate OR final_session_start BETWEEN @startDate AND @endDate)");
+
+  if (actualCaretakerId) {
+    filters.push("(caretaker_id = @caretakerId OR @caretakerId IS NULL)");
+  }
+  if (ageLow !== undefined && ageHigh !== undefined) {
+    filters.push("patient_age BETWEEN @ageLow AND @ageHigh");
+  } else if (ageLow !== undefined) {
+    filters.push("patient_age >= @ageLow");
+  } else if (ageHigh !== undefined) {
+    filters.push("patient_age <= @ageHigh");
+  }
+
+  if (problemNameEn) filters.push("problem_name_en = @problemNameEn");
+  if (measureNameEn) filters.push("measure_name_en = @measureNameEn");
+  if (gender) filters.push("patient_gender = @gender");
+  if (patientId) filters.push("patient_id = @patientId");
+
+  const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
+  switch (viewLevel) {
+    case "high-level":
+      query = `
+      SELECT
+        problem_name_en, problem_name_he, measure_name_en, measure_name_he,
+        AVG(effectiveness_value) AS avg_effectiveness 
+      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      ${whereClause}
+      GROUP BY 1, 2, 3, 4
+      ORDER BY problem_name_en ASC, measure_name_en ASC
+    `;
+      break;
+
+    case "caretaker":
+      if (!isAdmin) {
+        throw new HttpsError("permission-denied", "Only admins can group by caretaker.");
+      }
+      query = `
+      SELECT
+        caretaker_id, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
+        AVG(effectiveness_value) AS avg_effectiveness
+      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      ${whereClause}
+      GROUP BY 1, 2, 3, 4, 5
+      ORDER BY problem_name_en ASC, measure_name_en ASC
+    `;
+      break;
+
+    case "patient":
+      query = `
+      SELECT
+        patient_id, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
+        initial_reading, final_reading, effectiveness_value AS effectiveness,
+        initial_session_start, final_session_start
+      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      ${whereClause}
+      ORDER BY patient_id ASC, problem_name_en ASC, measure_name_en ASC
+    `;
+      break;
+
+    case "gender":
+      query = `
+      SELECT
+        patient_gender, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
+        AVG(effectiveness_value) AS avg_effectiveness
+      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      ${whereClause}
+      GROUP BY 1, 2, 3, 4, 5
+      ORDER BY problem_name_en ASC, measure_name_en ASC, patient_gender ASC
+    `;
+      break;
+
+    case "age_group":
+      query = `
+      SELECT
+        CAST(FLOOR(patient_age / 10) * 10 AS STRING) || '-' || CAST(FLOOR(patient_age / 10) * 10 + 9 AS STRING) AS age_group,
+        problem_name_en, problem_name_he, measure_name_en, measure_name_he,
+        AVG(effectiveness_value) AS avg_effectiveness
+      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      ${whereClause}
+      GROUP BY 1, 2, 3, 4, 5
+      ORDER BY problem_name_en ASC, measure_name_en ASC
+    `;
+      break;
+
+    case "age_group_drilldown":
+      // Note: age_group_drilldown is now mostly covered by ageLow/ageHigh logic in the main filters,
+      // but we'll keep the specific query structure if needed.
+      query = `
+      SELECT
+        patient_age, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
+        AVG(effectiveness_value) AS avg_effectiveness
+      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      ${whereClause}
+      GROUP BY 1, 2, 3, 4, 5
+      ORDER BY problem_name_en ASC, measure_name_en ASC, patient_age ASC
+    `;
+      break;
+
+    default:
+      throw new HttpsError("invalid-argument", "Invalid viewLevel specified.");
+  }
+
+  try {
+    const options = {
+      query: query,
+      params: queryParams,
+    };
+    logger.info("Executing BigQuery query", { query, params: queryParams });
+    const [rows] = await bq.query(options);
+    return { data: rows };
+  } catch (err) {
+    logger.error("Error executing BigQuery query:", err);
+    throw new HttpsError("internal", "Error fetching analysis data.");
+  }
 });
