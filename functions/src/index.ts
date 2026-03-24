@@ -499,7 +499,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
-      ORDER BY problem_name_en ASC, measure_name_en ASC
+      ORDER BY problem_name_en ASC, measure_name_en ASC, caretaker_id ASC
     `;
       break;
 
@@ -536,7 +536,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
-      ORDER BY problem_name_en ASC, measure_name_en ASC
+      ORDER BY problem_name_en ASC, measure_name_en ASC, age_group ASC
     `;
       break;
 
