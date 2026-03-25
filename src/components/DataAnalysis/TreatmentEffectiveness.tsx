@@ -119,11 +119,22 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
             return null; // Moved to global header
         }
 
-        if (viewLevel === 'caretaker' || viewLevel === 'gender') {
+        if (viewLevel === 'caretaker') {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id || currentState.caretakerId, gender: row.patient_gender }, 'Patient')}
+                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, `Patient (${row.caretaker_id})`)}
+                >
+                    <T>Patient</T>
+                </button>
+            );
+        }
+
+        if (viewLevel === 'gender') {
+            return (
+                <button
+                    className={styles.actionButton}
+                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, `Patient (${row.patient_gender})`)}
                 >
                     <T>Patient</T>
                 </button>
@@ -147,7 +158,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
                     </button>
                     <button
                         className={styles.actionButton}
-                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, 'Patient')}
+                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, `Patient (${row.age_group})`)}
                     >
                         <T>Patient</T>
                     </button>
@@ -159,7 +170,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, 'Patient')}
+                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, `Patient (Age: ${row.patient_age})`)}
                 >
                     <T>Patient</T>
                 </button>
