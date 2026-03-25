@@ -3,6 +3,8 @@ import { AppUser } from '../../types/user';
 import { T, useT } from '../T';
 import { getTreatmentEffectiveness, TreatmentEffectivenessParams } from '../../services/dataAnalysisService';
 import { RotateCcw, ArrowLeft, BarChart2 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import styles from './TreatmentEffectiveness.module.css';
 
 interface Props {
@@ -36,8 +38,49 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
     const [endDate, setEndDate] = useState(yesterday.toISOString().split('T')[0]);
 
     const [history, setHistory] = useState<HistoryState[]>([]);
+    const [nameCache, setNameCache] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const currentState = history.length > 0 ? history[history.length - 1] : null;
+
+    useEffect(() => {
+        if (!currentState || !currentState.data) return;
+
+        const hydrateNames = async () => {
+            const idsToFetch = new Set<string>();
+            currentState.data.forEach((row: any) => {
+                if (row.caretaker_id && !nameCache[row.caretaker_id]) {
+                    idsToFetch.add(`users:${row.caretaker_id}`);
+                }
+                if (row.patient_id && !nameCache[row.patient_id]) {
+                    idsToFetch.add(`patients:${row.patient_id}`);
+                }
+            });
+
+            if (idsToFetch.size === 0) return;
+
+            const updates: Record<string, string> = {};
+            await Promise.all([...idsToFetch].map(async (entry) => {
+                const [collectionName, id] = entry.split(':');
+                try {
+                    const docSnap = await getDoc(doc(db, collectionName, id));
+                    if (docSnap.exists()) {
+                        const d = docSnap.data();
+                        updates[id] = d.fullName || d.displayName || id;
+                    }
+                } catch (err) {
+                    console.warn(`Failed to hydrate ${collectionName}/${id}:`, err);
+                }
+            }));
+
+            if (Object.keys(updates).length > 0) {
+                setNameCache(prev => ({ ...prev, ...updates }));
+            }
+        };
+
+        hydrateNames();
+    }, [currentState?.data, nameCache]);
 
     const tNoEffect = useT('No effect');
     const tDegradation = useT('Degradation');
@@ -86,7 +129,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
         setHistory(prev => prev.slice(0, prev.length - 1));
     };
 
-    const currentState = history.length > 0 ? history[history.length - 1] : null;
+
 
     const renderEffectiveness = (val: number) => {
         if (val === undefined || val === null) return null;
@@ -106,6 +149,11 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
         );
     };
 
+    const resolveName = (id: string | undefined): string => {
+        if (!id) return '';
+        return nameCache[id] || id;
+    };
+
     const renderRowButtons = (row: any) => {
         if (!currentState) return null;
         const { viewLevel } = currentState;
@@ -123,7 +171,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, `Patient (${row.caretaker_id})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, `Patient (${resolveName(row.caretaker_id)})`)}
                 >
                     <T>Patient</T>
                 </button>
@@ -134,7 +182,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, `Patient (${row.patient_gender})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, `Patient (${row.patient_gender === 'male' ? 'Male' : 'Female'})`)}
                 >
                     <T>Patient</T>
                 </button>
@@ -186,11 +234,11 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
 
         return (
             <tr>
-                {viewLevel === 'caretaker' && <th className={styles.th}><T>Caretaker ID</T></th>}
+                {viewLevel === 'caretaker' && <th className={styles.th}><T>Caretaker</T></th>}
                 <th className={styles.th}><T>Problem Name</T></th>
                 <th className={styles.th}><T>Measure Name</T></th>
 
-                {viewLevel === 'patient' && <th className={styles.th}><T>Patient ID</T></th>}
+                {viewLevel === 'patient' && <th className={styles.th}><T>Patient</T></th>}
                 {viewLevel === 'gender' && <th className={styles.th}><T>Gender</T></th>}
                 {viewLevel === 'age_group' && <th className={styles.th}><T>Age Group</T></th>}
                 {viewLevel === 'age_group_drilldown' && <th className={styles.th}><T>Age</T></th>}
@@ -214,11 +262,11 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
 
             return (
                 <tr key={idx}>
-                    {viewLevel === 'caretaker' && <td className={styles.td}>{row.caretaker_id}</td>}
+                    {viewLevel === 'caretaker' && <td className={styles.td}>{resolveName(row.caretaker_id)}</td>}
                     <td className={styles.td}>{probName}</td>
                     <td className={styles.td}>{measureName}</td>
 
-                    {viewLevel === 'patient' && <td className={styles.td}>{row.patient_id}</td>}
+                    {viewLevel === 'patient' && <td className={styles.td}>{resolveName(row.patient_id)}</td>}
                     {viewLevel === 'gender' && <td className={styles.td}><T>{row.patient_gender || 'Unknown'}</T></td>}
                     {viewLevel === 'age_group' && <td className={styles.td}>{row.age_group}</td>}
                     {viewLevel === 'age_group_drilldown' && <td className={styles.td}>{row.patient_age}</td>}
@@ -305,7 +353,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
                         {history.map((h, i) => (
                             <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {i > 0 ? <span style={{ color: 'var(--color-text-secondary)' }}>&gt;</span> : ''}
-                                <T>{h.title}</T>
+                                <T>{h.title.replace(/\(([^)]+)\)/, (match, id) => `(${resolveName(id)})`)}</T>
                             </span>
                         ))}
                     </h3>
