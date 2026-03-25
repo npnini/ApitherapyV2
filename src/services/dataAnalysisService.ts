@@ -10,6 +10,11 @@ export interface TreatmentEffectivenessParams {
     caretakerId?: string;
     ageLow?: number;
     ageHigh?: number;
+    problemNameEn?: string;
+    measureNameEn?: string;
+    gender?: string;
+    patientId?: string;
+    isRtl?: boolean;
 }
 
 export const getTreatmentEffectiveness = async (params: TreatmentEffectivenessParams) => {

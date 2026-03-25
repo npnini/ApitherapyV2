@@ -171,13 +171,14 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
         return (
             <tr>
                 {viewLevel === 'caretaker' && <th className={styles.th}><T>Caretaker ID</T></th>}
+                <th className={styles.th}><T>Problem Name</T></th>
+                <th className={styles.th}><T>Measure Name</T></th>
+
                 {viewLevel === 'patient' && <th className={styles.th}><T>Patient ID</T></th>}
                 {viewLevel === 'gender' && <th className={styles.th}><T>Gender</T></th>}
                 {viewLevel === 'age_group' && <th className={styles.th}><T>Age Group</T></th>}
                 {viewLevel === 'age_group_drilldown' && <th className={styles.th}><T>Age</T></th>}
 
-                <th className={styles.th}><T>Problem Name</T></th>
-                <th className={styles.th}><T>Measure Name</T></th>
                 <th className={styles.th}><T>Effectiveness</T></th>
                 {viewLevel !== 'patient' && viewLevel !== 'high-level' && <th className={styles.th}><T>Actions</T></th>}
             </tr>
@@ -187,24 +188,25 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
     const renderTableBody = () => {
         if (!currentState || !currentState.data) return null;
         const { viewLevel, data } = currentState;
+        const isRtl = document.documentElement.dir === 'rtl';
 
         return data.map((row, idx) => {
-            const isHe = document.documentElement.dir === 'rtl';
-            const probName = isHe ? row.problem_name_he || row.problem_name_en : row.problem_name_en;
-            const measureName = isHe ? row.measure_name_he || row.measure_name_en : row.measure_name_en;
+            const probName = isRtl ? row.problem_name_he || row.problem_name_en : row.problem_name_en;
+            const measureName = isRtl ? row.measure_name_he || row.measure_name_en : row.measure_name_en;
 
             const effValue = viewLevel === 'patient' ? row.effectiveness : row.avg_effectiveness;
 
             return (
                 <tr key={idx}>
                     {viewLevel === 'caretaker' && <td className={styles.td}>{row.caretaker_id}</td>}
+                    <td className={styles.td}>{probName}</td>
+                    <td className={styles.td}>{measureName}</td>
+
                     {viewLevel === 'patient' && <td className={styles.td}>{row.patient_id}</td>}
                     {viewLevel === 'gender' && <td className={styles.td}><T>{row.patient_gender || 'Unknown'}</T></td>}
                     {viewLevel === 'age_group' && <td className={styles.td}>{row.age_group}</td>}
                     {viewLevel === 'age_group_drilldown' && <td className={styles.td}>{row.patient_age}</td>}
 
-                    <td className={styles.td}>{probName}</td>
-                    <td className={styles.td}>{measureName}</td>
                     <td className={styles.td}>{renderEffectiveness(effValue)}</td>
                     {viewLevel !== 'patient' && viewLevel !== 'high-level' && <td className={styles.td}>{renderRowButtons(row)}</td>}
                 </tr>

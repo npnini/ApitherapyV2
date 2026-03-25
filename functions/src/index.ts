@@ -408,6 +408,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
     measureNameEn,
     gender,
     patientId,
+    isRtl,
   } = request.data;
 
   if (!startDate || !endDate || !viewLevel) {
@@ -475,6 +476,10 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
 
   const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
+  // Column names based on language/direction
+  const pName = isRtl ? "problem_name_he" : "problem_name_en";
+  const mName = isRtl ? "measure_name_he" : "measure_name_en";
+
   switch (viewLevel) {
     case "high-level":
       query = `
@@ -484,7 +489,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4
-      ORDER BY problem_name_en ASC, measure_name_en ASC
+      ORDER BY ${pName} ASC, ${mName} ASC
     `;
       break;
 
@@ -499,7 +504,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
-      ORDER BY problem_name_en ASC, measure_name_en ASC, caretaker_id ASC
+      ORDER BY caretaker_id ASC, ${pName} ASC, ${mName} ASC
     `;
       break;
 
@@ -511,7 +516,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
         initial_session_start, final_session_start
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
-      ORDER BY patient_id ASC, problem_name_en ASC, measure_name_en ASC
+      ORDER BY ${pName} ASC, ${mName} ASC, patient_id ASC
     `;
       break;
 
@@ -523,7 +528,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
-      ORDER BY problem_name_en ASC, measure_name_en ASC, patient_gender ASC
+      ORDER BY ${pName} ASC, ${mName} ASC, patient_gender ASC
     `;
       break;
 
@@ -536,13 +541,11 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
-      ORDER BY problem_name_en ASC, measure_name_en ASC, age_group ASC
+      ORDER BY ${pName} ASC, ${mName} ASC, age_group ASC
     `;
       break;
 
     case "age_group_drilldown":
-      // Note: age_group_drilldown is now mostly covered by ageLow/ageHigh logic in the main filters,
-      // but we'll keep the specific query structure if needed.
       query = `
       SELECT
         patient_age, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
@@ -550,7 +553,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
-      ORDER BY problem_name_en ASC, measure_name_en ASC, patient_age ASC
+      ORDER BY ${pName} ASC, ${mName} ASC, patient_age ASC
     `;
       break;
 
