@@ -196,7 +196,26 @@
 .noData {
     text-align: center;
     padding: 4rem;
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
+}
+
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 2rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+    background-color: var(--color-background-primary);
+    border-radius: 8px;
+    margin: 2rem;
+}
+
+.placeholderIcon {
+    margin-bottom: 1.5rem;
+    color: var(--color-primary-main);
+    opacity: 0.2;
 }
 
 .globalDrilldown {

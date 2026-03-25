@@ -16,6 +16,10 @@ interface HistoryState {
     caretakerId?: string;
     ageLow?: number;
     ageHigh?: number;
+    problemNameEn?: string;
+    measureNameEn?: string;
+    gender?: string;
+    patientId?: string;
     data: any[];
     title: string;
 }
@@ -49,13 +53,21 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
         setIsLoading(true);
         setError('');
         try {
+            const isRtl = document.documentElement.dir === 'rtl';
             const res = await getTreatmentEffectiveness({
                 startDate,
                 endDate,
                 viewLevel: level,
+                isRtl,
                 ...params
             });
-            setHistory(prev => [...prev, { viewLevel: level, data: res.data || [], title, ...params }]);
+            const newState: HistoryState = {
+                viewLevel: level,
+                data: res.data || [],
+                title,
+                ...params
+            };
+            setHistory(prev => [...prev, newState]);
         } catch (err: any) {
             console.error("Analysis Fetch Error:", err);
             // Show more detail if available
@@ -67,15 +79,8 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
     };
 
     const handleHighLevel = () => {
-        setHistory([]);
         fetchLevel('high-level', {}, 'High Level');
     };
-
-    useEffect(() => {
-        if (history.length === 0 && user) {
-            handleHighLevel();
-        }
-    }, [user]);
 
     const handleBack = () => {
         setHistory(prev => prev.slice(0, prev.length - 1));
@@ -249,7 +254,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
                         disabled={isLoading}
                     >
                         <RotateCcw size={16} />
-                        <T>Reset to High Level</T>
+                        <T>{history.length === 0 ? 'View Analytics' : 'Reset to High Level'}</T>
                     </button>
                 </div>
 
@@ -298,22 +303,37 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
             )}
 
             <div className={styles.tableContainer}>
-                <table className={styles.table}>
-                    <thead className={styles.thead}>
-                        {renderTableHeaders()}
-                    </thead>
-                    <tbody>
-                        {!isLoading && (!currentState || !currentState.data || currentState.data.length === 0) ? (
-                            <tr>
-                                <td colSpan={10} className={styles.noData}>
-                                    <T>No data found for the selected date range.</T>
-                                </td>
-                            </tr>
-                        ) : (
-                            renderTableBody()
-                        )}
-                    </tbody>
-                </table>
+                {!currentState ? (
+                    <div className={styles.placeholder}>
+                        <BarChart2 size={48} className={styles.placeholderIcon} />
+                        <p><T>Please select a date range and click "View Analytics" to start.</T></p>
+                        <button
+                            className={styles.refreshButton}
+                            onClick={handleHighLevel}
+                            disabled={isLoading}
+                        >
+                            <RotateCcw size={16} />
+                            {isLoading ? <T>Loading...</T> : <T>View Analytics</T>}
+                        </button>
+                    </div>
+                ) : (
+                    <table className={styles.table}>
+                        <thead className={styles.thead}>
+                            {renderTableHeaders()}
+                        </thead>
+                        <tbody>
+                            {!isLoading && (!currentState.data || currentState.data.length === 0) ? (
+                                <tr>
+                                    <td colSpan={10} className={styles.noData}>
+                                        <T>No data found for the selected date range.</T>
+                                    </td>
+                                </tr>
+                            ) : (
+                                renderTableBody()
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );
