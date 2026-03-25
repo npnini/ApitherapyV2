@@ -74,7 +74,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
     <div className={styles.documentSection}>
       <div className={styles.documentHeaderContainer}>
         <h3 className={styles.documentHeader}>
-          {getTranslation(entityName)} <T>Document</T>
+          {getTranslation(entityName)} <T>Document</T> <span style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>(<T>Optional</T>)</span>
         </h3>
         <div className={styles.documentStatus}>
           {!hasDocumentForCurrentLang && !selectedFileName && (

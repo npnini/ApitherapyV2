@@ -136,7 +136,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       description: descriptions,
       ...(protocolId ? { protocolId, protocolIds: [protocolId] } : {}),
       measureIds,
-      documentUrl,
+      ...(documentUrl ? { documentUrl } : {}),
       status: problemStatus,
       reference_count: initialData?.reference_count || 0
     }, activeLang);
