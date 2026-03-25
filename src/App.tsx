@@ -178,6 +178,20 @@ const AppInner: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
+    // [TRACER] Handle URL-based deep linking on mount/auth
+    useEffect(() => {
+        if (authReady && appUser && appConfig) {
+            const params = new URLSearchParams(window.location.search);
+            const urlPatientId = params.get('patientId');
+            if (urlPatientId) {
+                console.log(`[TRACER] App: Detected patientId in URL: "${urlPatientId}"`);
+                handlePatientClick(urlPatientId);
+                // Clear the param from URL to prevent re-triggering on manual refreshes if desired, 
+                // but usually keeping it is fine for SPAs.
+            }
+        }
+    }, [authReady, appUser, appConfig]);
+
     useEffect(() => {
         if (appUser && appUser.preferredLanguage) {
             if (language !== appUser.preferredLanguage) {
@@ -388,6 +402,56 @@ const AppInner: React.FC = () => {
         setCurrentView('patient_intake');
     };
 
+    const handlePatientClick = async (patientIdInput: string | number) => {
+        const patientId = String(patientIdInput).trim();
+        console.log(`[TRACER] App.handlePatientClick: Received ID: "${patientId}" (input: ${patientIdInput})`);
+        if (!patientId) return;
+
+        let patient = patients.find(p => p.id === patientId || p.identityNumber === patientId);
+        if (patient) {
+            console.log(`[TRACER] App.handlePatientClick: Found patient in local state: "${patient.fullName}" (id: ${patient.id})`);
+        }
+
+        if (!patient) {
+            console.log(`[TRACER] App.handlePatientClick: Patient not found in local state, fetching from Firestore...`);
+            setIsLoading(true);
+            try {
+                // Try technical ID first
+                let pDoc = await getDoc(doc(db, 'patients', patientId));
+
+                // If not found, it might be an identity number used as an ID, or we need to query by identityNumber field
+                if (!pDoc.exists()) {
+                    console.log(`[TRACER] App.handlePatientClick: Doc "${patientId}" not found, trying identityNumber query...`);
+                    const q = query(collection(db, 'patients'), where('identityNumber', '==', patientId));
+                    const qSnap = await getDocs(q);
+                    if (!qSnap.empty) {
+                        pDoc = qSnap.docs[0];
+                        console.log(`[TRACER] App.handlePatientClick: Found doc via identityNumber query. Doc ID: ${pDoc.id}`);
+                    }
+                }
+
+                if (pDoc.exists()) {
+                    const data = pDoc.data();
+                    console.log(`[TRACER] App.handlePatientClick: Fetched data for "${data.fullName}". Document ID: ${pDoc.id}`);
+                    const pii = { ...data, id: pDoc.id, patientId: pDoc.id } as any;
+                    const mDoc = await getDoc(doc(db, 'patient_medical_data', pDoc.id));
+                    const medicalRecord = mDoc.exists() ? { ...mDoc.data(), id: mDoc.id, patientId: pDoc.id } : { patientId: pDoc.id };
+                    patient = { ...pii, medicalRecord };
+                } else {
+                    console.warn(`[TRACER] App.handlePatientClick: No patient document found for "${patientId}"`);
+                }
+            } catch (err) {
+                console.error("[TRACER] App.handlePatientClick: Deep link fetch failed:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        if (patient) {
+            console.log(`[TRACER] App.handlePatientClick: Successfully resolved patient, showing treatments view.`);
+            handleShowTreatments(patient);
+        }
+    };
+
 
     const renderContent = () => {
         const path = window.location.pathname;
@@ -449,7 +513,7 @@ const AppInner: React.FC = () => {
                                                             <UserManagement />
                                                             : currentView === 'data_analysis' && effectiveUser ?
                                                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} isFlex={true}>
-                                                                    <TreatmentEffectiveness user={effectiveUser} />
+                                                                    <TreatmentEffectiveness user={effectiveUser} onPatientClick={handlePatientClick} />
                                                                 </Modal>
                                                                 : null
                     }

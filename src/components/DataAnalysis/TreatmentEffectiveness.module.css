@@ -234,3 +234,13 @@
     text-transform: uppercase;
     letter-spacing: 0.025em;
 }
+
+.link {
+    color: #3b82f6;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.link:hover {
+    color: #2563eb;
+}

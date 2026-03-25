@@ -294,7 +294,7 @@ async function generateTreatments() {
             const treatmentDate = new Date(baseDate);
             treatmentDate.setDate(treatmentDate.getDate() - daysAgo - randomInt(0, 2)); // Add small random shift for realism but mostly stable
 
-            const treatmentId = `mock_t_${patient.id.slice(-5)}_${j}`;
+            const treatmentId = `${patient.id}_${treatmentDate.getTime()}`;
 
             const protocol = selectedProtocolId ? protocols[selectedProtocolId] : null;
 
@@ -356,15 +356,15 @@ async function generateTreatments() {
                     };
                 };
 
-                // Pre-session reading (Deterministic ID)
-                const readingRef1 = db.collection('measured_values').doc(`${patient.id}_t${j}_pre`);
+                // Pre-session reading (Production ID format: {patientId}_{timestamp}_pre)
+                const readingRef1 = db.collection('measured_values').doc(`${patient.id}_${treatmentDate.getTime()}_pre`);
                 await readingRef1.set(generateReadingDoc(treatmentDate));
                 measureReadingId = readingRef1.id;
 
-                // Feedback reading (simulating 1 day later, Deterministic ID)
+                // Feedback reading (simulating 1 day later, Production ID format)
                 const feedbackDate = new Date(treatmentDate);
                 feedbackDate.setDate(feedbackDate.getDate() + 1);
-                const readingRef2 = db.collection('measured_values').doc(`${patient.id}_t${j}_post`);
+                const readingRef2 = db.collection('measured_values').doc(`${patient.id}_${feedbackDate.getTime()}_post`);
                 await readingRef2.set(generateReadingDoc(feedbackDate));
                 patientFeedbackMeasureReadingId = readingRef2.id;
             }

@@ -9,6 +9,7 @@ import styles from './TreatmentEffectiveness.module.css';
 
 interface Props {
     user: AppUser;
+    onPatientClick?: (patientId: string) => void;
 }
 
 type DrillDownLevel = 'high-level' | 'caretaker' | 'patient' | 'gender' | 'age_group' | 'age_group_drilldown';
@@ -26,7 +27,7 @@ interface HistoryState {
     title: string;
 }
 
-const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
+const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -266,7 +267,23 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user }) => {
                     <td className={styles.td}>{probName}</td>
                     <td className={styles.td}>{measureName}</td>
 
-                    {viewLevel === 'patient' && <td className={styles.td}>{resolveName(row.patient_id)}</td>}
+                    {viewLevel === 'patient' && (
+                        <td className={styles.td}>
+                            <span
+                                className={onPatientClick && row.patient_id ? styles.link : ''}
+                                onClick={() => {
+                                    if (row.patient_id) {
+                                        console.log(`[TRACER] TreatmentEffectiveness: Clinic link for patient_id: "${row.patient_id}"`);
+                                        const url = new URL(window.location.href);
+                                        url.searchParams.set('patientId', String(row.patient_id));
+                                        window.open(url.toString(), '_blank');
+                                    }
+                                }}
+                            >
+                                {resolveName(row.patient_id)}
+                            </span>
+                        </td>
+                    )}
                     {viewLevel === 'gender' && <td className={styles.td}><T>{row.patient_gender || 'Unknown'}</T></td>}
                     {viewLevel === 'age_group' && <td className={styles.td}>{row.age_group}</td>}
                     {viewLevel === 'age_group_drilldown' && <td className={styles.td}>{row.patient_age}</td>}

@@ -103,6 +103,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'tabular'>('list');
     const [patientMeasureNames, setPatientMeasureNames] = useState<{ id: string, name: string | Record<string, string> }[]>([]);
+    const [protocolsNamesMap, setProtocolsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
 
     const fetchTreatments = useCallback(async () => {
@@ -110,14 +111,26 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         setError(null);
         try {
             const treatmentsRef = collection(db, 'treatments');
+            console.log(`[TRACER] TreatmentHistory: Querying treatments by patientId field: "${patient.id}"`);
+
+            // Query by field to handle both prefix-based and random-based document IDs.
+            // Using a simple equality query first to avoid missing index errors.
             const q = query(
                 treatmentsRef,
-                where('__name__', '>=', `${patient.id}_`),
-                where('__name__', '<=', `${patient.id}_\uf8ff`),
-                orderBy('__name__', 'desc')
+                where('patientId', '==', patient.id)
             );
+
             const querySnapshot = await getDocs(q);
-            const rawTreatments = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as StoredTreatmentDoc));
+            let rawTreatments = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as StoredTreatmentDoc));
+
+            // Sort in memory to ensure latest treatments appear first without requiring a composite index
+            rawTreatments.sort((a, b) => {
+                const tsA = a.createdTimestamp?.seconds || 0;
+                const tsB = b.createdTimestamp?.seconds || 0;
+                return tsB - tsA;
+            });
+
+            console.log(`[TRACER] TreatmentHistory: Found ${rawTreatments.length} treatments.`);
 
             // Fetch all acupuncture points
             const pointsSnapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
@@ -151,6 +164,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             protocolsSnapshot.docs.forEach(d => {
                 protocolsMap.set(d.id, d.data().name);
             });
+            setProtocolsNamesMap(protocolsMap);
 
             // Hydrate each treatment
             const hydratedTreatments = await Promise.all(rawTreatments.map(async (treatment): Promise<HydratedTreatment> => {
@@ -377,8 +391,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 <div className={styles.metaInfo}>
                                     <h2 className={styles.protocolName}>
                                         {treatment.isSensitivityTest
-                                            ? <><T>Sensitivity Test</T></>
-                                            : (treatment.protocolId || <T>Treatment</T>)
+                                            ? <T>Sensitivity Test</T>
+                                            : (getMLValue(protocolsNamesMap.get(treatment.protocolId || ''), language) || treatment.protocolId || <T>Treatment</T>)
                                         }
                                         {treatment.isSensitivityTest &&
                                             <span className={styles.sensitivityBadge}> (<T>Sensitivity Test</T>)</span>}
