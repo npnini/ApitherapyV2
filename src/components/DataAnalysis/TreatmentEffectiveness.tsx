@@ -172,7 +172,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, `Patient (${resolveName(row.caretaker_id)})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, `Patients of Caretaker (${row.caretaker_id})`)}
                 >
                     <T>Patient</T>
                 </button>
@@ -183,7 +183,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, `Patient (${row.patient_gender === 'male' ? 'Male' : 'Female'})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, `Patients of Gender (${row.patient_gender === 'male' ? 'Male' : 'Female'})`)}
                 >
                     <T>Patient</T>
                 </button>
@@ -201,13 +201,13 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         className={styles.actionButton}
-                        onClick={() => fetchLevel('age_group_drilldown', { ...rowParams, ageLow, ageHigh }, `Age (${row.age_group})`)}
+                        onClick={() => fetchLevel('age_group_drilldown', { ...rowParams, ageLow, ageHigh }, `Ages of Age Group (${row.age_group})`)}
                     >
                         <T>Age</T>
                     </button>
                     <button
                         className={styles.actionButton}
-                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, `Patient (${row.age_group})`)}
+                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, `Patients of Age Group (${row.age_group})`)}
                     >
                         <T>Patient</T>
                     </button>
@@ -219,7 +219,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, `Patient (Age: ${row.patient_age})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, `Patients of Age (${row.patient_age})`)}
                 >
                     <T>Patient</T>
                 </button>
@@ -297,33 +297,29 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
 
     return (
         <div className={styles.container}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 className={styles.title}>
-                    <BarChart2 size={24} />
-                    <T>Treatment Effectiveness Analysis</T>
-                </h2>
-            </div>
-
             <div className={styles.filterBar}>
-                <div className={styles.inputGroup}>
-                    <label><T>Start Date</T></label>
-                    <input
-                        type="date"
-                        className={styles.datePicker}
-                        value={startDate}
-                        onChange={e => setStartDate(e.target.value)}
-                    />
+                <div className={styles.inputsSection}>
+                    <div className={styles.inputGroup}>
+                        <label><T>Start Date</T></label>
+                        <input
+                            type="date"
+                            className={styles.datePicker}
+                            value={startDate}
+                            onChange={e => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className={styles.inputGroup}>
+                        <label><T>End Date</T></label>
+                        <input
+                            type="date"
+                            className={styles.datePicker}
+                            value={endDate}
+                            onChange={e => setEndDate(e.target.value)}
+                        />
+                    </div>
                 </div>
-                <div className={styles.inputGroup}>
-                    <label><T>End Date</T></label>
-                    <input
-                        type="date"
-                        className={styles.datePicker}
-                        value={endDate}
-                        onChange={e => setEndDate(e.target.value)}
-                    />
-                </div>
-                <div>
+
+                <div className={styles.actionsSection}>
                     <button
                         className={styles.refreshButton}
                         onClick={handleHighLevel}
@@ -332,24 +328,24 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                         <RotateCcw size={16} />
                         <T>{history.length === 0 ? 'View Analytics' : 'Reset to High Level'}</T>
                     </button>
-                </div>
 
-                {currentState?.viewLevel === 'high-level' && (
-                    <div className={styles.globalDrilldown}>
-                        <span className={styles.drilldownLabel}><T>Drill Down By:</T></span>
-                        {isAdmin && (
-                            <button className={styles.actionButton} onClick={() => fetchLevel('caretaker', {}, 'All Caretakers')}>
-                                <T>Caretaker</T>
+                    {currentState?.viewLevel === 'high-level' && (
+                        <div className={styles.globalDrilldown}>
+                            <span className={styles.drilldownLabel}><T>Drill Down By:</T></span>
+                            {isAdmin && (
+                                <button className={styles.actionButton} onClick={() => fetchLevel('caretaker', {}, 'All Caretakers')}>
+                                    <T>Caretaker</T>
+                                </button>
+                            )}
+                            <button className={styles.actionButton} onClick={() => fetchLevel('gender', {}, 'By Gender')}>
+                                <T>Gender</T>
                             </button>
-                        )}
-                        <button className={styles.actionButton} onClick={() => fetchLevel('gender', {}, 'By Gender')}>
-                            <T>Gender</T>
-                        </button>
-                        <button className={styles.actionButton} onClick={() => fetchLevel('age_group', {}, 'By Age Group')}>
-                            <T>Age Group</T>
-                        </button>
-                    </div>
-                )}
+                            <button className={styles.actionButton} onClick={() => fetchLevel('age_group', {}, 'By Age Group')}>
+                                <T>Age Group</T>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {error && (

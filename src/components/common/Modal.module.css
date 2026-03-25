@@ -14,13 +14,13 @@
 .modalContent {
   background-color: #fff;
   border-radius: 0.5rem;
-  max-width: 900px;
-  width: 100%;
+  max-width: 1200px;
+  width: 95%;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   position: relative;
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: 98vh;
 }
 
 .closeButton {
