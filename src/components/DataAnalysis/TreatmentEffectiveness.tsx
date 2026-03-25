@@ -25,6 +25,7 @@ interface HistoryState {
     patientId?: string;
     data: any[];
     title: string;
+    titleValue?: string;
 }
 
 const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
@@ -86,13 +87,25 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
     const tNoEffect = useT('No effect');
     const tDegradation = useT('Degradation');
     const tImprovement = useT('Improvement');
+    const tHighLevel = useT('High Level');
+    const tAllCaretakers = useT('All Caretakers');
+    const tByGender = useT('By Gender');
+    const tByAgeGroup = useT('By Age Group');
+    const tPatientsOfCaretaker = useT('Patients of Caretaker');
+    const tPatientsOfGender = useT('Patients of Gender');
+    const tPatientsOfAgeGroup = useT('Patients of Age Group');
+    const tAgesOfAgeGroup = useT('Ages of Age Group');
+    const tPatientsOfAge = useT('Patients of Age');
+    const tMale = useT('Male');
+    const tFemale = useT('Female');
 
     const isAdmin = user.role === 'admin' || user.role === 'superadmin';
 
     const fetchLevel = async (
         level: DrillDownLevel,
         params: Partial<TreatmentEffectivenessParams> = {},
-        title: string
+        title: string,
+        titleValue?: string
     ) => {
         setIsLoading(true);
         setError('');
@@ -109,12 +122,12 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                 viewLevel: level,
                 data: res.data || [],
                 title,
+                titleValue,
                 ...params
             };
             setHistory(prev => [...prev, newState]);
         } catch (err: any) {
             console.error("Analysis Fetch Error:", err);
-            // Show more detail if available
             const detail = err.details?.message || err.message || 'Failed to fetch data';
             setError(detail);
         } finally {
@@ -123,7 +136,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
     };
 
     const handleHighLevel = () => {
-        fetchLevel('high-level', {}, 'High Level');
+        fetchLevel('high-level', {}, tHighLevel);
     };
 
     const handleBack = () => {
@@ -172,7 +185,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, `Patients of Caretaker (${row.caretaker_id})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, tPatientsOfCaretaker, resolveName(row.caretaker_id))}
                 >
                     <T>Patient</T>
                 </button>
@@ -180,10 +193,11 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
         }
 
         if (viewLevel === 'gender') {
+            const genderVal = row.patient_gender === 'male' ? tMale : tFemale;
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, `Patients of Gender (${row.patient_gender === 'male' ? 'Male' : 'Female'})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, gender: row.patient_gender }, tPatientsOfGender, genderVal)}
                 >
                     <T>Patient</T>
                 </button>
@@ -201,13 +215,13 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         className={styles.actionButton}
-                        onClick={() => fetchLevel('age_group_drilldown', { ...rowParams, ageLow, ageHigh }, `Ages of Age Group (${row.age_group})`)}
+                        onClick={() => fetchLevel('age_group_drilldown', { ...rowParams, ageLow, ageHigh }, tAgesOfAgeGroup, row.age_group)}
                     >
                         <T>Age</T>
                     </button>
                     <button
                         className={styles.actionButton}
-                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, `Patients of Age Group (${row.age_group})`)}
+                        onClick={() => fetchLevel('patient', { ...rowParams, ageLow, ageHigh }, tPatientsOfAgeGroup, row.age_group)}
                     >
                         <T>Patient</T>
                     </button>
@@ -219,7 +233,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, `Patients of Age (${row.patient_age})`)}
+                    onClick={() => fetchLevel('patient', { ...rowParams, ageLow: row.patient_age, ageHigh: row.patient_age }, tPatientsOfAge, String(row.patient_age))}
                 >
                     <T>Patient</T>
                 </button>
@@ -333,14 +347,14 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                         <div className={styles.globalDrilldown}>
                             <span className={styles.drilldownLabel}><T>Drill Down By:</T></span>
                             {isAdmin && (
-                                <button className={styles.actionButton} onClick={() => fetchLevel('caretaker', {}, 'All Caretakers')}>
+                                <button className={styles.actionButton} onClick={() => fetchLevel('caretaker', {}, tAllCaretakers)}>
                                     <T>Caretaker</T>
                                 </button>
                             )}
-                            <button className={styles.actionButton} onClick={() => fetchLevel('gender', {}, 'By Gender')}>
+                            <button className={styles.actionButton} onClick={() => fetchLevel('gender', {}, tByGender)}>
                                 <T>Gender</T>
                             </button>
-                            <button className={styles.actionButton} onClick={() => fetchLevel('age_group', {}, 'By Age Group')}>
+                            <button className={styles.actionButton} onClick={() => fetchLevel('age_group', {}, tByAgeGroup)}>
                                 <T>Age Group</T>
                             </button>
                         </div>
@@ -366,7 +380,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                         {history.map((h, i) => (
                             <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {i > 0 ? <span style={{ color: 'var(--color-text-secondary)' }}>&gt;</span> : ''}
-                                <T>{h.title.replace(/\(([^)]+)\)/, (match, id) => `(${resolveName(id)})`)}</T>
+                                <span>{h.title}{h.titleValue ? ` (${h.titleValue})` : ''}</span>
                             </span>
                         ))}
                     </h3>
