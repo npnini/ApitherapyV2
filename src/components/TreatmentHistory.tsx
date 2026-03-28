@@ -104,6 +104,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [viewMode, setViewMode] = useState<'list' | 'tabular'>('list');
     const [patientMeasureNames, setPatientMeasureNames] = useState<{ id: string, name: string | Record<string, string> }[]>([]);
     const [protocolsNamesMap, setProtocolsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
+    const [problemsNamesMap, setProblemsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
 
     const fetchTreatments = useCallback(async () => {
@@ -143,10 +144,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             });
             pointsMapRef.current = pointsMap;
 
-            // Fetch measures and protocols
-            const [measuresSnapshot, protocolsSnapshot] = await Promise.all([
+            // Fetch measures, protocols, and problems
+            const [measuresSnapshot, protocolsSnapshot, problemsSnapshot] = await Promise.all([
                 getDocs(collection(db, 'cfg_measures')),
-                getDocs(collection(db, 'cfg_protocols'))
+                getDocs(collection(db, 'cfg_protocols')),
+                getDocs(collection(db, 'cfg_problems'))
             ]);
 
             const measuresMap = new Map<string, string | Record<string, string>>();
@@ -165,6 +167,12 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 protocolsMap.set(d.id, d.data().name);
             });
             setProtocolsNamesMap(protocolsMap);
+
+            const problemsMap = new Map<string, string | Record<string, string>>();
+            problemsSnapshot.docs.forEach(d => {
+                problemsMap.set(d.id, d.data().name);
+            });
+            setProblemsNamesMap(problemsMap);
 
             // Hydrate each treatment
             const hydratedTreatments = await Promise.all(rawTreatments.map(async (treatment): Promise<HydratedTreatment> => {
@@ -392,7 +400,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     <h2 className={styles.protocolName}>
                                         {treatment.isSensitivityTest
                                             ? <T>Sensitivity Test</T>
-                                            : (getMLValue(protocolsNamesMap.get(treatment.protocolId || ''), language) || treatment.protocolId || <T>Treatment</T>)
+                                            : (getMLValue(problemsNamesMap.get(treatment.problemId || ''), language) || getMLValue(protocolsNamesMap.get(treatment.protocolId || ''), language) || treatment.problemId || treatment.protocolId || <T>Treatment</T>)
                                         }
                                         {treatment.isSensitivityTest &&
                                             <span className={styles.sensitivityBadge}> (<T>Sensitivity Test</T>)</span>}

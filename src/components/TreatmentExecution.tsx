@@ -82,7 +82,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [selectedModel, setSelectedModel] = useState<'xbot' | 'corpo'>(preferredModel);
     const [isRolling, setIsRolling] = useState(true);
     const [selectedSensitivity, setSelectedSensitivity] = useState<'all' | 'Low' | 'Medium' | 'High'>('all');
-    const [pointDetailToShow, setPointDetailToShow] = useState<StingPoint | null>(null);
+    const [pointDetailToShow, setPointDetailToShow] = useState<{ point: StingPoint; type: 'doc' | 'image' | 'text' } | null>(null);
 
     // End-treatment fields (shown when "End Treatment" is clicked)
     const [showEndPanel, setShowEndPanel] = useState(false);
@@ -193,7 +193,9 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     };
 
     const hasPointLongText = (p: StingPoint): boolean => {
-        return !!(p.longText && p.longText[language]);
+        if (!p.longText || !p.longText[language]) return false;
+        const text = p.longText[language].trim();
+        return text !== '' && text !== 'null' && text !== '<p><br></p>' && text !== '<p></p>';
     };
 
     const displayedPoints = hydratedProtocol?.points.filter(p => {
@@ -325,35 +327,29 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                     </div>
                                     <div className={styles.pointActions}>
                                         {docUrl && (
-                                            <a
-                                                href={docUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
                                                 className={styles.pointDocLink}
-                                                onClick={(e) => e.stopPropagation()}
+                                                onClick={(e) => { e.stopPropagation(); setPointDetailToShow({ point: p, type: 'doc' }); }}
                                                 title={getTranslation('View Document')}
                                             >
                                                 <FileText size={14} />
-                                            </a>
+                                            </button>
                                         )}
                                         {p.imageURL && (
-                                            <a
-                                                href={p.imageURL}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
                                                 className={styles.pointImgLink}
-                                                onClick={(e) => e.stopPropagation()}
+                                                onClick={(e) => { e.stopPropagation(); setPointDetailToShow({ point: p, type: 'image' }); }}
                                                 title={getTranslation('View Image')}
                                             >
                                                 <Image size={14} />
-                                            </a>
+                                            </button>
                                         )}
                                         {pointHasLongText && (
                                             <button
                                                 className={styles.pointInfoLink}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setPointDetailToShow(p);
+                                                    setPointDetailToShow({ point: p, type: 'text' });
                                                 }}
                                                 title={getTranslation('Details')}
                                             >
@@ -381,6 +377,84 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             selectedModel={selectedModel}
                         />
                     </Canvas>
+
+                    {/* Detail Modal Overlay — positioned over the 3D canvas */}
+                    {pointDetailToShow && (() => {
+                        const pToShow = pointDetailToShow.point;
+                        const detailType = pointDetailToShow.type;
+                        const detailDocUrl = getPointDocUrl(pToShow);
+                        const detailHasLongText = hasPointLongText(pToShow);
+                        const detailHasImage = !!pToShow.imageURL;
+                        const detailHasDoc = !!detailDocUrl;
+
+                        // Check if the requested content ACTUALLY exists (fallback case)
+                        const hasRequestedContent =
+                            (detailType === 'text' && detailHasLongText) ||
+                            (detailType === 'image' && detailHasImage) ||
+                            (detailType === 'doc' && detailHasDoc);
+
+                        return (
+                            <div className={styles.detailModalOverlay} onClick={() => setPointDetailToShow(null)}>
+                                <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
+                                    <div className={styles.detailModalHeader}>
+                                        <h3 className={styles.detailModalTitle}>
+                                            {pToShow.code} - {getMLValue(pToShow.label, language)}
+                                        </h3>
+                                        <button className={styles.detailModalClose} onClick={() => setPointDetailToShow(null)}>
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <div className={styles.detailModalBody}>
+                                        {!hasRequestedContent && (
+                                            <p className={styles.noData}>{tNoAdditionalDetails}</p>
+                                        )}
+
+                                        {detailType === 'text' && detailHasLongText && (
+                                            <div className={styles.detailSection}>
+                                                <div className={styles.detailSectionLabel}>
+                                                    <BookOpen size={14} />
+                                                    <T>Details</T>
+                                                </div>
+                                                <div className={styles.longTextContainer}>
+                                                    {pToShow.longText![language].split('\n').map((text: string, idx: number) => (
+                                                        <p key={idx} className={styles.paragraph}>{text}</p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {detailType === 'image' && detailHasImage && (
+                                            <div className={styles.detailSection}>
+                                                <div className={styles.detailSectionLabel}>
+                                                    <Image size={14} />
+                                                    <T>Image</T>
+                                                </div>
+                                                <img
+                                                    src={pToShow.imageURL}
+                                                    alt={pToShow.code}
+                                                    className={styles.detailImage}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {detailType === 'doc' && detailHasDoc && (
+                                            <div className={styles.detailSection}>
+                                                <div className={styles.detailSectionLabel}>
+                                                    <FileText size={14} />
+                                                    <T>Document</T>
+                                                </div>
+                                                <iframe
+                                                    src={detailDocUrl!}
+                                                    className={styles.detailIframe}
+                                                    title={`${pToShow.code} document`}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* Right: Stung data + vitals + actions */}
@@ -483,32 +557,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     )}
                 </div>
             </div>
-            {/* Detail Modal Overlay */}
-            {pointDetailToShow && (
-                <div className={styles.detailModalOverlay} onClick={() => setPointDetailToShow(null)}>
-                    <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
-                        <div className={styles.detailModalHeader}>
-                            <h3 className={styles.detailModalTitle}>
-                                {pointDetailToShow.code} - {pointDetailToShow.label[language]}
-                            </h3>
-                            <button className={styles.detailModalClose} onClick={() => setPointDetailToShow(null)}>
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className={styles.detailModalBody}>
-                            {pointDetailToShow.longText && pointDetailToShow.longText[language] ? (
-                                <div className={styles.longTextContainer}>
-                                    {pointDetailToShow.longText[language].split('\n').map((text, idx) => (
-                                        <p key={idx} className={styles.paragraph}>{text}</p>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className={styles.noData}>{tNoAdditionalDetails}</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
