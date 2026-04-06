@@ -17,6 +17,14 @@
     gap: 1.5rem;
 }
 
+.modalTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #1e293b);
+    text-align: center;
+    margin: 0 0 0.5rem 0;
+}
+
 .section {
     display: flex;
     flex-direction: column;

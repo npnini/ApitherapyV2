@@ -232,6 +232,9 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
     return (
         <div className={styles.container} dir={direction}>
             <div className={styles.formCard}>
+                <h2 className={styles.modalTitle}>
+                    <T>New Treatment</T>
+                </h2>
                 {/* 1. Patient Report */}
                 <section className={styles.section}>
                     <h3 className={styles.sectionTitle}>{tPatientReport} <span className={styles.required}>*</span></h3>
