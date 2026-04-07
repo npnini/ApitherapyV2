@@ -620,7 +620,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                                     <span className={styles.langLabel}><T>{langName}</T></span>
                                     <textarea
                                         className={styles.input}
-                                        rows={2}
+                                        rows={1}
                                         value={mlValue || ''}
                                         onChange={e => {
                                             const newVal = { ...mlValues, [lang]: e.target.value };

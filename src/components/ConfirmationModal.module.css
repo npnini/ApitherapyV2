@@ -15,14 +15,14 @@
 }
 
 .modalContent {
-    background: var(--color-white);
-    padding: 2rem; /* p-8 */
-    border-radius: 1.5rem; /* rounded-3xl */
-    box-shadow: var(--shadow-lg);
+    background: var(--color-background-card);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-modal);
     width: 100%;
-    max-width: 28rem; /* max-w-md */
+    max-width: 28rem;
     text-align: center;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-light);
     animation: slideIn 0.3s ease-out;
 }
 
@@ -31,6 +31,7 @@
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -40,59 +41,56 @@
 .modalIcon {
     margin-left: auto;
     margin-right: auto;
-    /* This is a specific warning color, leaving as is for now as there's no global variable for it */
-    color: #f59e0b; /* yellow-400 */
+    color: var(--color-warning);
 }
 
 .modalTitle {
-    margin-top: 1rem; /* mt-4 */
-    font-size: 1.25rem; /* text-xl */
-    font-weight: 700; /* font-bold */
+    margin-top: 1rem;
+    font-size: var(--font-size-xl);
+    font-weight: 700;
     color: var(--color-text-primary);
 }
 
 .modalDescription {
-    margin-top: 0.5rem; /* mt-2 */
+    margin-top: 0.5rem;
     color: var(--color-text-secondary);
-    font-size: 0.875rem; /* text-sm */
+    font-size: var(--font-size-sm);
     line-height: 1.5;
 }
 
 .modalActions {
-    margin-top: 1.5rem; /* mt-6 */
+    margin-top: 1.5rem;
     display: flex;
     justify-content: center;
-    gap: 1rem; /* gap-4 */
+    gap: 1rem;
 }
 
-/* Updated to use global CSS variables for a consistent theme */
 .modalConfirmButton {
     background-color: var(--color-primary);
     color: var(--color-white);
-    font-weight: 700; /* font-bold */
-    padding: 0.625rem 1.5rem; /* py-2.5 px-6 */
-    border-radius: var(--border-radius);
+    font-weight: 700;
+    padding: 0.625rem 1.5rem;
+    border-radius: var(--radius-md);
     border: none;
     cursor: pointer;
     transition: filter 0.2s;
 }
 
 .modalConfirmButton:hover {
-    filter: brightness(0.9);
+    background-color: var(--color-primary-hover);
 }
 
-/* Updated to use global CSS variables for a consistent theme */
 .modalCancelButton {
     background-color: var(--color-secondary-button-background);
     color: var(--color-text-secondary);
-    font-weight: 700; /* font-bold */
-    padding: 0.625rem 1.5rem; /* py-2.5 px-6 */
-    border-radius: var(--border-radius);
-    border: 1px solid var(--color-border);
+    font-weight: 700;
+    padding: 0.625rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
     cursor: pointer;
     transition: filter 0.2s;
 }
 
 .modalCancelButton:hover {
-    filter: brightness(0.95);
+    background-color: var(--color-secondary-button-hover);
 }

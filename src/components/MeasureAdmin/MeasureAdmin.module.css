@@ -8,9 +8,9 @@
   position: relative;
   display: flex;
   align-items: center;
-  background-color: white;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  background-color: var(--color-background-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
   padding: 0 0.75rem;
   width: 300px;
   transition: all 0.2s;
@@ -18,28 +18,28 @@
 
 .searchContainer:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  box-shadow: var(--shadow-input-focus);
 }
 
 .searchIcon {
-  color: #9ca3af;
+  color: var(--color-text-tertiary);
   flex-shrink: 0;
 }
 
 .searchInput {
   border: none;
   background: none;
-  padding: 0.6rem 0.5rem;
-  font-size: 0.875rem;
+  padding: 0.625rem 0.5rem;
+  font-size: var(--font-size-base);
   width: 100%;
-  color: #1f2937;
+  color: var(--color-text-primary);
   outline: none;
 }
 
 .clearSearch {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--color-text-tertiary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -49,6 +49,6 @@
 }
 
 .clearSearch:hover {
-  background-color: #f3f4f6;
-  color: #4b5563;
+  background-color: var(--color-background-muted);
+  color: var(--color-text-primary);
 }

@@ -1,93 +1,94 @@
 .dashboardContainer {
-    background-color: var(--neutral-color-50, #f8f9fa);
+    background-color: var(--color-background-page);
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: var(--spacing-xl);
 }
 
 .title {
-    font-size: 24px;
-    font-weight: 600;
-    color: var(--neutral-color-900, #212529);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
 }
 
 .addPatientButton {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background-color: var(--primary-color-600, #007bff);
-    color: white;
+    gap: var(--spacing-sm);
+    background-color: var(--color-primary);
+    color: var(--color-white);
     border: none;
-    border-radius: 0.5rem;
-    padding: 0.6rem 1.2rem;
-    font-size: 14px;
-    font-weight: 500;
+    border-radius: var(--radius-md);
+    padding: 0.625rem 1.25rem;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 .addPatientButton:hover {
-    background-color: var(--primary-color-700, #0056b3);
+    background-color: var(--color-primary-hover);
+    box-shadow: var(--shadow-sm);
 }
 
 .headerActions {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: var(--spacing-lg);
 }
 
 .searchContainer {
     position: relative;
     display: flex;
     align-items: center;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
+    background-color: var(--color-background-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     padding: 0 0.75rem;
     width: 300px;
     transition: all 0.2s;
 }
 
 .searchContainer:focus-within {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    border-color: var(--color-border-focus);
+    box-shadow: var(--shadow-input-focus);
 }
 
 .searchIcon {
-    color: #9ca3af;
+    color: var(--color-text-tertiary);
     flex-shrink: 0;
 }
 
 [dir="ltr"] .searchIcon {
-    margin-right: 0.5rem;
+    margin-right: var(--spacing-sm);
 }
 
 [dir="rtl"] .searchIcon {
-    margin-left: 0.5rem;
+    margin-left: var(--spacing-sm);
 }
 
 .searchInput {
     border: none;
     background: none;
     padding: 0.6rem 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     width: 100%;
-    color: #1f2937;
+    color: var(--color-text-primary);
     outline: none;
 }
 
 .searchInput::placeholder {
-    color: var(--neutral-color-400, #ced4da);
+    color: var(--color-text-tertiary);
 }
 
 .clearSearch {
     background: none;
     border: none;
-    color: #9ca3af;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -97,32 +98,32 @@
 }
 
 .clearSearch:hover {
-    background-color: #f3f4f6;
-    color: #4b5563;
+    background-color: var(--color-secondary-button-background);
+    color: var(--color-text-secondary);
 }
 
 .tableContainer {
-    background-color: white;
-    border-radius: 8px;
-    border: 1px solid var(--neutral-color-200, #e9ecef);
+    background-color: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
 }
 
 .tableHeader {
     display: flex;
-    padding: 12px 24px;
-    background-color: var(--neutral-color-50, #f8f9fa);
-    border-bottom: 1px solid var(--neutral-color-200, #e9ecef);
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    gap: 16px;
+    padding: var(--spacing-md) var(--spacing-xl);
+    background-color: var(--color-background-page);
+    border-bottom: 1px solid var(--color-border-light);
+    gap: var(--spacing-md);
 }
 
 .headerCell {
     flex: 1 1 0%;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--neutral-color-500, #adb5bd);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
     text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .headerCellCol2 {
@@ -141,15 +142,18 @@
 .tableRow {
     display: flex;
     align-items: center;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--neutral-color-200, #e9ecef);
-    gap: 16px;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-bottom: 1px solid var(--color-border-light);
+    gap: var(--spacing-md);
+    transition: background-color 0.15s ease;
+}
+
+.tableRow:hover {
+    background-color: var(--color-background-input-hover);
 }
 
 .tableRow:last-child {
     border-bottom: none;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
 }
 
 .patientInfo,
@@ -158,8 +162,8 @@
 .severityInfo,
 .lastTreatment,
 .actionsContainer {
-    font-size: 14px;
-    color: var(--neutral-color-700, #495057);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
     min-width: 0;
 }
 
@@ -174,7 +178,8 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: var(--spacing-xs);
+    color: var(--color-text-secondary);
 }
 
 .conditionInfo {
@@ -195,66 +200,78 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: var(--primary-color-100, #cfe2ff);
-    color: var(--primary-color-600, #007bff);
+    background-color: var(--color-info-background);
+    color: var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
 }
 
 [dir="ltr"] .patientAvatar {
-    margin-right: 12px;
+    margin-right: var(--spacing-sm);
 }
 
 [dir="rtl"] .patientAvatar {
-    margin-left: 12px;
+    margin-left: var(--spacing-sm);
 }
 
 .patientName {
-    font-weight: 600;
-    color: var(--neutral-color-800, #343a40);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
 }
 
 .patientId {
-    font-size: 12px;
-    color: var(--neutral-color-500, #adb5bd);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
 }
 
 .contactLink {
     display: flex;
     align-items: center;
-    color: var(--neutral-color-700, #495057);
+    color: var(--color-text-secondary);
     text-decoration: none;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
 }
 
 .contactLink:hover {
     text-decoration: underline;
 }
 
+.contactIcon {
+    flex-shrink: 0;
+}
+
+[dir="ltr"] .contactIcon {
+    margin-right: var(--spacing-xs);
+}
+
+[dir="rtl"] .contactIcon {
+    margin-left: var(--spacing-xs);
+}
+
 .severityBadge {
     padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     text-transform: capitalize;
 }
 
 .severityMild {
-    background-color: var(--success-color-100, #d1e7dd);
-    color: var(--success-color-800, #0a3622);
+    background-color: var(--color-success-background);
+    color: var(--color-success);
 }
 
 .severityModerate {
-    background-color: var(--warning-color-100, #fff3cd);
-    color: var(--warning-color-800, #664d03);
+    background-color: var(--color-warning-background);
+    color: var(--color-warning);
 }
 
 .severitySevere {
-    background-color: var(--danger-color-100, #f8d7da);
-    color: var(--danger-color-800, #58151c);
+    background-color: var(--color-error-background);
+    color: var(--color-error);
 }
 
 .actionsContainer {
@@ -262,7 +279,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--spacing-sm);
 }
 
 .actionButton {
@@ -270,12 +287,12 @@
     border: none;
     padding: 4px;
     cursor: pointer;
-    color: var(--neutral-color-500, #adb5bd);
+    color: var(--color-text-secondary);
     transition: color 0.2s;
 }
 
 .actionButton:hover {
-    color: var(--primary-color-600, #007bff);
+    color: var(--color-primary);
 }
 
 .deleteButton[disabled] {
@@ -286,51 +303,49 @@
 .startButton {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background-color: var(--primary-color-600, #007bff);
-    color: white;
+    gap: var(--spacing-sm);
+    background-color: var(--color-primary);
+    color: var(--color-white);
     border: none;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-weight: 500;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .startButton:hover {
-    background-color: var(--primary-color-700, #0056b3);
+    background-color: var(--color-primary-hover);
+    box-shadow: var(--shadow-sm);
 }
 
 .noPatientsContainer {
     text-align: center;
-    padding: 80px 40px;
-    border-top: 1px solid var(--neutral-color-200, #e9ecef);
+    padding: 5rem 2.5rem;
+    border-top: 1px solid var(--color-border-light);
 }
 
 .noPatientsIcon {
-    color: var(--neutral-color-300, #dee2e6);
+    color: var(--color-text-tertiary);
 }
 
 .noPatientsTitle {
-    margin-top: 16px;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--neutral-color-800, #343a40);
+    margin-top: var(--spacing-md);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
 }
 
 .noPatientsDescription {
-    margin-top: 4px;
-    font-size: 14px;
-    color: var(--neutral-color-500, #adb5bd);
+    margin-top: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
 }
 
 .modalOverlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
@@ -339,69 +354,67 @@
 }
 
 .modalContent {
-    background: white;
-    padding: 32px;
-    border-radius: 12px;
+    background: var(--color-background-card);
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-lg);
     text-align: center;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-modal);
 }
 
 .modalIcon {
-    color: var(--danger-color-500, #dc3545);
-    margin-bottom: 16px;
+    color: var(--color-error);
+    margin-bottom: var(--spacing-md);
 }
 
 .modalTitle {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--neutral-color-900, #212529);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text-primary);
 }
 
 .modalDescription {
-    font-size: 14px;
-    color: var(--neutral-color-600, #6c757d);
-    margin-bottom: 24px;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-xl);
 }
 
 .modalActions {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: var(--spacing-md);
 }
 
 .modalCancelButton,
 .modalConfirmButton {
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: 1px solid;
-    font-size: 14px;
-    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color 0.2s, color 0.2s, opacity 0.2s;
 }
 
 .modalCancelButton {
-    background-color: white;
-    border-color: var(--neutral-color-300, #ced4da);
-    color: var(--neutral-color-700, #495057);
+    background-color: var(--color-background-card);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
 }
 
 .modalCancelButton:hover {
-    background-color: var(--neutral-color-100, #f8f9fa);
+    background-color: var(--color-background-input-hover);
 }
 
 .modalConfirmButton {
-    background-color: var(--danger-color-600, #dc3545);
-    border-color: var(--danger-color-600, #dc3545);
-    color: white;
+    background-color: var(--color-error);
+    color: var(--color-white);
 }
 
 .modalConfirmButton:hover {
-    background-color: var(--danger-color-700, #c82333);
-    border-color: var(--danger-color-700, #c82333);
+    opacity: 0.9;
 }
 
 .truncate {

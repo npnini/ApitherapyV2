@@ -1,8 +1,8 @@
 /* src/components/ApplicationSettings.module.css */
 
 .container {
-    padding: var(--space-lg);
-    background-color: var(--color-background);
+    padding: var(--spacing-lg);
+    background-color: var(--color-background-page);
     color: var(--color-text-primary);
     height: 100%;
     display: flex;
@@ -19,39 +19,39 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xl);
-    padding: var(--space-sm);
+    gap: var(--spacing-xl);
+    padding: var(--spacing-sm);
 }
 
 .group {
     border: 1px solid var(--color-border);
-    padding: var(--space-lg);
-    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
+    gap: var(--spacing-lg);
 }
 
 .nestedGroup {
     border: none;
     border-inline-start: 3px solid var(--color-border);
-    padding: var(--space-md);
-    padding-inline-start: var(--space-lg);
-    border-radius: var(--border-radius-sm);
-    margin-inline-start: var(--space-md);
+    padding: var(--spacing-md);
+    padding-inline-start: var(--spacing-lg);
+    border-radius: var(--radius-sm);
+    margin-inline-start: var(--spacing-md);
 }
 
 .groupLabel {
     font-size: var(--font-size-lg);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-primary);
-    padding-inline: var(--space-sm);
+    padding-inline: var(--spacing-sm);
 }
 
 .groupDescription {
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
-    margin-block-start: calc(-1 * var(--space-md));
+    margin-block-start: calc(-1 * var(--spacing-md));
 }
 
 .setting {
@@ -60,48 +60,54 @@
         "label control"
         "desc control";
     grid-template-columns: 1fr auto;
-    gap: var(--space-xs) var(--space-lg);
+    gap: var(--spacing-xs) var(--spacing-lg);
     align-items: center;
 }
 
-.setting[data-type="languages"] {
+.setting[data-type="languages"],
+.setting[data-type="mlString"] {
     grid-template-areas:
         "label"
         "desc"
         "control";
     grid-template-columns: 1fr;
-    gap: var(--space-md);
+    gap: var(--spacing-md);
 }
 
 .control {
     grid-area: control;
 }
 
-.setting[data-type="languages"] .control {
+.setting[data-type="languages"] .control,
+.setting[data-type="mlString"] .control {
     width: 100%;
 }
 
 .settingLabel {
     grid-area: label;
-    font-weight: 600;
-    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
     text-align: start;
 }
 
 .settingDescription {
     grid-area: desc;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     color: var(--color-text-secondary);
     text-align: start;
 }
 
 .input {
-    padding: var(--space-sm) var(--space-md);
-    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
     background-color: var(--color-background-input);
     border: 1px solid var(--color-border);
     color: var(--color-text-primary);
     width: 250px;
+}
+
+.setting[data-type="mlString"] .input {
+    width: 100%;
 }
 
 /* Toggle Switch for Booleans */
@@ -145,11 +151,11 @@
 }
 
 input:checked+.slider {
-    background-color: var(--color-primary);
+    background-color: var(--color-success);
 }
 
 input:focus+.slider {
-    box-shadow: 0 0 1px var(--color-primary);
+    box-shadow: var(--shadow-input-focus);
 }
 
 input:checked+.slider:before {
@@ -158,15 +164,15 @@ input:checked+.slider:before {
 
 /* Actions */
 .actions {
-    margin-block-start: var(--space-xl);
-    padding-block-start: var(--space-lg);
+    margin-block-start: var(--spacing-xl);
+    padding-block-start: var(--spacing-lg);
     border-block-start: 1px solid var(--color-border);
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: var(--space-md);
-    background-color: var(--color-bg);
-    padding: var(--space-md);
+    gap: var(--spacing-md);
+    background-color: var(--color-background-card);
+    padding: var(--spacing-md);
 }
 
 .errorMessage {
@@ -183,9 +189,9 @@ input:checked+.slider:before {
 
 .button {
     border: none;
-    padding: var(--space-sm) var(--space-lg);
-    border-radius: var(--border-radius-md);
-    font-weight: 600;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
     transition: background-color 0.2s, opacity 0.2s;
 }
@@ -196,14 +202,14 @@ input:checked+.slider:before {
 }
 
 .saveButton:disabled {
-    background-color: var(--color-secondary-button-background);
+    background-color: var(--color-background-input-disabled);
     color: var(--color-text-secondary);
     cursor: not-allowed;
     opacity: 0.7;
 }
 
 .saveButton:hover:not(:disabled) {
-    background-color: var(--color-primary-dark);
+    background-color: var(--color-primary-hover);
 }
 
 .cancelButton {
@@ -213,7 +219,7 @@ input:checked+.slider:before {
 }
 
 .cancelButton:hover {
-    background-color: var(--color-background-muted);
+    background-color: var(--color-background-input-hover);
 }
 
 /* File Settings Styling */
@@ -221,32 +227,32 @@ input:checked+.slider:before {
     grid-area: control;
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--spacing-md);
     width: 100%;
-    margin-top: var(--space-sm);
+    margin-top: var(--spacing-sm);
 }
 
 .fileSettingRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-sm) var(--space-md);
-    background-color: var(--color-background-muted);
-    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-background-input-hover);
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-border);
 }
 
 .langLabel {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-primary);
-    margin-inline-end: var(--space-md);
+    margin-inline-end: var(--spacing-md);
     min-width: 80px;
 }
 
 .fileActions {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
+    gap: var(--spacing-md);
 }
 
 .viewBtn {
@@ -254,12 +260,12 @@ input:checked+.slider:before {
     color: var(--color-primary);
     border: 1px solid var(--color-primary);
     padding: 4px 12px;
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--radius-sm);
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
     transition: all 0.2s;
-    margin-inline-start: var(--space-sm);
+    margin-inline-start: var(--spacing-sm);
 }
 
 .viewBtn:hover {
@@ -272,7 +278,7 @@ input:checked+.slider:before {
     color: var(--color-error);
     border: 1px solid var(--color-error);
     padding: 4px 12px;
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--radius-sm);
     font-size: var(--font-size-xs);
     cursor: pointer;
     transition: all 0.2s;
@@ -301,15 +307,15 @@ input:checked+.slider:before {
     background-color: var(--color-primary);
     color: var(--color-white);
     padding: 6px 12px;
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--radius-sm);
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .uploadBtn:hover {
-    background-color: var(--color-primary-dark);
+    background-color: var(--color-primary-hover);
 }
 
 /* ML String Settings Styling */
@@ -317,18 +323,18 @@ input:checked+.slider:before {
     grid-area: control;
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--spacing-md);
     width: 100%;
-    margin-top: var(--space-sm);
+    margin-top: var(--spacing-sm);
 }
 
 .mlSettingRow {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
-    padding: var(--space-md);
-    background-color: var(--color-background-muted);
-    border-radius: var(--border-radius-sm);
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md);
+    background-color: var(--color-background-input-hover);
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-border);
 }
 
@@ -342,5 +348,5 @@ input:checked+.slider:before {
 .mlSettingRow textarea {
     width: 100%;
     resize: vertical;
-    min-height: 60px;
+    min-height: 44px;
 }

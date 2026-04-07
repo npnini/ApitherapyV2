@@ -10,9 +10,9 @@
 }
 
 .title {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
 }
 
 .headerActions {
@@ -25,38 +25,38 @@
     position: relative;
     display: flex;
     align-items: center;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
+    background-color: var(--color-background-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     padding: 0 0.75rem;
     width: 300px;
     transition: all 0.2s;
 }
 
 .searchContainer:focus-within {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    border-color: var(--color-border-focus);
+    box-shadow: var(--shadow-input-focus);
 }
 
 .searchIcon {
-    color: #9ca3af;
+    color: var(--color-text-tertiary);
     flex-shrink: 0;
 }
 
 .searchInput {
     border: none;
     background: none;
-    padding: 0.6rem 0.5rem;
-    font-size: 0.875rem;
+    padding: 0.625rem 0.5rem;
+    font-size: var(--font-size-base);
     width: 100%;
-    color: #1f2937;
+    color: var(--color-text-primary);
     outline: none;
 }
 
 .clearSearch {
     background: none;
     border: none;
-    color: #9ca3af;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -66,8 +66,8 @@
 }
 
 .clearSearch:hover {
-    background-color: #f3f4f6;
-    color: #4b5563;
+    background-color: var(--color-background-muted);
+    color: var(--color-text-primary);
 }
 
 .addNewButton {
@@ -95,31 +95,33 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    background-color: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
+    background-color: var(--color-background-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     overflow: hidden;
 }
 
-.table th,
+.table th {
+    padding: 0.75rem 1.5rem;
+    text-align: start;
+    vertical-align: middle;
+    background-color: var(--color-background-muted);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
 .table td {
-    padding: 0.25rem 1.25rem;
+    padding: 1rem 1.5rem;
     text-align: start;
     vertical-align: middle;
 }
 
 .table tr {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .table tr:last-child {
     border-bottom: none;
-}
-
-.table th {
-    background-color: #f3f4f6;
-    font-weight: 600;
-    color: #374151;
 }
 
 .actionCell {
@@ -137,16 +139,16 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: #6b7280;
+    color: var(--color-text-secondary);
 }
 
 .iconButton:hover {
-    color: #4f46e5;
+    color: var(--color-primary);
 }
 
 .loadingText,
 .errorText {
-    color: #6b7280;
+    color: var(--color-text-secondary);
     text-align: center;
     padding: 2rem;
 }
@@ -161,29 +163,29 @@
 }
 
 .badgeActive {
-    background-color: #d1fae5;
-    color: #065f46;
+    background-color: var(--color-success-background);
+    color: var(--color-success);
 }
 
 .badgeInactive {
-    background-color: #f1f5f9;
-    color: #475569;
+    background-color: var(--color-background-muted);
+    color: var(--color-text-secondary);
 }
 
 .deleteButton {
-    color: #ef4444 !important;
+    color: var(--color-error) !important;
 }
 
 .deleteButton:hover {
-    color: #dc2626 !important;
+    color: var(--color-error-hover) !important;
 }
 
 .deleteButtonDisabled {
-    color: #94a3b8 !important;
+    color: var(--color-text-tertiary) !important;
     cursor: not-allowed;
     opacity: 0.6;
 }
 
 .deleteButtonDisabled:hover {
-    color: #94a3b8 !important;
+    color: var(--color-text-tertiary) !important;
 }

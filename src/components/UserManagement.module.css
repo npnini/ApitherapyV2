@@ -1,66 +1,83 @@
 .container {
-    padding: 2rem;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    padding: 0;
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    padding: var(--spacing-xl);
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .header h1 {
     margin: 0;
-    font-size: 1.5rem;
-    color: #333;
+    font-size: var(--font-size-xl);
+    color: var(--color-white);
 }
 
 .searchBar {
     display: flex;
     align-items: center;
-    background: #f5f7fb;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    border: 1px solid #e0e6ed;
+    background: var(--color-white);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: var(--color-text-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .searchBar input {
     border: none;
     background: transparent;
-    margin-left: 0.5rem;
+    margin-inline-start: var(--spacing-sm);
     outline: none;
     width: 250px;
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+.searchBar input::placeholder {
+    color: var(--color-text-muted);
 }
 
 .tableWrapper {
     overflow-x: auto;
+    padding: var(--spacing-xl);
 }
 
 .table {
     width: 100%;
     border-collapse: collapse;
-    text-align: left;
+    text-align: start;
 }
 
 .table th {
-    padding: 1rem;
-    border-bottom: 2px solid #f0f3f8;
-    color: #6d7f92;
-    font-weight: 600;
-    font-size: 0.85rem;
+    padding: var(--spacing-md);
+    border-bottom: 2px solid var(--color-border-light);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
     text-transform: uppercase;
     letter-spacing: 1px;
+    text-align: start;
 }
 
 .table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f0f3f8;
-    color: #333;
-    font-size: 0.95rem;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border-light);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.table th.centerAlign,
+.table td.centerAlign {
+    text-align: center;
 }
 
 .updating {
@@ -69,11 +86,24 @@
 }
 
 .roleSelect {
-    padding: 0.4rem 0.6rem;
-    border-radius: 4px;
-    border: 1px solid #ddd;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--color-border);
     outline: none;
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    background-color: var(--color-background-input);
+    transition: all 0.2s ease;
+}
+
+.roleSelect:hover {
+    border-color: var(--color-border-hover);
+    background-color: var(--color-background-input-hover);
+}
+
+.roleSelect:focus {
+    border-color: var(--color-border-focus);
+    box-shadow: var(--shadow-input-focus);
 }
 
 .toggleBtn {
@@ -82,23 +112,24 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    background: #f9f9f9;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-secondary-button-background);
     cursor: pointer;
     transition: all 0.2s;
+    margin: 0 auto;
 }
 
 .toggleBtn.active {
-    background: #e8f5e9;
-    border-color: #4caf50;
-    color: #4caf50;
+    background: var(--color-success-background);
+    border-color: var(--color-success);
+    color: var(--color-success);
 }
 
 .loading {
     display: flex;
     justify-content: center;
-    padding: 4rem;
+    padding: var(--spacing-xl);
     font-style: italic;
-    color: #666;
+    color: var(--color-text-secondary);
 }

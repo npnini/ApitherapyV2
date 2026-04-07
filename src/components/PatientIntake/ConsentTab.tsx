@@ -242,7 +242,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                         className={styles.signedDocumentImage}
                         onError={handleImageError}
                     />
-                    <div className={styles.fileActions} style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                    <div className={styles.fileActions}>
                         <button
                             className={styles.btnSecondary}
                             onClick={async () => {
@@ -271,7 +271,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                 </div>
             ) : consentSignedUrl && imgError ? (
                 <div className={styles.signedView}>
-                    <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>
+                    <p className={styles.errorMessage}>
                         <T>The signed document could not be loaded. Please re-sign.</T>
                     </p>
                     <button

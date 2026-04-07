@@ -348,7 +348,7 @@ const QuestionGroupEditor: React.FC<QuestionGroupEditorProps> = ({
                     <h3 className={styles.localizedGroupName}>
                         {group.translations.find(t => t.language === language)?.text || group.translations.find(t => t.language === 'en')?.text || group.id}
                     </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className={styles.logicSelectContainer}>
                         <select
                             value={group.logic}
                             onChange={e => onGroupChange(group.id, 'logic', e.target.value)}
@@ -359,7 +359,7 @@ const QuestionGroupEditor: React.FC<QuestionGroupEditorProps> = ({
                         </select>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className={styles.groupActions}>
                     <button type="button" onClick={() => setIsExpanded(!isExpanded)} className={styles.expandButton}>
                         <ChevronDown size={18} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }} />
                     </button>
@@ -370,7 +370,7 @@ const QuestionGroupEditor: React.FC<QuestionGroupEditorProps> = ({
             </div>
 
             {isExpanded && (
-                <div className={styles.translationsContainer} style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+                <div className={`${styles.translationsContainer} ${styles.translationsContainerExpanded}`}>
                     <h4 className={styles.translationsHeader}><T>Translations</T></h4>
                     {supportedLanguages.map((lang, index) => (
                         <TranslationRow
@@ -419,7 +419,7 @@ const QuestionGroupEditor: React.FC<QuestionGroupEditorProps> = ({
                         </button>
                     </div>
                 ))}
-                <button type="button" onClick={() => addCondition(group.id)} className={styles.addButton} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}>
+                <button type="button" onClick={() => addCondition(group.id)} className={`${styles.addButton} ${styles.addButtonSmall}`}>
                     <Plus size={14} /> <span><T>Add Condition</T></span>
                 </button>
             </div>

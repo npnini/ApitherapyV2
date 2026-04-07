@@ -314,7 +314,7 @@ const PointsAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}><T>Acupuncture Points</T></h1>
+                <h1 className={styles.title}><T>Points Configuration</T></h1>
                 <div className={styles.headerActions}>
                     <div className={styles.searchContainer}>
                         <Search size={18} className={styles.searchIcon} />

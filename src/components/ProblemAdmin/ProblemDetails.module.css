@@ -1,55 +1,54 @@
-
 .container {
-    padding: 2rem;
-    background-color: white;
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    padding: var(--spacing-xl);
+    background-color: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .backButton {
     padding: 0.5rem 1rem;
-    background-color: #f9fafb;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
+    background-color: var(--color-background-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color var(--transition-fast);
 }
 
 .backButton:hover {
-    background-color: #f3f4f6;
+    background-color: var(--color-border-light);
 }
 
 .title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: #111827;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
 }
 
 .editButton {
     padding: 0.6rem 1.2rem;
-    background-color: #10b981;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-white);
     border: none;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.08s ease;
 }
 
 .editButton:hover {
-    background-color: #059669;
+    background-color: var(--color-success-hover);
 }
 
 .section {
@@ -59,20 +58,22 @@
 .sectionTitle {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.75rem;
-    border-bottom: 1px solid #e5e7eb;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-border-light);
     padding-bottom: 0.5rem;
 }
 
 .description {
-    font-size: 1rem;
-    color: #4b5563;
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
     line-height: 1.6;
-    white-space: pre-wrap; /* Preserves formatting */
+    white-space: pre-wrap;
+    /* Preserves formatting */
 }
 
-.protocolList, .measureList {
+.protocolList,
+.measureList {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -82,16 +83,17 @@
 }
 
 .listItem {
-    background-color: #eef2ff;
-    color: #4338ca;
+    background-color: var(--color-background-muted);
+    color: var(--color-primary);
     padding: 0.5rem 1rem;
-    border-radius: 9999px; /* Pill shape */
-    font-size: 0.875rem;
+    border-radius: 9999px;
+    /* Pill shape */
+    font-size: var(--font-size-sm);
     font-weight: 500;
+    border: 1px solid var(--color-border);
 }
 
 /* Styling for the DocumentManager section */
 .documentManagerContainer {
     margin-top: 2rem;
 }
-

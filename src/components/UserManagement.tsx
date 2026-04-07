@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { AppUser } from '../types/user';
-import { T } from './T';
+import { T, useTranslationContext } from './T';
 import { Shield, ShieldAlert, User, Check, X, Search } from 'lucide-react';
 import styles from './UserManagement.module.css';
 
@@ -12,6 +12,9 @@ const UserManagement: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+    const { language } = useTranslationContext();
+    const isRtl = language === 'he';
+    const direction = isRtl ? 'rtl' : 'ltr';
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -73,7 +76,7 @@ const UserManagement: React.FC = () => {
     }
 
     return (
-        <div className={styles.container}>
+        <div className={styles.container} dir={direction}>
             <header className={styles.header}>
                 <h1><T>User Management</T></h1>
                 <div className={styles.searchBar}>
@@ -94,7 +97,7 @@ const UserManagement: React.FC = () => {
                             <th><T>Name</T></th>
                             <th><T>Email</T></th>
                             <th><T>Role</T></th>
-                            <th><T>Can Impersonate</T></th>
+                            <th className={styles.centerAlign}><T>Can Impersonate</T></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -113,7 +116,7 @@ const UserManagement: React.FC = () => {
                                         <option value="superadmin"><T>SuperAdmin</T></option>
                                     </select>
                                 </td>
-                                <td>
+                                <td className={styles.centerAlign}>
                                     <button
                                         onClick={() => handleToggleImpersonation(user.uid, !!user.canImpersonate)}
                                         className={`${styles.toggleBtn} ${user.canImpersonate ? styles.active : ''}`}

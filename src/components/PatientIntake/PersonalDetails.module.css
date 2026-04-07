@@ -7,9 +7,29 @@
 .input,
 .textarea {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 0.625rem 0.75rem;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    background-color: var(--color-background-input);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: border-color 0.08s ease, box-shadow 0.08s ease;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.input:hover:not(:disabled):not(:focus),
+.textarea:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-border-hover);
+}
+
+.input:focus,
+.textarea:focus {
+    outline: none;
+    border: 2px solid var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background-color: var(--color-background-input);
 }
 
 .textarea {
@@ -18,16 +38,48 @@
 }
 
 .errorLabel {
-    color: #ef4444;
+    color: var(--color-error);
 }
 
 .errorInput {
-    border-color: #ef4444 !important;
-    background-color: #fef2f2;
+    border-color: var(--color-error) !important;
+    background-color: var(--color-error-background);
 }
 
 .errorMessage {
-    color: #ef4444;
+    color: var(--color-error);
     font-size: 0.875rem;
     margin-top: 4px;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .formGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .colSpan2 {
+        grid-column: span 2 / span 2;
+    }
+}
+
+.requiredStar {
+    color: var(--color-error);
+}
+
+.radioGroup {
+    display: flex;
+    gap: 1rem;
+}
+
+.radioLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
 }

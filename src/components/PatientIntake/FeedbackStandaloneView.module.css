@@ -4,15 +4,15 @@
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background-color: #f8fafc;
-    color: #475569;
+    background-color: var(--color-background-page);
+    color: var(--color-text-secondary);
     font-size: 1.125rem;
 }
 
 .spinner {
     animation: spin 1s linear infinite;
     margin-bottom: 1rem;
-    color: #3b82f6;
+    color: var(--color-primary);
 }
 
 @keyframes spin {
@@ -30,15 +30,15 @@
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
-    background-color: #f1f5f9;
+    background-color: var(--color-background-page);
     padding: 2rem 1rem;
     font-family: system-ui, -apple-system, sans-serif;
 }
 
 .card {
-    background: white;
+    background: var(--color-background-card);
     border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-card);
     width: 100%;
     max-width: 600px;
     padding: 2.5rem;
@@ -51,11 +51,11 @@
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 0.5rem;
-    color: #1e293b;
+    color: var(--color-text-primary);
 }
 
 .headerIcon {
-    color: #3b82f6;
+    color: var(--color-primary);
 }
 
 .title {
@@ -65,7 +65,7 @@
 }
 
 .subtitle {
-    color: #64748b;
+    color: var(--color-text-secondary);
     margin-bottom: 2rem;
     font-size: 1.05rem;
 }
@@ -83,8 +83,8 @@
 }
 
 .measureItem {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background-color: var(--color-background-input-hover);
+    border: 1px solid var(--color-border-light);
     border-radius: 8px;
     padding: 1.25rem;
 }
@@ -97,58 +97,77 @@
 
 .measureName {
     font-weight: 500;
-    color: #334155;
+    color: var(--color-text-primary);
     font-size: 1.1rem;
 }
 
 .measureDesc {
     font-size: 0.875rem;
-    color: #64748b;
+    color: var(--color-text-secondary);
     margin-top: 0.25rem;
 }
 
 .measureInput {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-    background-color: white;
+    padding: 0.625rem 0.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    font-family: inherit;
+    transition: border-color 0.08s ease, box-shadow 0.08s ease;
+    background-color: var(--color-background-input);
+    box-sizing: border-box;
+}
+
+.measureInput:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-border-hover);
 }
 
 .measureInput:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background-color: var(--color-background-input);
 }
 
 .sectionTitle {
     font-size: 1.1rem;
     font-weight: 500;
-    color: #334155;
+    color: var(--color-text-primary);
     margin-bottom: 0.75rem;
 }
 
 .textarea {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 1rem;
-    resize: vertical;
+    padding: 0.625rem 0.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
     font-family: inherit;
+    transition: border-color 0.08s ease, box-shadow 0.08s ease;
+    background-color: var(--color-background-input);
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.textarea:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-border-hover);
 }
 
 .textarea:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background-color: var(--color-background-input);
 }
 
 .submitBtn {
-    background-color: #3b82f6;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-white);
     font-weight: 500;
     font-size: 1.1rem;
     padding: 1rem;
@@ -164,11 +183,11 @@
 }
 
 .submitBtn:hover:not(:disabled) {
-    background-color: #2563eb;
+    background-color: var(--color-primary);
 }
 
 .submitBtn:disabled {
-    background-color: #94a3b8;
+    background-color: var(--color-text-tertiary);
     cursor: not-allowed;
 }
 
@@ -176,9 +195,9 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #ef4444;
+    color: var(--color-error);
     font-size: 0.95rem;
-    background-color: #fef2f2;
+    background-color: var(--color-error-background);
     padding: 0.75rem;
     border-radius: 6px;
 }
@@ -190,13 +209,13 @@
 }
 
 .errorIcon {
-    color: #f59e0b;
+    color: var(--color-warning);
     margin-bottom: 1rem;
     align-self: center;
 }
 
 .message {
-    color: #475569;
+    color: var(--color-text-secondary);
     font-size: 1.1rem;
     text-align: center;
 }

@@ -107,7 +107,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 <div>
                     <button onClick={() => setDataAnalysisOpen(!dataAnalysisOpen)} className={styles.configDropdownButton}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div className={styles.flexCenter}>
                             <BarChart2 size={18} className={styles.iconPrimary} />
                             <span><T>Data Analysis</T></span>
                         </div>
@@ -146,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {(user.role === 'admin' || user.role === 'superadmin') && (
                     <div>
                         <button onClick={() => setConfigOpen(!configOpen)} className={styles.configDropdownButton}>
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <div className={styles.flexCenter}>
                                 <Shield size={18} className={styles.iconPrimary} />
                                 <span><T>Configuration</T></span>
                             </div>
@@ -186,7 +186,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {user.role === 'superadmin' && (
                     <div>
                         <button onClick={() => setSuperAdminOpen(!superAdminOpen)} className={styles.configDropdownButton}>
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <div className={styles.flexCenter}>
                                 <ShieldAlert size={18} className={styles.iconPrimary} />
                                 <span><T>SuperAdmin</T></span>
                             </div>

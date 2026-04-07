@@ -130,8 +130,16 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
             <div
               style={{
                 transform: `translateX(${position.x >= 0 ? '50%' : '-50%'})`,
+                background: 'rgba(255,255,255,0.97)',
+                color: '#0f172a',
+                padding: '0.375rem 0.75rem',
+                borderRadius: '8px',
+                border: '2px solid #ef4444',
+                fontSize: '11px',
+                fontWeight: 900,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               }}
-              className="bg-white/95 text-slate-900 px-3 py-1.5 rounded-lg border-2 border-red-500 text-[11px] font-black whitespace-nowrap shadow-2xl backdrop-blur-sm animate-in fade-in zoom-in duration-200"
             >
               {point.code}
             </div>

@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import styles from './ScaleMeasuresGraph.module.css';
+
 import {
     LineChart,
     Line,
@@ -56,14 +58,14 @@ const ScaleMeasuresGraph: React.FC<ScaleMeasuresGraphProps> = ({ data, measures,
 
     if (data.length === 0 || scaleMeasures.length === 0) {
         return (
-            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+            <div className={styles.emptyStateContainer}>
                 {useT('No scale measures data available')}
             </div>
         );
     }
 
     return (
-        <div style={{ width: '100%', height: '400px', marginTop: '1rem' }}>
+        <div className={styles.chartWrapper}>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                     data={data}

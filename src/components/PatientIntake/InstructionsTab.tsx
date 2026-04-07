@@ -220,7 +220,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                         className={styles.signedDocumentImage}
                         onError={handleImageError}
                     />
-                    <div className={styles.fileActions} style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                    <div className={styles.fileActions}>
                         <button
                             className={styles.btnSecondary}
                             onClick={async () => {
@@ -249,7 +249,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 </div>
             ) : instructionsSignedUrl && imgError ? (
                 <div className={styles.signedView}>
-                    <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>
+                    <p className={styles.errorMessage}>
                         <T>The signed document could not be loaded. Please re-sign.</T>
                     </p>
                     <button
@@ -270,7 +270,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 </div>
             ) : (
                 <>
-                    <div className={styles.documentView} style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                    <div className={`${styles.documentView} ${styles.documentScrollBox}`}>
                         <div className={styles.documentPaper}>
                             <div dangerouslySetInnerHTML={{ __html: injectData(template) }} />
                         </div>

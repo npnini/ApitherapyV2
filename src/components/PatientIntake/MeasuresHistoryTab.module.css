@@ -1,10 +1,10 @@
 .sectionContainer {
     margin-bottom: 2rem;
     padding: 1.5rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-border-light);
     border-radius: 0.75rem;
-    background-color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: var(--color-background-card);
+    box-shadow: var(--shadow-card);
 }
 
 .sectionHeader {
@@ -13,19 +13,19 @@
     align-items: baseline;
     margin-bottom: 1.5rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .sectionTitle {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--color-text-primary);
     margin: 0;
 }
 
 .aggregationNote {
     font-size: 0.8125rem;
-    color: #64748b;
+    color: var(--color-text-secondary);
     font-style: italic;
     font-weight: 400;
 }
@@ -40,4 +40,63 @@
     width: 100%;
     overflow-x: auto;
     margin-top: 0.5rem;
+}
+
+.placeholderLoader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+}
+
+.loaderText {
+    margin-top: var(--space-md);
+    color: var(--color-text-secondary);
+}
+
+.emptyStateContainer {
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    background-color: var(--color-background-muted);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-border-light);
+}
+
+.historyContainer {
+    padding: var(--space-md);
+}
+
+.tabHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+}
+
+.tabTitle {
+    margin: 0;
+}
+
+.timeScaleConfig {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.timeScaleLabel {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.densitySelect {
+    padding: 0.4rem 2rem 0.4rem 0.75rem;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border);
+    font-size: var(--font-size-sm);
+    background-color: var(--color-background-input);
 }

@@ -7,7 +7,7 @@ import { Measure } from '../../types/measure';
 import { VitalSigns } from '../../types/treatmentSession';
 import VitalsInputGroup from '../VitalsInputGroup';
 import { T, useT, useTranslationContext } from '../T';
-import { Loader, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Loader, ChevronRight, ChevronLeft, Camera } from 'lucide-react';
 import styles from './SessionOpening.module.css';
 
 export interface SessionOpeningData {
@@ -235,6 +235,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                 <h2 className={styles.modalTitle}>
                     <T>New Treatment</T>
                 </h2>
+
                 {/* 1. Patient Report */}
                 <section className={styles.section}>
                     <h3 className={styles.sectionTitle}>{tPatientReport} <span className={styles.required}>*</span></h3>
@@ -256,13 +257,12 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                     />
                 </section>
 
-
-                {/* 4. Pre-Treatment Photo */}
+                {/* 3. Pre-Treatment Photo */}
                 <section className={styles.section}>
                     <h3 className={styles.sectionTitle}>{tAddPhoto}</h3>
                     <div className={styles.photoContainer}>
                         {!uploadPreview ? (
-                            <div className={styles.uploadBox}>
+                            <div className={styles.uploadButtonWrapper}>
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -271,8 +271,9 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                                     className={styles.fileInput}
                                     capture="environment"
                                 />
-                                <label htmlFor="pre-treatment-upload" className={styles.uploadLabel}>
-                                    <T>Click to capture or upload</T>
+                                <label htmlFor="pre-treatment-upload" className={styles.btnUpload}>
+                                    <Camera size={16} />
+                                    <T>Upload Photo</T>
                                 </label>
                             </div>
                         ) : (
@@ -303,9 +304,8 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                     </div>
                 </section>
 
-                {/* 3. Tracking Measures (Moved to bottom) */}
+                {/* 4. Tracking Measures */}
                 <section className={styles.section}>
-
                     <h3 className={styles.sectionTitle}>{tTrackingMeasures}</h3>
                     {isLoading ? (
                         <div className={styles.loading}>
@@ -351,7 +351,6 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, onComplete, on
                         </div>
                     )}
                 </section>
-
 
                 {/* Actions */}
                 <div className={styles.actions}>

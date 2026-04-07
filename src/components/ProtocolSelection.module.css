@@ -1,164 +1,137 @@
-/* src/components/ProtocolSelection.module.css */
+/* ProtocolSelection.module.css — aligned to Claude Style-Guide */
 
+/* ── Page wrapper ─────────────────────────────────────────── */
 .container {
-    max-width: 44rem;
-    /* Reduced from 56rem to feel more contained */
-    margin-inline: auto;
-    padding: 2.5rem 1.5rem;
-    animation: fadeIn 0.3s ease-in-out;
+    padding: var(--spacing-lg) var(--spacing-md);
     height: 100%;
     overflow-y: auto;
-    background-color: #f8fafc;
+    background-color: var(--color-background-page);
     display: flex;
     flex-direction: column;
+    align-items: center;
 }
 
-@media (max-width: 768px) {
-    .container {
-        padding: 1.5rem 1rem;
-    }
-
-    .formContainer {
-        padding: 1.5rem;
-    }
-
-    .stepTitle {
-        font-size: 1.1rem;
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
+/* ── Slim top bar (Back button row) ───────────────────────── */
 .header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: var(--spacing-sm);
 }
 
-.backButton {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #475569;
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: color 0.2s;
-    padding: 0.25rem 0;
-}
-
-.backButton:hover {
-    color: #1e293b;
-}
-
+/* ── Card ─────────────────────────────────────────────────── */
 .formContainer {
-    background-color: white;
-    border-radius: 1.5rem;
-    padding: 2.5rem;
-    border: 1px solid #e2e8f0;
-    box-shadow:
-        0 10px 25px -5px rgba(0, 0, 0, 0.05),
-        0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 640px;
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--color-border-light);
 }
 
-.problemContext {
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 0.5rem;
-}
-
-.problemContextLabel {
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.problemContextName {
-    font-weight: 700;
-    color: var(--color-primary, #c0392b);
-}
-
+/* ── Step titles ──────────────────────────────────────────── */
 .stepTitle {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin: 0 0 1.25rem;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0 0 var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-light);
 }
 
+/* ── Problem/Protocol card list ───────────────────────────── */
 .itemList {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--spacing-sm);
 }
 
 .itemCard {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    position: relative;
     width: 100%;
-    background-color: #f8fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 0.875rem;
-    padding: 1rem 2.5rem 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--color-background-card);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
     cursor: pointer;
     text-align: start;
-    transition: border-color 0.18s, background-color 0.18s, box-shadow 0.18s;
+    transition: border-color 0.08s ease, box-shadow 0.08s ease;
 }
 
 .itemCard:hover {
-    border-color: var(--color-primary, #c0392b);
-    background-color: #fff;
-    box-shadow: 0 2px 8px 0 rgb(192 57 43 / 0.08);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.itemCard:active {
+    transform: translateY(1px);
 }
 
 .itemName {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #334155;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
 }
 
 .itemDescription {
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-top: 0.2rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-top: var(--spacing-xs);
+    line-height: 1.5;
+}
+
+/* Text block taking up available space */
+.itemCard>div:first-child {
+    flex: 1;
+    min-width: 0;
 }
 
 .itemChevron {
-    position: absolute;
-    inset-inline-end: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
+    color: var(--color-text-tertiary);
     flex-shrink: 0;
 }
 
+/* ── Problem context badge (Step B) ───────────────────────── */
+.problemContext {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    background: var(--color-info-background);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+}
+
+.problemContextLabel {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+}
+
+.problemContextName {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+}
+
+/* ── Empty / loading states ───────────────────────────────── */
 .emptyState {
-    padding: 3rem 1rem;
     text-align: center;
-    color: #94a3b8;
-    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-xl) 0;
 }
 
 .loadingMessage {
     display: flex;
     align-items: center;
+    gap: var(--spacing-sm);
     justify-content: center;
-    gap: 0.75rem;
-    padding: 3rem 1rem;
-    color: #64748b;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    height: 100%;
+    padding: var(--spacing-xl);
 }
 
 .spinner {
@@ -173,4 +146,25 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ── Back button ──────────────────────────────────────────── */
+.backButton {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 0.5rem var(--spacing-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: color 0.08s ease, background-color 0.08s ease;
+}
+
+.backButton:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-secondary-button-background);
 }

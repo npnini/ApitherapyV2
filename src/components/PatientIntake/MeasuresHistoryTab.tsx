@@ -83,9 +83,9 @@ const MeasuresHistoryTab: React.FC<MeasuresHistoryTabProps> = ({ patientData }) 
     if (isLoading) {
         return (
             <div className={styles.placeholderTab}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px' }}>
+                <div className={measureStyles.placeholderLoader}>
                     <Loader className={styles.loader} size={48} />
-                    <p style={{ marginTop: '1rem', color: '#64748b' }}><T>Loading measures history...</T></p>
+                    <p className={measureStyles.loaderText}><T>Loading measures history...</T></p>
                 </div>
             </div>
         );
@@ -95,7 +95,7 @@ const MeasuresHistoryTab: React.FC<MeasuresHistoryTabProps> = ({ patientData }) 
         return (
             <div className={styles.placeholderTab}>
                 <h2><T>Measures History</T></h2>
-                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                <div className={measureStyles.emptyStateContainer}>
                     <T>No measures history found for this patient.</T>
                 </div>
             </div>
@@ -103,25 +103,19 @@ const MeasuresHistoryTab: React.FC<MeasuresHistoryTabProps> = ({ patientData }) 
     }
 
     return (
-        <div className={styles.measuresHistoryContainer} style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0 }}><T>Measures History</T></h2>
+        <div className={`${styles.measuresHistoryContainer} ${measureStyles.historyContainer}`}>
+            <div className={measureStyles.tabHeader}>
+                <h2 className={measureStyles.tabTitle}><T>Measures History</T></h2>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <label htmlFor="density-select" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>
+                <div className={measureStyles.timeScaleConfig}>
+                    <label htmlFor="density-select" className={measureStyles.timeScaleLabel}>
                         <T>Time Scale</T>:
                     </label>
                     <select
                         id="density-select"
                         value={density}
                         onChange={(e) => setDensity(e.target.value as DateDensity)}
-                        style={{
-                            padding: '0.4rem 2rem 0.4rem 0.75rem',
-                            borderRadius: '0.375rem',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.875rem',
-                            backgroundColor: '#fff'
-                        }}
+                        className={measureStyles.densitySelect}
                     >
                         <option value="day">{tDay}</option>
                         <option value="week">{tWeekLabel}</option>

@@ -121,10 +121,25 @@ const CorpoModel = ({ url, textureUrl, children }: { url: string; textureUrl: st
 
 const LoadingOverlay = () => (
   <Html center>
-    <div className="flex flex-col items-center gap-4 whitespace-nowrap">
-      <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-      <div className="bg-white/95 px-6 py-3 rounded-2xl border border-slate-200 shadow-2xl backdrop-blur-sm">
-        <p className="text-slate-600 font-bold text-xs uppercase tracking-widest text-center"><T>Loading Anatomy</T></p>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', whiteSpace: 'nowrap' }}>
+      <div style={{
+        width: '3rem',
+        height: '3rem',
+        border: '4px solid #2563eb',
+        borderTopColor: 'transparent',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+      }} />
+      <div style={{
+        background: 'rgba(255,255,255,0.97)',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '8px',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+      }}>
+        <p style={{ color: '#6b7280', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, textAlign: 'center' }}>
+          <T>Loading Anatomy</T>
+        </p>
       </div>
     </div>
   </Html>

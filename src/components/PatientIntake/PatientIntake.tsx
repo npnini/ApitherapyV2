@@ -98,6 +98,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [isSensitivitySession, setIsSensitivitySession] = useState(false);
     const [accumulatedStungPointIds, setAccumulatedStungPointIds] = useState<string[]>([]);
     const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
+    const [showTreatmentSavedModal, setShowTreatmentSavedModal] = useState(false);
 
     const [appConfig, setAppConfig] = useState<any>(null);
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -123,6 +124,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tDone = useT('Done');
     const tTreatmentFeedback = useT('Treatment Feedback');
     const tSaveError = useT('Failed to save signed document. Please check your connection and try again.');
+    const tTreatmentSaved = useT('Treatment Saved');
 
     const tabLabels: Record<TabKey, string> = {
         personal: tPersonal,
@@ -617,8 +619,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 finalNotes,
                 createdTimestamp: Date.now(), // Local approx for immediate UI update
             } as any);
-            setViewState('tabs');
-            setActiveTab('treatments');
+            setShowTreatmentSavedModal(true);
             if (onTreatmentComplete) onTreatmentComplete();
         } catch (error) {
             console.error('Error saving treatment:', error);
@@ -717,6 +718,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     // UX-4: hide Update on Treatments History & Measures History tabs
     const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures';
+
+    const handleConfirmSaved = () => {
+        setShowTreatmentSavedModal(false);
+        setViewState('tabs');
+        setActiveTab('treatments');
+    };
 
     return (
         <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>
@@ -943,6 +950,16 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 title={<T>Update Failed</T>}
                 message={<T>Update failed. Please notify the administrator.</T>}
                 onConfirm={() => setShowTreatmentErrorGuard(false)}
+                showCancelButton={false}
+            />
+
+            {/* ── Treatment Saved Modal ──────────────────────────────────── */}
+            <ConfirmationModal
+                isOpen={showTreatmentSavedModal}
+                title={tTreatmentSaved}
+                message={tTreatmentSaved}
+                confirmLabel={useT('OK')}
+                onConfirm={handleConfirmSaved}
                 showCancelButton={false}
             />
         </div>

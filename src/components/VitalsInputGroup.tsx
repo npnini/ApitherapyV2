@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { T, useT, useTranslationContext } from './T';
 import { VitalSigns } from '../types/treatmentSession';
 import { AlertCircle } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import styles from './VitalsInputGroup.module.css';
 
 interface VitalsInputGroupProps {
     title: string;
@@ -43,24 +43,18 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
     };
 
     const handleChange = (field: VitalField, valueStr: string) => {
-        // Clean input: only digits
         const cleanValueStr = valueStr.replace(/\D/g, '');
         const value = cleanValueStr ? parseInt(cleanValueStr, 10) : undefined;
 
         console.log(`VitalsInputGroup[${title}] update ${field}:`, value);
         setLocalVitals(current => ({ ...current, [field]: value }));
 
-        // Proactively update parent if value is set (even if potentially out of range)
-        // so that completeness checks (areVitalsComplete) work without needing blur.
         const updatedVitals = { ...vitals, [field]: value };
-
-        // Logic for outOfRange flag update
         const otherFields: VitalField[] = ['systolic', 'diastolic', 'heartRate'];
-        const isAnyOutOfRange = otherFields
-            .some(f => {
-                const val = f === field ? value : vitals[f];
-                return val !== undefined && isValueOutOfRange(f, val);
-            });
+        const isAnyOutOfRange = otherFields.some(f => {
+            const val = f === field ? value : vitals[f];
+            return val !== undefined && isValueOutOfRange(f, val);
+        });
 
         onVitalsChange({ ...updatedVitals, outOfRange: isAnyOutOfRange });
     };
@@ -69,12 +63,10 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
         const value = localVitals[field];
 
         if (value === undefined || isNaN(value)) {
-            // Check if any other values are still out of range before setting the flag to false.
             const otherFields: VitalField[] = ['systolic', 'diastolic', 'heartRate'];
             const isAnyOtherValueOutOfRange = otherFields
                 .filter(f => f !== field)
                 .some(f => vitals[f] !== undefined && isValueOutOfRange(f, vitals[f]!));
-
             onVitalsChange({ ...vitals, [field]: undefined, outOfRange: isAnyOtherValueOutOfRange });
             return;
         }
@@ -87,24 +79,17 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
             const isAnyOtherValueOutOfRange = otherFields
                 .filter(f => f !== field)
                 .some(f => vitals[f] !== undefined && isValueOutOfRange(f, vitals[f]!));
-
             onVitalsChange({ ...vitals, [field]: value, outOfRange: isAnyOtherValueOutOfRange });
         }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.currentTarget.blur();
-        }
+        if (e.key === 'Enter') e.currentTarget.blur();
     };
 
     const handleConfirmOutOfRange = () => {
         if (pendingChange) {
-            onVitalsChange({
-                ...vitals,
-                [pendingChange.field]: pendingChange.value,
-                outOfRange: true,
-            });
+            onVitalsChange({ ...vitals, [pendingChange.field]: pendingChange.value, outOfRange: true });
         }
         setIsModalOpen(false);
         setPendingChange(null);
@@ -119,41 +104,37 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
     const renderInput = (field: VitalField, placeholder: string) => {
         const value = localVitals[field];
         const isCurrentValueOutOfRange = value !== undefined && isValueOutOfRange(field, value);
-
-        // The field is considered problematic if the user has confirmed an out-of-range value for it.
         const isConfirmedProblematic = vitals.outOfRange && isCurrentValueOutOfRange;
+        const fieldLabel = field === 'heartRate' ? tHeartRate : field === 'systolic' ? tSystolic : tDiastolic;
 
         return (
-            <div className="text-center">
-                <div className="relative w-full">
-                    <input
-                        type="number"
-                        value={value === undefined ? '' : String(value)}
-                        onChange={(e) => handleChange(field, e.target.value)}
-                        onBlur={() => handleBlur(field)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
-                        className={`w-full p-2 bg-slate-100 border-2 rounded-lg text-sm text-center font-bold transition-colors duration-200 outline-none ${isCurrentValueOutOfRange && !isConfirmedProblematic ? 'border-yellow-400 focus:border-yellow-600' : 'border-slate-200 focus:border-slate-400'
-                            }`}
-                    />
-                    {isCurrentValueOutOfRange && !isConfirmedProblematic &&
-                        <div className={`absolute ${direction === 'rtl' ? 'left-3' : 'right-3'} top-1/2 transform -translate-y-1/2`} title={tOutOfRange}>
-                            <AlertCircle className="h-5 w-5 text-yellow-500" />
-                        </div>
-                    }
-                </div>
-                <label className="text-xs text-slate-500 mt-1">
-                    {field === 'heartRate' ? tHeartRate : field === 'systolic' ? tSystolic : tDiastolic} <span className="text-red-500">*</span>
+            <div className={styles.fieldWrapper}>
+                <input
+                    type="number"
+                    value={value === undefined ? '' : String(value)}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                    onBlur={() => handleBlur(field)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    className={`${styles.input} ${isCurrentValueOutOfRange && !isConfirmedProblematic ? styles.inputWarning : ''}`}
+                />
+                {isCurrentValueOutOfRange && !isConfirmedProblematic && (
+                    <span className={styles.warningIcon} title={tOutOfRange}>
+                        <AlertCircle size={16} />
+                    </span>
+                )}
+                <label className={styles.label}>
+                    {fieldLabel} <span className={styles.requiredStar}>*</span>
                 </label>
                 {isConfirmedProblematic && (
-                    <p className="text-xs text-yellow-600 font-bold mt-1">{tOutOfRange}</p>
+                    <p className={styles.warningText}>{tOutOfRange}</p>
                 )}
             </div>
         );
     };
 
     return (
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-4">
+        <div className={styles.container}>
             <ConfirmationModal
                 isOpen={isModalOpen}
                 title={tOutOfRange}
@@ -161,8 +142,8 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
                 onConfirm={handleConfirmOutOfRange}
                 onCancel={handleCancelOutOfRange}
             />
-            <h3 className="text-md font-bold text-slate-700 text-center mb-3"><T>{title}</T></h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <h3 className={styles.title}><T>{title}</T></h3>
+            <div className={styles.grid}>
                 {renderInput('systolic', tEg120)}
                 {renderInput('diastolic', tEg80)}
                 {renderInput('heartRate', tEg70)}

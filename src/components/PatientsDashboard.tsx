@@ -100,11 +100,11 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                 </div>
                 <div className={styles.contactInfo}>
                   <a href={`mailto:${patient.email}`} className={styles.contactLink}>
-                    <Mail size={12} style={{ [isRtl ? 'marginLeft' : 'marginRight']: '5px' }} />
+                    <Mail size={12} className={styles.contactIcon} />
                     {patient.email}
                   </a>
                   <a href={`tel:${patient.mobile}`} className={styles.contactLink}>
-                    <Phone size={12} style={{ [isRtl ? 'marginLeft' : 'marginRight']: '5px' }} />
+                    <Phone size={12} className={styles.contactIcon} />
                     {patient.mobile}
                   </a>
                 </div>
@@ -131,7 +131,6 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <button
                     onClick={() => handleDeleteClick(patient)}
                     className={`${styles.actionButton} ${styles.deleteButton}`}
-                    style={{ visibility: patient.medicalRecord?.lastTreatment ? 'hidden' : 'visible' }}
                     disabled={!!patient.medicalRecord?.lastTreatment}
                     title={tDeletePatient}>
                     <Trash2 size={14} />

@@ -64,6 +64,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const tNotesPlaceholder = useT('Add any final observations or notes here...');
     const tAnotherProtocol = useT('Another Protocol');
     const tEndTreatment = useT('End Treatment');
+    const tNextStep = useT('Next Step');
     const tSensitivityBanner = useT('This session uses the sensitivity test protocol.');
     const tNoPointsStung = useT('No points have been marked as stung yet.');
     const tStungPoints = useT('Stung Points');
@@ -551,7 +552,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 disabled={!canCompleteRound}
                                 onClick={() => setShowEndPanel(true)}
                             >
-                                <CheckCircle size={15} /> {tEndTreatment}
+                                <CheckCircle size={15} /> {tNextStep}
                             </button>
                         </div>
                     )}

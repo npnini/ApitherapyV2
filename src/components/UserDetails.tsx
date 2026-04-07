@@ -90,71 +90,73 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
 
     return (
         <div className={styles.container} dir={isRtl ? 'rtl' : 'ltr'}>
-            <h2 className={styles.title}>{isOnboarding ? yourProfileDetailsTitle : myProfileTitle}</h2>
-            <p className={styles.subtitle}>{isOnboarding ? <T>Update your information below</T> : ''}</p>
-            {error && <p className={styles.error}>{error}</p>}
-            <div className={styles.grid}>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="fullName">
-                        <T>Full Name</T>
-                        <span className={styles.requiredAsterisk}>*</span>
-                    </label>
-                    <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={styles.input} required />
+            <div className={styles.card}>
+                <h2 className={styles.title}>{isOnboarding ? yourProfileDetailsTitle : myProfileTitle}</h2>
+                <p className={styles.subtitle}>{isOnboarding ? <T>Update your information below</T> : ''}</p>
+                {error && <p className={styles.error}>{error}</p>}
+                <div className={styles.grid}>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="fullName">
+                            <T>Full Name</T>
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="fullName" name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={styles.input} required />
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="email"><T>Email</T></label>
+                        <p className={styles.readOnlyField}>{formData.email}</p>
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="mobile">
+                            <T>Mobile</T>
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className={styles.input} required />
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="address">
+                            <T>Address</T>
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="address" name="address" type="text" value={formData.address || ''} onChange={handleChange} className={styles.input} placeholder={useT('Enter your address')} required />
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="city">
+                            <T>City</T>
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="city" name="city" type="text" value={formData.city || ''} onChange={handleChange} className={styles.input} placeholder={useT('Enter your city')} required />
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="country">
+                            <T>Country</T>
+                            <span className={styles.requiredAsterisk}>*</span>
+                        </label>
+                        <input id="country" name="country" type="text" value={formData.country || ''} onChange={handleChange} className={styles.input} placeholder={useT('Enter your country')} required />
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="preferredLanguage"><T>Preferred Language</T></label>
+                        <select id="preferredLanguage" name="preferredLanguage" value={formData.preferredLanguage || ''} onChange={handleChange} className={styles.input}>
+                            <option value=""><T>Select Language</T></option>
+                            {supportedLanguages.map(lang => <LanguageOption key={lang} lang={lang} />)}
+                        </select>
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label} htmlFor="preferredModel"><T>Preferred 3D Model</T></label>
+                        <select id="preferredModel" name="preferredModel" value={formData.preferredModel || 'xbot'} onChange={handleChange} className={styles.input}>
+                            <option value="xbot"><T>Xbot (Mannequin)</T></option>
+                            <option value="corpo"><T>Corpo (Anatomical)</T></option>
+                        </select>
+                    </div>
+                    <div className={styles.field}>
+                        <label className={styles.label}><T>Role</T></label>
+                        <p className={`${styles.readOnlyField} ${styles.capitalize}`}><T>{formData.role}</T></p>
+                    </div>
                 </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="email"><T>Email</T></label>
-                    <p className={styles.readOnlyField}>{formData.email}</p>
+                <div className={styles.actions}>
+                    {!isOnboarding && onBack && <button onClick={onBack} className={styles.backButton}><T>Back to Dashboard</T></button>}
+                    <button onClick={handleSave} className={styles.saveButton}>{isOnboarding ? saveAndContinue : saveChanges}</button>
                 </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="mobile">
-                        <T>Mobile</T>
-                        <span className={styles.requiredAsterisk}>*</span>
-                    </label>
-                    <input id="mobile" name="mobile" type="text" value={formData.mobile} onChange={handleChange} className={styles.input} required />
-                </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="address">
-                        <T>Address</T>
-                        <span className={styles.requiredAsterisk}>*</span>
-                    </label>
-                    <input id="address" name="address" type="text" value={formData.address || ''} onChange={handleChange} className={styles.input} placeholder={useT('Enter your address')} required />
-                </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="city">
-                        <T>City</T>
-                        <span className={styles.requiredAsterisk}>*</span>
-                    </label>
-                    <input id="city" name="city" type="text" value={formData.city || ''} onChange={handleChange} className={styles.input} placeholder={useT('Enter your city')} required />
-                </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="country">
-                        <T>Country</T>
-                        <span className={styles.requiredAsterisk}>*</span>
-                    </label>
-                    <input id="country" name="country" type="text" value={formData.country || ''} onChange={handleChange} className={styles.input} placeholder={useT('Enter your country')} required />
-                </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="preferredLanguage"><T>Preferred Language</T></label>
-                    <select id="preferredLanguage" name="preferredLanguage" value={formData.preferredLanguage || ''} onChange={handleChange} className={styles.input}>
-                        <option value=""><T>Select Language</T></option>
-                        {supportedLanguages.map(lang => <LanguageOption key={lang} lang={lang} />)}
-                    </select>
-                </div>
-                <div className={styles.field}>
-                    <label className={styles.label} htmlFor="preferredModel"><T>Preferred 3D Model</T></label>
-                    <select id="preferredModel" name="preferredModel" value={formData.preferredModel || 'xbot'} onChange={handleChange} className={styles.input}>
-                        <option value="xbot"><T>Xbot (Mannequin)</T></option>
-                        <option value="corpo"><T>Corpo (Anatomical)</T></option>
-                    </select>
-                </div>
-                <div className={styles.field}>
-                    <label className={styles.label}><T>Role</T></label>
-                    <p className={`${styles.readOnlyField} ${styles.capitalize}`}><T>{formData.role}</T></p>
-                </div>
-            </div>
-            <div className={styles.actions}>
-                {!isOnboarding && onBack && <button onClick={onBack} className={styles.backButton}><T>Back to Dashboard</T></button>}
-                <button onClick={handleSave} className={styles.saveButton}>{isOnboarding ? saveAndContinue : saveChanges}</button>
             </div>
         </div>
     );

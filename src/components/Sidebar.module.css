@@ -1,13 +1,13 @@
 .sidebar {
-    width: 16rem;
-    /* Narrower for smaller screens */
+    width: 280px;
     display: flex;
     flex-direction: column;
     height: 100vh;
-    color: #1F2937;
+    color: var(--color-text-primary);
     position: relative;
     overflow: hidden;
-    background-color: #FFFBEB;
+    background-color: var(--color-background-sidebar);
+    border-inline-end: 1px solid var(--color-border-light);
 }
 
 
@@ -23,11 +23,10 @@
 }
 
 .title {
-    font-size: 1.25rem;
-    /* Slightly smaller Title */
+    font-size: var(--font-size-xl);
     font-weight: 900;
     letter-spacing: -0.05em;
-    color: #1F2937;
+    color: var(--color-text-primary);
 }
 
 /* --- NAVIGATION --- */
@@ -47,14 +46,14 @@
     width: 100%;
     display: flex;
     align-items: center;
-    padding: 0.85rem;
-    border-radius: 0.75rem;
-    transition: all 0.2s;
-    font-size: 0.95rem;
-    /* More compact font */
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    transition: all 0.08s ease;
+    font-size: var(--font-size-sm);
     font-weight: 600;
     text-align: start;
-    color: #1F2937;
+    color: var(--color-text-primary);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -62,8 +61,8 @@
 
 .navButton:hover,
 .configDropdownButton:hover {
-    background-color: rgba(251, 191, 36, 0.3);
-    transform: translateX(4px);
+    background-color: var(--color-sidebar-accent-hover);
+    color: var(--color-white);
 }
 
 /* --- ICON STYLING (Standard CSS - No 'composes' errors) --- */
@@ -137,7 +136,8 @@
 }
 
 .configButton:hover {
-    background-color: rgba(251, 191, 36, 0.4);
+    background-color: var(--color-sidebar-accent-hover);
+    color: var(--color-white);
 }
 
 .chevron {
@@ -152,9 +152,9 @@
 .impersonationBox {
     margin: 1rem 0;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.6);
     border-radius: 0.75rem;
-    border: 1px solid rgba(217, 119, 6, 0.1);
+    border: 1px solid var(--color-sidebar-accent);
 }
 
 .impersonationLabel {
@@ -163,7 +163,7 @@
     gap: 0.5rem;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #92400E;
+    color: var(--color-sidebar-text-accent);
     margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -172,13 +172,18 @@
 .caretakerSelect {
     width: 100%;
     padding: 0.5rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(217, 119, 6, 0.2);
-    background: white;
-    font-size: 0.85rem;
-    color: #1F2937;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-background-input);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
     outline: none;
     cursor: pointer;
+    transition: border-color 0.08s ease;
+}
+
+.caretakerSelect:focus {
+    border-color: var(--color-primary);
 }
 
 /* --- FOOTER & USER INFO --- */
@@ -196,15 +201,16 @@
 }
 
 .avatar {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 9999px;
-    background-color: #FBBF24;
-    color: #1F2937;
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-sidebar-text-accent);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
+    font-size: var(--font-size-base);
 
     [dir="ltr"] & {
         margin-right: 0.75rem;
@@ -231,19 +237,26 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.85rem;
-    border-radius: 0.75rem;
-    background-color: #FBBF24;
-    color: #1F2937;
-    font-size: 0.95rem;
+    gap: var(--spacing-sm);
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
     font-weight: 700;
-    border: 1px solid rgba(217, 119, 6, 0.2);
+    border: 1px solid var(--color-sidebar-accent-hover);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.08s ease;
 }
 
 .logoutButton:hover {
-    background-color: #F59E0B;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background-color: var(--color-sidebar-accent-hover);
+    color: var(--color-white);
+    border-color: var(--color-sidebar-accent-hover);
+}
+
+.flexCenter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }

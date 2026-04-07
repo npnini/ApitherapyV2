@@ -54,12 +54,12 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
         const hasError = showErrors && isRequired && isFieldMissing(value);
 
         return (
-            <div className={name === 'address' || name === 'profession' ? "md:col-span-2" : ""}>
+            <div className={name === 'address' || name === 'profession' ? styles.colSpan2 : ""}>
                 <label
                     htmlFor={name}
                     className={`${styles.label} ${hasError ? styles.errorLabel : ''}`}
                 >
-                    <T>{labelTitle}</T> {isRequired && <span className="text-red-500">*</span>}
+                    <T>{labelTitle}</T> {isRequired && <span className={styles.requiredStar}>*</span>}
                 </label>
                 {isTextArea ? (
                     <textarea
@@ -89,7 +89,7 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
     };
 
     return (
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form className={styles.formGrid}>
             {renderInput('fullName', 'Full Name', 'Full name cannot be empty')}
             {renderInput('identityNumber', 'Identity Number', 'Identity Number cannot be empty')}
             {renderInput('email', 'Email', 'Email cannot be empty', 'email')}
@@ -101,12 +101,12 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                 <input type="text" id="age" name="age" value={age} className={styles.input} disabled />
             </div>
 
-            <div className="md:col-span-2">
+            <div className={styles.colSpan2}>
                 <label className={`${styles.label} ${showErrors && !patientData.gender ? styles.errorLabel : ''}`}>
-                    <T>Gender</T> <span className="text-red-500">*</span>
+                    <T>Gender</T> <span className={styles.requiredStar}>*</span>
                 </label>
-                <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                <div className={styles.radioGroup}>
+                    <label className={styles.radioLabel}>
                         <input
                             type="checkbox"
                             checked={patientData.gender === 'male'}
@@ -114,7 +114,7 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                         />
                         <T>Male</T>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className={styles.radioLabel}>
                         <input
                             type="checkbox"
                             checked={patientData.gender === 'female'}

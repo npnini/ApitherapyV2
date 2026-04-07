@@ -1,5 +1,5 @@
 .signatureContainer {
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     position: relative;
 }
@@ -25,20 +25,20 @@
 }
 
 .clearButton {
-    background-color: #f0f0f0;
+    background-color: var(--color-secondary-button-background);
 }
 
 .saveButton {
-    background-color: #ccc; 
-    color: #fff;
+    background-color: var(--color-border);
+    color: var(--color-white);
 }
 
 .saveButtonActive {
-    background-color: #007bff;
-    color: #fff;
+    background-color: var(--color-primary);
+    color: var(--color-white);
 }
 
 .saveButtonSaved {
-    background-color: #28a745;
-    color: #fff;
+    background-color: var(--color-success);
+    color: var(--color-white);
 }

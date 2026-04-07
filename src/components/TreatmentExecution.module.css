@@ -1,5 +1,6 @@
-/* TreatmentExecution.module.css */
+/* TreatmentExecution.module.css — aligned to Claude Style-Guide */
 
+/* ── Container ────────────────────────────────────────────── */
 .container {
     display: flex;
     flex-direction: column;
@@ -7,11 +8,11 @@
     padding: 0.75rem;
     gap: 0.75rem;
     overflow: hidden;
-    /* Allow expanding beyond the default PatientIntake width if needed */
     width: 100%;
     margin: 0 auto;
 }
 
+/* ── Header bar ───────────────────────────────────────────── */
 .header {
     display: flex;
     align-items: center;
@@ -23,22 +24,22 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: #64748b;
+    color: var(--color-text-secondary);
     display: flex;
     align-items: center;
     padding: 0.25rem;
-    border-radius: 0.5rem;
-    transition: color 0.15s;
+    border-radius: var(--radius-md);
+    transition: color 0.08s ease;
 }
 
 .backButton:hover {
-    color: #1e293b;
+    color: var(--color-text-primary);
 }
 
 .headerTitle {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
     margin: 0;
     display: flex;
     align-items: center;
@@ -46,30 +47,32 @@
 }
 
 .docLink {
-    color: #64748b;
+    color: var(--color-text-secondary);
     display: flex;
     align-items: center;
-    transition: color 0.15s;
+    transition: color 0.08s ease;
 }
 
 .docLink:hover {
-    color: var(--color-primary, #c0392b);
+    color: var(--color-primary);
 }
 
+/* ── Banners ──────────────────────────────────────────────── */
 .sensitivityBanner {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: #fef9c3;
-    border: 1px solid #fde68a;
-    border-radius: 0.625rem;
+    background: var(--color-warning-background);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
     padding: 0.5rem 1rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #92400e;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-warning);
     flex-shrink: 0;
 }
 
+/* ── Three-column grid ────────────────────────────────────── */
 .grid {
     display: grid;
     grid-template-columns: 2fr 5fr 5fr;
@@ -78,13 +81,13 @@
     min-height: 0;
 }
 
-/* --- Points panel --- */
+/* ── Points panel (left) ──────────────────────────────────── */
 .pointsPanel {
-    background: white;
-    border-radius: 1rem;
-    padding: 1rem;
-    border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-card);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -95,20 +98,23 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-weight: 800;
-    font-size: 0.8rem;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-xs);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #475569;
+    color: var(--color-text-secondary);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--color-border-light);
 }
 
+/* ── Toggle (Auto-Rotate) ─────────────────────────────────── */
 .toggleLabel {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
     cursor: pointer;
 }
 
@@ -121,12 +127,12 @@
     width: 2.25rem;
     height: 1.25rem;
     border-radius: 999px;
-    background: #cbd5e1;
-    transition: background 0.2s;
+    background: var(--color-border);
+    transition: background 0.15s;
 }
 
 .toggleOn {
-    background: var(--color-primary, #c0392b);
+    background: var(--color-primary);
 }
 
 .toggleThumb {
@@ -137,26 +143,22 @@
     height: 1rem;
     border-radius: 50%;
     background: white;
-    transition: transform 0.2s;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+    transition: transform 0.15s;
+    box-shadow: var(--shadow-sm);
 }
 
 .toggleThumbOn {
     transform: translateX(1rem);
 }
 
-.hintText {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    margin: 0;
-}
-
+/* ── Model switcher tabs ──────────────────────────────────── */
 .modelSwitcher {
     display: flex;
-    background: #f1f5f9;
+    background: var(--color-background-page);
     padding: 2px;
-    border-radius: 0.5rem;
-    margin-top: 0.5rem;
+    border-radius: var(--radius-md);
+    margin-top: 0.25rem;
+    border: 1px solid var(--color-border-light);
 }
 
 .modelTab {
@@ -164,74 +166,82 @@
     padding: 0.4rem;
     border: none;
     background: transparent;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #64748b;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
     cursor: pointer;
-    border-radius: 0.4rem;
-    transition: all 0.2s;
+    border-radius: var(--radius-sm);
+    transition: all 0.1s;
 }
 
 .modelTabActive {
-    background: white;
-    color: var(--color-primary, #c0392b);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: var(--color-background-card);
+    color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
 }
 
+/* ── Sensitivity filter ───────────────────────────────────── */
 .sensitivitySelector {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 0.75rem;
-    border: 1px solid #e2e8f0;
+    padding: 0.6rem;
+    background: var(--color-background-page);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
 }
 
 .selectorLabel {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #475569;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .sensitivityOptions {
     display: flex;
-    gap: 0.3rem;
+    gap: 0.25rem;
 }
 
 .sensitivityBtn {
     flex: 1;
-    padding: 0.4rem;
-    border: 1px solid #e2e8f0;
-    background: white;
-    border-radius: 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #64748b;
+    padding: 0.35rem;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-background-card);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: border-color 0.08s ease, background-color 0.08s ease;
 }
 
 .sensitivityBtn:hover {
-    border-color: #cbd5e1;
-    background: #f1f5f9;
+    border-color: var(--color-border-hover);
+    background: var(--color-background-page);
 }
 
 .sensitivityBtnActive {
-    background: var(--color-primary, #c0392b);
-    color: white;
-    border-color: var(--color-primary, #c0392b);
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
 }
 
+/* ── Hint text ────────────────────────────────────────────── */
+.hintText {
+    font-size: 0.7rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
+}
 
+/* ── Protocol point list ──────────────────────────────────── */
 .pointsList {
     flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.25rem;
 }
 
 .pointItem {
@@ -239,26 +249,26 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
-    border-radius: 0.5rem;
-    border: 2px solid #e2e8f0;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
     cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    background: white;
+    transition: border-color 0.08s ease, background 0.08s ease;
+    background: var(--color-background-card);
     gap: 0.25rem;
 }
 
 .pointItem:hover {
-    border-color: var(--color-primary, #c0392b);
+    border-color: var(--color-primary);
 }
 
 .pointItemActive {
-    background: #fff1f0;
-    border-color: #fca5a5;
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
 }
 
 .pointItemStung {
-    border-color: #86efac;
-    background: #f0fdf4;
+    border-color: var(--color-success);
+    background: var(--color-success-background);
 }
 
 .pointInfo {
@@ -268,14 +278,14 @@
 }
 
 .pointCode {
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     font-size: 0.78rem;
-    color: var(--color-primary, #c0392b);
+    color: var(--color-primary);
 }
 
 .pointLabel {
     font-size: 0.7rem;
-    color: #64748b;
+    color: var(--color-text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -284,61 +294,65 @@
 .pointActions {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.25rem;
     flex-shrink: 0;
 }
 
-.pointDocLink {
-    color: #94a3b8;
+.pointDocLink,
+.pointImgLink,
+.pointInfoLink {
+    color: var(--color-text-tertiary);
     display: flex;
     align-items: center;
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
+    transition: color 0.08s;
 }
 
 .pointDocLink:hover,
 .pointImgLink:hover,
 .pointInfoLink:hover {
-    color: var(--color-primary, #c0392b);
-}
-
-.pointImgLink,
-.pointInfoLink {
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
+    color: var(--color-primary);
 }
 
 .stungIcon {
-    color: #22c55e;
+    color: var(--color-success);
 }
 
-/* --- Detail Modal (overlaid on canvas) --- */
+/* ── Canvas panel (centre) ────────────────────────────────── */
+.canvasPanel {
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    position: relative;
+}
+
+.canvas {
+    background: var(--color-background-page);
+    border-radius: var(--radius-lg);
+}
+
+/* ── Detail modal overlay ─────────────────────────────────── */
 .detailModalOverlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(15, 23, 42, 0.6);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
-    padding: 1rem;
-    border-radius: 1rem;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
 }
 
 .detailModalContent {
-    background: white;
-    border-radius: 1.25rem;
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
     width: 100%;
     max-width: 600px;
     max-height: 100%;
@@ -346,14 +360,14 @@
     min-height: 200px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    animation: modalAppear 0.3s ease-out;
+    box-shadow: var(--shadow-modal);
+    animation: modalAppear 0.2s ease-out;
 }
 
 @keyframes modalAppear {
     from {
         opacity: 0;
-        transform: translateY(20px) scale(0.95);
+        transform: translateY(12px) scale(0.97);
     }
 
     to {
@@ -363,85 +377,52 @@
 }
 
 .detailModalHeader {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #f1f5f9;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border-light);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #f8fafc;
+    background: var(--color-background-page);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .detailModalTitle {
     margin: 0;
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
 }
 
 .detailModalClose {
-    background: #f1f5f9;
+    background: var(--color-secondary-button-background);
     border: none;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #64748b;
+    color: var(--color-text-secondary);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.08s, transform 0.15s;
 }
 
 .detailModalClose:hover {
-    background: #e2e8f0;
-    color: #0f172a;
+    background: var(--color-secondary-button-hover);
+    color: var(--color-text-primary);
     transform: rotate(90deg);
 }
 
 .detailModalBody {
-    padding: 1.5rem;
+    padding: var(--spacing-lg);
     overflow: auto;
     flex: 1;
     line-height: 1.6;
-    color: #334155;
+    color: var(--color-text-primary);
 }
 
-.longTextContainer {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.paragraph {
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.noData {
-    color: #94a3b8;
-    font-style: italic;
-    text-align: center;
-    padding: 2rem 0;
-}
-
-/* --- Canvas panel --- */
-.canvasPanel {
-    background: white;
-    border-radius: 1rem;
-    border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
-    overflow: hidden;
-    position: relative;
-}
-
-.canvas {
-    background: #f8fafc;
-    border-radius: 1rem;
-}
-
-/* --- Point detail content sections --- */
 .detailSection {
-    margin-bottom: 1.25rem;
+    margin-bottom: var(--spacing-md);
 }
 
 .detailSection:last-child {
@@ -449,12 +430,12 @@
 }
 
 .detailSectionLabel {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #64748b;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-xs);
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -463,8 +444,8 @@
 .detailImage {
     max-width: 100%;
     max-height: 300px;
-    border-radius: 0.75rem;
-    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
     object-fit: contain;
     display: block;
     height: auto;
@@ -473,23 +454,35 @@
 .detailIframe {
     width: 100%;
     height: 400px;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
 }
 
-.detailDivider {
-    border: none;
-    border-top: 1px solid #e2e8f0;
-    margin: 1rem 0;
+.longTextContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
 }
 
-/* --- Data panel --- */
+.paragraph {
+    margin: 0;
+    font-size: var(--font-size-sm);
+}
+
+.noData {
+    color: var(--color-text-tertiary);
+    font-style: italic;
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+}
+
+/* ── Data panel (right) ───────────────────────────────────── */
 .dataPanel {
-    background: white;
-    border-radius: 1rem;
-    padding: 1rem;
-    border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-card);
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -500,22 +493,25 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.85rem;
-    font-weight: 800;
-    color: #1e293b;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0;
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .sectionLabel {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #64748b;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
+/* ── Stung points list ────────────────────────────────────── */
 .stungSection {
     display: flex;
     flex-direction: column;
@@ -523,16 +519,16 @@
 }
 
 .stungList {
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    background: #f8fafc;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background-page);
     padding: 0.5rem;
     min-height: 6rem;
     max-height: 10rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.25rem;
 }
 
 .stungItem {
@@ -540,117 +536,138 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
-    border-radius: 0.5rem;
-    border: 1px solid #e2e8f0;
-    background: white;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-background-card);
     cursor: pointer;
-    font-size: 0.8rem;
-    color: #334155;
-    transition: border-color 0.15s;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    transition: border-color 0.08s ease;
 }
 
 .stungItem:hover {
-    border-color: var(--color-primary, #c0392b);
+    border-color: var(--color-primary);
 }
 
 .stungItemActive {
-    background: #fff1f0;
-    border-color: #fca5a5;
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
 }
 
 .removeBtn {
     background: none;
     border: none;
     cursor: pointer;
-    color: #ef4444;
+    color: var(--color-error);
     display: flex;
     align-items: center;
     padding: 0.1rem;
+    transition: color 0.08s;
 }
 
 .removeBtn:hover {
-    color: #b91c1c;
+    color: var(--color-error);
 }
 
 .emptyStung {
     text-align: center;
-    color: #94a3b8;
-    font-size: 0.8rem;
-    padding: 1.5rem 0;
+    color: var(--color-text-tertiary);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-lg) 0;
 }
 
-/* --- End panel --- */
+/* ── Directives ───────────────────────────────────────────── */
+.directiveBox {
+    background: var(--color-warning-background);
+    border: 2px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    color: var(--color-warning);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.standardDirective {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    background: var(--color-background-page);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--color-border-light);
+}
+
+/* ── End treatment expansion panel ───────────────────────── */
 .endPanel {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
     padding: 0.75rem;
-    background: #fafafa;
-    border-radius: 0.75rem;
-    border: 1px dashed #e2e8f0;
+    background: var(--color-background-page);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--color-border);
 }
 
-.sessionSummary {
-    margin-top: 0.5rem;
-    background: #f1f5f9;
-    padding: 0.75rem;
-    border-radius: 0.75rem;
-    border: 1px solid #e2e8f0;
-}
-
-.cumulativeList {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin-top: 0.4rem;
-    max-height: 8rem;
-    overflow-y: auto;
-}
-
-.summaryItem {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.75rem;
-    color: #475569;
-    font-weight: 500;
-}
-
-.summaryIcon {
-    color: #22c55e;
-    flex-shrink: 0;
-}
-
+/* ── Notes textarea ───────────────────────────────────────── */
 .notesTextarea {
-    background-color: var(--color-background-input, #f8fafc);
-    border: 1px solid var(--color-border, #e2e8f0);
+    background-color: var(--color-background-input);
+    border: 1.5px solid var(--color-border);
     resize: vertical;
     width: 100%;
-    padding: 0.6rem;
+    padding: 0.625rem 0.75rem;
     margin-top: 0.25rem;
-    border-radius: 0.625rem;
-    font-size: 0.85rem;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
     box-sizing: border-box;
+    font-family: inherit;
+    color: var(--color-text-primary);
+    transition: border-color 0.08s ease, box-shadow 0.08s ease;
+}
+
+.notesTextarea::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.notesTextarea:hover:not(:focus) {
+    border-color: var(--color-border-hover);
 }
 
 .notesTextarea:focus {
     outline: none;
-    border-color: var(--color-primary, #c0392b);
+    border: 2px solid var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* ── Action buttons ───────────────────────────────────────── */
+.actionRow {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border-light);
 }
 
 .endActions {
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
-}
-
-/* --- Action row --- */
-.actionRow {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: auto;
-    padding-top: 0.5rem;
-    border-top: 1px solid #f1f5f9;
 }
 
 .btnAnotherProtocol,
@@ -660,41 +677,45 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.55rem 1rem;
-    border-radius: 0.625rem;
-    font-size: 0.82rem;
-    font-weight: 700;
+    padding: 0.55rem var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
     cursor: pointer;
     border: none;
-    transition: opacity 0.15s;
+    transition: background-color 0.08s ease, opacity 0.08s ease;
     flex: 1;
     justify-content: center;
 }
 
 .btnAnotherProtocol {
-    background: var(--color-secondary-button-background, #f1f5f9);
-    color: var(--color-text-secondary, #475569);
+    background: var(--color-secondary-button-background);
+    color: var(--color-text-secondary);
 }
 
 .btnAnotherProtocol:hover:not(:disabled) {
-    opacity: 0.8;
+    background: var(--color-secondary-button-hover);
 }
 
 .btnEndTreatment,
 .btnEndConfirm {
-    background: var(--color-primary, #c0392b);
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .btnEndTreatment:hover:not(:disabled),
 .btnEndConfirm:hover:not(:disabled) {
-    opacity: 0.88;
+    background: var(--color-primary-hover);
 }
 
 .btnSecondary {
-    background: #f1f5f9;
-    color: #475569;
+    background: var(--color-secondary-button-background);
+    color: var(--color-text-secondary);
     flex: initial;
+}
+
+.btnSecondary:hover:not(:disabled) {
+    background: var(--color-secondary-button-hover);
 }
 
 .btnAnotherProtocol:disabled,
@@ -704,6 +725,46 @@
     cursor: not-allowed;
 }
 
+/* ── Loading / Error states ───────────────────────────────── */
+.centeredMsg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 20rem;
+    color: var(--color-text-secondary);
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.errorBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem;
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-error-background);
+    color: var(--color-error);
+    max-width: 24rem;
+    margin: auto;
+    text-align: center;
+}
+
+/* ── Responsive breakpoints ───────────────────────────────── */
 @media (max-width: 1200px) {
     .grid {
         grid-template-columns: 1fr 1.5fr;
@@ -711,7 +772,6 @@
 
     .pointsPanel {
         display: none;
-        /* Hide points panel on medium screens, assume user uses 3D model */
     }
 }
 
@@ -735,82 +795,4 @@
         display: flex;
         order: 3;
     }
-}
-
-/* --- Loading / Error states --- */
-.centeredMsg {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    height: 20rem;
-    color: #64748b;
-}
-
-.spinner {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.errorBox {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 3rem;
-    background: white;
-    border-radius: 1.5rem;
-    border: 1px solid #fee2e2;
-    color: #7f1d1d;
-    max-width: 24rem;
-    margin: auto;
-    text-align: center;
-}
-
-.directiveBox {
-    background: #fdf2f2;
-    border: 2px solid #fecaca;
-    border-radius: 0.75rem;
-    padding: 1rem;
-    color: #991b1b;
-    font-weight: 700;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.02);
-    }
-
-    100% {
-        transform: scale(1);
-    }
-}
-
-.standardDirective {
-    background: #fffbeb;
-    border-inline-start: 4px solid #f59e0b;
-    padding: 0.75rem 1rem;
-    color: #92400e;
-    font-weight: 600;
-    font-size: 0.85rem;
-    border-radius: 0.375rem;
-    margin: 0.5rem 0;
 }

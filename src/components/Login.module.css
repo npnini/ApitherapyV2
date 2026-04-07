@@ -5,72 +5,73 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #0f172a;
-  /* Equivalent to bg-slate-900 */
-  color: var(--color-white);
+  background-color: var(--color-background-sidebar);
+  color: var(--color-text-primary);
 }
 
 .langSwitcher {
   position: absolute;
-  top: var(--space-lg);
-  right: var(--space-lg);
-  /* Use right for LTR, will be flipped by browser for RTL */
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
   display: flex;
-  gap: var(--space-md);
+  gap: var(--spacing-md);
 }
 
 .langButton {
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--border-radius);
-  background-color: #334155;
-  /* bg-slate-700 */
-  border: none;
-  color: var(--color-white);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border-light);
+  color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.08s ease;
+}
+
+.langButton:hover {
+  background-color: var(--color-background-hover);
 }
 
 .langButton.active {
   background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
 }
 
 .loginBox {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-xl);
-  border-radius: var(--border-radius);
-  background-color: #1e293b;
-  /* bg-slate-800 */
-  border: var(--border-width) solid #334155;
-  /* border-slate-700 */
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  /* shadow-2xl */
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-background-card);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-modal);
+  width: 100%;
+  max-width: 400px;
 }
 
 .header {
   display: flex;
   align-items: center;
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--spacing-lg);
 }
 
 .icon {
-  color: #facc15;
-  /* text-yellow-400 */
+  color: var(--color-primary);
 }
 
 .title {
-  margin-inline-start: var(--space-sm);
-  font-size: var(--text-h1);
-  font-weight: 700;
+  margin-inline-start: var(--spacing-sm);
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
   letter-spacing: -0.05em;
-  /* tracking-tighter */
+  color: var(--color-text-primary);
 }
 
 .subtitle {
-  color: #cbd5e1;
-  /* text-slate-300 */
-  margin-bottom: var(--space-xl);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xl);
+  font-size: var(--font-size-sm);
 }
 
 .googleButton {
@@ -78,39 +79,36 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  background-color: #2563eb;
-  /* bg-blue-600 */
-  border-radius: var(--border-radius);
-  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  font-weight: 700;
   color: var(--color-white);
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.08s ease;
 }
 
 .googleButton:hover {
-  background-color: #1d4ed8;
-  /* hover:bg-blue-700 */
+  background-color: var(--color-primary-hover);
 }
 
 .googleIcon {
   width: 1.25rem;
   height: 1.25rem;
-  margin-inline-end: var(--space-sm);
+  margin-inline-end: var(--spacing-sm);
 }
 
 .errorBanner {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: #7f1d1d;
-  /* bg-red-900 */
-  border: 1px solid #991b1b;
-  color: #fca5a5;
+  background-color: var(--color-error-background);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
   padding: 0.75rem 1rem;
-  border-radius: var(--border-radius);
-  margin-bottom: var(--space-lg);
-  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-sm);
   width: 100%;
 }

@@ -10,9 +10,20 @@ interface ConfirmationModalProps {
     onConfirm: () => void;
     onCancel?: () => void;
     showCancelButton?: boolean;
+    confirmLabel?: string | React.ReactNode;
+    cancelLabel?: string | React.ReactNode;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel, showCancelButton = true }) => {
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+    isOpen,
+    title,
+    message,
+    onConfirm,
+    onCancel,
+    showCancelButton = true,
+    confirmLabel,
+    cancelLabel
+}) => {
     if (!isOpen) {
         return null;
     }
@@ -26,11 +37,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, me
                 <div className={styles.modalActions}>
                     {showCancelButton && (
                         <button onClick={onCancel} className={styles.modalCancelButton}>
-                            <T>Cancel</T>
+                            {cancelLabel || <T>Cancel</T>}
                         </button>
                     )}
                     <button onClick={onConfirm} className={styles.modalConfirmButton}>
-                        <T>Confirm</T>
+                        {confirmLabel || <T>Confirm</T>}
                     </button>
                 </div>
             </div>

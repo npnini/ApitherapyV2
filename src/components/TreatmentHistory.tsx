@@ -101,7 +101,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [caretakerNames, setCaretakerNames] = useState<Map<string, string>>(new Map());
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'tabular'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'tabular'>('tabular');
     const [patientMeasureNames, setPatientMeasureNames] = useState<{ id: string, name: string | Record<string, string> }[]>([]);
     const [protocolsNamesMap, setProtocolsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const [problemsNamesMap, setProblemsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
@@ -351,6 +351,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 ))}
                                 <th><T>Pre treatment Vitals</T></th>
                                 <th><T>Stings</T></th>
+                                <th><T>Post-Sting Vitals</T></th>
                                 <th><T>Post treatment Vitals</T></th>
                                 <th><T>Final notes</T></th>
                             </tr>
@@ -360,6 +361,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 const preV = t.preTreatmentVitals;
                                 const preVitalsStr = preV
                                     ? `${preV.systolic ?? '-'}-${preV.diastolic ?? '-'}-${preV.heartRate ?? '-'}`
+                                    : '-';
+
+                                const psV = t.postStingingVitals;
+                                const postStingVitalsStr = psV
+                                    ? `${psV.systolic ?? '-'}-${psV.diastolic ?? '-'}-${psV.heartRate ?? '-'}`
                                     : '-';
 
                                 const postV = t.finalVitals;
@@ -381,6 +387,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         })}
                                         <td className={styles.vitalsCell}>{preVitalsStr}</td>
                                         <td className={styles.stingsCell}>{stingCodes}</td>
+                                        <td className={styles.vitalsCell}>{postStingVitalsStr}</td>
                                         <td className={styles.vitalsCell}>{postVitalsStr}</td>
                                         <td className={styles.notesCell}>{t.finalNotes || '-'}</td>
                                     </tr>
@@ -477,7 +484,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                     <li key={point.id} className={styles.pointItem} dir={direction}>
                                                         <div className={styles.pointDetails}>
                                                             <MapPin size={14} className={styles.pointIcon} />
-                                                            <span className="text-sm">
+                                                            <span className={styles.pointTextWrapper}>
                                                                 <span className={styles.pointCode}>{point.code}</span>
                                                                 {' - '}
                                                                 <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
