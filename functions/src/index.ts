@@ -286,7 +286,7 @@ export const sendDocumentEmail = onCall(async (request) => {
     const sendDocsConfig = configData.sendPatientDocuments || {};
 
     const apiKey = (feedbackConfig.sendgridApiKey || "").trim();
-    const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim() || "noreply@apitherapy-system.com";
+    const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim();
     const templateId = (sendDocsConfig.templateId?.[language] || "").trim();
 
     if (!apiKey || !templateId) {
