@@ -127,41 +127,98 @@
     resize: vertical;
 }
 
-.categoryInputContainer {
-    display: flex;
-}
-
-.addButton {
-    margin-left: 8px;
-}
-
-.categoryList {
-    margin-top: 0.75rem;
+.directionRangeContainer {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-}
-
-.categoryTag {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: var(--color-background-muted);
-    padding: 0.5rem 0.75rem;
+    gap: 1.5rem;
+    padding: 1.25rem;
+    background-color: var(--color-background-sidebar);
+    border: 1px solid var(--color-border-light);
     border-radius: var(--radius-md);
 }
 
-.categoryTag button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    margin-left: 8px;
+.directionSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
-.scaleContainer {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+.radioGroup {
+    display: flex;
     gap: 1rem;
+}
+
+.radioLabel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: var(--transition-base);
+    background-color: var(--color-white);
+    font-weight: 500;
+}
+
+.radioLabel:hover {
+    border-color: var(--color-border-hover);
+}
+
+.radioLabelActive {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.radioInput {
+    display: none;
+}
+
+.rangeSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rangeInputs {
+    display: flex;
+    gap: 1rem;
+}
+
+.rangeInputWrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    background-color: var(--color-white);
+    overflow: hidden;
+}
+
+.rangePrefix {
+    padding: 0 0.75rem;
+    background-color: var(--color-background-muted);
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-right: 1px solid var(--color-border-light);
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.rangeInput {
+    flex: 1;
+    border: none;
+    padding: 0.625rem 0.75rem;
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    background: transparent;
+    outline: none;
 }
 
 .documentSection {
@@ -291,31 +348,7 @@
     border-bottom-color: var(--color-primary);
 }
 
-/* Missing translation badge on category tags */
-.missingLangBadge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--color-warning);
-    background-color: var(--color-warning-background);
-    border-radius: var(--radius-sm);
-    padding: 0 0.3rem;
-    margin-left: 0.4rem;
-}
 
-/* Edit/remove icon buttons inside category tags */
-.actionButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-tertiary);
-    padding: 2px;
-    display: flex;
-    align-items: center;
-}
-
-.actionButton:hover {
-    color: var(--color-primary);
-}
 
 /* Translation Reference */
 .translationReference {
@@ -448,34 +481,6 @@ input:checked+.slider:before {
 }
 
 
-.categoryTagLeft {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.dragHandle {
-    cursor: grab;
-    color: #94a3b8;
-    user-select: none;
-    font-size: 1.25rem;
-    line-height: 1;
-}
-
-.dragHandle:active {
-    cursor: grabbing;
-}
-
-.reorderText {
-    font-size: var(--font-size-sm);
-    color: var(--color-error);
-    font-weight: 600;
-    font-style: italic;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-}
 
 .selectDisabled,
 .inputDisabled {

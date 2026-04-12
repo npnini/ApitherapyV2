@@ -108,21 +108,11 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
         try {
             const readings = measures.map(m => {
                 const value = measureValues[m.id];
-                let numericValue: number | undefined = undefined;
-
-                if (m.type === 'Category') {
-                    const category = m.categories?.find(cat => {
-                        const catLabel = getMLValue(cat, language);
-                        return catLabel === value;
-                    });
-                    numericValue = category?.numericValue;
-                } else {
-                    numericValue = typeof value === 'number' ? value : undefined;
-                }
+                const numericValue = typeof value === 'number' ? value : undefined;
 
                 return {
                     measureId: m.id,
-                    type: m.type as 'Category' | 'Scale',
+                    type: 'Scale' as const,
                     value,
                     numericValue,
                 };
@@ -246,33 +236,17 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                                                 <span className={styles.measureName}>{getMLValue(measure.name, language)}</span>
                                                 <span className={styles.measureDesc}>{getMLValue(measure.description, language)}</span>
                                             </div>
-                                            {measure.type === 'Scale' ? (
-                                                <input
-                                                    id={`measure-${measure.id}`}
-                                                    name={`measure-${measure.id}`}
-                                                    type="number"
-                                                    className={styles.measureInput}
-                                                    value={value}
-                                                    min={measure.scale?.min}
-                                                    max={measure.scale?.max}
-                                                    placeholder={`${measure.scale?.min ?? 0} – ${measure.scale?.max ?? 10}`}
-                                                    onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                                />
-                                            ) : (
-                                                <select
-                                                    id={`measure-${measure.id}`}
-                                                    name={`measure-${measure.id}`}
-                                                    className={styles.measureInput}
-                                                    value={String(value)}
-                                                    onChange={e => handleMeasureChange(measure.id, e.target.value)}
-                                                >
-                                                    <option value="">—</option>
-                                                    {measure.categories?.map((cat, idx) => {
-                                                        const catLabel = getMLValue(cat, language);
-                                                        return <option key={idx} value={catLabel}>{catLabel}</option>;
-                                                    })}
-                                                </select>
-                                            )}
+                                            <input
+                                                id={`measure-${measure.id}`}
+                                                name={`measure-${measure.id}`}
+                                                type="number"
+                                                className={styles.measureInput}
+                                                value={value}
+                                                min={measure.min}
+                                                max={measure.max}
+                                                placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
+                                                onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
+                                            />
                                         </div>
                                     );
                                 })}

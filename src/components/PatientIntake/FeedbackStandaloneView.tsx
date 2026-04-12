@@ -8,9 +8,9 @@ interface MeasureDef {
     id: string;
     name: any;
     description: any;
-    type: string;
-    scale?: { min: number; max: number };
-    categories?: any[];
+    min: number;
+    max: number;
+    improvementDirection: 'UP' | 'DOWN';
 }
 
 interface FeedbackSession {
@@ -218,29 +218,15 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
                                         <span className={styles.measureName}>{getMLValue(measure.name, lang)}</span>
                                         <span className={styles.measureDesc}>{getMLValue(measure.description, lang)}</span>
                                     </div>
-                                    {measure.type === 'Scale' ? (
-                                        <input
-                                            type="number"
-                                            className={styles.measureInput}
-                                            value={value}
-                                            min={measure.scale?.min}
-                                            max={measure.scale?.max}
-                                            placeholder={`${measure.scale?.min ?? 0} – ${measure.scale?.max ?? 10}`}
-                                            onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                        />
-                                    ) : (
-                                        <select
-                                            className={styles.measureInput}
-                                            value={String(value)}
-                                            onChange={e => handleMeasureChange(measure.id, e.target.value)}
-                                        >
-                                            <option value="">—</option>
-                                            {measure.categories?.map((cat, idx) => {
-                                                const catLabel = getMLValue(cat, lang);
-                                                return <option key={idx} value={catLabel}>{catLabel}</option>;
-                                            })}
-                                        </select>
-                                    )}
+                                    <input
+                                        type="number"
+                                        className={styles.measureInput}
+                                        value={value}
+                                        min={measure.min}
+                                        max={measure.max}
+                                        placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
+                                        onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
+                                    />
                                 </div>
                             );
                         })}

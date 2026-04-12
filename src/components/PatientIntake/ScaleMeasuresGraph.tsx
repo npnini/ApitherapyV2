@@ -33,7 +33,7 @@ const ScaleMeasuresGraph: React.FC<ScaleMeasuresGraphProps> = ({ data, measures,
                 }
             });
         });
-        return measures.filter(m => m.type === 'Scale' && hasData.has(m.id));
+        return measures.filter(m => hasData.has(m.id));
     }, [measures, data]);
 
     const getLocalizedName = (measure: Measure) => {
@@ -59,7 +59,7 @@ const ScaleMeasuresGraph: React.FC<ScaleMeasuresGraphProps> = ({ data, measures,
     if (data.length === 0 || scaleMeasures.length === 0) {
         return (
             <div className={styles.emptyStateContainer}>
-                {useT('No scale measures data available')}
+                {useT('No measures data available')}
             </div>
         );
     }

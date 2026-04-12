@@ -1,16 +1,13 @@
 
-export type MeasureType = 'Category' | 'Scale';
+export type ImprovementDirection = 'UP' | 'DOWN';
 
 export interface Measure {
     id: string;
     name: { [key: string]: string };
     description: { [key: string]: string };
-    type: MeasureType;
-    categories?: Array<{ [key: string]: any; numericValue?: number }>;
-    scale?: {
-        min?: number;
-        max?: number;
-    };
+    min: number;
+    max: number;
+    improvementDirection: ImprovementDirection;
     documentUrl?: string | { [key: string]: string };
     status: 'active' | 'inactive';
     reference_count: number;

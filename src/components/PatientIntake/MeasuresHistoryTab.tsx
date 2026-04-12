@@ -9,7 +9,6 @@ import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { DateDensity, groupReadingsByDensity } from '../../services/measureService';
 import ScaleMeasuresGraph from './ScaleMeasuresGraph';
-import CategoryMeasuresTable from './CategoryMeasuresTable';
 import { Loader } from 'lucide-react';
 
 interface MeasuresHistoryTabProps {
@@ -129,28 +128,12 @@ const MeasuresHistoryTab: React.FC<MeasuresHistoryTabProps> = ({ patientData }) 
             <div className={measureStyles.sectionContainer}>
                 <div className={measureStyles.sectionHeader}>
                     <h3 className={measureStyles.sectionTitle}>
-                        <T>Scale Measures</T>
+                        <T>Measures</T>
                     </h3>
                     {aggregationNote && <span className={measureStyles.aggregationNote}>{aggregationNote}</span>}
                 </div>
                 <div className={measureStyles.chartWrapper}>
                     <ScaleMeasuresGraph
-                        data={groupedData}
-                        measures={measures}
-                        currentLang={currentLang}
-                    />
-                </div>
-            </div>
-
-            <div className={measureStyles.sectionContainer}>
-                <div className={measureStyles.sectionHeader}>
-                    <h3 className={measureStyles.sectionTitle}>
-                        <T>Category Measures</T>
-                    </h3>
-                    {aggregationNote && <span className={measureStyles.aggregationNote}>{aggregationNote}</span>}
-                </div>
-                <div className={measureStyles.tableWrapper}>
-                    <CategoryMeasuresTable
                         data={groupedData}
                         measures={measures}
                         currentLang={currentLang}

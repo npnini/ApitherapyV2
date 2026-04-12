@@ -4,29 +4,13 @@ import { isMeasureUsed } from '../../firebase/patient';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Measure } from '../../types/measure';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, AlertCircle, Loader, FileCheck2, X, Globe, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, AlertCircle, Loader, FileCheck2, X, Globe, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 import DocumentManagement from '../shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
-import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragEndEvent
-} from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
-    useSortable
-} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const MeasureAdmin: React.FC = () => {
@@ -52,12 +36,18 @@ const MeasureAdmin: React.FC = () => {
         'already exists',
         'Measure name is required',
         'Measure description is required',
-        'At least one category is required',
-        'Minimum and maximum values are required for a scale',
+        'Minimum and maximum values are required',
+        'Improvement direction is required',
         'Maximum value must be greater than the minimum value',
         'Failed to save the measure',
         'Failed to delete the measure',
         'Failed to upload file',
+        'UP',
+        'DOWN',
+        'Up',
+        'Down',
+        'Direction',
+        'Range',
         'Deleting...',
         'Saving...',
         'Confirm Delete',
@@ -201,7 +191,9 @@ const MeasureAdmin: React.FC = () => {
             id: '',
             name: {},
             description: {},
-            type: 'Category',
+            min: 0,
+            max: 10,
+            improvementDirection: 'UP',
             status: 'active',
             reference_count: 0
         };
@@ -235,20 +227,18 @@ const MeasureAdmin: React.FC = () => {
             }
         }
 
-        if (measure.type === 'Category' && (!measure.categories || measure.categories.length === 0)) {
-            setFormError(getTranslation('At least one category is required'));
+        if (measure.min === undefined || measure.max === undefined) {
+            setFormError(getTranslation('Minimum and maximum values are required'));
+            return false;
+        }
+        if (measure.min >= measure.max) {
+            setFormError(getTranslation('Maximum value must be greater than the minimum value'));
             return false;
         }
 
-        if (measure.type === 'Scale') {
-            if (measure.scale?.min === undefined || measure.scale?.max === undefined) {
-                setFormError(getTranslation('Minimum and maximum values are required for a scale'));
-                return false;
-            }
-            if (measure.scale.min >= measure.scale.max) {
-                setFormError(getTranslation('Maximum value must be greater than the minimum value'));
-                return false;
-            }
+        if (!measure.improvementDirection) {
+            setFormError(getTranslation('Improvement direction is required'));
+            return false;
         }
 
         setFormError(null);
@@ -276,25 +266,14 @@ const MeasureAdmin: React.FC = () => {
             const dataToSave: any = {
                 name: measureToSave.name,
                 description: measureToSave.description,
-                type: measureToSave.type,
+                min: Number(measureToSave.min),
+                max: Number(measureToSave.max),
+                improvementDirection: measureToSave.improvementDirection,
                 documentUrl: Object.keys(newUrls).length > 0 ? newUrls : null,
                 status: measureToSave.status || 'active',
                 reference_count: measureToSave.reference_count || 0,
                 updatedAt: serverTimestamp(),
             };
-
-            if (measureToSave.type === 'Category') {
-                // Auto-assign numeric values in increments of 100 if not in use
-                const categories = (measureToSave.categories || []).map((cat, idx) => ({
-                    ...cat,
-                    numericValue: (idx + 1) * 100
-                }));
-                dataToSave.categories = categories;
-                dataToSave.scale = null;
-            } else if (measureToSave.type === 'Scale') {
-                dataToSave.scale = measureToSave.scale;
-                dataToSave.categories = null;
-            }
 
             if (isNewMeasure) {
                 dataToSave.createdAt = serverTimestamp();
@@ -465,7 +444,8 @@ const MeasureAdmin: React.FC = () => {
                         <thead className={styles.tableHeader}>
                             <tr>
                                 <th scope="col" className={styles.headerCell}><T>Name</T></th>
-                                <th scope="col" className={styles.headerCell}><T>Type</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Direction</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Range</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Description</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Status</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
@@ -485,7 +465,13 @@ const MeasureAdmin: React.FC = () => {
                                 filteredMeasures.map(measure => (
                                     <tr key={measure.id} className={styles.tableRow}>
                                         <td className={styles.cell}>{measure.name[currentLang] || measure.name['en'] || ''}</td>
-                                        <td className={styles.cell}>{getTranslation(measure.type)}</td>
+                                        <td className={styles.cell}>
+                                            <div className={styles.directionCell}>
+                                                {measure.improvementDirection === 'UP' ? <ArrowUp size={16} className={styles.directionIconUp} /> : <ArrowDown size={16} className={styles.directionIconDown} />}
+                                                <T>{measure.improvementDirection === 'UP' ? 'Up' : 'Down'}</T>
+                                            </div>
+                                        </td>
+                                        <td className={styles.cell}>{measure.min} - {measure.max}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={measure.description[currentLang] || measure.description['en'] || ''}>{measure.description[currentLang] || measure.description['en'] || ''}</td>
                                         <td className={styles.cell}>
                                             <span className={`${formStyles.statusBadge} ${measure.status === 'active' ? formStyles.badgeActive : formStyles.badgeInactive}`}>
@@ -544,70 +530,6 @@ interface EditMeasureFormProps {
     isUsed: boolean;
 }
 
-interface SortableCategoryItemProps {
-    index: number;
-    cat: { [key: string]: any };
-    activeLang: string;
-    getLangDisplayName: (lang: string) => string;
-    getTranslation: (key: string) => string;
-    handleEditCategory: (index: number) => void;
-    handleRemoveCategory: (index: number) => void;
-    isUsed: boolean;
-}
-
-const SortableCategoryItem: React.FC<SortableCategoryItemProps> = ({
-    index,
-    cat,
-    activeLang,
-    getLangDisplayName,
-    getTranslation,
-    handleEditCategory,
-    handleRemoveCategory,
-    isUsed
-}) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id: `cat-${index}` });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 1 : 0,
-        opacity: isDragging ? 0.5 : 1,
-    };
-
-    const displayValue = cat[activeLang] || cat['en'] || Object.values(cat)[0] || '';
-    const isMissingActiveLang = !cat[activeLang];
-
-    return (
-        <div ref={setNodeRef} style={style} className={formStyles.categoryTag}>
-            <div className={formStyles.categoryTagLeft} {...(!isUsed ? { ...attributes, ...listeners } : {})}>
-                {!isUsed && <div className={formStyles.dragHandle}>⠿</div>}
-                <span>
-                    {displayValue}
-                    {isMissingActiveLang && <span className={formStyles.missingLangBadge}> ({getLangDisplayName(activeLang)} <T>missing</T>)</span>}
-                </span>
-            </div>
-            <div>
-                {!isUsed && (
-                    <>
-                        <button type="button" title={getTranslation('Edit')} onClick={() => handleEditCategory(index)} className={formStyles.actionButton}>
-                            <Edit size={16} />
-                        </button>
-                        <button type="button" title={getTranslation('Remove')} onClick={() => handleRemoveCategory(index)} className={formStyles.actionButton}>
-                            <Trash2 size={16} />
-                        </button>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-};
 
 const TranslationReference: React.FC<{ label: React.ReactNode; text: string | undefined }> = ({ label, text }) => {
     if (!text) return null;
@@ -627,28 +549,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
         .filter(l => SUPPORTED_LANGS.includes(l));
     const [formData, setFormData] = useState(measure);
     const [localError, setLocalError] = useState<string | null>(null);
-    const [categoryInput, setCategoryInput] = useState('');
-    const [editingCategoryIndex, setEditingCategoryIndex] = useState<number | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const oldIndex = parseInt((active.id as string).split('-')[1], 10);
-            const newIndex = parseInt((over.id as string).split('-')[1], 10);
-            const updatedCategories = arrayMove(formData.categories || [], oldIndex, newIndex);
-            const updatedMeasure = { ...formData, categories: updatedCategories };
-            setFormData(updatedMeasure);
-            onUpdate(updatedMeasure);
-        }
-    };
 
     useEffect(() => {
         setFormData(measure);
@@ -669,70 +570,19 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+        let finalValue: any = value;
+
+        if (type === 'number') {
+            finalValue = value === '' ? 0 : Number(value);
+        }
+
         let updatedMeasure: Measure;
         if (name === 'name' || name === 'description') {
             updatedMeasure = { ...formData, [name]: { ...(formData[name] as { [key: string]: string }), [activeLang]: value } };
         } else {
-            updatedMeasure = { ...formData, [name]: value } as Measure;
+            updatedMeasure = { ...formData, [name]: finalValue } as Measure;
         }
-        if (name === 'type') {
-            updatedMeasure.categories = [];
-            updatedMeasure.scale = { min: 0, max: 0 };
-        }
-        setFormData(updatedMeasure);
-        onUpdate(updatedMeasure);
-    };
-
-    const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const num = parseInt(value, 10);
-        const newScaleValue = isNaN(num) ? undefined : num;
-
-        const updatedMeasure = {
-            ...formData,
-            scale: {
-                ...(formData.scale || {}),
-                [name]: newScaleValue,
-            }
-        };
-        setFormData(updatedMeasure as Measure);
-        onUpdate(updatedMeasure as Measure);
-    };
-
-    const handleAddCategory = () => {
-        if (!categoryInput.trim()) return;
-
-        let updatedCategories: Array<{ [key: string]: any }>;
-
-        if (editingCategoryIndex !== null) {
-            updatedCategories = [...(formData.categories || [])];
-            updatedCategories[editingCategoryIndex] = {
-                ...updatedCategories[editingCategoryIndex],
-                [activeLang]: categoryInput.trim(),
-            };
-        } else {
-            const isDuplicate = formData.categories?.some(cat => (cat[activeLang] || '').toLowerCase() === categoryInput.trim().toLowerCase());
-            if (isDuplicate) return;
-            updatedCategories = [...(formData.categories || []), { [activeLang]: categoryInput.trim() }];
-        }
-
-        const updatedMeasure = { ...formData, categories: updatedCategories };
-        setFormData(updatedMeasure);
-        onUpdate(updatedMeasure);
-        setCategoryInput('');
-        setEditingCategoryIndex(null);
-    };
-
-    const handleEditCategory = (index: number) => {
-        const cat = formData.categories?.[index];
-        setCategoryInput(cat?.[activeLang] || '');
-        setEditingCategoryIndex(index);
-    };
-
-    const handleRemoveCategory = (index: number) => {
-        const updatedCategories = (formData.categories || []).filter((_, i) => i !== index);
-        const updatedMeasure = { ...formData, categories: updatedCategories };
         setFormData(updatedMeasure);
         onUpdate(updatedMeasure);
     };
@@ -748,20 +598,17 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
         if (descriptionValues.length === 0) {
             setLocalError(getTranslation('Measure description is required')); return;
         }
-        if (formData.type === 'Category' && (!formData.categories || formData.categories.length === 0)) {
-            setLocalError(getTranslation('At least one category is required'));
+        if (formData.min === undefined || formData.max === undefined) {
+            setLocalError(getTranslation('Minimum and maximum values are required'));
             return;
         }
-
-        if (formData.type === 'Scale') {
-            if (formData.scale?.min === undefined || formData.scale?.max === undefined) {
-                setLocalError(getTranslation('Minimum and maximum values are required for a scale'));
-                return;
-            }
-            if (formData.scale.min >= formData.scale.max) {
-                setLocalError(getTranslation('Maximum value must be greater than the minimum value'));
-                return;
-            }
+        if (formData.min >= formData.max) {
+            setLocalError(getTranslation('Maximum value must be greater than the minimum value'));
+            return;
+        }
+        if (!formData.improvementDirection) {
+            setLocalError(getTranslation('Improvement direction is required'));
+            return;
         }
 
         const isNew = !measure.id;
@@ -803,7 +650,7 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                         <button
                             key={lang}
                             type="button"
-                            onClick={() => { setCategoryInput(''); setEditingCategoryIndex(null); setActiveLang(lang); }}
+                            onClick={() => { setActiveLang(lang); }}
                             className={`${formStyles.langTab} ${activeLang === lang ? formStyles.langTabActive : ''}`}
                         >
                             {getLangDisplayName(lang)}
@@ -864,101 +711,63 @@ const EditMeasureForm: React.FC<EditMeasureFormProps> = ({ measure, measures, on
                             />
                         </div>
 
-                        <div>
-                            <label htmlFor="type" className={formStyles.label}>
-                                <T>Type</T>
-                            </label>
-                            {isUsed ? (
-                                <Tooltip text={getTranslation('Cannot change type: measure has already been recorded in treatments')}>
-                                    <select id="type" name="type" value={formData.type} onChange={handleChange} className={`${formStyles.select} ${formStyles.selectDisabled}`} disabled>
-                                        <option value="Category">{useT('Category')}</option>
-                                        <option value="Scale">{useT('Scale')}</option>
-                                    </select>
-                                </Tooltip>
-                            ) : (
-                                <select id="type" name="type" value={formData.type} onChange={handleChange} className={formStyles.select}>
-                                    <option value="Category">{useT('Category')}</option>
-                                    <option value="Scale">{useT('Scale')}</option>
-                                </select>
-                            )}
-                        </div>
-
-                        {formData.type === 'Category' && (
-                            <div>
-                                <label className={formStyles.label}><T>Categories</T></label>
-                                {!isUsed && (
-                                    <div className={formStyles.categoryInputContainer}>
+                        <div className={formStyles.directionRangeContainer}>
+                            <div className={formStyles.directionSection}>
+                                <label className={formStyles.label}><T>Improvement Direction</T> <span className={formStyles.requiredAsterisk}>*</span></label>
+                                <div className={formStyles.radioGroup}>
+                                    <label className={`${formStyles.radioLabel} ${formData.improvementDirection === 'UP' ? formStyles.radioLabelActive : ''}`}>
                                         <input
-                                            type="text"
-                                            value={categoryInput}
-                                            onChange={(e) => setCategoryInput(e.target.value)}
-                                            placeholder={useT('Add a new category')}
-                                            className={formStyles.input}
+                                            type="radio"
+                                            name="improvementDirection"
+                                            value="UP"
+                                            checked={formData.improvementDirection === 'UP'}
+                                            onChange={handleChange}
+                                            className={formStyles.radioInput}
                                         />
-                                        <button type="button" onClick={handleAddCategory} className={`${styles.addButton} ${formStyles.addButton}`}>{editingCategoryIndex !== null ? <T>Update</T> : <T>Add</T>}</button>
-                                    </div>
-                                )}
-                                <div className={formStyles.reorderText}>
-                                    <AlertCircle size={16} />
-                                    <T>Set the order of the categories from low to high</T>
-                                </div>
-                                <div className={formStyles.categoryList}>
-                                    <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={handleDragEnd}
-                                    >
-                                        <SortableContext
-                                            items={(formData.categories || []).map((_, i) => `cat-${i}`)}
-                                            strategy={verticalListSortingStrategy}
-                                        >
-                                            {formData.categories?.map((cat, index) => (
-                                                <SortableCategoryItem
-                                                    key={`cat-${index}`}
-                                                    index={index}
-                                                    cat={cat}
-                                                    activeLang={activeLang}
-                                                    getLangDisplayName={getLangDisplayName}
-                                                    getTranslation={getTranslation}
-                                                    handleEditCategory={handleEditCategory}
-                                                    handleRemoveCategory={handleRemoveCategory}
-                                                    isUsed={isUsed}
-                                                />
-                                            ))}
-                                        </SortableContext>
-                                    </DndContext>
+                                        <ArrowUp size={16} />
+                                        <T>Up</T>
+                                    </label>
+                                    <label className={`${formStyles.radioLabel} ${formData.improvementDirection === 'DOWN' ? formStyles.radioLabelActive : ''}`}>
+                                        <input
+                                            type="radio"
+                                            name="improvementDirection"
+                                            value="DOWN"
+                                            checked={formData.improvementDirection === 'DOWN'}
+                                            onChange={handleChange}
+                                            className={formStyles.radioInput}
+                                        />
+                                        <ArrowDown size={16} />
+                                        <T>Down</T>
+                                    </label>
                                 </div>
                             </div>
-                        )}
 
-                        {formData.type === 'Scale' && (
-                            <div className={formStyles.scaleContainer}>
-                                <div>
-                                    <label htmlFor="min" className={formStyles.label}><T>Minimum</T></label>
-                                    <input
-                                        type="number"
-                                        id="min"
-                                        name="min"
-                                        value={formData.scale?.min ?? ''}
-                                        onChange={handleScaleChange}
-                                        className={`${formStyles.input} ${isUsed ? formStyles.inputDisabled : ''}`}
-                                        disabled={isUsed}
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="max" className={formStyles.label}><T>Maximum</T></label>
-                                    <input
-                                        type="number"
-                                        id="max"
-                                        name="max"
-                                        value={formData.scale?.max ?? ''}
-                                        onChange={handleScaleChange}
-                                        className={`${formStyles.input} ${isUsed ? formStyles.inputDisabled : ''}`}
-                                        disabled={isUsed}
-                                    />
+                            <div className={formStyles.rangeSection}>
+                                <label className={formStyles.label}><T>Range</T> <span className={formStyles.requiredAsterisk}>*</span></label>
+                                <div className={formStyles.rangeInputs}>
+                                    <div className={formStyles.rangeInputWrapper}>
+                                        <span className={formStyles.rangePrefix}><T>Min</T></span>
+                                        <input
+                                            type="number"
+                                            name="min"
+                                            value={formData.min}
+                                            onChange={handleChange}
+                                            className={formStyles.rangeInput}
+                                        />
+                                    </div>
+                                    <div className={formStyles.rangeInputWrapper}>
+                                        <span className={formStyles.rangePrefix}><T>Max</T></span>
+                                        <input
+                                            type="number"
+                                            name="max"
+                                            value={formData.max}
+                                            onChange={handleChange}
+                                            className={formStyles.rangeInput}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
 
                         <div>
                             <div className={formStyles.labelWrapper}>
