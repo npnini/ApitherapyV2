@@ -17,8 +17,8 @@
     box-shadow: var(--shadow-modal);
     width: 96%;
     max-width: 1800px;
-    height: 95vh;
-    max-height: 95vh;
+    height: 98vh;
+    max-height: 98vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -28,8 +28,8 @@
 @media (max-width: 1024px) {
     .modal {
         width: 98%;
-        height: 95vh;
-        max-height: 95vh;
+        height: 98vh;
+        max-height: 98vh;
         border-radius: 0.75rem;
     }
 }
@@ -253,12 +253,24 @@
 }
 
 .contentAreaFlow {
-    padding: 1rem 2rem;
+    padding: 0.5rem 1rem;
     background-color: var(--color-background-page);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .fullWidth {
     padding-inline: 0.5rem;
+}
+
+.slideIn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
 }
 
 /* Placeholder tab (Steps 2's unimplemented tabs; replaced in later steps) */

@@ -426,6 +426,7 @@
 }
 
 :global([dir="rtl"]) .conditionInfo,
+:global([dir="rtl"]) .problemsInfo,
 :global([dir="rtl"]) .severityInfo {
     text-align: right;
 }

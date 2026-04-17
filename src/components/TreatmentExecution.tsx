@@ -432,84 +432,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             sensitivityColorMap={sensitivityColorMap}
                         />
                     </Canvas>
-
-                    {/* Detail Modal Overlay — positioned over the 3D canvas */}
-                    {pointDetailToShow && (() => {
-                        const pToShow = pointDetailToShow.point;
-                        const detailType = pointDetailToShow.type;
-                        const detailDocUrl = getPointDocUrl(pToShow);
-                        const detailHasLongText = hasPointLongText(pToShow);
-                        const detailHasImage = !!pToShow.imageURL;
-                        const detailHasDoc = !!detailDocUrl;
-
-                        // Check if the requested content ACTUALLY exists (fallback case)
-                        const hasRequestedContent =
-                            (detailType === 'text' && detailHasLongText) ||
-                            (detailType === 'image' && detailHasImage) ||
-                            (detailType === 'doc' && detailHasDoc);
-
-                        return (
-                            <div className={styles.detailModalOverlay} onClick={() => setPointDetailToShow(null)}>
-                                <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
-                                    <div className={styles.detailModalHeader}>
-                                        <h3 className={styles.detailModalTitle}>
-                                            {pToShow.code} - {getMLValue(pToShow.label, language)}
-                                        </h3>
-                                        <button className={styles.detailModalClose} onClick={() => setPointDetailToShow(null)}>
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-                                    <div className={styles.detailModalBody}>
-                                        {!hasRequestedContent && (
-                                            <p className={styles.noData}>{tNoAdditionalDetails}</p>
-                                        )}
-
-                                        {detailType === 'text' && detailHasLongText && (
-                                            <div className={styles.detailSection}>
-                                                <div className={styles.detailSectionLabel}>
-                                                    <BookOpen size={14} />
-                                                    <T>Details</T>
-                                                </div>
-                                                <div className={styles.longTextContainer}>
-                                                    {pToShow.longText![language].split('\n').map((text: string, idx: number) => (
-                                                        <p key={idx} className={styles.paragraph}>{text}</p>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {detailType === 'image' && detailHasImage && (
-                                            <div className={styles.detailSection}>
-                                                <div className={styles.detailSectionLabel}>
-                                                    <Image size={14} />
-                                                    <T>Image</T>
-                                                </div>
-                                                <img
-                                                    src={transformGDriveLink(pToShow.imageURL, 'img')}
-                                                    alt={pToShow.code}
-                                                    className={styles.detailImage}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {detailType === 'doc' && detailHasDoc && (
-                                            <div className={styles.detailSection}>
-                                                <div className={styles.detailSectionLabel}>
-                                                    <FileText size={14} />
-                                                    <T>Document</T>
-                                                </div>
-                                                <iframe
-                                                    src={detailDocUrl!}
-                                                    className={styles.detailIframe}
-                                                    title={`${pToShow.code} document`}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
                 </div>
 
                 {/* Right: Stung data + vitals + actions */}
@@ -592,6 +514,83 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Detail Modal Overlay — relocated outside major columns for full-width capability */}
+            {pointDetailToShow && (() => {
+                const pToShow = pointDetailToShow.point;
+                const detailType = pointDetailToShow.type;
+                const detailDocUrl = getPointDocUrl(pToShow);
+                const detailHasLongText = hasPointLongText(pToShow);
+                const detailHasImage = !!pToShow.imageURL;
+                const detailHasDoc = !!detailDocUrl;
+
+                const hasRequestedContent =
+                    (detailType === 'text' && detailHasLongText) ||
+                    (detailType === 'image' && detailHasImage) ||
+                    (detailType === 'doc' && detailHasDoc);
+
+                return (
+                    <div className={styles.detailModalOverlay} onClick={() => setPointDetailToShow(null)}>
+                        <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
+                            <div className={styles.detailModalHeader}>
+                                <h3 className={styles.detailModalTitle}>
+                                    {pToShow.code} - {getMLValue(pToShow.label, language)}
+                                </h3>
+                                <button className={styles.detailModalClose} onClick={() => setPointDetailToShow(null)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className={styles.detailModalBody}>
+                                {!hasRequestedContent && (
+                                    <p className={styles.noData}>{tNoAdditionalDetails}</p>
+                                )}
+
+                                {detailType === 'text' && detailHasLongText && (
+                                    <div className={styles.detailSection}>
+                                        <div className={styles.detailSectionLabel}>
+                                            <BookOpen size={14} />
+                                            <T>Details</T>
+                                        </div>
+                                        <div className={styles.longTextContainer}>
+                                            {pToShow.longText![language].split('\n').map((text: string, idx: number) => (
+                                                <p key={idx} className={styles.paragraph}>{text}</p>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {detailType === 'image' && detailHasImage && (
+                                    <div className={styles.detailSection}>
+                                        <div className={styles.detailSectionLabel}>
+                                            <Image size={14} />
+                                            <T>Image</T>
+                                        </div>
+                                        <img
+                                            src={transformGDriveLink(pToShow.imageURL, 'img')}
+                                            alt={pToShow.code}
+                                            className={styles.detailImage}
+                                        />
+                                    </div>
+                                )}
+
+                                {detailType === 'doc' && detailHasDoc && (
+                                    <div className={styles.detailSection}>
+                                        <div className={styles.detailSectionLabel}>
+                                            <FileText size={14} />
+                                            <T>Document</T>
+                                        </div>
+                                        <iframe
+                                            src={detailDocUrl!}
+                                            className={styles.detailIframe}
+                                            title={`${pToShow.code} document`}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
