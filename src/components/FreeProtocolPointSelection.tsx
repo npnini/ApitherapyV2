@@ -10,9 +10,10 @@ import { ChevronLeft, Loader } from 'lucide-react';
 interface FreeProtocolPointSelectionProps {
     onBack: () => void;
     onPointsSelected: (points: StingPoint[]) => void;
+    onExit?: () => void;
 }
 
-const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({ onBack, onPointsSelected }) => {
+const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({ onBack, onPointsSelected, onExit }) => {
     const { language, direction } = useTranslationContext();
     const [allPoints, setAllPoints] = useState<StingPoint[]>([]);
     const [selectedItems, setSelectedItems] = useState<ShuttleItem[]>([]);

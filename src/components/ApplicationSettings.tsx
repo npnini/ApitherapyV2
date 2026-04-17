@@ -25,6 +25,11 @@ interface QuestionnaireQuestion {
     name: string;
 }
 
+interface MeasureInfo {
+    id: string;
+    name: Record<string, string>;
+}
+
 const allLanguages: ShuttleItem[] = [
     { id: 'en', name: 'English' },
     { id: 'es', name: 'Spanish' },
@@ -78,6 +83,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const [initialSettings, setInitialSettings] = useState<Record<string, any>>({});
     const [settings, setSettings] = useState<Record<string, any>>({});
     const [protocols, setProtocols] = useState<Protocol[]>([]);
+    const [allMeasures, setAllMeasures] = useState<MeasureInfo[]>([]);
     const [questionnaireQuestions, setQuestionnaireQuestions] = useState<QuestionnaireQuestion[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -118,6 +124,8 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             '-- Select a Question --',
             'Available Languages',
             'Supported Languages',
+            'Available Measures',
+            'Selected General Measures',
             'English', 'Spanish', 'French', 'German', 'Hebrew', 'Arabic', 'Chinese', 'Russian',
             'Loading settings...',
             'Cancel',
@@ -138,6 +146,14 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 const protocolDocs = await getDocs(protocolsCollectionRef);
                 const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
                 setProtocols(fetchedProtocols);
+
+                const measuresCollectionRef = collection(db, 'cfg_measures');
+                const measureDocs = await getDocs(measuresCollectionRef);
+                const fetchedMeasures = measureDocs.docs.map(doc => ({
+                    id: doc.id,
+                    name: doc.data().name
+                })) as MeasureInfo[];
+                setAllMeasures(fetchedMeasures);
 
                 const docSnap = await getDoc(configRef);
                 const defaults = getDefaultsFromSchema(appConfigSchema);
@@ -523,6 +539,37 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                             </option>
                         ))}
                     </select>
+                );
+                break;
+            case 'measures':
+                const selectedMeasureIds = Array.isArray(value) ? value : [];
+                const currentDefaultLang = settings.languageSettings?.defaultLanguage || 'en';
+
+                const selectedMeasureItems = allMeasures
+                    .filter(m => selectedMeasureIds.includes(m.id))
+                    .map(m => ({
+                        id: m.id,
+                        name: m.name[currentDefaultLang] || m.name['en'] || Object.values(m.name)[0] || m.id
+                    }));
+
+                const availableMeasureItems = allMeasures.map(m => ({
+                    id: m.id,
+                    name: m.name[currentDefaultLang] || m.name['en'] || Object.values(m.name)[0] || m.id
+                }));
+
+                control = (
+                    <div className={styles.control}>
+                        <ShuttleSelector
+                            availableItems={availableMeasureItems}
+                            selectedItems={selectedMeasureItems}
+                            onSelectionChange={(newSelection: ShuttleItem[]) => {
+                                const newIds = newSelection.map(item => item.id);
+                                handleSettingChange(path, newIds);
+                            }}
+                            availableTitle="Available Measures"
+                            selectedTitle="Selected General Measures"
+                        />
+                    </div>
                 );
                 break;
             case 'question':

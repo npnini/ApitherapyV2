@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppUser } from '../types/user';
 import { JoinedPatientData } from '../types/patient';
+import { db } from '../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle, X } from 'lucide-react';
 import styles from './PatientsDashboard.module.css';
 import Tooltip from './common/Tooltip';
@@ -21,6 +23,29 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
   const { language } = useTranslationContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [patientToDelete, setPatientToDelete] = useState<JoinedPatientData | null>(null);
+  const [allProblems, setAllProblems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'cfg_problems'), snaps => {
+      setAllProblems(snaps.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  const getActiveProblemsText = (patient: JoinedPatientData) => {
+    const problems = patient.medicalRecord?.problems || [];
+    const activeIds = problems
+      .filter(p => p.problemStatus === 'Active')
+      .map(p => p.problemId);
+
+    if (activeIds.length === 0) return 'N/A';
+
+    return activeIds.map(id => {
+      const prob = allProblems.find((ap: any) => ap.id === id);
+      if (!prob) return id;
+      return typeof prob.name === 'string' ? prob.name : (prob.name[language] || prob.name.en || prob.name);
+    }).join(', ');
+  };
 
   const tSearchPlaceholder = useT('Search patients...');
   const tEditPatient = useT('Edit Patient Details');
@@ -80,8 +105,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         <div className={styles.tableHeader}>
           <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Patient</T></div>
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Contact</T></div>
-          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Condition</T></div>
-          <div className={styles.headerCell}><T>Severity</T></div>
+          <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Problems</T></div>
           <div className={styles.headerCell}><T>Last Treatment</T></div>
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
         </div>
@@ -108,17 +132,12 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     {patient.mobile}
                   </a>
                 </div>
-                <div className={styles.conditionInfo}>
-                  <Tooltip text={patient.medicalRecord?.condition || ''} className={styles.conditionTooltip}>
+                <div className={styles.problemsInfo}>
+                  <Tooltip text={getActiveProblemsText(patient)} className={styles.problemsTooltip}>
                     <span className={styles.truncate}>
-                      {patient.medicalRecord?.condition}
+                      {getActiveProblemsText(patient)}
                     </span>
                   </Tooltip>
-                </div>
-                <div className={styles.severityInfo}>
-                  <span className={styles.truncate}>
-                    {patient.medicalRecord?.severity}
-                  </span>
                 </div>
                 <div className={styles.lastTreatment}>
                   {patient.medicalRecord?.lastTreatment

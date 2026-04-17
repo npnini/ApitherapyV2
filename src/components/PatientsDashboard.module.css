@@ -182,13 +182,8 @@
     color: var(--color-text-secondary);
 }
 
-.conditionInfo {
-    flex: 2 1 0%;
-    text-align: left;
-}
-
-.severityInfo {
-    flex: 1 1 0%;
+.problemsInfo {
+    flex: 3 1 0%;
     text-align: left;
 }
 

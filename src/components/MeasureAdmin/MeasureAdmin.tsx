@@ -148,20 +148,6 @@ const MeasureAdmin: React.FC = () => {
                 : (measure.description as string);
             if (description.toLowerCase().includes(term)) return true;
 
-            // Search in categories (options)
-            if (measure.type === 'Category' && measure.categories && Array.isArray(measure.categories)) {
-                const matchesCategory = measure.categories.some(cat => {
-                    const catName = typeof cat === 'object'
-                        ? (cat[currentLang] || cat[appConfig.defaultLanguage] || Object.values(cat)[0] || '')
-                        : (cat as string);
-                    return catName.toLowerCase().includes(term);
-                });
-                if (matchesCategory) return true;
-            }
-
-            // Search in type
-            if (getTranslation(measure.type).toLowerCase().includes(term)) return true;
-
             return false;
         });
     }, [measures, searchTerm, currentLang, appConfig.defaultLanguage, getTranslation]);

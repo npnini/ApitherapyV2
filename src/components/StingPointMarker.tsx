@@ -1,23 +1,53 @@
-
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Html, Line } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { StingPoint } from '../types/apipuncture';
 
 interface StingPointMarkerProps {
   point: StingPoint;
   onClick: (point: StingPoint) => void;
+  onDoubleClick?: (point: StingPoint, position: { x: number, y: number, z: number }) => void;
+  onPointerOver?: () => void;
+  onPointerOut?: () => void;
   isHighlighted: boolean;
+  isHovered?: boolean;
   selectedModel: 'xbot' | 'corpo';
   parentScale?: number;
+  sensitivityColor?: string; // blue shade based on sensitivity level
 }
 
 const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   point,
   onClick,
+  onDoubleClick,
+  onPointerOver,
+  onPointerOut,
   isHighlighted,
+  isHovered = false,
   selectedModel,
-  parentScale = 1
+  parentScale = 1,
+  sensitivityColor,
 }) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const [lineScale, setLineScale] = useState(1);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      const worldPos = new THREE.Vector3();
+      groupRef.current.getWorldPosition(worldPos);
+      const dist = state.camera.position.distanceTo(worldPos);
+
+      // Dynamic line length scaling: 
+      // Default distance is ~4. Zoomed in is ~0.5.
+      // We want the line to be 100% at dist >= 3, and scale down to ~30% at dist=0.5
+      const scale = THREE.MathUtils.clamp(dist / 3, 0.35, 1.2);
+      if (Math.abs(lineScale - scale) > 0.01) {
+        setLineScale(scale);
+      }
+    }
+  });
+
   // Transform coordinates for the Corpo model specifically
   const getTransformedPosition = () => {
     const raw = point.positions?.[selectedModel] || { x: 0, y: 0, z: 0 };
@@ -67,53 +97,70 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   if (!point.positions?.[selectedModel] && selectedModel !== 'xbot') return null;
 
   // Dynamic label position logic
-  // We want the label to be at a fixed X gutter (e.g. ±0.8) but at the same Y as the point
-  const gutterX = position.x >= 0 ? 0.8 : -0.8;
+  // Base gutter is 0.8 world units. LineScale shortens it.
+  const baseGutterX = position.x >= 0 ? 0.8 : -0.8;
+  const gutterX = baseGutterX * lineScale;
   const labelOffsetX = gutterX - position.x;
 
   // Highlight colors
   const highlightColor = "#ef4444"; // Stronger Red
-  const defaultColor = "#2563eb";
+  const hoverColor = "#fb923c"; // Orange for hover
+  const defaultColor = sensitivityColor ?? "#2563eb"; // Sensitivity-tinted blue, fallback to default blue
+
+  const isVisible = isHighlighted || isHovered;
+  const activeColor = isHighlighted ? highlightColor : hoverColor;
 
   return (
-    <group position={[position.x, position.y, position.z]} renderOrder={999}>
+    <group ref={groupRef} position={[position.x, position.y, position.z]} renderOrder={999}>
       <mesh
         onClick={(e) => {
           e.stopPropagation();
           onClick(point);
         }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (onDoubleClick) onDoubleClick(point, position);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          onPointerOver?.();
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          onPointerOut?.();
+        }}
         renderOrder={1000}
       >
-        <sphereGeometry args={[isHighlighted ? 0.04 : 0.02, 16, 16]} />
+        <sphereGeometry args={[isVisible ? 0.04 : 0.02, 16, 16]} />
         <meshStandardMaterial
-          color={isHighlighted ? highlightColor : defaultColor}
-          emissive={isHighlighted ? highlightColor : defaultColor}
-          emissiveIntensity={isHighlighted ? 2.5 : 0.8}
-          transparent={!isHighlighted}
-          opacity={isHighlighted ? 1 : 0.6}
+          color={isVisible ? activeColor : defaultColor}
+          emissive={isVisible ? activeColor : defaultColor}
+          emissiveIntensity={isVisible ? 2.5 : 0.8}
+          transparent={!isVisible}
+          opacity={isVisible ? 1 : 0.6}
           depthTest={false}
           depthWrite={false}
         />
       </mesh>
 
-      {/* Visual ring - pulse effect when highlighted */}
+      {/* Visual ring - pulse effect when highlighted or hovered */}
       <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={1001}>
         <ringGeometry args={[0.035, 0.045, 32]} />
         <meshBasicMaterial
-          color={isHighlighted ? highlightColor : "#94a3b8"}
+          color={isVisible ? activeColor : "#94a3b8"}
           transparent
-          opacity={isHighlighted ? 0.8 : 0.3}
+          opacity={isVisible ? 0.8 : 0.3}
           depthTest={false}
           depthWrite={false}
         />
       </mesh>
 
-      {isHighlighted && (
+      {isVisible && (
         <>
           {/* Connection Line from point to label gutter */}
           <Line
             points={[[0, 0, 0], [labelOffsetX, 0, 0]]}
-            color={highlightColor}
+            color={activeColor}
             lineWidth={1}
             transparent
             opacity={0.5}
@@ -122,23 +169,24 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
 
           {/* Outer label at the gutter */}
           <Html
-            distanceFactor={5}
             position={[labelOffsetX, 0, 0]}
             center
             className="pointer-events-none"
           >
             <div
               style={{
-                transform: `translateX(${position.x >= 0 ? '50%' : '-50%'})`,
+                transform: `translateX(${position.x >= 0 ? '50%' : '-50%'}) scale(${isHighlighted ? 1 : 0.85})`,
                 background: 'rgba(255,255,255,0.97)',
                 color: '#0f172a',
-                padding: '0.375rem 0.75rem',
-                borderRadius: '8px',
-                border: '2px solid #ef4444',
-                fontSize: '11px',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '6px',
+                border: `2px solid ${activeColor}`,
+                fontSize: '10px',
+                lineHeight: '1',
                 fontWeight: 900,
                 whiteSpace: 'nowrap',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                transition: 'all 0.1s ease',
               }}
             >
               {point.code}

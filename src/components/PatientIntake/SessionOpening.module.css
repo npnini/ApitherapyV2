@@ -52,6 +52,37 @@
     border-bottom: 1px solid var(--color-border-light);
 }
 
+.sectionTitleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.sectionTitleNoBorder {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.problemTitleActions {
+    display: flex;
+}
+
+.linkButton {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    padding: 0;
+}
+
 .required {
     color: var(--color-error);
     margin-inline-start: 2px;
@@ -90,7 +121,120 @@
     background-color: var(--color-background-input);
 }
 
+/* ── Problems Section ─────────────────────────────────────── */
+.problemsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.problemChip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.chipActive {
+    background-color: var(--color-success-background, #dcfce7);
+    color: var(--color-success, #166534);
+    border-color: var(--color-success, #166534);
+}
+
+.chipInactive {
+    background-color: var(--color-background-offset);
+    color: var(--color-text-tertiary);
+    border-color: var(--color-border);
+}
+
+.chipStatusIcon {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    text-transform: uppercase;
+}
+
+.addProblemContainer {
+    margin-top: var(--spacing-xs);
+}
+
+.btnAddProblem {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: none;
+    border: 1px dashed var(--color-border);
+    color: var(--color-text-secondary);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnAddProblem:hover {
+    background-color: var(--color-background-offset);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.addProblemDropdownWrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.problemSelect {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-background-input);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.btnCancelAdd {
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+}
+
+.btnCancelAdd:hover {
+    color: var(--color-error);
+}
+
 /* ── Tracking Measures grid ────────────────────────────────── */
+.measuresOverview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.measureGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.noMeasuresText {
+    color: var(--color-text-tertiary);
+    font-style: italic;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
 .measuresGrid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -264,7 +408,8 @@
 .actions {
     display: flex;
     gap: var(--spacing-md);
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     padding-top: var(--spacing-lg);
     border-top: 1px solid var(--color-border-light);
     margin-top: var(--spacing-xs);
@@ -317,4 +462,107 @@
 
 .btnSecondary:active:not(:disabled) {
     transform: translateY(1px);
+}
+
+/* Modal styles for Missing Problem */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modalContent {
+    background-color: var(--color-background-page);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 500px;
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.modalHeader h2 {
+    font-size: var(--font-size-lg);
+    margin: 0;
+    color: var(--color-text-primary);
+}
+
+.closeModalBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-tertiary);
+}
+
+.closeModalBtn:hover {
+    color: var(--color-text-primary);
+}
+
+.modalBody {
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.modalSubtitle {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+}
+
+/* ── Actions row with left/right grouping ─── */
+.actionsLeft {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.btnExit {
+    padding: 0.625rem 1.25rem;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--color-error);
+    background: transparent;
+    color: var(--color-error);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    font-family: inherit;
+}
+
+.btnExit:hover {
+    background-color: var(--color-error);
+    color: #fff;
+}
+
+/* ── Modal inline feedback ─── */
+.modalStatusSuccess {
+    font-size: var(--font-size-sm);
+    color: var(--color-success);
+    margin: 0;
+    font-weight: var(--font-weight-semibold);
+}
+
+.modalStatusError {
+    font-size: var(--font-size-sm);
+    color: var(--color-error);
+    margin: 0;
+    font-weight: var(--font-weight-semibold);
 }

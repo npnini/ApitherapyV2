@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { JoinedPatientData } from '../types/patient';
+import { PatientProblem } from '../types/patient';
 import { Problem } from '../types/problem';
 import { Protocol } from '../types/protocol';
 import { ChevronLeft, ChevronRight, Loader } from 'lucide-react';
 import styles from './ProtocolSelection.module.css';
 import { T, useT, useTranslationContext } from './T';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ProtocolSelectionProps {
-    patient: Partial<JoinedPatientData>;
+    problems: PatientProblem[];
+    onProtocolSelect: (protocolId: string, problemId: string) => void;
+    onFreeSelect: () => void;
     onBack: () => void;
-    onProtocolSelect: (protocol: Protocol, problemId: string) => void;
+    onExit: () => void;
+    onRequestMissingProblem?: (problemName: string) => void;
 }
 
 const getMLValue = (value: any, lang: string): string => {
@@ -20,30 +24,41 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
-const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, onProtocolSelect }) => {
+// Internal model combining problem with its protocols
+interface ProblemRowData {
+    problemId: string;
+    problemName: string;
+    protocols: Protocol[];
+}
+
+const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
+    problems,
+    onProtocolSelect,
+    onFreeSelect,
+    onBack,
+    onExit,
+    onRequestMissingProblem,
+}) => {
     const { language, direction } = useTranslationContext();
-
-    const [problems, setProblems] = useState<Problem[]>([]);
-    const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
-    const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    const tSelectProblem = useT('Select a Problem');
-    const tSelectProblemHint = useT('Select a Problem to view available protocols');
-    const tSelectProtocol = useT('Select a Protocol');
     const tLoading = useT('Loading...');
-    const tNoProblemsDefined = useT('No problems defined for this patient.');
-    const tNoProtocols = useT('No protocols found for this problem.');
-    const tBack = useT('Back');
-    const tBackToProblem = useT('Back to Problems');
+    const tFreeSelection = useT('Free Selection');
+    const tExit = useT('Exit');
+    const tProblem = useT('Problem');
+    const tProtocols = useT('Protocols');
+    const tNoActiveProblems = useT('No active problems found.');
+    const tProblemPrompt = useT('Please describe the problem you need to treat:');
 
-    const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
-    const NextIcon = direction === 'rtl' ? ChevronLeft : ChevronRight;
+    const [isLoading, setIsLoading] = useState(true);
+    const [problemRows, setProblemRows] = useState<ProblemRowData[]>([]);
+
+    // Modal state for requesting missing problem
+    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+    const [requestProblemName, setRequestProblemName] = useState('');
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetch all problems and all protocols in parallel
+            // Fetch all problems and protocols
             const [problemsSnap, protocolsSnap] = await Promise.all([
                 getDocs(collection(db, 'cfg_problems')),
                 getDocs(collection(db, 'cfg_protocols')),
@@ -53,34 +68,42 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
                 ...(doc.data() as Omit<Problem, 'id'>),
                 id: doc.id,
             }));
-            const fetchedProtocols: Protocol[] = protocolsSnap.docs.map(doc => ({
+            const allProtocols: Protocol[] = protocolsSnap.docs.map(doc => ({
                 ...(doc.data() as Omit<Protocol, 'id'>),
                 id: doc.id,
             }));
 
-            setAllProtocols(fetchedProtocols);
+            // Build rows
+            const rows: ProblemRowData[] = [];
+            for (const p of problems) {
+                const problemObj = allProblems.find(ap => ap.id === p.problemId);
+                if (!problemObj) continue;
 
-            // Filter to patient's problem ID if defined
-            const pld = patient.medicalRecord;
-            if (pld?.problemId) {
-                setProblems(allProblems.filter(p => p.id === pld.problemId));
-            } else {
-                setProblems(allProblems);
+                // A problem can have `protocolId` or `protocolIds`
+                let linkedProtocolIds: string[] = [];
+                if (problemObj.protocolId) linkedProtocolIds.push(problemObj.protocolId);
+                if (Array.isArray(problemObj.protocolIds)) linkedProtocolIds.push(...problemObj.protocolIds);
+
+                const linkedProtocols = allProtocols.filter(proto => linkedProtocolIds.includes(proto.id));
+
+                rows.push({
+                    problemId: problemObj.id,
+                    problemName: getMLValue(problemObj.name, language),
+                    protocols: linkedProtocols
+                });
             }
+
+            setProblemRows(rows);
         } catch (err) {
             console.error('ProtocolSelection: failed to load data', err);
         } finally {
             setIsLoading(false);
         }
-    }, [patient]);
+    }, [problems, language]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    const problemProtocols: Protocol[] = selectedProblem && selectedProblem.protocolId
-        ? allProtocols.filter(p => p.id === selectedProblem.protocolId)
-        : [];
 
     if (isLoading) {
         return (
@@ -95,82 +118,99 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({ patient, onBack, 
 
     return (
         <div className={styles.container} dir={direction}>
-            {/* Back button */}
             <div className={styles.header}>
-                <button
-                    className={styles.backButton}
-                    onClick={selectedProblem ? () => setSelectedProblem(null) : onBack}
-                >
-                    <BackIcon size={20} />
-                    {selectedProblem ? tBackToProblem : tBack}
-                </button>
+                <h2 className={styles.stepTitle}><T>Select Treatment Protocol</T></h2>
             </div>
 
             <div className={styles.formContainer}>
-                {/* Step A: Problem list */}
-                {!selectedProblem && (
-                    <>
-                        <h2 className={styles.stepTitle}>{tSelectProblem}</h2>
-                        {problems.length === 0 ? (
-                            <div className={styles.emptyState}>{tNoProblemsDefined}</div>
-                        ) : (
-                            <div className={styles.itemList}>
-                                {problems.map(problem => (
-                                    <button
-                                        key={problem.id}
-                                        className={styles.itemCard}
-                                        onClick={() => setSelectedProblem(problem)}
-                                    >
-                                        <div className={styles.itemName}>
-                                            {getMLValue(problem.name, language)}
-                                        </div>
-                                        <div className={styles.itemDescription}>
-                                            {getMLValue(problem.description, language)}
-                                        </div>
-                                        <NextIcon size={18} className={styles.itemChevron} />
-                                    </button>
+                {problemRows.length === 0 ? (
+                    <div className={styles.emptyState}>{tNoActiveProblems}</div>
+                ) : (
+                    <div className={styles.tableContainer}>
+                        <table className={styles.selectionTable}>
+                            <thead>
+                                <tr>
+                                    <th>{tProblem}</th>
+                                    <th>{tProtocols}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {problemRows.map(row => (
+                                    <tr key={row.problemId}>
+                                        <td className={styles.problemNameCell}>
+                                            {row.problemName}
+                                        </td>
+                                        <td className={styles.protocolsCell}>
+                                            <div className={styles.protocolsWrapper}>
+                                                {row.protocols.map(protocol => (
+                                                    <button
+                                                        key={protocol.id}
+                                                        className={styles.protocolBadge}
+                                                        onClick={() => onProtocolSelect(protocol.id, row.problemId)}
+                                                    >
+                                                        {getMLValue(protocol.name, language)}
+                                                    </button>
+                                                ))}
+                                                {row.protocols.length === 0 && (
+                                                    <span className={styles.noProtocolsText}><T>No protocols</T></span>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ))}
-                            </div>
-                        )}
-                    </>
+                            </tbody>
+                        </table>
+                    </div>
                 )}
 
-                {/* Step B: Protocol list for selected problem */}
-                {selectedProblem && (
-                    <>
-                        <div className={styles.problemContext}>
-                            <span className={styles.problemContextLabel}>
-                                <T>Problem</T>:
-                            </span>{' '}
-                            <span className={styles.problemContextName}>
-                                {getMLValue(selectedProblem.name, language)}
-                            </span>
-                        </div>
-                        <h2 className={styles.stepTitle}>{tSelectProtocol}</h2>
-                        {problemProtocols.length === 0 ? (
-                            <div className={styles.emptyState}>{tNoProtocols}</div>
-                        ) : (
-                            <div className={styles.itemList}>
-                                {problemProtocols.map(protocol => (
-                                    <button
-                                        key={protocol.id}
-                                        className={styles.itemCard}
-                                        onClick={() => onProtocolSelect(protocol, selectedProblem.id)}
-                                    >
-                                        <div className={styles.itemName}>
-                                            {getMLValue(protocol.name, language)}
-                                        </div>
-                                        <div className={styles.itemDescription}>
-                                            {getMLValue(protocol.description, language)}
-                                        </div>
-                                        <NextIcon size={18} className={styles.itemChevron} />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </>
-                )}
+                <div className={styles.actions}>
+                    <button className={styles.btnSecondary} onClick={onExit}>
+                        {tExit}
+                    </button>
+                    <button className={styles.btnPrimary} onClick={onFreeSelect}>
+                        {tFreeSelection}
+                    </button>
+                </div>
+
+                <div className={styles.requestProblemWrapper}>
+                    <p className={styles.missingProblemText}><T>Didn't find what you were looking for?</T></p>
+                    <button
+                        className={styles.btnSecondary}
+                        onClick={() => {
+                            setRequestProblemName('');
+                            setIsRequestModalOpen(true);
+                        }}
+                    >
+                        <T>Request a new problem/protocol</T>
+                    </button>
+                </div>
             </div>
+
+            <ConfirmationModal
+                isOpen={isRequestModalOpen}
+                title={<T>Request a New Problem/Protocol</T>}
+                message={
+                    <div className={styles.modalInputWrapper}>
+                        <p>{tProblemPrompt}</p>
+                        <textarea
+                            className={styles.modalInput}
+                            value={requestProblemName}
+                            onChange={(e) => setRequestProblemName(e.target.value)}
+                            placeholder="Type the problem or protocol here..."
+                            rows={3}
+                        />
+                    </div>
+                }
+                onConfirm={() => {
+                    if (requestProblemName.trim() && onRequestMissingProblem) {
+                        onRequestMissingProblem(requestProblemName.trim());
+                    }
+                    setIsRequestModalOpen(false);
+                }}
+                onCancel={() => setIsRequestModalOpen(false)}
+                confirmLabel={<T>Send Request</T>}
+                cancelLabel={<T>Cancel</T>}
+            />
         </div>
     );
 };

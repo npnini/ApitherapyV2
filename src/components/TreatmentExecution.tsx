@@ -8,7 +8,7 @@ import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
-import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
@@ -23,12 +23,13 @@ export interface ExecutionData {
 }
 
 interface TreatmentExecutionProps {
-    protocol: Protocol;
-    problemId: string;
+    protocol?: Protocol;
     isSensitivityTest: boolean;
-    onRoundComplete: (data: ExecutionData) => void;
-    onEndTreatment: (executionData: ExecutionData, postStingingVitals: Partial<VitalSigns>, finalVitals: Partial<VitalSigns>, finalNotes: string) => void;
+    accumulatedStungPointIds: string[];
+    onRoundComplete: (stungPointIds: string[]) => void;
+    onNext: (stungPointIds: string[]) => void;
     onBack: () => void;
+    onExit?: () => void;
     preferredModel?: 'xbot' | 'corpo';
     customPoints?: StingPoint[];
     canGoToAnother: boolean;
@@ -40,19 +41,36 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
+const transformGDriveLink = (url: string | undefined, mode: 'view' | 'preview' | 'img' = 'view'): string | undefined => {
+    if (!url || typeof url !== 'string') return url;
+    if (url.includes('drive.google.com')) {
+        // Extract ID from /d/ID/view or ?id=ID
+        const fileId = url.match(/\/d\/(.+?)\//)?.[1] || url.match(/id=(.+?)(&|$)/)?.[1];
+        if (fileId) {
+            if (mode === 'preview') return `https://drive.google.com/file/d/${fileId}/preview`;
+            if (mode === 'img') return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+            return `https://drive.google.com/uc?export=view&id=${fileId}`;
+        }
+    }
+    return url;
+};
+
 const getDocumentUrl = (documentUrl: any, lang: string): string | undefined => {
     if (!documentUrl) return undefined;
-    if (typeof documentUrl === 'string') return documentUrl;
-    if (typeof documentUrl === 'object') return documentUrl[lang] || documentUrl.en || Object.values(documentUrl)[0];
-    return undefined;
+    let url: string | undefined;
+    if (typeof documentUrl === 'string') url = documentUrl;
+    else if (typeof documentUrl === 'object') {
+        url = documentUrl[lang] || documentUrl.en || Object.values(documentUrl)[0] as string;
+    }
+    return transformGDriveLink(url, 'view');
 };
 
 const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     protocol,
-    problemId,
     isSensitivityTest,
+    accumulatedStungPointIds,
     onRoundComplete,
-    onEndTreatment,
+    onNext,
     onBack,
     preferredModel = 'xbot',
     customPoints,
@@ -69,7 +87,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const tNoPointsStung = useT('No points have been marked as stung yet.');
     const tStungPoints = useT('Stung Points');
     const tFinalNotes = useT('Final Notes');
-    const tSensDirectiveFallback = useT('Wait 10 minutes. If there is an allergic reaction, press End Treatment. If there is no allergic reaction, press Another Protocol');
+    const tSensDirectiveFallback = useT('Wait 10 minutes. If there is an allergic reaction, press Next Step. If there is no allergic reaction, press Another Protocol');
     const tStdDirectiveFallback = useT('Wait 15 minutes before removing the stingers, then measure the final vitals');
     const tSensitivityLevel = useT('Sensitivity Level');
     const tNoAdditionalDetails = useT('No additional details available in this language.');
@@ -77,6 +95,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [hydratedProtocol, setHydratedProtocol] = useState<HydratedProtocol | null>(null);
     const [isHydrating, setIsHydrating] = useState(true);
     const [hydrationError, setHydrationError] = useState<string | null>(null);
+    const [resetTrigger, setResetTrigger] = useState(0);
+    const [isMaximized, setIsMaximized] = useState(false);
 
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
     const [activePointId, setActivePointId] = useState<string | null>(null);
@@ -84,12 +104,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [isRolling, setIsRolling] = useState(true);
     const [selectedSensitivity, setSelectedSensitivity] = useState<'all' | 'Low' | 'Medium' | 'High'>('all');
     const [pointDetailToShow, setPointDetailToShow] = useState<{ point: StingPoint; type: 'doc' | 'image' | 'text' } | null>(null);
-
-    // End-treatment fields (shown when "End Treatment" is clicked)
-    const [showEndPanel, setShowEndPanel] = useState(false);
-    const [postStingingVitals, setPostStingingVitals] = useState<Partial<VitalSigns>>({});
-    const [finalVitals, setFinalVitals] = useState<Partial<VitalSigns>>({});
-    const [finalNotes, setFinalNotes] = useState('');
+    // Hydrated previously-stung points from prior protocols in this treatment
+    const [resolvedPrevPoints, setResolvedPrevPoints] = useState<StingPoint[]>([]);
 
     const [appConfig, setAppConfig] = useState<any>(null);
 
@@ -107,19 +123,44 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         fetchConfig();
     }, []);
 
-    // Reset state when protocol changes
+    // Reset current-protocol stung points when protocol changes, and hydrate accumulated IDs
     useEffect(() => {
         setStungPoints([]);
         setActivePointId(null);
-        setShowEndPanel(false);
-    }, [protocol.id]);
+
+        if (!accumulatedStungPointIds || accumulatedStungPointIds.length === 0) {
+            setResolvedPrevPoints([]);
+            return;
+        }
+        // Fetch previously stung points from Firestore to show as read-only list
+        const fetchPrev = async () => {
+            try {
+                const docs = await Promise.all(
+                    accumulatedStungPointIds.map(id => getDoc(doc(db, 'cfg_acupuncture_points', id)))
+                );
+                const points: StingPoint[] = docs
+                    .filter(d => d.exists())
+                    .map(d => ({ ...d.data(), id: d.id } as StingPoint));
+                setResolvedPrevPoints(points);
+            } catch (err) {
+                console.error('TreatmentExecution: failed to hydrate accumulated stung points', err);
+            }
+        };
+        fetchPrev();
+    }, [protocol?.id, accumulatedStungPointIds]);
 
     const hydrateProtocol = useCallback(async () => {
         setIsHydrating(true);
         setHydrationError(null);
         try {
             if (customPoints && customPoints.length > 0) {
-                setHydratedProtocol({ ...(protocol as any), points: customPoints });
+                setHydratedProtocol({ ...(protocol as any || {}), points: customPoints });
+                setIsHydrating(false);
+                return;
+            }
+
+            if (!protocol) {
+                setHydratedProtocol(null);
                 setIsHydrating(false);
                 return;
             }
@@ -159,18 +200,12 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         if (activePointId === id) setActivePointId(null);
     };
 
-    const buildExecutionData = (): ExecutionData => ({
-        protocolId: protocol.id,
-        problemId,
-        stungPointIds: stungPoints.map(p => p.id),
-    });
-
     const handleAnotherProtocol = () => {
-        onRoundComplete(buildExecutionData());
+        onRoundComplete(stungPoints.map(p => p.id));
     };
 
-    const handleEndTreatmentConfirm = () => {
-        onEndTreatment(buildExecutionData(), postStingingVitals, finalVitals, finalNotes);
+    const handleNext = () => {
+        onNext(stungPoints.map(p => p.id));
     };
 
     // Normalization helper for sensitivity keys
@@ -189,8 +224,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const getPointDocUrl = (p: StingPoint): string | null => {
         if (!p.documentUrl) return null;
-        if (typeof p.documentUrl === 'string') return p.documentUrl;
-        return p.documentUrl[language] || p.documentUrl['en'] || Object.values(p.documentUrl)[0] as string;
+        let url: string | undefined;
+        if (typeof p.documentUrl === 'string') url = p.documentUrl;
+        else url = p.documentUrl[language] || p.documentUrl['en'] || Object.values(p.documentUrl)[0] as string;
+        return transformGDriveLink(url, 'preview') || null;
     };
 
     const hasPointLongText = (p: StingPoint): boolean => {
@@ -199,8 +236,14 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         return text !== '' && text !== 'null' && text !== '<p><br></p>' && text !== '<p></p>';
     };
 
+    const sensitivityColorMap: Record<string, string> = {
+        'Low': '#93c5fd',    // light blue
+        'Medium': '#3b82f6', // medium blue
+        'High': '#1e3a8a'    // bold blue
+    };
+
     const displayedPoints = hydratedProtocol?.points.filter(p => {
-        if (isSensitivityTest || selectedSensitivity === 'all') return true;
+        if (selectedSensitivity === 'all') return true;
         const pointLevel = normalizeSensitivity(p.sensitivity);
         const selectedLevel = normalizeSensitivity(selectedSensitivity);
         return pointLevel === selectedLevel;
@@ -236,9 +279,9 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     <ChevronLeft size={20} />
                 </button>
                 <h2 className={styles.headerTitle}>
-                    {getMLValue(protocol.name, language)}
+                    {protocol ? getMLValue(protocol.name, language) : <T>Free Selection</T>}
                     {/* Document icon if protocol has a document URL */}
-                    {getDocumentUrl(protocol.documentUrl, language) && (
+                    {protocol && getDocumentUrl(protocol.documentUrl, language) && (
                         <a
                             href={getDocumentUrl(protocol.documentUrl, language)}
                             target="_blank"
@@ -252,13 +295,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                 </h2>
             </div>
 
-            {/* Sensitivity test banner */}
-            {isSensitivityTest && (
-                <div className={styles.sensitivityBanner}>
-                    <AlertTriangle size={16} />
-                    <span>{tSensitivityBanner}</span>
-                </div>
-            )}
 
             <div className={styles.grid}>
                 {/* Left: Protocol point list */}
@@ -275,23 +311,28 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         </div>
                     </label>
 
-                    {/* Sensitivity Selector (when not sensitivity test) */}
-                    {!isSensitivityTest && (
-                        <div className={styles.sensitivitySelector}>
-                            <label className={styles.selectorLabel}>{tSensitivityLevel}</label>
-                            <div className={styles.sensitivityOptions}>
-                                {['all', 'Low', 'Medium', 'High'].map(level => (
+
+                    {/* Sensitivity Selector */}
+                    <div className={styles.sensitivitySelector}>
+                        <label className={styles.selectorLabel}>{tSensitivityLevel}</label>
+                        <div className={styles.sensitivityOptions}>
+                            {['all', 'Low', 'Medium', 'High'].map(level => {
+                                const isActive = selectedSensitivity === level;
+                                const levelColor = sensitivityColorMap[level] || 'var(--primary-color)';
+                                return (
                                     <button
                                         key={level}
-                                        className={`${styles.sensitivityBtn} ${selectedSensitivity === level ? styles.sensitivityBtnActive : ''}`}
+                                        className={`${styles.sensitivityBtn} ${isActive ? styles.sensitivityBtnActive : ''}`}
+                                        style={isActive ? { backgroundColor: levelColor, borderColor: levelColor } : { color: levelColor }}
                                         onClick={() => setSelectedSensitivity(level as any)}
                                     >
                                         <T>{level === 'all' ? 'All' : level}</T>
                                     </button>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
-                    )}
+                    </div>
+
 
                     {/* Model Switcher */}
                     <div className={styles.modelSwitcher}>
@@ -314,6 +355,9 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             const docUrl = getPointDocUrl(p);
                             const pointHasLongText = hasPointLongText(p);
                             const isStung = stungPoints.some(sp => sp.id === p.id);
+                            const level = normalizeSensitivity(p.sensitivity);
+                            const color = sensitivityColorMap[level];
+
                             return (
                                 <div
                                     key={p.id}
@@ -321,10 +365,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                     onMouseLeave={() => setActivePointId(null)}
                                     onClick={() => handlePointSelect(p)}
                                     className={`${styles.pointItem} ${activePointId === p.id ? styles.pointItemActive : ''} ${isStung ? styles.pointItemStung : ''}`}
+                                    style={{ borderLeftColor: color }}
                                 >
                                     <div className={styles.pointInfo}>
-                                        <span className={styles.pointCode}>{p.code}</span>
-                                        <span className={styles.pointLabel}>{getMLValue(p.label, language)}</span>
+                                        <span className={styles.pointCode} style={{ color }}>{p.code}</span>
+                                        <span className={styles.pointLabel} style={{ color }}>{getMLValue(p.label, language)}</span>
                                     </div>
                                     <div className={styles.pointActions}>
                                         {docUrl && (
@@ -358,7 +403,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                             </button>
                                         )}
                                         {isStung && (
-                                            <CheckCircle size={14} className={styles.stungIcon} />
+                                            <CheckCircle size={14} className={styles.stungIcon} style={{ color }} />
                                         )}
                                     </div>
                                 </div>
@@ -369,6 +414,13 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
                 {/* Center: 3D Model */}
                 <div className={styles.canvasPanel}>
+                    <button
+                        className={styles.resetViewBtn}
+                        onClick={() => setResetTrigger(v => v + 1)}
+                        title={getTranslation('Reset View')}
+                    >
+                        <Maximize size={20} />
+                    </button>
                     <Canvas className={styles.canvas}>
                         <BodyScene
                             protocol={hydratedProtocol ? { ...hydratedProtocol, points: displayedPoints } : null}
@@ -376,6 +428,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             activePointId={activePointId}
                             isRolling={isRolling}
                             selectedModel={selectedModel}
+                            resetTrigger={resetTrigger}
+                            sensitivityColorMap={sensitivityColorMap}
                         />
                     </Canvas>
 
@@ -431,7 +485,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                                     <T>Image</T>
                                                 </div>
                                                 <img
-                                                    src={pToShow.imageURL}
+                                                    src={transformGDriveLink(pToShow.imageURL, 'img')}
                                                     alt={pToShow.code}
                                                     className={styles.detailImage}
                                                 />
@@ -467,7 +521,28 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
                     {/* Stung points list */}
                     <div className={styles.stungSection}>
-                        <label className={styles.sectionLabel}>{tStungPoints} ({stungPoints.length})</label>
+                        <label className={styles.sectionLabel}>{tStungPoints} ({stungPoints.length + resolvedPrevPoints.length})</label>
+
+                        {/* Previously stung in this treatment (read-only) */}
+                        {resolvedPrevPoints.length > 0 && (
+                            <>
+                                <label className={styles.subSectionLabel}><T>Previous protocols</T></label>
+                                <div className={styles.stungList}>
+                                    {resolvedPrevPoints.map(p => (
+                                        <div
+                                            key={p.id}
+                                            className={`${styles.stungItem} ${styles.stungItemPrev}`}
+                                            onClick={() => setActivePointId(p.id)}
+                                        >
+                                            <span><span className={styles.pointCode}>{p.code}</span> – {getMLValue(p.label, language)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Current protocol stung points (removable) */}
+                        <label className={styles.subSectionLabel}><T>This protocol</T></label>
                         <div className={styles.stungList}>
                             {stungPoints.length === 0 ? (
                                 <p className={styles.emptyStung}>{tNoPointsStung}</p>
@@ -487,75 +562,34 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     </div>
 
                     {/* Directives and Vitals */}
-                    {isSensitivityTest && !showEndPanel && (
+                    {isSensitivityTest && (
                         <div className={styles.directiveBox}>
                             <AlertTriangle size={16} />
                             <span>
-                                {getMLValue(appConfig?.treatmentSettings?.sensitivityWaitDirective, language) || tSensDirectiveFallback}
+                                {(getMLValue(appConfig?.treatmentSettings?.sensitivityWaitDirective, language) || tSensDirectiveFallback)
+                                    .replace(/End Treatment/g, tNextStep)
+                                    .replace(/סיום טיפול/g, tNextStep)}
                             </span>
                         </div>
                     )}
 
-                    {/* End Treatment expansion panel */}
-                    {showEndPanel && (
-                        <div className={styles.endPanel}>
-                            <VitalsInputGroup
-                                title={useT('Post-Stinging Measures (Optional)')}
-                                vitals={postStingingVitals}
-                                onVitalsChange={setPostStingingVitals}
-                            />
-
-                            <div className={styles.standardDirective}>
-                                {getMLValue(appConfig?.treatmentSettings?.standardWaitDirective, language) || tStdDirectiveFallback}
-                            </div>
-
-                            <VitalsInputGroup
-                                title={useT('Stinger Removal Measures (Optional)')}
-                                vitals={finalVitals}
-                                onVitalsChange={setFinalVitals}
-                            />
-                            <label className={styles.sectionLabel}>{tFinalNotes}</label>
-                            <textarea
-                                className={styles.notesTextarea}
-                                rows={3}
-                                value={finalNotes}
-                                onChange={e => finalNotes !== e.target.value && setFinalNotes(e.target.value)}
-                                placeholder={tNotesPlaceholder}
-                            />
-                            <div className={styles.endActions}>
-                                <button className={styles.btnSecondary} onClick={() => setShowEndPanel(false)}>
-                                    <XSquare size={15} /> <T>Cancel</T>
-                                </button>
-                                <button
-                                    className={styles.btnEndConfirm}
-                                    disabled={!canCompleteRound}
-                                    onClick={handleEndTreatmentConfirm}
-                                >
-                                    <CheckCircle size={15} /> {tEndTreatment}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Main action buttons */}
-                    {!showEndPanel && (
-                        <div className={styles.actionRow}>
-                            <button
-                                className={styles.btnAnotherProtocol}
-                                disabled={!canCompleteRound || !canGoToAnother}
-                                onClick={handleAnotherProtocol}
-                            >
-                                <PlusCircle size={15} /> {tAnotherProtocol}
-                            </button>
-                            <button
-                                className={styles.btnEndTreatment}
-                                disabled={!canCompleteRound}
-                                onClick={() => setShowEndPanel(true)}
-                            >
-                                <CheckCircle size={15} /> {tNextStep}
-                            </button>
-                        </div>
-                    )}
+                    <div className={styles.actionRow}>
+                        <button
+                            className={styles.btnAnotherProtocol}
+                            disabled={!canCompleteRound || !canGoToAnother}
+                            onClick={handleAnotherProtocol}
+                        >
+                            <PlusCircle size={15} /> {tAnotherProtocol}
+                        </button>
+                        <button
+                            className={styles.btnEndTreatment}
+                            disabled={!canCompleteRound}
+                            onClick={handleNext}
+                        >
+                            <CheckCircle size={15} /> {tNextStep}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

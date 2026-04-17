@@ -10,8 +10,8 @@ import { T, useT } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
 import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
-import ProblemsProtocolsTab, { ProblemsProtocolsTabHandle } from './ProblemsProtocolsTab';
-import { addMeasuredValueReading, saveTreatment, hasMeasuredValueReadings, getTreatmentCount } from '../../firebase/patient';
+import ProblemsTab, { ProblemsTabHandle } from './ProblemsTab';
+import { addMeasuredValueReading, saveTreatment, hasMeasuredValueReadings, getTreatmentCount, requestMissingProblem } from '../../firebase/patient';
 import { getQuestionnaire } from '../../firebase/questionnaire';
 import { Questionnaire } from '../../types/questionnaire';
 import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
@@ -21,6 +21,7 @@ import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import TreatmentFeedback from './TreatmentFeedback';
 import FreeProtocolPointSelection from '../FreeProtocolPointSelection';
+import PostStingScreen from '../PostStingScreen';
 import { Protocol } from '../../types/protocol';
 import { VitalSigns, TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
@@ -37,7 +38,7 @@ type TabKey =
     | 'treatments'
     | 'measures';
 
-type ViewState = 'tabs' | 'sessionOpening' | 'protocolSelection' | 'freeProtocolPointSelection' | 'treatmentExecution' | 'treatmentFeedback';
+type ViewState = 'tabs' | 'sessionOpening' | 'problemSelection' | 'freeSelection' | 'treatmentExecution' | 'treatmentFeedback' | 'postSting';
 
 const TAB_ORDER: TabKey[] = [
     'personal',
@@ -94,28 +95,42 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
     const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
     const [sessionOpeningData, setSessionOpeningData] = useState<SessionOpeningData | null>(null);
+
+    // Active problems from patient record for this session
+    const activeProblems = patient.medicalRecord?.problems?.filter((p: any) => p.problemStatus === 'Active') || [];
+
     const [freeProtocolPoints, setFreeProtocolPoints] = useState<StingPoint[]>([]);
+    const [usedProtocolIds, setUsedProtocolIds] = useState<string[]>([]);
+    const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
     const [isSensitivitySession, setIsSensitivitySession] = useState(false);
     const [accumulatedStungPointIds, setAccumulatedStungPointIds] = useState<string[]>([]);
     const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
+    const [freeProtocolUsed, setFreeProtocolUsed] = useState(false);
     const [showTreatmentSavedModal, setShowTreatmentSavedModal] = useState(false);
 
     const [appConfig, setAppConfig] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
     const [latestTreatment, setLatestTreatment] = useState<TreatmentSession | null>(null);
+    const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+    const [showExitGuard, setShowExitGuard] = useState(false);
     const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+
+    // Feature Modals
+    const [showMissingProblemSuccessModal, setShowMissingProblemSuccessModal] = useState(false);
+    const [showMissingProblemErrorModal, setShowMissingProblemErrorModal] = useState(false);
 
     const consentTabRef = useRef<ConsentTabHandle>(null);
     const instructionsTabRef = useRef<InstructionsTabHandle>(null);
-    const problemsTabRef = useRef<ProblemsProtocolsTabHandle>(null);
+    const problemsTabRef = useRef<ProblemsTabHandle>(null);
 
     // Translation labels
     const tPersonal = useT('Personal Details');
     const tQuestionnaire = useT('Questionnaire');
     const tConsent = useT('Consent');
     const tInstructions = useT('Guidelines');
-    const tProblems = useT('Problems & Protocols');
+    const tProblems = useT('Problems');
     const tTreatments = useT('Treatments History');
     const tMeasures = useT('Measures History');
     const tStartNewTreatment = useT('Start New Treatment');
@@ -125,6 +140,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tTreatmentFeedback = useT('Treatment Feedback');
     const tSaveError = useT('Failed to save signed document. Please check your connection and try again.');
     const tTreatmentSaved = useT('Treatment Saved');
+    const tOK = useT('OK');
+    const tRequestSuccess = useT('Request sent successfully. The administrator will look into it.');
+    const tRequestFail = useT('Failed to send request. Point names may contains invalid characters or connection issue.');
+    const tProblemDescriptionPrompt = useT('Please describe the problem you need to treat:');
 
     const tabLabels: Record<TabKey, string> = {
         personal: tPersonal,
@@ -188,6 +207,26 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         }
     }, [patient]);
 
+    // Auto-initialize sessionOpeningData if starting from dashboard (UX-1)
+    useEffect(() => {
+        if (initialViewState === 'sessionOpening' && !sessionOpeningData && patient.id) {
+            setIsLoading(true);
+            getTreatmentCount(patient.id).then(count => {
+                setSessionOpeningData({
+                    patientReport: '',
+                    measureReadings: [],
+                    preTreatmentVitals: {},
+                    problems: patient.medicalRecord?.problems || [],
+                    treatmentNumber: count + 1
+                });
+                setIsLoading(false);
+            }).catch(err => {
+                console.error("Error auto-initializing sessionOpeningData:", err);
+                setIsLoading(false);
+            });
+        }
+    }, [initialViewState, patient.id]);
+
     useEffect(() => {
         const checkSavedStatus = async () => {
             const data = patientData;
@@ -218,13 +257,16 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             }
 
             // 5. Problems & Protocols
-            if (data.medicalRecord?.problemId) {
+            if (data.medicalRecord?.problems && data.medicalRecord.problems.length > 0) {
                 updatedSaved.add('problems');
             }
 
             // 6. Treatments & 7. Measures (Keep current state if not changed by data)
             if (patient.id) {
-                updatedSaved.add('treatments');
+                const treatmentCount = await getTreatmentCount(patient.id);
+                if (treatmentCount > 0) {
+                    updatedSaved.add('treatments');
+                }
                 const hasReadings = await hasMeasuredValueReadings(patient.id);
                 if (hasReadings) {
                     updatedSaved.add('measures');
@@ -281,7 +323,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             });
         }
         if (tab === 'problems') {
-            return !!patientData.medicalRecord?.problemId;
+            return (patientData.medicalRecord?.problems?.length ?? 0) > 0;
         }
         return true;
     };
@@ -427,47 +469,107 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
     // Step 5: Start New Treatment → now goes to sessionOpening
-    const handleStartNewTreatment = () => {
+    const handleStartNewTreatment = async () => {
         if (viewState !== 'tabs' && isDirty) {
             setShowAbortTreatmentGuard(true);
             return;
         }
+
+        setIsLoading(true);
+        let nextTreatmentNumber = 1;
+        try {
+            if (patient.id) {
+                const count = await getTreatmentCount(patient.id);
+                nextTreatmentNumber = count + 1;
+            }
+        } catch (err) {
+            console.error("Error fetching treatment count:", err);
+        }
+
         // Reset session accumulation state
-        setSessionOpeningData(null);
+        setSessionOpeningData({
+            patientReport: '',
+            measureReadings: [],
+            preTreatmentVitals: {},
+            problems: patientData.medicalRecord?.problems || [],
+            treatmentNumber: nextTreatmentNumber
+        });
         setSelectedProtocol(null);
         setSelectedProblemId(null);
         setIsSensitivitySession(false);
         setFreeProtocolPoints([]);
         setTreatmentSaveStatus('idle');
+        setLastSavedAt(null);
+        setUsedProblemIds([]);
+        setUsedProtocolIds([]);
+        setAccumulatedStungPointIds([]);
+        setIsLoading(false);
         setViewState('sessionOpening');
     };
 
 
     const handleSessionOpeningComplete = async (data: SessionOpeningData) => {
         if (!patient.id) return;
-        const generatedTreatmentId = `${patient.id}_${Date.now()}`;
+
+        // UX-1: Use sequence-based ID if new, or reuse existing if resuming
+        let generatedTreatmentId = data.generatedTreatmentId;
+        let treatmentNumber = data.treatmentNumber;
+        const count = await getTreatmentCount(patient.id);
+
+        if (!generatedTreatmentId) {
+            treatmentNumber = count + 1;
+            generatedTreatmentId = `${patient.id}_${treatmentNumber}`;
+        }
+
         let preTreatmentMeasureReadingId: string | undefined = undefined;
         // Write measure reading if any values entered
         if (data.measureReadings.length > 0) {
             try {
+                // UX-2: Derive stable ID for this reading
+                const readingDocId = `${generatedTreatmentId}_pre`;
                 preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
                     patientId: patient.id,
                     treatmentId: generatedTreatmentId,
                     readings: data.measureReadings,
-                    usedMeasureIds: data.usedMeasureIds, // Added
+                    usedMeasureIds: data.usedMeasureIds,
                     note: data.patientReport,
-                });
+                }, readingDocId);
             } catch (err) {
                 console.error('Failed to write measure reading:', err);
             }
         }
-        setSessionOpeningData({ ...data, preTreatmentMeasureReadingId, generatedTreatmentId });
-        console.log('PatientIntake: Session opening complete', { preTreatmentMeasureReadingId });
+        setSessionOpeningData({ ...data, preTreatmentMeasureReadingId, generatedTreatmentId, treatmentNumber });
+        console.log('PatientIntake: Session opening complete', { preTreatmentMeasureReadingId, generatedTreatmentId, treatmentNumber });
 
-        // Check treatment count for sensitivity test routing
-        const count = await getTreatmentCount(patient.id);
-        const sensitivityThreshold = appConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
-        const sensitivityProtocolId = appConfig?.treatmentSettings?.sensitivityProtocolIdentifier;
+        // Fetch live config to avoid race condition where appConfig state may not yet be loaded
+        let liveConfig: any = null;
+        try {
+            const configSnap = await getDoc(doc(db, 'cfg_app_config', 'main'));
+            if (configSnap.exists()) liveConfig = configSnap.data();
+        } catch { /* non-critical */ }
+        const sensitivityThreshold = liveConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
+        const sensitivityProtocolId = liveConfig?.treatmentSettings?.sensitivityProtocolIdentifier;
+
+        // Save (or update) initial incomplete draft to DB
+        try {
+            await saveTreatment(patient.id, {
+                status: 'Incomplete',
+                patientId: patient.id,
+                caretakerId: user.uid,
+                patientReport: data.patientReport,
+                preTreatmentVitals: data.preTreatmentVitals,
+                preTreatmentImage: data.preTreatmentImage,
+                preTreatmentMeasureReadingId,
+                isSensitivityTest: count < sensitivityThreshold, // Use < here because count was before this treatment if it's new? 
+                treatmentNumber: treatmentNumber,
+                protocolIds: [],
+                problemIds: [],
+                stungPointIds: [],
+            }, generatedTreatmentId);
+            setLastSavedAt(new Date());
+        } catch (err) {
+            console.error('Failed to save initial draft:', err);
+        }
 
         if (sensitivityProtocolId && count < sensitivityThreshold) {
             // Load the sensitivity protocol from Firestore
@@ -479,6 +581,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     setSelectedProblemId(''); // Empty string for sensitivity
                     setIsSensitivitySession(true);
                     setSessionIsSensitivityTest(true);
+                    setUsedProblemIds([]);
+                    setUsedProtocolIds([sensitivityProtocol.id]);
+                    setFreeProtocolUsed(false);
                     setAccumulatedStungPointIds([]);
                     setViewState('treatmentExecution');
                     return;
@@ -488,101 +593,101 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             }
         }
 
-        // Not sensitivity -> Load protocol defined for the patient
-        const patientProtocolId = patient.medicalRecord?.protocolId;
-        const patientProblemId = patient.medicalRecord?.problemId;
+        // Not sensitivity -> Jump to problem selection
+        setViewState('problemSelection');
+    };
 
-        if (patientProtocolId) {
-            try {
-                const protSnap = await getDoc(doc(db, 'cfg_protocols', patientProtocolId));
-                if (protSnap.exists()) {
-                    const protocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
-                    setSelectedProtocol(protocol);
-                    setSelectedProblemId(patientProblemId || '');
-                    setIsSensitivitySession(false);
-                    setViewState('treatmentExecution');
-                    return;
-                }
-            } catch (err) {
-                console.error('Failed to load patient protocol:', err);
+
+    const handleProtocolSelect = async (protocolId: string | null, problemId: string | null) => {
+        if (!protocolId) {
+            // Free selection path
+            setFreeProtocolUsed(true);
+            const freeProtoId = appConfig?.treatmentSettings?.freeProtocolIdentifier;
+            if (freeProtoId) {
+                setUsedProtocolIds(prev => [...new Set([...prev, freeProtoId])]);
             }
+            setViewState('freeSelection');
+            setSelectedProblemId(null);
+            setSelectedProtocol(null);
+            return;
         }
 
-        setViewState('protocolSelection');
-    };
+        setIsLoading(true);
+        try {
+            const snap = await getDoc(doc(db, 'cfg_protocols', protocolId));
+            if (snap.exists()) {
+                setSelectedProtocol({ id: snap.id, ...snap.data() } as Protocol);
+                setSelectedProblemId(problemId);
 
+                // Track selected problem
+                if (problemId) {
+                    setUsedProblemIds(prev => [...new Set([...prev, problemId])]);
+                }
 
-    const handleProtocolSelect = (protocol: Protocol, problemId: string) => {
-        setSelectedProtocol(protocol);
-        setSelectedProblemId(problemId);
-
-        const freeProtocolId = appConfig?.treatmentSettings?.freeProtocolIdentifier;
-        if (freeProtocolId && protocol.id === freeProtocolId) {
-            setViewState('freeProtocolPointSelection');
-        } else {
-            setViewState('treatmentExecution');
+                setViewState('treatmentExecution');
+            }
+        } catch (error) {
+            console.error('Error loading protocol:', error);
+            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to load protocol');
+            setShowTreatmentErrorGuard(true);
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleFreeProtocolPointsSelected = (points: StingPoint[]) => {
+    const handleFreePointsSelected = (points: StingPoint[]) => {
         setFreeProtocolPoints(points);
+        setSelectedProtocol(null); // Signal it's free selection
+        setSelectedProblemId(null);
         setViewState('treatmentExecution');
     };
 
-    const handleRoundComplete = async (round: { stungPointIds: string[] }) => {
+    const handleRoundComplete = async (roundStungPointIds: string[]) => {
         // Called when user clicks "Another Protocol"
-        // Buffer points locally and switch to the medical protocol
-        if (!patient.id || !sessionOpeningData || !selectedProtocol) return;
+        if (!patient.id || !sessionOpeningData) return;
 
         try {
             // Buffer the points from this round
-            setAccumulatedStungPointIds(prev => [...prev, ...round.stungPointIds]);
+            setAccumulatedStungPointIds(prev => [...new Set([...prev, ...roundStungPointIds])]);
 
-            // Transition to the patient's regular protocol
-            const patientProtocolId = patient.medicalRecord?.protocolId;
-            const patientProblemId = patient.medicalRecord?.problemId;
-
-            if (patientProtocolId) {
-                const protSnap = await getDoc(doc(db, 'cfg_protocols', patientProtocolId));
-                if (protSnap.exists()) {
-                    const protocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
-                    setSelectedProtocol(protocol);
-                    setSelectedProblemId(patientProblemId || '');
-                    setIsSensitivitySession(false);
-                    // Stay in treatmentExecution, TreatmentExecution component will reset its internal stungPoints
-                    return;
-                }
+            // Track protocols used
+            if (selectedProtocol) {
+                setUsedProtocolIds(prev => [...new Set([...prev, selectedProtocol.id])]);
             }
-            setViewState('protocolSelection');
+
+            // Return to problem selection for next protocol
+            setViewState('problemSelection');
         } catch (error) {
             console.error('Error transitioning to secondary protocol:', error);
-            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to load secondary protocol');
+            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to transition to secondary protocol');
             setShowTreatmentErrorGuard(true);
         }
     };
 
+    const handleNextFromStinging = (roundStungPointIds: string[]) => {
+        // Called when user clicks "Next Step" in TreatmentExecution
+        setAccumulatedStungPointIds(prev => [...new Set([...prev, ...roundStungPointIds])]);
 
-    const handleEndTreatment = async (
-        executionData: { stungPointIds: string[] }, // contains stungPointIds
-        postStingingVitals: Partial<VitalSigns>,
+        if (selectedProtocol) {
+            setUsedProtocolIds(prev => [...new Set([...prev, selectedProtocol.id])]);
+        }
+
+        // Screen 3/4 -> Screen 5
+        setViewState('postSting');
+    };
+
+    const handlePostStingFinish = async (data: {
+        postTreatmentVitals: Partial<VitalSigns>,
         finalVitals: Partial<VitalSigns>,
         finalNotes: string
-    ) => {
-        if (!patient.id || !sessionOpeningData || !selectedProtocol) return;
+    }) => {
+        if (!patient.id || !sessionOpeningData) return;
         setTreatmentSaveStatus('saving');
         setTreatmentErrorMessage(null);
 
-        console.log('PatientIntake: Saving final treatment session', {
-            patientId: patient.id,
-            protocolId: selectedProtocol.id,
-            isSensitivitySession
-        });
-
         try {
-            // Combine buffered points with the final round's points
-            const allStungPointIds = [...accumulatedStungPointIds, ...executionData.stungPointIds];
-
             await saveTreatment(patient.id, {
+                status: data.finalVitals && Object.keys(data.finalVitals).length > 0 ? 'Completed' : 'Incomplete',
                 patientId: patient.id,
                 caretakerId: user.uid,
                 patientReport: sessionOpeningData.patientReport,
@@ -590,43 +695,218 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 preTreatmentImage: sessionOpeningData.preTreatmentImage,
                 preTreatmentMeasureReadingId: sessionOpeningData.preTreatmentMeasureReadingId,
                 isSensitivityTest: sessionIsSensitivityTest,
-                protocolId: selectedProtocol.id,
-                problemId: selectedProblemId || '',
-                stungPointIds: allStungPointIds,
-                postStingingVitals,
-                finalVitals,
-                finalNotes,
+                protocolIds: usedProtocolIds,
+                problemIds: usedProblemIds,
+                stungPointIds: accumulatedStungPointIds,
+                postStingingVitals: data.postTreatmentVitals,
+                finalVitals: data.finalVitals,
+                finalNotes: data.finalNotes,
+                freeProtocolUsed: freeProtocolUsed,
             }, sessionOpeningData.generatedTreatmentId);
+
             setTreatmentSaveStatus('success');
             setIsDirty(false);
             setSessionOpeningData(null);
             setAccumulatedStungPointIds([]);
+            setUsedProtocolIds([]);
+            setUsedProblemIds([]);
+            setLastSavedAt(null);
             setSessionIsSensitivityTest(false);
+
             setLatestTreatment({
                 id: sessionOpeningData.generatedTreatmentId,
+                status: data.finalVitals && Object.keys(data.finalVitals).length > 0 ? 'Completed' : 'Incomplete',
                 patientId: patient.id,
                 caretakerId: user.uid,
+                protocolIds: usedProtocolIds,
+                problemIds: usedProblemIds,
+                stungPointIds: accumulatedStungPointIds,
+                createdTimestamp: Date.now(),
                 patientReport: sessionOpeningData.patientReport,
-                preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
-                preTreatmentImage: sessionOpeningData.preTreatmentImage,
-                preTreatmentMeasureReadingId: sessionOpeningData.preTreatmentMeasureReadingId,
-                isSensitivityTest: sessionIsSensitivityTest,
-                protocolId: selectedProtocol.id,
-                problemId: selectedProblemId || '',
-                stungPointIds: allStungPointIds,
-                postStingingVitals,
-                finalVitals,
-                finalNotes,
-                createdTimestamp: Date.now(), // Local approx for immediate UI update
+                finalNotes: data.finalNotes,
+                treatmentNumber: sessionOpeningData.treatmentNumber,
             } as any);
+
             setShowTreatmentSavedModal(true);
             if (onTreatmentComplete) onTreatmentComplete();
         } catch (error) {
-            console.error('Error saving treatment:', error);
+            console.error('Error saving final treatment:', error);
             setTreatmentSaveStatus('error');
             setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to save treatment');
             setShowTreatmentErrorGuard(true);
         }
+    };
+
+    const handleExitIncomplete = async (currentData?: any) => {
+        if (currentData && !currentData.nativeEvent && patient.id) {
+            setIsLoading(true);
+            try {
+                // UX-1: Use sequence-based ID if new, or reuse existing if resuming
+                const count = await getTreatmentCount(patient.id);
+                const treatmentId = currentData.generatedTreatmentId || `${patient.id}_${count + 1}`;
+                const treatmentNumber = currentData.treatmentNumber || (count + 1);
+
+                const sensitivityThreshold = appConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
+
+                let preTreatmentMeasureReadingId = undefined;
+                if (currentData.measureReadings && currentData.measureReadings.length > 0) {
+                    // UX-2: Derive stable ID for this reading
+                    const readingDocId = `${treatmentId}_pre`;
+                    preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
+                        patientId: patient.id,
+                        treatmentId: treatmentId,
+                        readings: currentData.measureReadings.map((r: any) => ({
+                            measureId: r.measureId,
+                            value: r.value
+                        })),
+                        usedMeasureIds: currentData.usedMeasureIds || [],
+                        note: currentData.patientReport,
+                    }, readingDocId);
+                }
+
+                await saveTreatment(patient.id, {
+                    status: 'Incomplete',
+                    patientId: patient.id,
+                    caretakerId: user.uid,
+                    patientReport: currentData.patientReport || '',
+                    preTreatmentVitals: currentData.preTreatmentVitals || {},
+                    preTreatmentImage: currentData.preTreatmentImage,
+                    preTreatmentMeasureReadingId,
+                    isSensitivityTest: count < sensitivityThreshold,
+                    treatmentNumber,
+                    protocolIds: [],
+                    problemIds: [],
+                    stungPointIds: [],
+                    freeProtocolUsed: false, // initial draft
+                }, treatmentId);
+            } catch (e) {
+                console.error('Failed to sync before exit', e);
+            }
+            setIsLoading(false);
+
+            // Bypass modal, directly exit
+            setShowExitGuard(false);
+            setSessionOpeningData(null);
+            setSelectedProtocol(null);
+            setSelectedProblemId(null);
+            setIsSensitivitySession(false);
+            setFreeProtocolPoints([]);
+            setTreatmentSaveStatus('idle');
+            setLastSavedAt(null);
+            setUsedProblemIds([]);
+            setUsedProtocolIds([]);
+            setAccumulatedStungPointIds([]);
+            setFreeProtocolUsed(false);
+            setViewState('tabs');
+            return;
+        }
+
+        setShowExitGuard(true);
+    };
+
+    const confirmExit = async () => {
+        if (sessionOpeningData && patient.id) {
+            setIsLoading(true);
+            try {
+                await saveTreatment(patient.id, {
+                    status: 'Incomplete',
+                    patientId: patient.id,
+                    caretakerId: user.uid,
+                    patientReport: sessionOpeningData.patientReport,
+                    preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
+                    preTreatmentImage: sessionOpeningData.preTreatmentImage,
+                    preTreatmentMeasureReadingId: sessionOpeningData.preTreatmentMeasureReadingId,
+                    isSensitivityTest: sessionIsSensitivityTest,
+                    protocolIds: usedProtocolIds,
+                    problemIds: usedProblemIds,
+                    stungPointIds: accumulatedStungPointIds,
+                    freeProtocolUsed: freeProtocolUsed,
+                }, sessionOpeningData.generatedTreatmentId);
+            } catch (err) {
+                console.error('Failed to sync before exit', err);
+            }
+            setIsLoading(false);
+        }
+        setShowExitGuard(false);
+        setSessionOpeningData(null);
+        setSelectedProtocol(null);
+        setSelectedProblemId(null);
+        setIsSensitivitySession(false);
+        setFreeProtocolPoints([]);
+        setTreatmentSaveStatus('idle');
+        setLastSavedAt(null);
+        setUsedProblemIds([]);
+        setUsedProtocolIds([]);
+        setAccumulatedStungPointIds([]);
+        setFreeProtocolUsed(false);
+        setViewState('tabs');
+    };
+
+    const handleResumeTreatment = async (treatment: any) => {
+        setIsLoading(true);
+        let measureReadings: Array<{ measureId: string; value: string | number }> = [];
+
+        // If treatment already has hydrated measuredValues (from HistoryTab), use them.
+        // Otherwise (from Dashboard), fetch them using the ID.
+        if (treatment.measuredValues && Array.isArray(treatment.measuredValues)) {
+            measureReadings = treatment.measuredValues.map((mv: any) => ({
+                measureId: mv.measureId,
+                value: mv.value
+            }));
+        } else if (treatment.preTreatmentMeasureReadingId) {
+            try {
+                const readingSnap = await getDoc(doc(db, 'measured_values', treatment.preTreatmentMeasureReadingId));
+                if (readingSnap.exists()) {
+                    const data = readingSnap.data();
+                    measureReadings = (data.readings || []).map((r: any) => ({
+                        measureId: r.measureId,
+                        value: r.value
+                    }));
+                }
+            } catch (err) {
+                console.error('Failed to fetch measure reading for resume:', err);
+            }
+        }
+
+        setSessionOpeningData({
+            generatedTreatmentId: treatment.id,
+            patientReport: treatment.patientReport || '',
+            preTreatmentVitals: treatment.preTreatmentVitals || {},
+            preTreatmentImage: treatment.preTreatmentImage,
+            preTreatmentMeasureReadingId: treatment.preTreatmentMeasureReadingId,
+            usedMeasureIds: [],
+            measureReadings,
+            problems: patientData.medicalRecord?.problems || [],
+            treatmentNumber: treatment.treatmentNumber
+        });
+        setUsedProtocolIds(treatment.protocolIds || (treatment.protocolId ? [treatment.protocolId] : []));
+        setUsedProblemIds(treatment.problemIds || (treatment.problemId ? [treatment.problemId] : []));
+        setAccumulatedStungPointIds(treatment.stungPointIds || []);
+        setIsSensitivitySession(treatment.isSensitivityTest || false);
+        setFreeProtocolUsed(treatment.freeProtocolUsed || false);
+        setIsLoading(false);
+        setViewState('sessionOpening');
+    };
+
+    const handleRequestMissingProblem = async (problemName: string) => {
+        try {
+            if (!patient.id) throw new Error("Missing patient ID");
+            await requestMissingProblem(problemName, patient.id);
+            setShowMissingProblemSuccessModal(true);
+        } catch (error) {
+            console.error('Error requesting missing problem:', error);
+            setShowMissingProblemErrorModal(true);
+        }
+    };
+
+    const handleConfirmSaved = () => {
+        setShowTreatmentSavedModal(false);
+        setActiveTab('personal');
+        setViewState('tabs');
+    };
+
+    const handleFeedbackComplete = () => {
+        setViewState('tabs');
     };
 
 
@@ -681,7 +961,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     onDataChange={handleDataChange}
                 />;
             case 'problems':
-                return <ProblemsProtocolsTab
+                return <ProblemsTab
                     ref={problemsTabRef}
                     patientData={patientData as JoinedPatientData}
                     onDataChange={handleDataChange}
@@ -689,9 +969,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             case 'treatments':
                 return (
                     <TreatmentHistory
-                        patient={patientData as PatientData}
+                        patient={patientData as JoinedPatientData}
                         onBack={() => { }}
                         isTab={true}
+                        onResumeTreatment={handleResumeTreatment}
                     />
                 );
             case 'measures':
@@ -718,12 +999,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
     // UX-4: hide Update on Treatments History & Measures History tabs
     const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures';
-
-    const handleConfirmSaved = () => {
-        setShowTreatmentSavedModal(false);
-        setViewState('tabs');
-        setActiveTab('treatments');
-    };
 
     return (
         <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>
@@ -766,68 +1041,127 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         ))}
                     </div>
 
-                    <div className={styles.tabActions}>
-                        {/* Start New Treatment (UX-1) */}
-                        <button
-                            type="button"
-                            className={styles.startTreatmentButton}
-                            disabled={!canStartTreatment}
-                            onClick={handleStartNewTreatment}
-                        >
-                            {tStartNewTreatment}
-                        </button>
-
-                        {/* Treatment Feedback (UX-9) */}
-                        {latestTreatment && !latestTreatment.patientFeedbackMeasureReadingId && (
+                    {viewState === 'tabs' && (
+                        <div className={styles.tabActions}>
+                            {/* Start New Treatment (UX-1) */}
                             <button
                                 type="button"
                                 className={styles.startTreatmentButton}
-                                onClick={() => setViewState('treatmentFeedback')}
+                                disabled={!canStartTreatment}
+                                onClick={handleStartNewTreatment}
                             >
-                                {tTreatmentFeedback}
+                                {tStartNewTreatment}
                             </button>
-                        )}
-                    </div>
+
+                            {/* Treatment Feedback (UX-9) */}
+                            {latestTreatment && (latestTreatment.status === 'Incomplete' || !latestTreatment.patientFeedbackMeasureReadingId) && (
+                                <button
+                                    type="button"
+                                    className={styles.resumeTreatmentButton}
+                                    onClick={() => {
+                                        if (latestTreatment.status === 'Incomplete') {
+                                            handleResumeTreatment(latestTreatment);
+                                        } else {
+                                            setViewState('treatmentFeedback');
+                                        }
+                                    }}
+                                >
+                                    {latestTreatment.status === 'Incomplete' ? <T>Resume Treatment</T> : tTreatmentFeedback}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
+
+                {/* ── Treatment Stepper (UX-A) ──────────────────────────── */}
+                {viewState !== 'tabs' && viewState !== 'treatmentFeedback' && (
+                    <div className={styles.treatmentStepper}>
+                        <div className={styles.stepperSteps}>
+                            {[
+                                { id: 'sessionOpening', label: 'Session Opening' },
+                                { id: 'problemSelection', label: 'Protocol' },
+                                { id: 'treatmentExecution', label: 'Execution' },
+                                { id: 'freeSelection', label: 'Free Selection' },
+                                { id: 'postSting', label: 'Post-Sting' },
+                            ].map((step, idx) => (
+                                <div
+                                    key={step.id}
+                                    className={`${styles.stepItem} ${viewState === step.id ? styles.stepActive : ''}`}
+                                >
+                                    <span className={styles.stepNum}>{idx + 1}</span>
+                                    <span className={styles.stepLabel}><T>{step.label}</T></span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className={styles.stepperRight}>
+                            {sessionOpeningData?.treatmentNumber && (
+                                <div className={styles.treatmentNumIndicator}>
+                                    <T>Treatment</T> - {sessionOpeningData.treatmentNumber}
+                                </div>
+                            )}
+                            {lastSavedAt && (
+                                <div className={styles.draftIndicator}>
+                                    <T>Draft saved</T> {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* ── Content Area ──────────────────────────────────────────── */}
                 <div className={`${styles.contentArea} ${viewState !== 'tabs' ? styles.contentAreaFlow : ''}`}>
                     {viewState === 'tabs' && renderTabContent()}
 
                     {viewState !== 'tabs' && (
-                        <>
+                        <div key={viewState} className={styles.slideIn}>
                             {viewState === 'sessionOpening' && (
                                 <SessionOpening
                                     patient={patientData}
+                                    initialData={sessionOpeningData === null ? undefined : sessionOpeningData}
                                     onComplete={handleSessionOpeningComplete}
                                     onBack={() => setViewState('tabs')}
+                                    onExit={handleExitIncomplete}
                                 />
                             )}
-                            {viewState === 'protocolSelection' && (
+                            {viewState === 'problemSelection' && (
                                 <ProtocolSelection
-                                    patient={patientData}
+                                    problems={(sessionOpeningData?.problems ?? patientData.medicalRecord?.problems ?? []).filter((p: any) => p.problemStatus === 'Active')}
                                     onBack={() => setViewState(sessionOpeningData ? 'sessionOpening' : 'tabs')}
-                                    onProtocolSelect={handleProtocolSelect}
+                                    onProtocolSelect={(protocolId, problemId) => handleProtocolSelect(protocolId, problemId)}
+                                    onFreeSelect={() => handleProtocolSelect(null, null)}
+                                    onExit={handleExitIncomplete}
+                                    onRequestMissingProblem={handleRequestMissingProblem}
                                 />
                             )}
-                            {viewState === 'treatmentExecution' && selectedProtocol && (
+                            {viewState === 'treatmentExecution' && (
                                 <TreatmentExecution
-                                    protocol={selectedProtocol}
-                                    problemId={selectedProblemId ?? ''}
-                                    isSensitivityTest={isSensitivitySession}
-                                    canGoToAnother={isSensitivitySession}
+                                    protocol={selectedProtocol!}
+                                    isSensitivityTest={sessionIsSensitivityTest}
+                                    accumulatedStungPointIds={accumulatedStungPointIds}
                                     onRoundComplete={handleRoundComplete}
-                                    onEndTreatment={handleEndTreatment}
-                                    onBack={() => setViewState(selectedProtocol.id === appConfig?.treatmentSettings?.freeProtocolIdentifier ? 'freeProtocolPointSelection' : 'protocolSelection')}
-                                    preferredModel={user?.preferredModel}
-                                    customPoints={selectedProtocol.id === appConfig?.treatmentSettings?.freeProtocolIdentifier ? freeProtocolPoints : undefined}
+                                    onNext={handleNextFromStinging}
+                                    onBack={() => setViewState(isSensitivitySession ? 'sessionOpening' : 'problemSelection')}
+                                    preferredModel={user.preferredModel}
+                                    customPoints={freeProtocolPoints}
+                                    canGoToAnother={!!selectedProtocol} // Can only select another linked protocol if not in free selection
+                                    onExit={handleExitIncomplete}
                                 />
                             )}
-
-                            {viewState === 'freeProtocolPointSelection' && (
+                            {viewState === 'freeSelection' && (
                                 <FreeProtocolPointSelection
-                                    onBack={() => setViewState('protocolSelection')}
-                                    onPointsSelected={handleFreeProtocolPointsSelected}
+                                    onBack={() => setViewState('problemSelection')}
+                                    onPointsSelected={handleFreePointsSelected}
+                                    onExit={handleExitIncomplete}
+                                />
+                            )}
+                            {viewState === 'postSting' && (
+                                <PostStingScreen
+                                    stungPointIds={accumulatedStungPointIds}
+                                    protocolIds={usedProtocolIds}
+                                    onBack={() => setViewState('treatmentExecution')}
+                                    onFinish={handlePostStingFinish}
+                                    onExit={handleExitIncomplete}
                                 />
                             )}
                             {viewState === 'treatmentFeedback' && (latestTreatment || sessionOpeningData) && (
@@ -837,20 +1171,18 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                         ...sessionOpeningData!.preTreatmentVitals,
                                         id: sessionOpeningData!.generatedTreatmentId,
                                         patientId: patient.id,
-                                        protocolId: selectedProtocol?.id,
-                                        stungPointIds: accumulatedStungPointIds,
+                                        caretakerId: user.uid,
                                         createdTimestamp: Date.now(),
-                                        finalNotes: '',
+                                        status: 'Completed',
+                                        stungPointIds: accumulatedStungPointIds,
+                                        protocolIds: usedProtocolIds,
+                                        problemIds: usedProblemIds,
                                     } as any)}
-                                    onComplete={() => {
-                                        setViewState('tabs');
-                                        setActiveTab('treatments');
-                                        if (onTreatmentComplete) onTreatmentComplete();
-                                    }}
-                                    onBack={() => setViewState(sessionOpeningData ? 'treatmentExecution' : 'tabs')}
+                                    onComplete={handleFeedbackComplete}
+                                    onBack={handleFeedbackComplete}
                                 />
                             )}
-                        </>
+                        </div>
                     )}
                 </div>
 
@@ -905,6 +1237,17 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 )}
             </div>
 
+            {/* ── Exit Treatment guard ────────────────────────────────────── */}
+            <ConfirmationModal
+                isOpen={showExitGuard}
+                title={<T>Exit Treatment?</T>}
+                message={<T>Are you sure you want to pause this treatment and exit? Your progress so far will be saved as incomplete.</T>}
+                onConfirm={confirmExit}
+                onCancel={() => setShowExitGuard(false)}
+                showCancelButton
+            />
+
+
             {/* ── Close guard (UX-2) ──────────────────────────────────────── */}
             <ConfirmationModal
                 isOpen={showCloseGuard}
@@ -958,11 +1301,29 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 isOpen={showTreatmentSavedModal}
                 title={tTreatmentSaved}
                 message={tTreatmentSaved}
-                confirmLabel={useT('OK')}
+                confirmLabel={tOK}
                 onConfirm={handleConfirmSaved}
                 showCancelButton={false}
             />
-        </div>
+
+            {/* ── Missing Problem Modals ─────────────────────────────────── */}
+            <ConfirmationModal
+                isOpen={showMissingProblemSuccessModal}
+                title={<T>Request Sent</T>}
+                message={<T>Request sent successfully. The administrator will look into it.</T>}
+                confirmLabel={<T>OK</T>}
+                onConfirm={() => setShowMissingProblemSuccessModal(false)}
+                showCancelButton={false}
+            />
+            <ConfirmationModal
+                isOpen={showMissingProblemErrorModal}
+                title={<T>Error</T>}
+                message={<T>Failed to send request. Point names may contains invalid characters or connection issue.</T>}
+                confirmLabel={<T>OK</T>}
+                onConfirm={() => setShowMissingProblemErrorModal(false)}
+                showCancelButton={false}
+            />
+        </div >
     );
 };
 

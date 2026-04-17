@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
-import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table } from 'lucide-react';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './TreatmentHistory.module.css';
 
@@ -69,13 +69,17 @@ interface StoredTreatmentDoc {
     preTreatmentImage?: string;
     isSensitivityTest?: boolean;
     protocolId?: string;
+    protocolIds?: string[];
     problemId?: string;
+    problemIds?: string[];
     stungPointIds?: string[];
+    status?: 'Incomplete' | 'Completed';
     postStingingVitals?: Partial<VitalSigns>;
     finalVitals?: Partial<VitalSigns>;
     finalNotes?: string;
     patientFeedback?: string;
     patientFeedbackMeasureReadingId?: string;
+    treatmentNumber?: number;
 }
 
 /** Hydrated form — adds resolved point objects and fetched measure readings */
@@ -89,9 +93,10 @@ interface TreatmentHistoryProps {
     patient: Partial<JoinedPatientData>;
     onBack: () => void;
     isTab?: boolean;
+    onResumeTreatment?: (treatment: any) => void;
 }
 
-const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab }) => {
+const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab, onResumeTreatment }) => {
     const { language } = useTranslationContext();
     const tNotAvailable = useT('Not available');
     const tInvalidDate = useT('Invalid date');
@@ -105,6 +110,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [patientMeasureNames, setPatientMeasureNames] = useState<{ id: string, name: string | Record<string, string> }[]>([]);
     const [protocolsNamesMap, setProtocolsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const [problemsNamesMap, setProblemsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
+    const [freeProtoId, setFreeProtoId] = useState<string | null>(null);
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
 
     const fetchTreatments = useCallback(async () => {
@@ -133,6 +139,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
             console.log(`[TRACER] TreatmentHistory: Found ${rawTreatments.length} treatments.`);
 
+            const configSnap = await getDoc(doc(db, 'cfg_app_config', 'main'));
+            const appConfig = configSnap.exists() ? configSnap.data() : {};
+            const fId = appConfig.treatmentSettings?.freeProtocolIdentifier;
+            setFreeProtoId(fId || null);
+
             // Fetch all acupuncture points
             const pointsSnapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
             const pointsMap = new Map<string, StingPoint>();
@@ -152,12 +163,29 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             ]);
 
             const measuresMap = new Map<string, string | Record<string, string>>();
-            const patientMeasures: { id: string, name: string | Record<string, string> }[] = [];
             measuresSnapshot.docs.forEach(d => {
                 const data = d.data();
                 measuresMap.set(d.id, data.name);
-                if ((patient as JoinedPatientData).medicalRecord?.measureIds?.includes(d.id)) {
-                    patientMeasures.push({ id: d.id, name: data.name });
+            });
+
+            const problemsMeasureMap = new Map<string, string[]>(); // problemId -> measureIds
+            problemsSnapshot.docs.forEach(d => {
+                problemsMeasureMap.set(d.id, d.data().measureIds || []);
+            });
+
+            // Build union of all measures referenced by any treatment's problemIds
+            const allTreatmentMeasureIds = new Set<string>();
+            rawTreatments.forEach(t => {
+                const problemIds = t.problemIds || (t.problemId ? [t.problemId] : []);
+                problemIds.forEach(pid => {
+                    (problemsMeasureMap.get(pid) || []).forEach(mid => allTreatmentMeasureIds.add(mid));
+                });
+            });
+
+            const patientMeasures: { id: string, name: string | Record<string, string> }[] = [];
+            measuresSnapshot.docs.forEach(d => {
+                if (allTreatmentMeasureIds.has(d.id)) {
+                    patientMeasures.push({ id: d.id, name: d.data().name });
                 }
             });
             setPatientMeasureNames(patientMeasures);
@@ -346,14 +374,18 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                             <tr>
                                 <th><T>Date and time</T></th>
                                 <th><T>Patient Report</T></th>
+                                <th><T>Status</T></th>
                                 {patientMeasureNames.map(m => (
                                     <th key={m.id}>{getMLValue(m.name, language)}</th>
                                 ))}
+                                <th><T>Problem(s)</T></th>
+                                <th><T>Protocol(s)</T></th>
                                 <th><T>Pre treatment Vitals</T></th>
                                 <th><T>Stings</T></th>
                                 <th><T>Post-Sting Vitals</T></th>
                                 <th><T>Post treatment Vitals</T></th>
                                 <th><T>Final notes</T></th>
+                                <th><T>Actions</T></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -380,16 +412,50 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 return (
                                     <tr key={t.id}>
                                         <td className={styles.dateCell}>{formatDate(t)}</td>
-                                        <td className={styles.reportCell}>{t.patientReport || '-'}</td>
+                                        <td className={styles.reportCell} title={t.patientReport || undefined}>{t.patientReport || '-'}</td>
+                                        <td className={styles.statusCell}>
+                                            <span className={`${styles.statusBadge} ${t.status === 'Incomplete' ? styles.statusIncomplete : styles.statusCompleted}`}>
+                                                <T>{t.status || 'Completed'}</T>
+                                            </span>
+                                        </td>
                                         {patientMeasureNames.map(m => {
                                             const mv = t.measuredValues?.find(mv => mv.measureId === m.id);
                                             return <td key={m.id} className={styles.measureCell}>{mv?.value ?? '-'}</td>;
                                         })}
+                                        <td className={styles.multiIdCell} title={(t.problemIds || (t.problemId ? [t.problemId] : [])).map(id => getMLValue(problemsNamesMap.get(id), language)).join(', ') || undefined}>
+                                            {(t.problemIds || (t.problemId ? [t.problemId] : [])).map(id => getMLValue(problemsNamesMap.get(id), language)).join(', ') || '-'}
+                                        </td>
+                                        <td className={styles.multiIdCell} title={(t.protocolIds || (t.protocolId ? [t.protocolId] : [])).map(id => {
+                                            const name = getMLValue(protocolsNamesMap.get(id), language);
+                                            if (!name && id === freeProtoId) return language === 'he' ? 'פרוטוקול חופשי' : 'Free Protocol';
+                                            return name || id;
+                                        }).join(', ') || undefined}>
+                                            {(t.protocolIds || (t.protocolId ? [t.protocolId] : [])).map(id => {
+                                                const name = getMLValue(protocolsNamesMap.get(id), language);
+                                                if (!name && id === freeProtoId) return language === 'he' ? 'פרוטוקול חופשי' : 'Free Protocol';
+                                                return name || id;
+                                            }).join(', ') || '-'}
+                                        </td>
                                         <td className={styles.vitalsCell}>{preVitalsStr}</td>
                                         <td className={styles.stingsCell}>{stingCodes}</td>
                                         <td className={styles.vitalsCell}>{postStingVitalsStr}</td>
                                         <td className={styles.vitalsCell}>{postVitalsStr}</td>
-                                        <td className={styles.notesCell}>{t.finalNotes || '-'}</td>
+                                        <td className={styles.notesCell} title={t.finalNotes || undefined}>{t.finalNotes || '-'}</td>
+                                        <td className={styles.actionsCell}>
+                                            {t.status === 'Incomplete' && (
+                                                <button
+                                                    className={styles.resumeIconBtn}
+                                                    title="Resume Treatment"
+                                                    onClick={() => {
+                                                        if (onResumeTreatment) {
+                                                            onResumeTreatment(t);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Play size={14} />
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -405,10 +471,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                             <div className={styles.cardHeader} dir={direction}>
                                 <div className={styles.metaInfo}>
                                     <h2 className={styles.protocolName}>
-                                        {treatment.isSensitivityTest
-                                            ? <T>Sensitivity Test</T>
-                                            : (getMLValue(problemsNamesMap.get(treatment.problemId || ''), language) || getMLValue(protocolsNamesMap.get(treatment.protocolId || ''), language) || treatment.problemId || treatment.protocolId || <T>Treatment</T>)
-                                        }
+                                        <T>Treatment</T> - {treatment.treatmentNumber || '-'}
+                                        {treatment.status === 'Incomplete' && <span className={styles.statusIncompleteBadge}> (<T>Incomplete</T>)</span>}
                                         {treatment.isSensitivityTest &&
                                             <span className={styles.sensitivityBadge}> (<T>Sensitivity Test</T>)</span>}
                                     </h2>
@@ -421,6 +485,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         <span>{caretakerNames.get(treatment.caretakerId) || treatment.caretakerId}</span>
                                     </div>
                                 </div>
+                                {treatment.status === 'Incomplete' && (
+                                    <button
+                                        className={styles.resumeIconBtn}
+                                        onClick={() => onResumeTreatment?.(treatment)}
+                                    >
+                                        <Play size={16} />
+                                        <span style={{ marginInlineStart: '0.5rem' }}><T>Resume Treatment</T></span>
+                                    </button>
+                                )}
                             </div>
 
                             <div className={styles.sessionPhases}>
@@ -474,32 +547,62 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     </div>
                                 </div>
 
-                                {/* Phase 2: Stung Points */}
-                                {treatment.stungPoints.length > 0 && (
-                                    <div className={styles.phase}>
+                                <div className={styles.sideBySidePhases}>
+                                    {/* Phase 2: Stung Points */}
+                                    <div className={`${styles.phase} ${styles.sidePhase}`}>
                                         <h3 className={styles.phaseTitle}><T>2. Stung Points</T></h3>
                                         <div className={styles.pointsContainer}>
-                                            <ul className={styles.pointsList}>
-                                                {treatment.stungPoints.map((point) => (
-                                                    <li key={point.id} className={styles.pointItem} dir={direction}>
-                                                        <div className={styles.pointDetails}>
-                                                            <MapPin size={14} className={styles.pointIcon} />
-                                                            <span className={styles.pointTextWrapper}>
-                                                                <span className={styles.pointCode}>{point.code}</span>
-                                                                {' - '}
-                                                                <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
-                                                            </span>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
+                                            {treatment.stungPoints.length > 0 ? (
+                                                <ul className={styles.pointsList}>
+                                                    {treatment.stungPoints.map((point) => (
+                                                        <li key={point.id} className={styles.pointItem} dir={direction}>
+                                                            <div className={styles.pointDetails}>
+                                                                <MapPin size={14} className={styles.pointIcon} />
+                                                                <span className={styles.pointTextWrapper}>
+                                                                    <span className={styles.pointCode}>{point.code}</span>
+                                                                    {' - '}
+                                                                    <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
+                                                                </span>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <p className={styles.emptyText}><T>No points stung</T></p>
+                                            )}
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Phase 3: Finish Session */}
+                                    {/* Phase 3: Protocols Used */}
+                                    <div className={`${styles.phase} ${styles.sidePhase}`}>
+                                        <h3 className={styles.phaseTitle}><T>3. Protocols Used</T></h3>
+                                        <div className={styles.protocolsListSmall}>
+                                            {(treatment.protocolIds || (treatment.protocolId ? [treatment.protocolId] : [])).length > 0 ? (
+                                                (treatment.protocolIds || (treatment.protocolId ? [treatment.protocolId] : [])).map((id, idx) => {
+                                                    const nameObj = protocolsNamesMap.get(id);
+                                                    let name = getMLValue(nameObj, language);
+
+                                                    // Fallback for free protocol if not in DB
+                                                    if (!name && id === freeProtoId) {
+                                                        name = language === 'he' ? 'פרוטוקול חופשי' : 'Free Protocol';
+                                                    }
+
+                                                    return (
+                                                        <div key={idx} className={styles.protocolListItemSmall}>
+                                                            {name || id}
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className={styles.emptyText}><T>No protocols recorded</T></p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Phase 4: Finish Session */}
                                 <div className={styles.phase}>
-                                    <h3 className={styles.phaseTitle}><T>3. Finish Session</T></h3>
+                                    <h3 className={styles.phaseTitle}><T>4. Finish Session</T></h3>
                                     <div className={styles.detailsGrid}>
                                         <div className={styles.detailItem}>
                                             <VitalSignsDisplay
@@ -525,10 +628,10 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     </div>
                                 </div>
 
-                                {/* Phase 4: Treatment Feedback */}
+                                {/* Phase 5: Treatment Feedback */}
                                 {(treatment.patientFeedback || (treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0)) && (
                                     <div className={styles.phase}>
-                                        <h3 className={styles.phaseTitle}><T>4. Treatment Feedback</T></h3>
+                                        <h3 className={styles.phaseTitle}><T>5. Treatment Feedback</T></h3>
                                         <div className={styles.detailsGrid}>
                                             {treatment.patientFeedback && (
                                                 <div className={styles.detailItem}>

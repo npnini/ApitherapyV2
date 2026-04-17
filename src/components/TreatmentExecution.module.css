@@ -75,7 +75,7 @@
 /* ── Three-column grid ────────────────────────────────────── */
 .grid {
     display: grid;
-    grid-template-columns: 2fr 5fr 5fr;
+    grid-template-columns: 2.2fr 7.6fr 2.2fr;
     gap: 0.75rem;
     flex: 1;
     min-height: 0;
@@ -336,17 +336,43 @@
     border-radius: var(--radius-lg);
 }
 
+.resetViewBtn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    background: var(--color-background-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    width: 2.1rem;
+    height: 2.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: all 0.1s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.resetViewBtn:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: var(--color-background-page);
+    transform: scale(1.05);
+}
+
 /* ── Detail modal overlay ─────────────────────────────────── */
 .detailModalOverlay {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
-    padding: var(--spacing-md);
+    padding: 1.5rem;
     border-radius: var(--radius-lg);
 }
 
@@ -354,20 +380,19 @@
     background: var(--color-background-card);
     border-radius: var(--radius-lg);
     width: 100%;
-    max-width: 600px;
-    max-height: 100%;
-    min-width: 300px;
-    min-height: 200px;
+    max-width: none;
+    height: 100%;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-modal);
     animation: modalAppear 0.2s ease-out;
+    overflow: hidden;
 }
 
 @keyframes modalAppear {
     from {
         opacity: 0;
-        transform: translateY(12px) scale(0.97);
+        transform: translateY(8px) scale(0.99);
     }
 
     to {
@@ -377,13 +402,14 @@
 }
 
 .detailModalHeader {
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: 0.75rem 1.25rem;
     border-bottom: 1px solid var(--color-border-light);
     display: flex;
     align-items: center;
     justify-content: space-between;
     background: var(--color-background-page);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    flex-shrink: 0;
 }
 
 .detailModalTitle {
@@ -414,15 +440,22 @@
 }
 
 .detailModalBody {
-    padding: var(--spacing-lg);
+    padding: 1.25rem;
     overflow: auto;
     flex: 1;
+    display: flex;
+    /* Added display flex to help iframe expand */
+    flex-direction: column;
     line-height: 1.6;
     color: var(--color-text-primary);
 }
 
 .detailSection {
     margin-bottom: var(--spacing-md);
+    flex: 1;
+    /* For document view where it's the only section */
+    display: flex;
+    flex-direction: column;
 }
 
 .detailSection:last-child {
@@ -439,21 +472,24 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    flex-shrink: 0;
 }
 
 .detailImage {
     max-width: 100%;
-    max-height: 300px;
+    max-height: 100%;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
     object-fit: contain;
     display: block;
     height: auto;
+    flex: 1;
 }
 
 .detailIframe {
     width: 100%;
-    height: 400px;
+    flex: 1;
+    min-height: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
 }
@@ -523,8 +559,8 @@
     border-radius: var(--radius-md);
     background: var(--color-background-page);
     padding: 0.5rem;
-    min-height: 6rem;
-    max-height: 10rem;
+    min-height: 8rem;
+    max-height: 12rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -552,6 +588,27 @@
 .stungItemActive {
     background: var(--color-primary-light);
     border-color: var(--color-primary);
+}
+
+.subSectionLabel {
+    font-size: 0.68rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+
+.stungItemPrev {
+    background: var(--color-background-page);
+    border-color: var(--color-border);
+    opacity: 0.75;
+    cursor: default;
+    font-style: italic;
+}
+
+.stungItemPrev:hover {
+    border-color: var(--color-border);
 }
 
 .removeBtn {
@@ -605,56 +662,6 @@
     }
 }
 
-.standardDirective {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    background: var(--color-background-page);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--color-border-light);
-}
-
-/* ── End treatment expansion panel ───────────────────────── */
-.endPanel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    padding: 0.75rem;
-    background: var(--color-background-page);
-    border-radius: var(--radius-md);
-    border: 1px dashed var(--color-border);
-}
-
-/* ── Notes textarea ───────────────────────────────────────── */
-.notesTextarea {
-    background-color: var(--color-background-input);
-    border: 1.5px solid var(--color-border);
-    resize: vertical;
-    width: 100%;
-    padding: 0.625rem 0.75rem;
-    margin-top: 0.25rem;
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-    box-sizing: border-box;
-    font-family: inherit;
-    color: var(--color-text-primary);
-    transition: border-color 0.08s ease, box-shadow 0.08s ease;
-}
-
-.notesTextarea::placeholder {
-    color: var(--color-text-tertiary);
-}
-
-.notesTextarea:hover:not(:focus) {
-    border-color: var(--color-border-hover);
-}
-
-.notesTextarea:focus {
-    outline: none;
-    border: 2px solid var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
 /* ── Action buttons ───────────────────────────────────────── */
 .actionRow {
     display: flex;
@@ -664,15 +671,8 @@
     border-top: 1px solid var(--color-border-light);
 }
 
-.endActions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-}
-
 .btnAnotherProtocol,
 .btnEndTreatment,
-.btnEndConfirm,
 .btnSecondary {
     display: inline-flex;
     align-items: center;
@@ -719,8 +719,7 @@
 }
 
 .btnAnotherProtocol:disabled,
-.btnEndTreatment:disabled,
-.btnEndConfirm:disabled {
+.btnEndTreatment:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }

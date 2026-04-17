@@ -17,6 +17,8 @@ interface BodySceneProps {
   activePointId: string | null;
   isRolling: boolean;
   selectedModel: 'xbot' | 'corpo';
+  resetTrigger?: number;
+  sensitivityColorMap?: Record<string, string>; // Map of sensitivity level to color
 }
 
 const HumanModel = ({ url, children }: { url: string; children?: React.ReactNode }) => {
@@ -145,12 +147,52 @@ const LoadingOverlay = () => (
   </Html>
 );
 
-const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling, selectedModel }) => {
+const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling, selectedModel, resetTrigger, sensitivityColorMap }) => {
   const groupRef = useRef<THREE.Group>(null);
+  const controlsRef = useRef<any>(null);
+  const [targetZoom, setTargetZoom] = React.useState<{ position: THREE.Vector3, target: THREE.Vector3 } | null>(null);
+
+  const [hoveredPointId, setHoveredPointId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (resetTrigger && resetTrigger > 0) {
+      setTargetZoom({
+        position: new THREE.Vector3(0, 1.2, 4),
+        target: new THREE.Vector3(0, 1, 0)
+      });
+    }
+  }, [resetTrigger]);
+
+  const handleDoubleClick = (point: StingPoint, pos: { x: number, y: number, z: number }) => {
+    // If the group is rotating, the absolute position is slightly skewed by the group rotation, 
+    // but the `pos` given by marker is within the group's local coords.
+    // To make it simple, we use the raw transformed point coordinate 
+    // and just place the camera close relative to it.
+
+    // Convert local position to world space position relative to the group
+    let worldPos = new THREE.Vector3(pos.x, pos.y, pos.z);
+    if (groupRef.current) {
+      worldPos = groupRef.current.localToWorld(worldPos.clone());
+    }
+
+    const target = worldPos;
+    const cameraPos = new THREE.Vector3(worldPos.x, worldPos.y + 0.1, worldPos.z + 0.6);
+    setTargetZoom({ position: cameraPos, target: target });
+  };
 
   useFrame((state, delta) => {
     if (isRolling && groupRef.current) {
       groupRef.current.rotation.y += delta * 0.4;
+    }
+
+    if (targetZoom && controlsRef.current) {
+      state.camera.position.lerp(targetZoom.position, 0.1);
+      controlsRef.current.target.lerp(targetZoom.target, 0.1);
+      controlsRef.current.update();
+
+      if (state.camera.position.distanceTo(targetZoom.position) < 0.05) {
+        setTargetZoom(null);
+      }
     }
   });
 
@@ -158,8 +200,9 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
     <>
       <PerspectiveCamera makeDefault position={[0, 1.2, 4]} fov={40} />
       <OrbitControls
-        enablePan={false}
-        minDistance={1.2}
+        ref={controlsRef}
+        enablePan={true}
+        minDistance={0.2}
         maxDistance={6}
         target={[0, 1, 0]}
         makeDefault
@@ -178,8 +221,13 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
                   key={point.id}
                   point={point}
                   onClick={onPointSelect}
+                  onDoubleClick={handleDoubleClick}
                   isHighlighted={activePointId === point.id}
+                  isHovered={hoveredPointId === point.id}
+                  onPointerOver={() => setHoveredPointId(point.id)}
+                  onPointerOut={() => setHoveredPointId(null)}
                   selectedModel={selectedModel}
+                  sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
                 />
               ))}
             </HumanModel>
@@ -190,13 +238,19 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
                   key={point.id}
                   point={point}
                   onClick={onPointSelect}
+                  onDoubleClick={handleDoubleClick}
                   isHighlighted={activePointId === point.id}
+                  isHovered={hoveredPointId === point.id}
+                  onPointerOver={() => setHoveredPointId(point.id)}
+                  onPointerOut={() => setHoveredPointId(null)}
                   selectedModel={selectedModel}
+                  sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
                 />
               ))}
             </CorpoModel>
           )}
         </group>
+
 
         <Environment preset="city" />
 

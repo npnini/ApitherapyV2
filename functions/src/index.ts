@@ -114,14 +114,20 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + Number(retentionDays));
 
-    // Collect unique measure IDs from the patient's medical data treatment plan
+    // Collect unique measure IDs from the problems linked to this treatment
     let measureIds: string[] = [];
-    const medicalDataDoc = await db.collection("patient_medical_data").doc(patientId).get();
-    const medicalData = medicalDataDoc.data();
+    const problemIds = treatment.problemIds || [];
 
-    if (medicalData?.treatment_plan?.measureIds) {
-      measureIds = medicalData.treatment_plan.measureIds;
+    for (const pId of problemIds) {
+      const pDoc = await db.collection("cfg_problems").doc(pId).get();
+      if (pDoc.exists) {
+        const data = pDoc.data() || {};
+        if (data.measureIds && Array.isArray(data.measureIds)) {
+          measureIds.push(...data.measureIds);
+        }
+      }
     }
+
     measureIds = [...new Set(measureIds)];
 
     // Fetch the full measure definitions because unauthenticated users
@@ -213,23 +219,9 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
     // Transform map to array of objects as expected by the frontend
     const readings = sessionMeasures.map((m: { id: string; type: string; categories?: Record<string, unknown>[] }) => {
       const value = responses[m.id];
-      let numericValue: number | undefined = undefined;
-
-      if (m.type === "Category") {
-        const category = (m.categories || []).find((cat: Record<string, unknown>) => {
-          // Check all languages for match since we don't know which one the patient used exactly
-          return Object.values(cat).some((v) => v === value);
-        });
-        numericValue = (category as { numericValue?: number })?.numericValue;
-      } else {
-        numericValue = typeof value === "number" ? value : undefined;
-      }
-
       return {
         measureId: m.id,
-        type: m.type,
         value: value,
-        numericValue: numericValue,
       };
     }).filter((r: { value: unknown }) => r.value !== undefined && r.value !== "");
 
@@ -572,5 +564,64 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
   } catch (err) {
     logger.error("Error executing BigQuery query:", err);
     throw new HttpsError("internal", "Error fetching analysis data.");
+  }
+});
+
+/**
+ * 6. Callable: sendMissingProblemEmail
+ * Notifies admin when a caretaker cannot find a specific problem in the system.
+ */
+export const sendMissingProblemEmail = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const { problemName, patientId } = request.data;
+  if (!problemName || !patientId) {
+    throw new HttpsError("invalid-argument", "Missing problemName or patientId.");
+  }
+
+  try {
+    const configDoc = await db.collection("cfg_app_config").doc("main").get();
+    const configData = configDoc.data() || {};
+    const feedbackConfig = configData.feedbackLoop || {};
+    const apiKey = (feedbackConfig.sendgridApiKey || "").trim();
+    const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim() || "noreply@apitherapy-system.com";
+    const adminEmail = (configData.sendgridSenderEmail || feedbackConfig.sendgridSenderEmail || configData.adminEmail || "admin@apitherapy-system.com").trim();
+
+    if (!apiKey) {
+      throw new HttpsError("failed-precondition", "SendGrid API key missing.");
+    }
+
+    sgMail.setApiKey(apiKey);
+
+    const caretakerId = request.auth.uid;
+    const caretakerDoc = await db.collection("users").doc(caretakerId).get();
+    const caretakerData = caretakerDoc.data() || {};
+    const caretakerName = caretakerData.fullName || caretakerData.displayName || caretakerId;
+
+    const patientDoc = await db.collection("patients").doc(patientId).get();
+    const patientData = patientDoc.data() || {};
+    const patientName = patientData.fullName || patientId;
+
+    await sgMail.send({
+      to: adminEmail,
+      from: senderEmail,
+      subject: `Missing Problem Reported: ${problemName}`,
+      text: `Caretaker ${caretakerName} reported a missing problem "${problemName}" for patient ${patientName} (${patientId}).`,
+      html: `
+        <h3>Missing Problem Reported</h3>
+        <p><strong>Problem:</strong> ${problemName}</p>
+        <p><strong>Reported by:</strong> ${caretakerName} (UID: ${caretakerId})</p>
+        <p><strong>Patient:</strong> ${patientName} (ID: ${patientId})</p>
+      `,
+    });
+
+    logger.info(`Missing problem email sent for "${problemName}" by user ${caretakerId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error("Error sending missing problem email:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", "Failed to send email.");
   }
 });

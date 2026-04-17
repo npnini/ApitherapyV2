@@ -28,14 +28,16 @@ export interface TreatmentSession {
   isSensitivityTest: boolean;   // true when this session forced the sensitivity protocol
 
   // Flattened Treatment Data
-  protocolId: string;           // The protocol used
-  problemId: string;            // The problem treated
+  status: 'Incomplete' | 'Completed';
+  protocolIds: string[];        // Replaces singular protocolId
+  problemIds: string[];         // Replaces singular problemId
   stungPointIds: string[];      // List of stung points in this session
 
   // Post-session data
   postStingingVitals?: Partial<VitalSigns>; // BP + HR measured after all stings, before removal
   finalVitals?: Partial<VitalSigns>;   // stinger-removal BP + HR (~15 min post session)
   finalNotes?: string;
+  freeProtocolUsed?: boolean;  // true when the caretaker used the free protocol selection path
 
   // Post-treatment patient response (reserved for future automation)
   patientFeedback?: string;
@@ -44,5 +46,7 @@ export interface TreatmentSession {
   // Firestore timestamps
   createdTimestamp?: any;
   updatedTimestamp?: any;
+
+  treatmentNumber?: number;     // Stable sequence number (1, 2, 3...)
 }
 

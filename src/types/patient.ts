@@ -4,6 +4,11 @@ export interface BaseDocument {
     updatedTimestamp: any; // serverTimestamp
 }
 
+export interface PatientProblem {
+    problemId: string;
+    problemStatus: 'Active' | 'Inactive';
+}
+
 export interface MedicalData extends BaseDocument {
     patientId: string;
     condition?: string;
@@ -11,8 +16,7 @@ export interface MedicalData extends BaseDocument {
     lastTreatment?: string;
     consentSignedUrl?: string;
     treatmentInstructionsSignedUrl?: string;
-    problemId?: string;
-    protocolId?: string;
+    problems?: PatientProblem[];
     measureIds?: string[];
 }
 
@@ -23,9 +27,7 @@ export interface MeasuredValueReading extends BaseDocument {
     usedMeasureIds?: string[];
     readings: Array<{
         measureId: string;
-        type: 'Category' | 'Scale';
         value: string | number;
-        numericValue?: number;
     }>;
 }
 
@@ -56,6 +58,6 @@ export interface PatientData extends BaseDocument {
 export interface JoinedPatientData extends PatientData {
     medicalRecord?: Partial<MedicalData>;
     questionnaireResponse?: QuestionnaireResponse;
-    /** Readings collected in ProblemsProtocolsTab, to be written after patient ID is resolved. */
-    pendingReadings?: Array<{ measureId: string; type: 'Category' | 'Scale'; value: string | number; numericValue?: number; note?: string }>;
+    /** Readings collected in ProblemsTab, to be written after patient ID is resolved. */
+    pendingReadings?: Array<{ measureId: string; value: string | number; note?: string }>;
 }

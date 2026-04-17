@@ -8,6 +8,12 @@ export const useProblemForm = (initialData?: Problem | null, onFormSubmit?: () =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const getUrl = (val: string | { [key: string]: string } | undefined): string => {
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    return Object.values(val)[0] || '';
+  };
+
   const handleSubmit = useCallback(async (formData: Omit<Problem, 'id' | 'createdAt' | 'updatedAt'>, file: File | null) => {
     setIsSubmitting(true);
     try {
@@ -15,12 +21,14 @@ export const useProblemForm = (initialData?: Problem | null, onFormSubmit?: () =
 
       if (file) {
         if (initialData?.documentUrl) {
-          await deleteFile(initialData.documentUrl);
+          const urlToDelete = getUrl(initialData.documentUrl);
+          if (urlToDelete) await deleteFile(urlToDelete);
         }
         fileUrl = await uploadFile(file, 'problem-documents');
       } else if (initialData?.documentUrl && !formData.documentUrl) {
         // This case handles when the document is deleted but no new file is uploaded
-        await deleteFile(initialData.documentUrl);
+        const urlToDelete = getUrl(initialData.documentUrl);
+        if (urlToDelete) await deleteFile(urlToDelete);
         fileUrl = ''; // Explicitly clear the URL
       }
 
@@ -46,11 +54,12 @@ export const useProblemForm = (initialData?: Problem | null, onFormSubmit?: () =
       setIsDeleting(true);
       try {
         if (initialData.documentUrl) {
-          await deleteFile(initialData.documentUrl);
+          const urlToDelete = getUrl(initialData.documentUrl);
+          if (urlToDelete) await deleteFile(urlToDelete);
         }
         const problemRef = doc(db, 'cfg_problems', initialData.id);
         await updateDoc(problemRef, { documentUrl: '' });
-      } catch (error) { 
+      } catch (error) {
         console.error("Error deleting document from problem: ", error);
       } finally {
         setIsDeleting(false);

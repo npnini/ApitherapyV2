@@ -2,6 +2,8 @@ import { doc, collection, serverTimestamp, getDoc, setDoc, query, orderBy, getDo
 import { db } from '../firebase';
 import { PatientData, MedicalData, QuestionnaireResponse, MeasuredValueReading } from '../types/patient';
 import { TreatmentSession } from '../types/treatmentSession';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase';
 
 /**
  * Recursively removes keys with 'undefined' values from an object.
@@ -100,9 +102,9 @@ export const addQuestionnaireResponse = async (patientId: string, response: Part
  * Adds a measured value reading using a patientId-prefixed document ID.
  * Format: {patientId}_{timestamp} — lexicographically sortable, no composite index needed.
  */
-export const addMeasuredValueReading = async (patientId: string, reading: Partial<MeasuredValueReading>): Promise<string> => {
+export const addMeasuredValueReading = async (patientId: string, reading: Partial<MeasuredValueReading>, customId?: string): Promise<string> => {
     const timestamp = Date.now();
-    const docId = `${patientId}_${timestamp}`;
+    const docId = customId || `${patientId}_${timestamp}`;
     const docRef = doc(db, 'measured_values', docId);
     const serverTs = serverTimestamp();
 
@@ -131,14 +133,20 @@ export const saveTreatment = async (
     const docRef = doc(db, 'treatments', docId);
     const serverTs = serverTimestamp();
 
-    const dataToSave = {
+    const dataToSave: any = {
         ...session,
         patientId,
-        createdTimestamp: serverTs,
         updatedTimestamp: serverTs,
     };
 
-    await setDoc(docRef, stripUndefined(dataToSave));
+    // Check if document exists to preserve createdTimestamp
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+        dataToSave.createdTimestamp = serverTs;
+    }
+
+    // Use merge: true to avoid overwriting createdTimestamp if it already exists
+    await setDoc(docRef, stripUndefined(dataToSave), { merge: true });
 
     // Synchronize lastTreatment date in medical record for dashboard quick-view
     const medicalDocRef = doc(db, 'patient_medical_data', patientId);
@@ -215,10 +223,7 @@ export const getMeasuredValueReadings = async (patientId: string): Promise<Measu
         if (readings && !Array.isArray(readings) && typeof readings === 'object') {
             readings = Object.entries(readings).map(([measureId, value]) => ({
                 measureId,
-                value: value as string | number,
-                // We'll default to 'Scale' if unknown; most tracked measures are scales/categories
-                // The UI will still render simple values correctly.
-                type: 'Scale'
+                value: value as string | number
             }));
         }
 
@@ -257,4 +262,9 @@ export const isMeasureUsed = async (measureId: string): Promise<boolean> => {
     );
     const snapshot = await getDocs(q);
     return !snapshot.empty;
+};
+
+export const requestMissingProblem = async (problemName: string, patientId: string) => {
+    const callable = httpsCallable(functions, 'sendMissingProblemEmail');
+    return await callable({ problemName, patientId });
 };

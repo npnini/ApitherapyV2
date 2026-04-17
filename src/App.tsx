@@ -308,20 +308,28 @@ const AppInner: React.FC = () => {
             // 3. Save Medical Data
             if (medicalRecord) {
                 // Manage Problem Reference Counts
-                const newProblemId = medicalRecord.problemId;
+                const newProblems: { problemId: string }[] = medicalRecord.problems || [];
                 const oldMedicalDataRef = doc(db, 'patient_medical_data', finalPatientId);
                 const oldMedicalDataSnap = await getDoc(oldMedicalDataRef);
                 const oldData = oldMedicalDataSnap.exists() ? oldMedicalDataSnap.data() : {};
-                const oldProblemId = oldData.problemId;
+                const oldProblems: { problemId: string }[] = oldData.problems || [];
 
-                if (newProblemId !== oldProblemId) {
-                    if (newProblemId) {
-                        await updateDoc(doc(db, 'cfg_problems', newProblemId), {
+                const newProblemIds = new Set(newProblems.map(p => p.problemId));
+                const oldProblemIds = new Set(oldProblems.map(p => p.problemId));
+
+                const addedProblemIds = [...newProblemIds].filter(id => !oldProblemIds.has(id));
+                const removedProblemIds = [...oldProblemIds].filter(id => !newProblemIds.has(id));
+
+                for (const pid of addedProblemIds) {
+                    if (pid) {
+                        await updateDoc(doc(db, 'cfg_problems', pid), {
                             reference_count: increment(1)
                         }).catch(err => console.error("Failed to increment problem ref count", err));
                     }
-                    if (oldProblemId) {
-                        await updateDoc(doc(db, 'cfg_problems', oldProblemId), {
+                }
+                for (const pid of removedProblemIds) {
+                    if (pid) {
+                        await updateDoc(doc(db, 'cfg_problems', pid), {
                             reference_count: increment(-1)
                         }).catch(err => console.error("Failed to decrement problem ref count", err));
                     }

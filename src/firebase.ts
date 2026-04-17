@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -23,3 +24,4 @@ export const googleProvider = new GoogleAuthProvider();
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
 });
+export const functions = getFunctions(app, "me-west1");

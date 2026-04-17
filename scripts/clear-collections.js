@@ -6,6 +6,8 @@
  * - measured_values
  * - patients
  * - patient_medical_data
+ * - questionnaire_responses
+ * - feedback_sessions
  * 
  * HOW TO RUN:
  * 1. Ensure you have a service account key JSON file.
@@ -36,7 +38,7 @@ async function clearCollections() {
         });
 
         const db = getFirestore();
-        const collections = ['treatments', 'measured_values', 'patients', 'patient_medical_data'];
+        const collections = ['treatments', 'measured_values', 'patients', 'patient_medical_data', 'questionnaire_responses', 'feedback_sessions'];
 
         console.log('Starting cleanup...');
 

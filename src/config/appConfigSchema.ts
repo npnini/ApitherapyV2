@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'measures';
   defaultValue: string | number | boolean | string[] | Record<string, any>;
 };
 
@@ -101,6 +101,12 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'The protocol to be used for initial sensitivity testing.',
         type: 'protocol',
         defaultValue: 'sensitivity_protocol_v1',
+      },
+      generalMeasures: {
+        label: 'General Measures',
+        description: 'Measures that are applicable globally across different treatments.',
+        type: 'measures',
+        defaultValue: [],
       },
       freeProtocolIdentifier: {
         label: 'Free Protocol Identifier',
