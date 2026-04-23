@@ -3,6 +3,7 @@ import { Html, Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { StingPoint } from '../types/apipuncture';
+import { getTransformedPosition } from '../utils/pointMapping';
 
 interface StingPointMarkerProps {
   point: StingPoint;
@@ -17,6 +18,9 @@ interface StingPointMarkerProps {
   sensitivityColor?: string; // blue shade based on sensitivity level
 }
 
+/**
+ * StingPointMarker component
+ */
 const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   point,
   onClick,
@@ -38,9 +42,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
       groupRef.current.getWorldPosition(worldPos);
       const dist = state.camera.position.distanceTo(worldPos);
 
-      // Dynamic line length scaling: 
-      // Default distance is ~4. Zoomed in is ~0.5.
-      // We want the line to be 100% at dist >= 3, and scale down to ~30% at dist=0.5
+      // Dynamic line length scaling
       const scale = THREE.MathUtils.clamp(dist / 3, 0.35, 1.2);
       if (Math.abs(lineScale - scale) > 0.01) {
         setLineScale(scale);
@@ -48,45 +50,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
     }
   });
 
-  // Transform coordinates for the Corpo model specifically
-  const getTransformedPosition = () => {
-    const raw = point.positions?.[selectedModel] || { x: 0, y: 0, z: 0 };
-
-    if (selectedModel === 'corpo') {
-      return {
-        x: raw.x,
-        y: raw.y + 95,
-        z: raw.z
-      };
-    }
-
-    if (selectedModel === 'xbot') {
-      let { x, y, z } = raw;
-
-      const armPrefixes = ['LI', 'LU', 'SI', 'HT', 'PC', 'TE'];
-      const isArmPoint = armPrefixes.some(pref => point.code.startsWith(pref));
-
-      if (isArmPoint && y < 1.4 && Math.abs(x) > 0.1) {
-        const sign = Math.sign(x) || 1;
-        const shoulderX = 0.18 * sign;
-        const shoulderY = 1.45;
-
-        const dx = x - shoulderX;
-        const dy = y - shoulderY;
-
-        const armLength = Math.sqrt(dx * dx + dy * dy);
-
-        x = shoulderX + (armLength * sign);
-        y = shoulderY - (armLength * 0.05);
-        z += (armLength * 0.1);
-      }
-      return { x, y, z };
-    }
-
-    return raw;
-  };
-
-  const transformedPosition = getTransformedPosition();
+  const transformedPosition = getTransformedPosition(point, selectedModel);
   const position = {
     x: transformedPosition.x * parentScale,
     y: transformedPosition.y * parentScale,

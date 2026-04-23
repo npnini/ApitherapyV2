@@ -242,12 +242,50 @@
     background: var(--color-background-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-modal);
-    max-width: 600px;
-    width: 100%;
-    max-height: 90vh;
+    max-width: 1200px; /* Widened for split view */
+    width: 95vw;
+    height: 90vh; /* Fixed height for better split layout */
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+.splitLayout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.leftPanel {
+    flex: 0 0 500px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--color-border-light);
+    overflow: hidden;
+}
+
+.rightPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #f3f4f6;
+    position: relative;
+    overflow: hidden; /* Controls stay fixed */
+}
+
+.scrollableScene {
+    flex: 1;
+    overflow: auto; /* Content inside scrolls */
+    display: flex;
+}
+
+.viewportContainer {
+    width: 1400px;
+    height: 1800px;
+    cursor: crosshair;
+    background-color: #f9fafb;
+    position: relative;
+    flex-shrink: 0;
 }
 
 .formHeader {
@@ -283,7 +321,8 @@
     overflow-y: auto;
     flex-grow: 1;
     padding: 1.5rem;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 1.25rem;
 }
 
@@ -427,6 +466,17 @@
     display: none;
 }
 
+.formFooter {
+    display: flex;
+    justify-content: center; /* Center buttons under the form */
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.25rem;
+    border-top: 1px solid var(--color-border-light);
+    background-color: var(--color-background-card);
+    flex-shrink: 0;
+}
+
 .formActions {
     display: flex;
     justify-content: flex-end;
@@ -440,8 +490,19 @@
 .cancelButton,
 .saveButton {
     font-weight: var(--font-weight-semibold);
-    padding: 0.625rem 1.25rem;
+    padding: 0.6rem 2rem; /* Wider, slightly shorter height */
     border-radius: var(--radius-md);
+    display: inline-flex; /* Use inline-flex for better fit */
+    flex-direction: row; /* Horizontal icon and text */
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: var(--font-size-sm);
+    min-width: 160px; /* Widening it more */
+    white-space: nowrap; /* Prevent stacking */
+    line-height: 1;
 }
 
 .cancelButton {
@@ -456,9 +517,15 @@
     border: 1px solid transparent;
 }
 
+.saveButton:hover {
+    background-color: var(--color-primary-hover);
+    box-shadow: var(--shadow-sm);
+}
+
 .saveButton:disabled {
     background-color: var(--color-border-hover);
     cursor: not-allowed;
+    opacity: 0.7;
 }
 
 /* Language tab bar */
@@ -690,4 +757,99 @@ input:checked+.slider:before {
 .confirmDeleteButton:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* 3D Viewport Controls */
+.viewportControls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    z-index: 10;
+}
+
+.controlGroup {
+    display: flex;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.25rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-light);
+}
+
+.controlButton {
+    padding: 0.5rem 0.75rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    transition: all 0.2s;
+}
+
+.controlButtonActive {
+    background-color: var(--color-primary);
+    color: var(--color-white) !important;
+}
+
+.syncButton {
+    background-color: var(--color-warning);
+    color: white;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.1s;
+}
+
+.syncButton:hover {
+    filter: brightness(1.1);
+}
+
+.syncButton:active {
+    transform: scale(0.98);
+}
+
+.freezeButton {
+    background-color: white;
+    border: 1px solid var(--color-border);
+    padding: 0.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+.freezeButtonActive {
+    background-color: var(--color-error-background);
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+.modelLabel {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-tertiary);
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+    z-index: 10;
+    pointer-events: none;
 }

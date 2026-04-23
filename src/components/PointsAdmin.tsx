@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, RefreshCw, Lock, Unlock } from 'lucide-react';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
-import DocumentManagement from './shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../components/T';
 import Tooltip from './common/Tooltip';
+import PointPlacementScene from './PointPlacementScene';
+import DocumentManagement from './shared/DocumentManagement';
 
 // Helper to get the correct document URL for the current language
 const getDocumentUrlForLang = (docUrl: any, lang: string): string | null => {
@@ -193,12 +193,7 @@ const PointsAdmin: React.FC = () => {
         if (file) {
             setIsSubmitting(true);
             try {
-                // Determine the folder name based on the point ID (use 'new' if ID is missing)
                 const folderName = updatedPoint.id || 'new';
-
-                // If a file for the current language already exists, we could delete it, 
-                // but uploadFile might overwrite or we can rely on handleSave to clean up orphaned files if we want.
-                // However, for immediate feedback, we just upload.
                 const firebasePath = `Points/${folderName}`;
                 const newUrl = await uploadFile(file, firebasePath);
 
@@ -341,7 +336,7 @@ const PointsAdmin: React.FC = () => {
 
             {editingPoint && (
                 <EditPointForm
-                    key={editingPoint.id || 'new'} // Ensures form resets when switching points
+                    key={editingPoint.id || 'new'}
                     point={editingPoint}
                     onSave={(data) => handleSave(data)}
                     onUpdate={(data, file, lang) => handleUpdate(data, file, lang)}
@@ -449,18 +444,6 @@ const PointsAdmin: React.FC = () => {
     );
 };
 
-
-interface EditPointFormProps {
-    point: Partial<StingPoint>;
-    onSave: (point: Partial<StingPoint>) => void;
-    onUpdate: (point: Partial<StingPoint>, file?: File | null, lang?: string) => void;
-    onCancel: () => void;
-    error: string | null;
-    isSubmitting: boolean;
-    isDirty: boolean;
-    appConfig: { defaultLanguage: string; supportedLanguages: string[] };
-}
-
 const TranslationReference: React.FC<{ label: string; text: string | undefined }> = ({ label, text }) => {
     if (!text) return null;
     return (
@@ -471,14 +454,28 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
     );
 };
 
+interface EditPointFormProps {
+    point: Partial<StingPoint>;
+    onSave: (point: Partial<StingPoint>) => void;
+    onUpdate: (point: Partial<StingPoint>, file?: File, lang?: string) => void;
+    onCancel: () => void;
+    error: string | null;
+    isSubmitting: boolean;
+    isDirty: boolean;
+    appConfig: { defaultLanguage: string; supportedLanguages: string[] };
+}
+
 const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, onCancel, error, isSubmitting, isDirty: initialIsDirty, appConfig }) => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
-    const [formData, setFormData] = useState(point);
+    const [formData, setFormData] = useState<Partial<StingPoint>>(point);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
         .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
     const [isDirty, setIsDirty] = useState(initialIsDirty);
+
+    const [selectedPreviewModel, setSelectedPreviewModel] = useState<'corpo' | 'xbot'>('corpo');
+    const [isViewportLocked, setIsViewportLocked] = useState(false);
 
     const stringsToRegister = useMemo(() => [
         'Saving...',
@@ -500,7 +497,13 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         "Medium",
         "High",
         "Image URL",
-        "URL to image"
+        "URL to image",
+        "3D Coordinates",
+        "Anatomical",
+        "Mannequin",
+        "Sync from Corpo",
+        "Corpo (Anatomy)",
+        "Xbot (Mannequin)"
     ], []);
 
     useEffect(() => {
@@ -511,7 +514,6 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         setFormData(point);
         setIsDirty(initialIsDirty);
     }, [point, initialIsDirty]);
-
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -527,29 +529,39 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
     };
 
     const handlePosChange = (modelId: 'xbot' | 'corpo', field: 'x' | 'y' | 'z', value: string) => {
+        const val = parseFloat(value) || 0;
         const currentPositions = formData.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } };
         const currentModelPos = currentPositions[modelId] || { x: 0, y: 0, z: 0 };
 
+        handlePositionChange({
+            ...currentModelPos,
+            [field]: val
+        });
+    };
+
+    const handlePositionChange = (newPos: { x: number, y: number, z: number }) => {
         setFormData(prev => ({
             ...prev,
             positions: {
-                ...currentPositions,
-                [modelId]: { ...currentModelPos, [field]: parseFloat(value) || 0 }
+                ...(prev.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } }),
+                [selectedPreviewModel]: newPos
             }
         }));
         setIsDirty(true);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Clean undefined fields to prevent Firestore errors
-        const cleanedData = { ...formData };
-        if (cleanedData.longText === undefined) delete cleanedData.longText;
-        if (cleanedData.sensitivity === undefined) delete cleanedData.sensitivity;
-        if (cleanedData.imageURL === undefined) delete cleanedData.imageURL;
-
-        onSave(cleanedData);
+    const handleSyncXbot = () => {
+        if (formData.positions?.corpo) {
+            setFormData(prev => ({
+                ...prev,
+                positions: {
+                    ...(prev.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } }),
+                    xbot: { ...prev.positions!.corpo!, isManual: false }
+                }
+            }));
+            setSelectedPreviewModel('xbot');
+            setIsDirty(true);
+        }
     };
 
     const handleFileChange = (newFile: File | null) => {
@@ -567,6 +579,11 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         onUpdate({ ...formData, documentUrl: newDocUrls });
     };
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
     const isEditing = !!formData.id;
 
     return (
@@ -576,224 +593,249 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                     <h2 className={styles.formTitle}>{isEditing ? <T>Edit Point</T> : <T>Add New Point</T>}</h2>
                     <button onClick={onCancel} className={styles.closeButton}><X size={24} /></button>
                 </div>
-                <div className={styles.langTabBar}>
-                    {orderedLangs.map(lang => (
-                        <button
-                            key={lang}
-                            type="button"
-                            onClick={() => setActiveLang(lang)}
-                            className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
-                        >
-                            <T>{lang === 'en' ? 'English' : lang === 'he' ? 'Hebrew' : lang}</T>
-                        </button>
-                    ))}
-                </div>
-                <form onSubmit={handleSubmit} className={styles.form}>
-                    <div className={styles.scrollableArea}>
-                        {error && <p className={styles.formError}>{error}</p>}
 
-                        <div className={styles.statusToggleContainer}>
-                            <span className={styles.statusLabel}><T>Status</T>:</span>
-                            <label className={styles.switch}>
-                                <input
-                                    type="checkbox"
-                                    checked={formData.status === 'active'}
-                                    onChange={(e) => {
-                                        setFormData(prev => ({ ...prev, status: e.target.checked ? 'active' : 'inactive' }));
-                                        setIsDirty(true);
-                                    }}
-                                />
-                                <span className={styles.slider}></span>
-                            </label>
-                            <span className={`${styles.statusText} ${formData.status === 'active' ? styles.statusActive : styles.statusInactive}`}>
-                                <T>{formData.status === 'active' ? 'Active' : 'Inactive'}</T>
-                            </span>
+                <div className={styles.splitLayout}>
+                    {/* Left Panel: Form Metadata */}
+                    <div className={styles.leftPanel}>
+                        <div className={styles.langTabBar}>
+                            {orderedLangs.map(lang => (
+                                <button
+                                    key={lang}
+                                    type="button"
+                                    onClick={() => setActiveLang(lang)}
+                                    className={`${styles.langTab} ${activeLang === lang ? styles.langTabActive : ''}`}
+                                >
+                                    <T>{lang === 'en' ? 'English' : lang === 'he' ? 'Hebrew' : lang}</T>
+                                </button>
+                            ))}
                         </div>
 
-                        <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
-                            <div>
-                                <label htmlFor="code" className={styles.label}><T>Code</T><span className={styles.requiredAsterisk}>*</span></label>
-                                <input id="code" name="code" type="text" value={formData.code || ''} onChange={handleChange} className={styles.input} required disabled={isEditing} />
+                        <form onSubmit={handleSubmit} id="editPointForm" className={styles.scrollableArea}>
+                            {error && <p className={styles.formError}>{error}</p>}
+
+                            <div className={styles.statusToggleContainer}>
+                                <span className={styles.statusLabel}><T>Status</T>:</span>
+                                <label className={styles.switch}>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.status === 'active'}
+                                        onChange={(e) => {
+                                            setFormData(prev => ({ ...prev, status: e.target.checked ? 'active' : 'inactive' }));
+                                            setIsDirty(true);
+                                        }}
+                                    />
+                                    <span className={styles.slider}></span>
+                                </label>
+                                <span className={`${styles.statusText} ${formData.status === 'active' ? styles.statusActive : styles.statusInactive}`}>
+                                    <T>{formData.status === 'active' ? 'Active' : 'Inactive'}</T>
+                                </span>
                             </div>
+
+                            <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
+                                <div>
+                                    <label htmlFor="code" className={styles.label}><T>Code</T><span className={styles.requiredAsterisk}>*</span></label>
+                                    <input 
+                                        id="code" 
+                                        name="code" 
+                                        type="text" 
+                                        value={formData.code || ''} 
+                                        onChange={handleChange} 
+                                        className={styles.input} 
+                                        required 
+                                        disabled={isEditing} 
+                                    />
+                                </div>
+                                <div>
+                                    <div className={styles.labelWrapper}>
+                                        <label htmlFor="label" className={styles.label}><T>Label</T><span className={styles.requiredAsterisk}>*</span></label>
+                                        <div className={styles.indicatorContainer}>
+                                            <Globe size={14} className={styles.indicatorIcon} />
+                                            <span className={styles.translationCounter}>
+                                                {Object.values(formData.label || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {activeLang !== appConfig.defaultLanguage && !((formData.label as Record<string, string>)?.[activeLang]) && (
+                                        <TranslationReference
+                                            label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
+                                            text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                        />
+                                    )}
+                                    <input
+                                        id="label"
+                                        name="label"
+                                        type="text"
+                                        value={(formData.label as Record<string, string>)?.[activeLang] || ''}
+                                        onChange={handleChange}
+                                        placeholder={getTranslation('e.g., Hundred Meetings')}
+                                        className={styles.input}
+                                        required={activeLang === appConfig.defaultLanguage}
+                                    />
+                                </div>
+                            </div>
+
                             <div>
                                 <div className={styles.labelWrapper}>
-                                    <label htmlFor="label" className={styles.label}><T>Label</T><span className={styles.requiredAsterisk}>*</span></label>
+                                    <label htmlFor="description" className={styles.label}><T>Description</T></label>
                                     <div className={styles.indicatorContainer}>
                                         <Globe size={14} className={styles.indicatorIcon} />
                                         <span className={styles.translationCounter}>
-                                            {Object.values(formData.label || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                            {Object.values(formData.description || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
                                         </span>
                                     </div>
                                 </div>
-                                {activeLang !== appConfig.defaultLanguage && !((formData.label as Record<string, string>)?.[activeLang]) && (
+                                {activeLang !== appConfig.defaultLanguage && !((formData.description as Record<string, string>)?.[activeLang]) && (
                                     <TranslationReference
                                         label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
-                                        text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                        text={(formData.description as Record<string, string>)?.[appConfig.defaultLanguage]}
                                     />
                                 )}
-                                <input
-                                    id="label"
-                                    name="label"
-                                    type="text"
-                                    value={(formData.label as Record<string, string>)?.[activeLang] || ''}
+                                <textarea
+                                    id="description"
+                                    name="description"
+                                    value={(formData.description as Record<string, string>)?.[activeLang] || ''}
                                     onChange={handleChange}
-                                    placeholder={useT('e.g., Hundred Meetings')}
-                                    className={styles.input}
-                                    required={activeLang === appConfig.defaultLanguage}
-                                />
+                                    placeholder={getTranslation("Describe the point's purpose")}
+                                    className={styles.textarea}
+                                    rows={2}
+                                ></textarea>
                             </div>
-                        </div>
-                        <div>
-                            <div className={styles.labelWrapper}>
-                                <label htmlFor="description" className={styles.label}><T>Description</T></label>
-                                <div className={styles.indicatorContainer}>
-                                    <Globe size={14} className={styles.indicatorIcon} />
-                                    <span className={styles.translationCounter}>
-                                        {Object.values(formData.description || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
-                                    </span>
-                                </div>
-                            </div>
-                            {activeLang !== appConfig.defaultLanguage && !((formData.description as Record<string, string>)?.[activeLang]) && (
-                                <TranslationReference
-                                    label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
-                                    text={(formData.description as Record<string, string>)?.[appConfig.defaultLanguage]}
-                                />
-                            )}
-                            <textarea
-                                id="description"
-                                name="description"
-                                value={(formData.description as Record<string, string>)?.[activeLang] || ''}
-                                onChange={handleChange}
-                                placeholder={useT("Describe the point's purpose")}
-                                className={styles.textarea}
-                                rows={3}
-                            ></textarea>
-                        </div>
 
-                        <div>
-                            <div className={styles.labelWrapper}>
-                                <label htmlFor="longText" className={styles.label}><T>Long Text</T></label>
-                                <div className={styles.indicatorContainer}>
-                                    <Globe size={14} className={styles.indicatorIcon} />
-                                    <span className={styles.translationCounter}>
-                                        {Object.values(formData.longText || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
-                                    </span>
-                                </div>
-                            </div>
-                            {activeLang !== appConfig.defaultLanguage && !((formData.longText as Record<string, string>)?.[activeLang]) && (
-                                <TranslationReference
-                                    label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
-                                    text={(formData.longText as Record<string, string>)?.[appConfig.defaultLanguage]}
-                                />
-                            )}
-                            <textarea
-                                id="longText"
-                                name="longText"
-                                value={(formData.longText as Record<string, string>)?.[activeLang] || ''}
-                                onChange={handleChange}
-                                placeholder={useT("Additional detailed description")}
-                                className={styles.textarea}
-                                rows={6}
-                            ></textarea>
-                        </div>
-
-                        <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
-                            <div>
-                                <label htmlFor="sensitivity" className={styles.label}><T>Sensitivity</T></label>
-                                <select
-                                    id="sensitivity"
-                                    name="sensitivity"
-                                    value={formData.sensitivity || 'Medium'}
-                                    onChange={handleChange}
-                                    className={styles.input}
-                                >
-                                    <option value="Low">{getTranslation('Low')}</option>
-                                    <option value="Medium">{getTranslation('Medium')}</option>
-                                    <option value="High">{getTranslation('High')}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="imageURL" className={styles.label}><T>Image URL</T></label>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <input
-                                        id="imageURL"
-                                        name="imageURL"
-                                        type="text"
-                                        value={formData.imageURL || ''}
+                            <div className={`${styles.grid} ${styles['grid-cols-2']}`}>
+                                <div>
+                                    <label htmlFor="sensitivity" className={styles.label}><T>Sensitivity</T></label>
+                                    <select
+                                        id="sensitivity"
+                                        name="sensitivity"
+                                        value={formData.sensitivity || 'Medium'}
                                         onChange={handleChange}
-                                        placeholder={useT('URL to image')}
                                         className={styles.input}
-                                    />
-                                    {formData.imageURL && (
-                                        <a
-                                            href={formData.imageURL}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={styles.actionButton}
-                                            style={{ backgroundColor: 'var(--color-primary)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.375rem', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                                    >
+                                        <option value="Low">{getTranslation('Low')}</option>
+                                        <option value="Medium">{getTranslation('Medium')}</option>
+                                        <option value="High">{getTranslation('High')}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="imageURL" className={styles.label}><T>Image URL</T></label>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <input
+                                            id="imageURL"
+                                            name="imageURL"
+                                            type="text"
+                                            value={formData.imageURL || ''}
+                                            onChange={handleChange}
+                                            placeholder={getTranslation('URL to image')}
+                                            className={styles.input}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={styles.coordinateSection}>
+                                <div className={styles.coordinateHeader}>
+                                    <label className={styles.label}><T>3D Coordinates</T> - <T>{selectedPreviewModel === 'corpo' ? 'Anatomical' : 'Mannequin'}</T></label>
+                                    {selectedPreviewModel === 'xbot' && (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleSyncXbot}
+                                            className={styles.syncButton}
+                                            title="Sync from Anatomical (Corpo)"
                                         >
-                                            <T>View</T>
-                                        </a>
+                                            <RefreshCw size={14} />
+                                            <T>Sync from Corpo</T>
+                                        </button>
                                     )}
                                 </div>
-                            </div>
-                        </div>
-
-                        <div className={styles.positionsSection}>
-                            <div className={styles.modelPositionBlock}>
-                                <label className={styles.label}><T>Xbot Position (Legacy/Mannequin)</T></label>
-                                <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
-                                    <div>
-                                        <label htmlFor="x_xbot" className={styles.coordinateLabel}>X</label>
-                                        <input id="x_xbot" type="number" step="0.01" value={formData.positions?.xbot?.x || 0} onChange={(e) => handlePosChange('xbot', 'x', e.target.value)} className={styles.input} />
+                                <div className={styles.coordinateGrid}>
+                                    <div className={styles.coordInput}>
+                                        <span>X</span>
+                                        <input 
+                                            type="number" 
+                                            step="0.001"
+                                            value={formData.positions?.[selectedPreviewModel]?.x || 0}
+                                            onChange={(e) => handlePosChange(selectedPreviewModel, 'x', e.target.value)}
+                                        />
                                     </div>
-                                    <div>
-                                        <label htmlFor="y_xbot" className={styles.coordinateLabel}>Y</label>
-                                        <input id="y_xbot" type="number" step="0.01" value={formData.positions?.xbot?.y || 0} onChange={(e) => handlePosChange('xbot', 'y', e.target.value)} className={styles.input} />
+                                    <div className={styles.coordInput}>
+                                        <span>Y</span>
+                                        <input 
+                                            type="number" 
+                                            step="0.001"
+                                            value={formData.positions?.[selectedPreviewModel]?.y || 0}
+                                            onChange={(e) => handlePosChange(selectedPreviewModel, 'y', e.target.value)}
+                                        />
                                     </div>
-                                    <div>
-                                        <label htmlFor="z_xbot" className={styles.coordinateLabel}>Z</label>
-                                        <input id="z_xbot" type="number" step="0.01" value={formData.positions?.xbot?.z || 0} onChange={(e) => handlePosChange('xbot', 'z', e.target.value)} className={styles.input} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className={styles.modelPositionBlock}>
-                                <label className={styles.label}><T>Corpo Position (Anatomical)</T></label>
-                                <div className={`${styles.grid} ${styles['grid-cols-3']}`}>
-                                    <div>
-                                        <label htmlFor="x_corpo" className={styles.coordinateLabel}>X</label>
-                                        <input id="x_corpo" type="number" step="0.01" value={formData.positions?.corpo?.x || 0} onChange={(e) => handlePosChange('corpo', 'x', e.target.value)} className={styles.input} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="y_corpo" className={styles.coordinateLabel}>Y</label>
-                                        <input id="y_corpo" type="number" step="0.01" value={formData.positions?.corpo?.y || 0} onChange={(e) => handlePosChange('corpo', 'y', e.target.value)} className={styles.input} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="z_corpo" className={styles.coordinateLabel}>Z</label>
-                                        <input id="z_corpo" type="number" step="0.01" value={formData.positions?.corpo?.z || 0} onChange={(e) => handlePosChange('corpo', 'z', e.target.value)} className={styles.input} />
+                                    <div className={styles.coordInput}>
+                                        <span>Z</span>
+                                        <input 
+                                            type="number" 
+                                            step="0.001"
+                                            value={formData.positions?.[selectedPreviewModel]?.z || 0}
+                                            onChange={(e) => handlePosChange(selectedPreviewModel, 'z', e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             </div>
+
+                            <DocumentManagement
+                                entityName="Point"
+                                documentUrl={formData.documentUrl as { [key: string]: string }}
+                                onFileChange={handleFileChange}
+                                onFileDelete={handleFileDelete}
+                                isSubmitting={isSubmitting}
+                                activeLang={activeLang}
+                            />
+                        </form>
+                        <div className={styles.formFooter}>
+                            <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}><T>Cancel</T></button>
+                            <button type="submit" form="editPointForm" disabled={isSubmitting || !isDirty} className={styles.saveButton}>
+                                <Save size={18} /> {isSubmitting ? <T>Saving...</T> : <T>Save Point</T>}
+                            </button>
                         </div>
-                        <DocumentManagement
-                            entityName="Point"
-                            documentUrl={formData.documentUrl as { [key: string]: string }}
-                            onFileChange={handleFileChange}
-                            onFileDelete={handleFileDelete}
-                            isSubmitting={isSubmitting}
-                            activeLang={activeLang}
-                        />
-
                     </div>
 
-                    <div className={styles.formActions}>
-                        <button type="button" onClick={onCancel} disabled={isSubmitting} className={styles.cancelButton}><T>Cancel</T></button>
-                        <button type="submit" disabled={isSubmitting || !isDirty} className={styles.saveButton}>
-                            <Save size={16} /> {isSubmitting ? <T>Saving...</T> : <T>Save Point</T>}
-                        </button>
+                    {/* Right Panel: 3D Viewport */}
+                    <div className={styles.rightPanel}>
+                        <div className={styles.viewportControls}>
+                            <div className={styles.controlGroup}>
+                                <button 
+                                    className={`${styles.controlButton} ${selectedPreviewModel === 'corpo' ? styles.controlButtonActive : ''}`}
+                                    onClick={() => setSelectedPreviewModel('corpo')}
+                                >
+                                    <T>Corpo (Anatomy)</T>
+                                </button>
+                                <button 
+                                    className={`${styles.controlButton} ${selectedPreviewModel === 'xbot' ? styles.controlButtonActive : ''}`}
+                                    onClick={() => setSelectedPreviewModel('xbot')}
+                                >
+                                    <T>Xbot (Mannequin)</T>
+                                </button>
+                            </div>
+
+                            <button 
+                                className={`${styles.freezeButton} ${isViewportLocked ? styles.freezeButtonActive : ''}`}
+                                onClick={() => setIsViewportLocked(!isViewportLocked)}
+                                title={isViewportLocked ? "Unlock Camera" : "Freeze Camera for Precise Pinning"}
+                            >
+                                {isViewportLocked ? <Lock size={18} /> : <Unlock size={18} />}
+                            </button>
+                        </div>
+
+                        <div className={styles.scrollableScene}>
+                            <PointPlacementScene 
+                                selectedModel={selectedPreviewModel}
+                                position={formData.positions?.[selectedPreviewModel] || null}
+                                onPositionChange={handlePositionChange}
+                                isLocked={isViewportLocked}
+                            />
+                        </div>
+
+                        <div className={styles.modelLabel}>
+                            {selectedPreviewModel === 'corpo' ? 'ANATOMICAL SOURCE' : 'MANNEQUIN TARGET'}
+                        </div>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     );

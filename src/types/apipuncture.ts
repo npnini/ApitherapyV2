@@ -3,6 +3,7 @@ export interface Vector3Pos {
   x: number;
   y: number;
   z: number;
+  isManual?: boolean;
 }
 
 export interface StingPoint {

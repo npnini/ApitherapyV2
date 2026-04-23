@@ -10,6 +10,7 @@ import { StingPoint } from '../types/apipuncture';
 import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL, CORPO_TEXTURE_URL } from '../constants';
 import { T } from './T';
 import StingPointMarker from './StingPointMarker';
+import { HumanModel, CorpoModel } from './shared/ModelComponents';
 
 interface BodySceneProps {
   protocol: Protocol | null;
@@ -21,105 +22,6 @@ interface BodySceneProps {
   sensitivityColorMap?: Record<string, string>; // Map of sensitivity level to color
 }
 
-const HumanModel = ({ url, children }: { url: string; children?: React.ReactNode }) => {
-  const { scene } = useGLTF(url);
-  const groupRef = useRef<THREE.Group>(null);
-  const [modelScale, setModelScale] = React.useState(1);
-
-  React.useLayoutEffect(() => {
-    if (!groupRef.current) return;
-
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        if (mesh.material) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: '#e2e8f0',
-            roughness: 0.6,
-            metalness: 0.1,
-            flatShading: false
-          });
-        }
-      }
-    });
-
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    const targetHeight = 1.8;
-    const scale = targetHeight / size.y;
-    setModelScale(scale);
-
-    groupRef.current.position.x = -center.x * scale;
-    groupRef.current.position.y = -box.min.y * scale;
-    groupRef.current.position.z = -center.z * scale;
-  }, [scene]);
-
-  return (
-    <group ref={groupRef}>
-      <primitive object={scene} scale={modelScale} />
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { parentScale: modelScale });
-        }
-        return child;
-      })}
-    </group>
-  );
-};
-
-const CorpoModel = ({ url, textureUrl, children }: { url: string; textureUrl: string; children?: React.ReactNode }) => {
-  const obj = useLoader(OBJLoader, url);
-  const texture = useLoader(THREE.TextureLoader, textureUrl);
-  const groupRef = useRef<THREE.Group>(null);
-  const [modelScale, setModelScale] = React.useState(1);
-
-  React.useLayoutEffect(() => {
-    if (!groupRef.current) return;
-
-    obj.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.material = new THREE.MeshStandardMaterial({
-          map: texture,
-          color: '#ffffff',
-          roughness: 0.7,
-          metalness: 0.0,
-          flatShading: false
-        });
-      }
-    });
-
-    const box = new THREE.Box3().setFromObject(obj);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    const targetHeight = 1.8;
-    const scale = targetHeight / size.y;
-    setModelScale(scale);
-
-    groupRef.current.position.x = -center.x * scale;
-    groupRef.current.position.y = -box.min.y * scale;
-    groupRef.current.position.z = -center.z * scale;
-  }, [obj, texture]);
-
-  return (
-    <group ref={groupRef}>
-      <primitive object={obj} scale={modelScale} />
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { parentScale: modelScale });
-        }
-        return child;
-      })}
-    </group>
-  );
-};
 
 const LoadingOverlay = () => (
   <Html center>
