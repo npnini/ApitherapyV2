@@ -171,7 +171,11 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
             </div>
 
             <div className={styles.actionRow}>
-                <button className={styles.btnPrimary} onClick={handleFinish}>
+                <button 
+                    className={styles.btnPrimary} 
+                    onClick={handleFinish}
+                    disabled={!finalNotes.trim()}
+                >
                     <CheckCircle size={18} />
                     {tFinishTreatment}
                 </button>

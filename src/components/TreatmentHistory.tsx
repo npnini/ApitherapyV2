@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
-import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play } from 'lucide-react';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './TreatmentHistory.module.css';
 
@@ -94,9 +94,10 @@ interface TreatmentHistoryProps {
     onBack: () => void;
     isTab?: boolean;
     onResumeTreatment?: (treatment: any) => void;
+    onAddFeedback?: (treatment: any) => void;
 }
 
-const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab, onResumeTreatment }) => {
+const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab, onResumeTreatment, onAddFeedback }) => {
     const { language } = useTranslationContext();
     const tNotAvailable = useT('Not available');
     const tInvalidDate = useT('Invalid date');
@@ -111,7 +112,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [protocolsNamesMap, setProtocolsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const [problemsNamesMap, setProblemsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const [freeProtoId, setFreeProtoId] = useState<string | null>(null);
+    const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(null);
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
+    const treatmentRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     const fetchTreatments = useCallback(async () => {
         setIsLoading(true);
@@ -285,6 +288,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     useEffect(() => {
         fetchTreatments();
     }, [fetchTreatments]);
+    
+    useEffect(() => {
+        if (viewMode === 'list' && selectedTreatmentId) {
+            const el = treatmentRefs.current.get(selectedTreatmentId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setSelectedTreatmentId(null);
+            }
+        }
+    }, [viewMode, selectedTreatmentId]);
 
     const formatDate = (treatment: StoredTreatmentDoc) => {
         const dateVal = treatment.createdTimestamp;
@@ -368,11 +381,11 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
             ) : viewMode === 'tabular' ? (
                 /* ── TABULAR VIEW ────────────────────────────────────────── */
-                <div className={styles.tableWrapper}>
-                    <table className={styles.treatmentTable}>
+                <div className={styles.tableWrapper} dir={direction}>
+                    <table className={styles.treatmentTable} dir={direction}>
                         <thead>
                             <tr>
-                                <th><T>Date and time</T></th>
+                                <th className={styles.stickyHeader}><T>Date and time</T></th>
                                 <th><T>Patient Report</T></th>
                                 <th><T>Status</T></th>
                                 {patientMeasureNames.map(m => (
@@ -384,8 +397,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 <th><T>Stings</T></th>
                                 <th><T>Post-Sting Vitals</T></th>
                                 <th><T>Post treatment Vitals</T></th>
-                                <th><T>Final notes</T></th>
-                                <th><T>Actions</T></th>
+                                <th><T>Final Vitals</T></th>
+                                <th><T>Feedback</T></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -410,11 +423,23 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     : '-';
 
                                 return (
-                                    <tr key={t.id}>
-                                        <td className={styles.dateCell}>{formatDate(t)}</td>
+                                    <tr key={t.id} onClick={() => {
+                                        setSelectedTreatmentId(t.id);
+                                        setViewMode('list');
+                                    }}>
+                                        <td className={`${styles.dateCell} ${styles.stickyHeader}`}>{formatDate(t)}</td>
                                         <td className={styles.reportCell} title={t.patientReport || undefined}>{t.patientReport || '-'}</td>
                                         <td className={styles.statusCell}>
-                                            <span className={`${styles.statusBadge} ${t.status === 'Incomplete' ? styles.statusIncomplete : styles.statusCompleted}`}>
+                                            <span 
+                                                className={`${styles.statusBadge} ${t.status === 'Incomplete' ? styles.statusIncomplete : styles.statusCompleted}`}
+                                                onClick={(e) => {
+                                                    if (t.status === 'Incomplete' && onResumeTreatment) {
+                                                        e.stopPropagation();
+                                                        onResumeTreatment(t);
+                                                    }
+                                                }}
+                                            >
+                                                {t.status === 'Incomplete' && <Play size={10} fill="currentColor" />}
                                                 <T>{t.status || 'Completed'}</T>
                                             </span>
                                         </td>
@@ -437,23 +462,29 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                             }).join(', ') || '-'}
                                         </td>
                                         <td className={styles.vitalsCell}>{preVitalsStr}</td>
-                                        <td className={styles.stingsCell}>{stingCodes}</td>
+                                        <td className={styles.stingsCell} title={stingCodes !== '-' ? stingCodes : undefined}>{stingCodes}</td>
                                         <td className={styles.vitalsCell}>{postStingVitalsStr}</td>
                                         <td className={styles.vitalsCell}>{postVitalsStr}</td>
                                         <td className={styles.notesCell} title={t.finalNotes || undefined}>{t.finalNotes || '-'}</td>
-                                        <td className={styles.actionsCell}>
-                                            {t.status === 'Incomplete' && (
-                                                <button
-                                                    className={styles.resumeIconBtn}
-                                                    title="Resume Treatment"
-                                                    onClick={() => {
-                                                        if (onResumeTreatment) {
-                                                            onResumeTreatment(t);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Play size={14} />
-                                                </button>
+                                        <td className={styles.feedbackCell}>
+                                            {t.status !== 'Incomplete' && (
+                                                t.patientFeedback || (t.feedbackMeasuredValues && t.feedbackMeasuredValues.length > 0) ? (
+                                                    <span className={styles.feedbackEntered}>
+                                                        <CheckCircle size={14} />
+                                                        <T>Entered</T>
+                                                    </span>
+                                                ) : (
+                                                    <button 
+                                                        className={styles.addFeedbackBtn}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (onAddFeedback) onAddFeedback(t);
+                                                        }}
+                                                    >
+                                                        <MessageSquare size={14} />
+                                                        <T>Add</T>
+                                                    </button>
+                                                )
                                             )}
                                         </td>
                                     </tr>
@@ -462,12 +493,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                         </tbody>
                     </table>
                 </div>
-
             ) : (
                 /* ── LIST VIEW ───────────────────────────────────────────── */
                 <div className={styles.treatmentsList}>
                     {treatments.map((treatment) => (
-                        <div key={treatment.id} className={styles.treatmentCard}>
+                        <div 
+                            key={treatment.id} 
+                            className={styles.treatmentCard}
+                            ref={el => treatmentRefs.current.set(treatment.id, el)}
+                        >
                             <div className={styles.cardHeader} dir={direction}>
                                 <div className={styles.metaInfo}>
                                     <h2 className={styles.protocolName}>
@@ -629,36 +663,48 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 </div>
 
                                 {/* Phase 5: Treatment Feedback */}
-                                {(treatment.patientFeedback || (treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0)) && (
+                                {treatment.status !== 'Incomplete' && (
                                     <div className={styles.phase}>
                                         <h3 className={styles.phaseTitle}><T>5. Treatment Feedback</T></h3>
-                                        <div className={styles.detailsGrid}>
-                                            {treatment.patientFeedback && (
-                                                <div className={styles.detailItem}>
-                                                    <h4 className={styles.detailLabel}>
-                                                        <FileText size={16} />
-                                                        <T>Patient Feedback</T>
-                                                    </h4>
-                                                    <p className={styles.notesContent}>{renderSafe(treatment.patientFeedback)}</p>
-                                                </div>
-                                            )}
-                                            {treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0 && (
-                                                <div className={styles.detailItem}>
-                                                    <h4 className={styles.detailLabel}>
-                                                        <Activity size={16} />
-                                                        <T>Feedback Measures</T>
-                                                    </h4>
-                                                    <div className={styles.measuredValuesGrid}>
-                                                        {treatment.feedbackMeasuredValues.map((mv, idx) => (
-                                                            <div key={idx} className={styles.kpiItem}>
-                                                                <span className={styles.kpiLabel}>{mv.label}:</span>
-                                                                <span className={styles.kpiValue}>{renderSafe(mv.value)}</span>
-                                                            </div>
-                                                        ))}
+                                        {(treatment.patientFeedback || (treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0)) ? (
+                                            <div className={styles.detailsGrid}>
+                                                {treatment.patientFeedback && (
+                                                    <div className={styles.detailItem}>
+                                                        <h4 className={styles.detailLabel}>
+                                                            <FileText size={16} />
+                                                            <T>Patient Feedback</T>
+                                                        </h4>
+                                                        <p className={styles.notesContent}>{renderSafe(treatment.patientFeedback)}</p>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                                )}
+                                                {treatment.feedbackMeasuredValues && treatment.feedbackMeasuredValues.length > 0 && (
+                                                    <div className={styles.detailItem}>
+                                                        <h4 className={styles.detailLabel}>
+                                                            <Activity size={16} />
+                                                            <T>Feedback Measures</T>
+                                                        </h4>
+                                                        <div className={styles.measuredValuesGrid}>
+                                                            {treatment.feedbackMeasuredValues.map((mv, idx) => (
+                                                                <div key={idx} className={styles.kpiItem}>
+                                                                    <span className={styles.kpiLabel}>{mv.label}:</span>
+                                                                    <span className={styles.kpiValue}>{renderSafe(mv.value)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className={styles.emptyFeedback}>
+                                                <button 
+                                                    className={styles.addFeedbackBtn}
+                                                    onClick={() => onAddFeedback?.(treatment)}
+                                                >
+                                                    <MessageSquare size={16} />
+                                                    <T>Add Feedback</T>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

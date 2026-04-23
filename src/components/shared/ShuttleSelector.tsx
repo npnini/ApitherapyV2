@@ -7,6 +7,7 @@ import { T, useT, useTranslationContext } from '../T';
 export interface ShuttleItem {
   id: string;
   name: string;
+  searchContent?: string;
 }
 
 interface ShuttleSelectorProps {
@@ -48,7 +49,10 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
     return availableItems.filter(
       item =>
         !selectedIds.has(item.id) &&
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.searchContent && item.searchContent.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
     );
   }, [availableItems, selectedItems, searchTerm]);
 

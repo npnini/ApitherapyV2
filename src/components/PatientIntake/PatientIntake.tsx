@@ -973,6 +973,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         onBack={() => { }}
                         isTab={true}
                         onResumeTreatment={handleResumeTreatment}
+                        onAddFeedback={(treatment) => {
+                            setLatestTreatment(treatment);
+                            setViewState('treatmentFeedback');
+                        }}
                     />
                 );
             case 'measures':

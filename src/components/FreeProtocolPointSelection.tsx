@@ -54,9 +54,26 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
                 ? (p.label[language] || p.label.en || '')
                 : (p.label || '');
 
+            // Helper to extract values regardless of string or object format
+            const extractValues = (field: any) => {
+                if (typeof field === 'string') return [field];
+                if (field && typeof field === 'object') return Object.values(field) as string[];
+                return [];
+            };
+
+            const searchableParts = [
+                code,
+                ...extractValues(p.label),
+                ...extractValues(p.description),
+                ...extractValues(p.longText)
+            ];
+            
+            const searchContent = searchableParts.join(' ').toLowerCase();
+
             return {
                 id: p.id,
-                name: `${code} - ${labelStr}`
+                name: `${code} - ${labelStr}`,
+                searchContent
             };
         });
     }, [allPoints, language]);
