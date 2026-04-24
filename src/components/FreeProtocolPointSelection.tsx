@@ -118,7 +118,6 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
                     <button
                         className={styles.nextButton}
                         onClick={handleNext}
-                        disabled={selectedItems.length === 0}
                     >
                         {tNextStep}
                     </button>

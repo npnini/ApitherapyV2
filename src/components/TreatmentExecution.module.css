@@ -337,11 +337,52 @@
     flex-direction: column;
 }
 
+/* Scrollable wrapper inside the canvas panel.
+   Allows the user to scroll in both X and Y when zoomed in
+   on the 3D model so that any part of the body is reachable. */
+.canvasScrollWrapper {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+    /* Custom scrollbar — subtle, non-intrusive */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.canvasScrollWrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.canvasScrollWrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.canvasScrollWrapper::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 999px;
+}
+
+.canvasScrollWrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+}
+
+/* Plain div that holds the fixed pixel dimensions.
+   R3F's <Canvas> fills this div via its own 100%/100% inline styles,
+   so we don't fight R3F. The sizer overflows the scroll wrapper and
+   produces scrollbars in both axes. */
+.canvasSizer {
+    width: 1100px;
+    height: 1400px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* R3F <Canvas> fills the sizer — do not override width/height here
+   because R3F injects its own inline position:absolute / w:100% / h:100% */
 .canvas {
     background: var(--color-background-page);
     border-radius: var(--radius-lg);
-    height: 100%;
-    width: 100%;
 }
 
 .resetViewBtn {
@@ -794,6 +835,12 @@
         min-height: 300px;
     }
 
+    .canvasSizer {
+        /* On mobile: fill the container instead of fixed large size */
+        width: 100%;
+        height: 100%;
+    }
+
     .dataPanel {
         overflow-y: visible;
     }
@@ -802,4 +849,58 @@
         display: flex;
         order: 3;
     }
+}
+
+/* ── Proximity Tap UI ──────────────────────────────── */
+
+.proxTapCTA {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: var(--color-text-tertiary);
+    text-align: center;
+    padding: var(--spacing-lg);
+    font-size: var(--font-size-sm);
+}
+
+.proxTapLoading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.proxTapEmpty {
+    padding: var(--spacing-md) var(--spacing-lg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.clearRestartBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    margin: var(--spacing-sm) var(--spacing-lg);
+    background: var(--color-secondary-button-background, #f1f5f9);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-light, #e2e8f0);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    align-self: flex-start;
+    transition: background 0.15s ease;
+}
+
+.clearRestartBtn:hover {
+    background: var(--color-secondary-button-hover, #e2e8f0);
 }

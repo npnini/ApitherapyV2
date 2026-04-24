@@ -11,6 +11,7 @@ import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL, CORPO_TEXTURE_URL } from '../con
 import { T } from './T';
 import StingPointMarker from './StingPointMarker';
 import { HumanModel, CorpoModel } from './shared/ModelComponents';
+import { getTransformedPosition } from '../utils/pointMapping';
 
 interface BodySceneProps {
   protocol: Protocol | null;
@@ -20,8 +21,35 @@ interface BodySceneProps {
   selectedModel: 'xbot' | 'corpo';
   resetTrigger?: number;
   sensitivityColorMap?: Record<string, string>; // Map of sensitivity level to color
+  onModelTap?: (normalizedPos: { x: number; y: number; z: number }) => void;
+  tapPosition?: { x: number; y: number; z: number } | null;
 }
 
+
+/**
+ * Renders an orange sphere at the position the practitioner tapped.
+ * `position` is in normalized/stored coordinate space (positions.corpo format).
+ * getTransformedPosition converts it back to Three.js world coords.
+ */
+const HitMarker: React.FC<{ position: { x: number; y: number; z: number }; parentScale?: number }> = ({ position, parentScale = 1 }) => {
+  const world = getTransformedPosition(
+    { code: 'TAP', positions: { corpo: position } } as any,
+    'corpo'
+  );
+  return (
+    <mesh position={[world.x * parentScale, world.y * parentScale, world.z * parentScale]}>
+      <sphereGeometry args={[0.018, 16, 16]} />
+      <meshStandardMaterial
+        color="#f97316"
+        emissive="#f97316"
+        emissiveIntensity={1.2}
+        transparent
+        opacity={0.9}
+        depthTest={false}
+      />
+    </mesh>
+  );
+};
 
 const LoadingOverlay = () => (
   <Html center>
@@ -49,12 +77,35 @@ const LoadingOverlay = () => (
   </Html>
 );
 
-const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling, selectedModel, resetTrigger, sensitivityColorMap }) => {
+const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling, selectedModel, resetTrigger, sensitivityColorMap, onModelTap, tapPosition }) => {
   const groupRef = useRef<THREE.Group>(null);
   const controlsRef = useRef<any>(null);
   const [targetZoom, setTargetZoom] = React.useState<{ position: THREE.Vector3, target: THREE.Vector3 } | null>(null);
 
   const [hoveredPointId, setHoveredPointId] = React.useState<string | null>(null);
+
+  const [derivedScale, setDerivedScale] = React.useState(1);
+
+  const ScaleCapturer = ({ parentScale = 1 }: { parentScale?: number }) => {
+    React.useEffect(() => { setDerivedScale(parentScale); }, [parentScale]);
+    return null;
+  };
+
+  const handleModelBodyClick = React.useCallback((e: any) => {
+    if (!onModelTap) return;
+    // StingPointMarker spheres call e.stopPropagation() so this fires only
+    // when the model skin is directly tapped.
+    // The CorpoModel geometry has scale and translation applied internally to center it.
+    // e.eventObject is the group inside CorpoModel where markers are placed.
+    const localPoint = e.eventObject.worldToLocal(e.point.clone());
+    
+    const rawX = localPoint.x / derivedScale;
+    let   rawY = localPoint.y / derivedScale;
+    const rawZ = localPoint.z / derivedScale;
+    rawY -= 95; // reverse corpo legacy Y offset (see pointMapping.ts)
+
+    onModelTap({ x: rawX, y: rawY, z: rawZ });
+  }, [onModelTap, derivedScale]);
 
   React.useEffect(() => {
     if (resetTrigger && resetTrigger > 0) {
@@ -117,7 +168,8 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
       <Suspense fallback={<LoadingOverlay />}>
         <group ref={groupRef}>
           {selectedModel === 'xbot' ? (
-            <HumanModel url={DEMO_HUMAN_MODEL_URL}>
+            <HumanModel url={DEMO_HUMAN_MODEL_URL} onClick={onModelTap ? handleModelBodyClick : undefined}>
+              <ScaleCapturer />
               {protocol?.points.map((point: StingPoint) => (
                 <StingPointMarker
                   key={point.id}
@@ -134,7 +186,8 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
               ))}
             </HumanModel>
           ) : (
-            <CorpoModel url={CORPO_MODEL_URL} textureUrl={CORPO_TEXTURE_URL}>
+            <CorpoModel url={CORPO_MODEL_URL} textureUrl={CORPO_TEXTURE_URL} onClick={onModelTap ? handleModelBodyClick : undefined}>
+              <ScaleCapturer />
               {protocol?.points.map((point: StingPoint) => (
                 <StingPointMarker
                   key={point.id}
@@ -149,6 +202,7 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
                   sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
                 />
               ))}
+              {tapPosition && <HitMarker position={tapPosition} />}
             </CorpoModel>
           )}
         </group>

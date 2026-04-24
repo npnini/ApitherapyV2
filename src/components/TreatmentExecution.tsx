@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { T, useT, useTranslationContext } from './T';
 import { Protocol } from '../types/protocol';
 import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
+import { getCachedPoints, setCachedPoints } from '../utils/pointsCache';
+import { findNearestPoints } from '../utils/findNearestPoints';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
-import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
@@ -109,6 +111,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const [appConfig, setAppConfig] = useState<any>(null);
 
+    type ProxTapMode = 'idle' | 'loading' | 'results' | 'empty-radius';
+    const [proxTapMode, setProxTapMode]         = React.useState<ProxTapMode>('idle');
+    const [tapPosition, setTapPosition]         = React.useState<{ x: number; y: number; z: number } | null>(null);
+    const [candidatePoints, setCandidatePoints] = React.useState<StingPoint[]>([]);
+
     useEffect(() => {
         const fetchConfig = async () => {
             try {
@@ -200,6 +207,47 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         if (activePointId === id) setActivePointId(null);
     };
 
+    // Lock to Corpo model in Free Selection (Proximity Tap uses Corpo coords only)
+    useEffect(() => {
+        if (!protocol) {
+            setSelectedModel('corpo');
+        }
+    }, [protocol]);
+
+    const handleModelTap = useCallback(async (pos: { x: number; y: number; z: number }) => {
+        if (protocol) return; // only active in Free Selection
+        setProxTapMode('loading');
+        setTapPosition(pos);
+
+        const ttl    = appConfig?.treatmentSettings?.pointsCacheTTLMinutes    ?? 60;
+        const maxN   = appConfig?.treatmentSettings?.proximityResultsCount    ?? 10;
+        const radius = appConfig?.treatmentSettings?.proximitySearchRadiusCun ?? 3;
+
+        let allPoints = getCachedPoints(ttl);
+        if (!allPoints) {
+            try {
+                const snap = await getDocs(collection(db, 'cfg_acupuncture_points'));
+                allPoints = snap.docs.map(d => ({ ...d.data(), id: d.id } as StingPoint));
+                setCachedPoints(allPoints);
+            } catch (err) {
+                console.error('Proximity Tap: failed to fetch all points', err);
+                setProxTapMode('idle');
+                return;
+            }
+        }
+
+        const results = findNearestPoints(pos, allPoints, maxN, radius);
+        setCandidatePoints(results.map(r => r.point));
+        setProxTapMode(results.length === 0 ? 'empty-radius' : 'results');
+    }, [protocol, appConfig]);
+
+    const handleClearAndRestart = useCallback(() => {
+        setProxTapMode('idle');
+        setTapPosition(null);
+        setCandidatePoints([]);
+        // stungPoints intentionally NOT cleared — they accumulate across taps
+    }, []);
+
     const handleAnotherProtocol = () => {
         onRoundComplete(stungPoints.map(p => p.id));
     };
@@ -242,12 +290,16 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         'High': '#1e3a8a'    // bold blue
     };
 
-    const displayedPoints = hydratedProtocol?.points.filter(p => {
-        if (selectedSensitivity === 'all') return true;
-        const pointLevel = normalizeSensitivity(p.sensitivity);
-        const selectedLevel = normalizeSensitivity(selectedSensitivity);
-        return pointLevel === selectedLevel;
-    }) || [];
+    const displayedPoints: StingPoint[] = protocol
+        ? (hydratedProtocol?.points.filter(p => {
+            if (selectedSensitivity === 'all') return true;
+            const pointLevel = normalizeSensitivity(p.sensitivity);
+            const selectedLevel = normalizeSensitivity(selectedSensitivity);
+            return pointLevel === selectedLevel;
+        }) ?? [])
+        : proxTapMode === 'results'
+            ? candidatePoints
+            : [];
 
     const canCompleteRound = stungPoints.length > 0;
 
@@ -335,22 +387,59 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
 
                     {/* Model Switcher */}
-                    <div className={styles.modelSwitcher}>
-                        <button
-                            className={`${styles.modelTab} ${selectedModel === 'xbot' ? styles.modelTabActive : ''}`}
-                            onClick={() => setSelectedModel('xbot')}
-                        >
-                            <T>Xbot</T>
+                    {!!protocol && (
+                        <div className={styles.modelSwitcher}>
+                            <button
+                                className={`${styles.modelTab} ${selectedModel === 'xbot' ? styles.modelTabActive : ''}`}
+                                onClick={() => setSelectedModel('xbot')}
+                            >
+                                <T>Xbot</T>
+                            </button>
+                            <button
+                                className={`${styles.modelTab} ${selectedModel === 'corpo' ? styles.modelTabActive : ''}`}
+                                onClick={() => setSelectedModel('corpo')}
+                            >
+                                <T>Corpo</T>
+                            </button>
+                        </div>
+                    )}
+
+                    {!protocol && proxTapMode === 'idle' && (
+                        <div className={styles.proxTapCTA}>
+                            <MousePointerClick size={28} />
+                            <p><T>Tap the 3D model to find nearby acupuncture points</T></p>
+                        </div>
+                    )}
+
+                    {!protocol && proxTapMode === 'loading' && (
+                        <div className={styles.proxTapLoading}>
+                            <Loader size={18} className={styles.spinner} />
+                            <span><T>Finding nearest points...</T></span>
+                        </div>
+                    )}
+
+                    {!protocol && proxTapMode === 'empty-radius' && (
+                        <div className={styles.proxTapEmpty}>
+                            <p><T>No acupuncture points found in this area.</T></p>
+                            <p><T>Try tapping a different location or increase the search radius in Settings.</T></p>
+                            <button className={styles.clearRestartBtn} onClick={handleClearAndRestart}>
+                                <RefreshCw size={14} /> <T>Try Again</T>
+                            </button>
+                        </div>
+                    )}
+
+                    {!protocol && proxTapMode === 'results' && (
+                        <button className={styles.clearRestartBtn} onClick={handleClearAndRestart}>
+                            <RefreshCw size={14} /> <T>Clear &amp; Restart</T>
                         </button>
-                        <button
-                            className={`${styles.modelTab} ${selectedModel === 'corpo' ? styles.modelTabActive : ''}`}
-                            onClick={() => setSelectedModel('corpo')}
-                        >
-                            <T>Corpo</T>
-                        </button>
-                    </div>
-                    <p className={styles.hintText}><T>Click a point to mark it as stung.</T></p>
-                    <div className={styles.pointsList}>
+                    )}
+
+                    {(!!protocol || proxTapMode === 'results') && (
+                        <p className={styles.hintText}><T>Click a point to mark it as stung.</T></p>
+                    )}
+                    
+                    {(!!protocol || proxTapMode === 'results' || proxTapMode === 'empty-radius') && (
+                        <div className={styles.pointsList}>
                         {displayedPoints.map(p => {
                             const docUrl = getPointDocUrl(p);
                             const pointHasLongText = hasPointLongText(p);
@@ -409,9 +498,9 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 </div>
                             );
                         })}
-                    </div>
+                        </div>
+                    )}
                 </div>
-
                 {/* Center: 3D Model */}
                 <div className={styles.canvasPanel}>
                     <button
@@ -421,17 +510,26 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     >
                         <Maximize size={20} />
                     </button>
-                    <Canvas className={styles.canvas}>
-                        <BodyScene
-                            protocol={hydratedProtocol ? { ...hydratedProtocol, points: displayedPoints } : null}
-                            onPointSelect={handlePointSelect}
-                            activePointId={activePointId}
-                            isRolling={isRolling}
-                            selectedModel={selectedModel}
-                            resetTrigger={resetTrigger}
-                            sensitivityColorMap={sensitivityColorMap}
-                        />
-                    </Canvas>
+                    <div className={styles.canvasScrollWrapper}>
+                        {/* canvasSizer holds the fixed large pixel size.
+                            R3F fills it via its own inline 100%/100% styles,
+                            the sizer overflows the scroll wrapper → scrollbars. */}
+                        <div className={styles.canvasSizer}>
+                            <Canvas className={styles.canvas}>
+                                <BodyScene
+                                    protocol={hydratedProtocol ? { ...hydratedProtocol, points: displayedPoints } : null}
+                                    onPointSelect={handlePointSelect}
+                                    activePointId={activePointId}
+                                    isRolling={isRolling}
+                                    selectedModel={selectedModel}
+                                    resetTrigger={resetTrigger}
+                                    sensitivityColorMap={sensitivityColorMap}
+                                    onModelTap={!protocol ? handleModelTap : undefined}
+                                    tapPosition={!protocol ? tapPosition : null}
+                                />
+                            </Canvas>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right: Stung data + vitals + actions */}

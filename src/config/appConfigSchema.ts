@@ -120,6 +120,24 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         type: 'boolean',
         defaultValue: false,
       },
+      proximityResultsCount: {
+        label: 'Proximity Tap — Max Results',
+        description: 'Maximum number of nearest acupuncture points to display when a practitioner taps the 3D model in Free Selection mode.',
+        type: 'number',
+        defaultValue: 5,
+      },
+      proximitySearchRadiusCun: {
+        label: 'Proximity Tap — Search Radius (CUN)',
+        description: 'Only points within this radius (in CUN, where 1 CUN ≈ 2 cm) of the tapped location will be shown. Default: 3 CUN ≈ 6 cm.',
+        type: 'number',
+        defaultValue: 3,
+      },
+      pointsCacheTTLMinutes: {
+        label: 'Point List Cache Duration (Minutes)',
+        description: 'How long the locally cached acupuncture point list stays valid before being refreshed from the database. Applies across all patients in one session.',
+        type: 'number',
+        defaultValue: 60,
+      },
       standardWaitDirective: {
         label: 'Standard Wait Directive',
         description: 'Guidance text shown before removing stingers in standard treatments.',
