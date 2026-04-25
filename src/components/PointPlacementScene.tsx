@@ -73,7 +73,6 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
     const [derivedScale, setDerivedScale] = useState(1);
 
     const onModelClick = (e: any) => {
-      if (isLocked) return;
       e.stopPropagation();
       
       const point = e.point; // World point
@@ -124,9 +123,11 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={[0, 1.2, 3]} fov={40} />
         <OrbitControls 
-          enablePan={!isLocked} 
-          enableRotate={!isLocked} 
-          enableZoom={!isLocked}
+          enablePan={true} 
+          enableRotate={true} 
+          enableZoom={true}
+          autoRotate={!isLocked}
+          autoRotateSpeed={2.0}
           target={[0, 1, 0]}
         />
         

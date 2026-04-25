@@ -15,6 +15,7 @@ import { getTransformedPosition } from '../utils/pointMapping';
 
 interface BodySceneProps {
   protocol: Protocol | null;
+  points?: StingPoint[];
   onPointSelect: (point: StingPoint) => void;
   activePointId: string | null;
   isRolling: boolean;
@@ -77,7 +78,8 @@ const LoadingOverlay = () => (
   </Html>
 );
 
-const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePointId, isRolling, selectedModel, resetTrigger, sensitivityColorMap, onModelTap, tapPosition }) => {
+const BodyScene: React.FC<BodySceneProps> = ({ protocol, points = [], onPointSelect, activePointId, isRolling, selectedModel, resetTrigger, sensitivityColorMap, onModelTap, tapPosition }) => {
+  const effectivePoints = points.length > 0 ? points : (protocol?.points || []);
   const groupRef = useRef<THREE.Group>(null);
   const controlsRef = useRef<any>(null);
   const [targetZoom, setTargetZoom] = React.useState<{ position: THREE.Vector3, target: THREE.Vector3 } | null>(null);
@@ -170,7 +172,7 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
           {selectedModel === 'xbot' ? (
             <HumanModel url={DEMO_HUMAN_MODEL_URL} onClick={onModelTap ? handleModelBodyClick : undefined}>
               <ScaleCapturer />
-              {protocol?.points.map((point: StingPoint) => (
+              {effectivePoints.map((point: StingPoint) => (
                 <StingPointMarker
                   key={point.id}
                   point={point}
@@ -188,7 +190,7 @@ const BodyScene: React.FC<BodySceneProps> = ({ protocol, onPointSelect, activePo
           ) : (
             <CorpoModel url={CORPO_MODEL_URL} textureUrl={CORPO_TEXTURE_URL} onClick={onModelTap ? handleModelBodyClick : undefined}>
               <ScaleCapturer />
-              {protocol?.points.map((point: StingPoint) => (
+              {effectivePoints.map((point: StingPoint) => (
                 <StingPointMarker
                   key={point.id}
                   point={point}

@@ -3,8 +3,7 @@
 /* ── Page wrapper ─────────────────────────────────────────── */
 .container {
     padding: var(--spacing-lg) var(--spacing-md);
-    height: 100%;
-    overflow-y: auto;
+    min-height: 100%;
     background-color: var(--color-background-page);
     display: flex;
     flex-direction: column;

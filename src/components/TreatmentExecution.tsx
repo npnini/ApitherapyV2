@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -209,10 +209,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     // Lock to Corpo model in Free Selection (Proximity Tap uses Corpo coords only)
     useEffect(() => {
-        if (!protocol) {
+        if (!protocol && (!customPoints || customPoints.length === 0)) {
             setSelectedModel('corpo');
         }
-    }, [protocol]);
+    }, [protocol, customPoints]);
 
     const handleModelTap = useCallback(async (pos: { x: number; y: number; z: number }) => {
         if (protocol) return; // only active in Free Selection
@@ -290,20 +290,33 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         'High': '#1e3a8a'    // bold blue
     };
 
-    const displayedPoints: StingPoint[] = protocol
-        ? (hydratedProtocol?.points.filter(p => {
-            if (selectedSensitivity === 'all') return true;
-            const pointLevel = normalizeSensitivity(p.sensitivity);
-            const selectedLevel = normalizeSensitivity(selectedSensitivity);
-            return pointLevel === selectedLevel;
-        }) ?? [])
-        : proxTapMode === 'results'
-            ? candidatePoints
-            : [];
+    const displayedPoints = useMemo(() => {
+        let source: StingPoint[] = [];
+        
+        // Priority 1: Free Selection / Custom Points (Scenario 2)
+        // We prioritize this to ensure that manual selection always takes precedence
+        // if both are somehow present during state transitions.
+        if (customPoints && customPoints.length > 0) {
+            source = customPoints;
+        }
+        // Priority 2: Standard Protocol (Scenario 1)
+        else if (protocol) {
+            source = hydratedProtocol?.points || [];
+        } 
+        // Priority 3: Proximity Tap Results (Scenario 3)
+        else if (proxTapMode === 'results' || proxTapMode === 'empty-radius') {
+            source = candidatePoints;
+        }
 
-    const canCompleteRound = stungPoints.length > 0;
+        if (selectedSensitivity === 'all') return source;
+        return source.filter(p => 
+            p && normalizeSensitivity(p.sensitivity) === normalizeSensitivity(selectedSensitivity)
+        );
+    }, [protocol, customPoints, hydratedProtocol, proxTapMode, candidatePoints, selectedSensitivity]);
 
-    if (isHydrating) {
+    const canCompleteRound = stungPoints.length > 0 || (accumulatedStungPointIds && accumulatedStungPointIds.length > 0);
+
+    if (isHydrating && (!customPoints || customPoints.length === 0)) {
         return (
             <div className={styles.centeredMsg}>
                 <Loader className={styles.spinner} size={32} />
@@ -404,14 +417,14 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         </div>
                     )}
 
-                    {!protocol && proxTapMode === 'idle' && (
+                    {!protocol && displayedPoints.length === 0 && proxTapMode === 'idle' && (
                         <div className={styles.proxTapCTA}>
                             <MousePointerClick size={28} />
                             <p><T>Tap the 3D model to find nearby acupuncture points</T></p>
                         </div>
                     )}
 
-                    {!protocol && proxTapMode === 'loading' && (
+                    {!protocol && displayedPoints.length === 0 && proxTapMode === 'loading' && (
                         <div className={styles.proxTapLoading}>
                             <Loader size={18} className={styles.spinner} />
                             <span><T>Finding nearest points...</T></span>
@@ -434,16 +447,17 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         </button>
                     )}
 
-                    {(!!protocol || proxTapMode === 'results') && (
+                    {displayedPoints.length > 0 && (
                         <p className={styles.hintText}><T>Click a point to mark it as stung.</T></p>
                     )}
                     
-                    {(!!protocol || proxTapMode === 'results' || proxTapMode === 'empty-radius') && (
+                    {displayedPoints.length > 0 && (
                         <div className={styles.pointsList}>
                         {displayedPoints.map(p => {
                             const docUrl = getPointDocUrl(p);
                             const pointHasLongText = hasPointLongText(p);
-                            const isStung = stungPoints.some(sp => sp.id === p.id);
+                            const isStung = stungPoints.some(sp => sp.id === p.id) || 
+                                           accumulatedStungPointIds.includes(p.id);
                             const level = normalizeSensitivity(p.sensitivity);
                             const color = sensitivityColorMap[level];
 
@@ -517,15 +531,16 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         <div className={styles.canvasSizer}>
                             <Canvas className={styles.canvas}>
                                 <BodyScene
-                                    protocol={hydratedProtocol ? { ...hydratedProtocol, points: displayedPoints } : null}
+                                    protocol={hydratedProtocol}
+                                    points={displayedPoints}
                                     onPointSelect={handlePointSelect}
                                     activePointId={activePointId}
                                     isRolling={isRolling}
                                     selectedModel={selectedModel}
                                     resetTrigger={resetTrigger}
                                     sensitivityColorMap={sensitivityColorMap}
-                                    onModelTap={!protocol ? handleModelTap : undefined}
-                                    tapPosition={!protocol ? tapPosition : null}
+                                    onModelTap={(!protocol && (!customPoints || customPoints.length === 0)) ? handleModelTap : undefined}
+                                    tapPosition={(!protocol && (!customPoints || customPoints.length === 0)) ? tapPosition : null}
                                 />
                             </Canvas>
                         </div>
@@ -597,7 +612,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     <div className={styles.actionRow}>
                         <button
                             className={styles.btnAnotherProtocol}
-                            disabled={!canCompleteRound || !canGoToAnother}
+                            disabled={!canCompleteRound || canGoToAnother === false}
                             onClick={handleAnotherProtocol}
                         >
                             <PlusCircle size={15} /> {tAnotherProtocol}

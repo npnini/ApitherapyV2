@@ -143,12 +143,12 @@ const PointsAdmin: React.FC = () => {
         // Normalize legacy fields and handle migration to 'positions'
         const pointToEdit = { ...point };
 
-        if (!pointToEdit.positions) {
-            pointToEdit.positions = {
-                xbot: (point as any).position || { x: 0, y: 0, z: 0 },
-                corpo: { x: 0, y: 0, z: 0 }
-            };
-        }
+        // Ensure both position formats exist and migration from legacy 'position'
+        const positions = point.positions || {};
+        pointToEdit.positions = {
+            xbot: positions.xbot || (point as any).position || { x: 0, y: 0, z: 0 },
+            corpo: positions.corpo || { x: 0, y: 0, z: 0 }
+        };
 
         if (typeof pointToEdit.label === 'string') {
             pointToEdit.label = { en: pointToEdit.label };
@@ -162,6 +162,7 @@ const PointsAdmin: React.FC = () => {
 
         setEditingPoint(pointToEdit);
         setOriginalPoint(pointToEdit);
+        setSelectedPreviewModel('corpo');
     };
 
     const handleAddNew = () => {
@@ -242,7 +243,10 @@ const PointsAdmin: React.FC = () => {
                 longText: pointToSave.longText,
                 sensitivity: pointToSave.sensitivity || 'Medium',
                 imageURL: pointToSave.imageURL || '',
-                positions: pointToSave.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } },
+                positions: {
+                    xbot: pointToSave.positions?.xbot || { x: 0, y: 0, z: 0 },
+                    corpo: pointToSave.positions?.corpo || { x: 0, y: 0, z: 0 }
+                },
                 documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
                 status: pointToSave.status || 'active',
                 reference_count: pointToSave.reference_count || 0,
@@ -475,7 +479,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
     const [isDirty, setIsDirty] = useState(initialIsDirty);
 
     const [selectedPreviewModel, setSelectedPreviewModel] = useState<'corpo' | 'xbot'>('corpo');
-    const [isViewportLocked, setIsViewportLocked] = useState(false);
+    const [isRolling, setIsRolling] = useState(true);
 
     const stringsToRegister = useMemo(() => [
         'Saving...',
@@ -503,7 +507,8 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         "Mannequin",
         "Sync from Corpo",
         "Corpo (Anatomy)",
-        "Xbot (Mannequin)"
+        "Xbot (Mannequin)",
+        "Auto-Rotate"
     ], []);
 
     useEffect(() => {
@@ -813,22 +818,24 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                                 </button>
                             </div>
 
-                            <button 
-                                className={`${styles.freezeButton} ${isViewportLocked ? styles.freezeButtonActive : ''}`}
-                                onClick={() => setIsViewportLocked(!isViewportLocked)}
-                                title={isViewportLocked ? "Unlock Camera" : "Freeze Camera for Precise Pinning"}
-                            >
-                                {isViewportLocked ? <Lock size={18} /> : <Unlock size={18} />}
-                            </button>
+                            <label className={styles.toggleLabel}>
+                                <span><T>Auto-Rotate</T></span>
+                                <div className={styles.toggle} onClick={() => setIsRolling(r => !r)}>
+                                    <div className={`${styles.toggleTrack} ${isRolling ? styles.toggleOn : ''}`} />
+                                    <div className={`${styles.toggleThumb} ${isRolling ? styles.toggleThumbOn : ''}`} />
+                                </div>
+                            </label>
                         </div>
 
-                        <div className={styles.scrollableScene}>
-                            <PointPlacementScene 
-                                selectedModel={selectedPreviewModel}
-                                position={formData.positions?.[selectedPreviewModel] || null}
-                                onPositionChange={handlePositionChange}
-                                isLocked={isViewportLocked}
-                            />
+                        <div className={styles.canvasScrollWrapper}>
+                            <div className={styles.canvasSizer}>
+                                <PointPlacementScene 
+                                    selectedModel={selectedPreviewModel}
+                                    position={formData.positions?.[selectedPreviewModel] || null}
+                                    onPositionChange={handlePositionChange}
+                                    isLocked={!isRolling}
+                                />
+                            </div>
                         </div>
 
                         <div className={styles.modelLabel}>

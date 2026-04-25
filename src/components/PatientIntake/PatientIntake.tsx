@@ -1148,7 +1148,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     onBack={() => setViewState(isSensitivitySession ? 'sessionOpening' : 'problemSelection')}
                                     preferredModel={user.preferredModel}
                                     customPoints={freeProtocolPoints}
-                                    canGoToAnother={!!selectedProtocol} // Can only select another linked protocol if not in free selection
+                                    canGoToAnother={true} // Can always select another protocol/pick points
                                     onExit={handleExitIncomplete}
                                 />
                             )}
