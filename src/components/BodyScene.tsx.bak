@@ -24,7 +24,6 @@ interface BodySceneProps {
   sensitivityColorMap?: Record<string, string>; // Map of sensitivity level to color
   onModelTap?: (normalizedPos: { x: number; y: number; z: number }) => void;
   tapPosition?: { x: number; y: number; z: number } | null;
-  onZoomChange?: (scale: number) => void;
 }
 
 
@@ -79,23 +78,10 @@ const LoadingOverlay = () => (
   </Html>
 );
 
-const BodyScene: React.FC<BodySceneProps> = ({ 
-  protocol, 
-  points = [], 
-  onPointSelect, 
-  activePointId, 
-  isRolling, 
-  selectedModel, 
-  resetTrigger, 
-  sensitivityColorMap, 
-  onModelTap, 
-  tapPosition, 
-  onZoomChange 
-}) => {
+const BodyScene: React.FC<BodySceneProps> = ({ protocol, points = [], onPointSelect, activePointId, isRolling, selectedModel, resetTrigger, sensitivityColorMap, onModelTap, tapPosition }) => {
   const effectivePoints = points.length > 0 ? points : (protocol?.points || []);
   const groupRef = useRef<THREE.Group>(null);
   const controlsRef = useRef<any>(null);
-  const lastReportedScale = useRef(1);
   const [targetZoom, setTargetZoom] = React.useState<{ position: THREE.Vector3, target: THREE.Vector3 } | null>(null);
 
   const [hoveredPointId, setHoveredPointId] = React.useState<string | null>(null);
@@ -165,30 +151,15 @@ const BodyScene: React.FC<BodySceneProps> = ({
     }
   });
 
-  const INITIAL_DIST = 5.2;
-  useFrame((state) => {
-    if (!controlsRef.current || !onZoomChange) return;
-    const currentDist = state.camera.position.distanceTo(controlsRef.current.target);
-    const rawScale = INITIAL_DIST / currentDist;
-    // Map the 3D zoom to a 2D viewport expansion.
-    // We only start expanding after some zoom in, and cap at 2.5x.
-    const targetScale = Math.max(1, Math.min(2.5, rawScale));
-    
-    if (Math.abs(lastReportedScale.current - targetScale) > 0.05) {
-      lastReportedScale.current = targetScale;
-      onZoomChange(targetScale);
-    }
-  });
-
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 0.9, 5.2]} fov={38} />
+      <PerspectiveCamera makeDefault position={[0, 1.2, 4]} fov={40} />
       <OrbitControls
         ref={controlsRef}
         enablePan={true}
         minDistance={0.2}
-        maxDistance={7}
-        target={[0, 0.9, 0]}
+        maxDistance={6}
+        target={[0, 1, 0]}
         makeDefault
       />
 

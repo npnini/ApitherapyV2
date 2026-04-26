@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -115,6 +115,22 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [proxTapMode, setProxTapMode]         = React.useState<ProxTapMode>('idle');
     const [tapPosition, setTapPosition]         = React.useState<{ x: number; y: number; z: number } | null>(null);
     const [candidatePoints, setCandidatePoints] = React.useState<StingPoint[]>([]);
+    const [canvasScale, setCanvasScale] = useState(1);
+    const scrollWrapperRef = useRef<HTMLDivElement>(null);
+
+    // Keep the model centered in the viewport when zooming in
+    useEffect(() => {
+        const wrapper = scrollWrapperRef.current;
+        if (!wrapper || canvasScale <= 1) return;
+        
+        const timer = setTimeout(() => {
+            const { scrollWidth, scrollHeight, clientWidth, clientHeight } = wrapper;
+            // Center the scrollbars
+            wrapper.scrollLeft = (scrollWidth - clientWidth) / 2;
+            wrapper.scrollTop = (scrollHeight - clientHeight) / 2;
+        }, 50); // Slight delay to wait for DOM resize
+        return () => clearTimeout(timer);
+    }, [canvasScale]);
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -524,11 +540,20 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     >
                         <Maximize size={20} />
                     </button>
-                    <div className={styles.canvasScrollWrapper}>
-                        {/* canvasSizer holds the fixed large pixel size.
-                            R3F fills it via its own inline 100%/100% styles,
-                            the sizer overflows the scroll wrapper → scrollbars. */}
-                        <div className={styles.canvasSizer}>
+                    <div 
+                        className={styles.canvasScrollWrapper}
+                        ref={scrollWrapperRef}
+                    >
+                        {/* canvasSizer expands based on canvasScale.
+                            When scale > 1, the scrollbars appear in the wrapper. */}
+                        <div 
+                            className={styles.canvasSizer}
+                            style={{ 
+                                width: `${100 * canvasScale}%`, 
+                                height: `${100 * canvasScale}%`,
+                                transition: 'width 0.2s ease-out, height 0.2s ease-out'
+                            }}
+                        >
                             <Canvas className={styles.canvas}>
                                 <BodyScene
                                     protocol={hydratedProtocol}
@@ -538,6 +563,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                     isRolling={isRolling}
                                     selectedModel={selectedModel}
                                     resetTrigger={resetTrigger}
+                                    onZoomChange={setCanvasScale}
                                     sensitivityColorMap={sensitivityColorMap}
                                     onModelTap={(!protocol && (!customPoints || customPoints.length === 0)) ? handleModelTap : undefined}
                                     tapPosition={(!protocol && (!customPoints || customPoints.length === 0)) ? tapPosition : null}
