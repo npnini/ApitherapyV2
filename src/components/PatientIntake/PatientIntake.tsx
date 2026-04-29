@@ -598,17 +598,32 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
 
-    const handleProtocolSelect = async (protocolId: string | null, problemId: string | null) => {
-        if (!protocolId) {
+    const handleProtocolSelect = async (protocolId: string | null, problemId: string | null, isFreeSelection: boolean = false) => {
+        if (!protocolId || isFreeSelection) {
             // Free selection path
             setFreeProtocolUsed(true);
-            const freeProtoId = appConfig?.treatmentSettings?.freeProtocolIdentifier;
-            if (freeProtoId) {
-                setUsedProtocolIds(prev => [...new Set([...prev, freeProtoId])]);
+            const finalProtoId = protocolId || appConfig?.treatmentSettings?.freeProtocolIdentifier;
+            
+            if (finalProtoId) {
+                setUsedProtocolIds(prev => [...new Set([...prev, finalProtoId])]);
+                
+                // If we have a specific free protocol ID, load its metadata to set as selectedProtocol
+                // This allows TreatmentExecution to show the protocol name and details.
+                try {
+                    const protocolDoc = await getDoc(doc(db, 'cfg_protocols', finalProtoId));
+                    if (protocolDoc.exists()) {
+                        setSelectedProtocol({ id: protocolDoc.id, ...protocolDoc.data() } as Protocol);
+                    }
+                } catch (err) {
+                    console.error('PatientIntake: Failed to load free protocol metadata', err);
+                }
             }
+            
             setViewState('freeSelection');
-            setSelectedProblemId(null);
-            setSelectedProtocol(null);
+            setSelectedProblemId(problemId || null);
+            if (problemId) {
+                setUsedProblemIds(prev => [...new Set([...prev, problemId])]);
+            }
             return;
         }
 
@@ -1132,8 +1147,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 <ProtocolSelection
                                     problems={(sessionOpeningData?.problems ?? patientData.medicalRecord?.problems ?? []).filter((p: any) => p.problemStatus === 'Active')}
                                     onBack={() => setViewState(sessionOpeningData ? 'sessionOpening' : 'tabs')}
-                                    onProtocolSelect={(protocolId, problemId) => handleProtocolSelect(protocolId, problemId)}
-                                    onFreeSelect={() => handleProtocolSelect(null, null)}
+                                    onProtocolSelect={(protocolId, problemId) => handleProtocolSelect(protocolId, problemId, false)}
+                                    onFreeSelect={(protocolId, problemId) => handleProtocolSelect(protocolId, problemId, true)}
                                     onExit={handleExitIncomplete}
                                     onRequestMissingProblem={handleRequestMissingProblem}
                                 />

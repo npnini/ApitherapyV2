@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PatientProblem } from '../types/patient';
 import { Problem } from '../types/problem';
@@ -12,7 +12,7 @@ import ConfirmationModal from './ConfirmationModal';
 interface ProtocolSelectionProps {
     problems: PatientProblem[];
     onProtocolSelect: (protocolId: string, problemId: string) => void;
-    onFreeSelect: () => void;
+    onFreeSelect: (protocolId: string, problemId: string) => void;
     onBack: () => void;
     onExit: () => void;
     onRequestMissingProblem?: (problemName: string) => void;
@@ -50,6 +50,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
 
     const [isLoading, setIsLoading] = useState(true);
     const [problemRows, setProblemRows] = useState<ProblemRowData[]>([]);
+    const [freeSelectionData, setFreeSelectionData] = useState<{ protocolId: string; problemId: string } | null>(null);
 
     // Modal state for requesting missing problem
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -58,10 +59,11 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetch all problems and protocols
-            const [problemsSnap, protocolsSnap] = await Promise.all([
+            // Fetch all problems, protocols, and app config
+            const [problemsSnap, protocolsSnap, configSnap] = await Promise.all([
                 getDocs(collection(db, 'cfg_problems')),
                 getDocs(collection(db, 'cfg_protocols')),
+                getDoc(doc(db, 'cfg_app_config', 'main')),
             ]);
 
             const allProblems: Problem[] = problemsSnap.docs.map(doc => ({
@@ -94,6 +96,25 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
             }
 
             setProblemRows(rows);
+
+            // Locate Free Selection data
+            if (configSnap.exists()) {
+                const freeProtoId = configSnap.data().treatmentSettings?.freeProtocolIdentifier;
+                if (freeProtoId) {
+                    // Find a problem that uses this protocol. 
+                    // Usually "Targeted pain treatment" (pFs1iBrY2ZJXWsDOOVs0)
+                    const matchingProblem = allProblems.find(ap => 
+                        ap.protocolId === freeProtoId || 
+                        (Array.isArray(ap.protocolIds) && ap.protocolIds.includes(freeProtoId))
+                    );
+                    if (matchingProblem) {
+                        setFreeSelectionData({
+                            protocolId: freeProtoId,
+                            problemId: matchingProblem.id
+                        });
+                    }
+                }
+            }
         } catch (err) {
             console.error('ProtocolSelection: failed to load data', err);
         } finally {
@@ -167,7 +188,17 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
                     <button className={styles.btnSecondary} onClick={onExit}>
                         {tExit}
                     </button>
-                    <button className={styles.btnPrimary} onClick={onFreeSelect}>
+                    <button 
+                        className={styles.btnPrimary} 
+                        onClick={() => {
+                            if (freeSelectionData) {
+                                onFreeSelect(freeSelectionData.protocolId, freeSelectionData.problemId);
+                            } else {
+                                // Fallback to avoid breaking if config/problem not found
+                                onFreeSelect('', '');
+                            }
+                        }}
+                    >
                         {tFreeSelection}
                     </button>
                 </div>

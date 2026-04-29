@@ -31,8 +31,29 @@
     align-items: flex-start;
     min-height: 100vh;
     background-color: var(--color-background-page);
-    padding: 2rem 1rem;
+    padding: 2rem;
     font-family: system-ui, -apple-system, sans-serif;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.leftPane {
+    background: var(--color-background-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    padding: 2.5rem;
+    height: fit-content;
+}
+
+.rightPane {
+    display: flex;
+    flex-direction: column;
 }
 
 .card {
@@ -218,4 +239,14 @@
     color: var(--color-text-secondary);
     font-size: 1.1rem;
     text-align: center;
+}
+
+@media (max-width: 1024px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .cardContainer {
+        padding: 1rem;
+    }
 }

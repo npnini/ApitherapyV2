@@ -7,8 +7,9 @@ import { TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
 import { addMeasuredValueReading, updateTreatmentFeedback } from '../../firebase/patient';
 import { T, useT, useTranslationContext } from '../T';
-import { Loader, CheckCircle, AlertTriangle, Calendar, FileText, Activity, Syringe, Info } from 'lucide-react';
+import { Loader, CheckCircle, AlertTriangle, Activity, Info } from 'lucide-react';
 import styles from './TreatmentFeedback.module.css';
+import TreatmentSummary from './TreatmentSummary';
 
 interface TreatmentFeedbackProps {
     patient: JoinedPatientData;
@@ -23,24 +24,11 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
-interface HydratedProtocol {
-    protocolId: string;
-    protocolName: string;
-    stungPoints: StingPoint[];
-}
-
-interface ProblemGroup {
-    problemId: string;
-    problemName: string;
-    protocols: HydratedProtocol[];
-    measures: Measure[];
-}
 
 const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatment, onComplete, onBack }) => {
     const { language, direction } = useTranslationContext();
 
     const [measures, setMeasures] = useState<Measure[]>([]);
-    const [problemGroups, setProblemGroups] = useState<ProblemGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
@@ -83,89 +71,6 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                 }
             });
             setMeasures(allMeasures.filter(m => relevantMeasureIds.has(m.id)));
-
-            // Fetch app config for freeProtocolIdentifier
-            const configSnap = await getDoc(doc(db, 'cfg_app_config', 'main'));
-            const appConfig = configSnap.exists() ? configSnap.data() : null;
-            const freeProtoIdFromConfig = appConfig?.treatmentSettings?.freeProtocolIdentifier;
-
-            // 2. Hydrate Problem Groups (Problem -> Protocols -> Stung Points + Measures)
-            const protocolsSnapshot = await getDocs(collection(db, 'cfg_protocols'));
-            const protocolsMap = new Map();
-            protocolsSnapshot.docs.forEach(d => protocolsMap.set(d.id, { id: d.id, ...d.data() }));
-
-            const pointsSnapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
-            const pointsMap = new Map();
-            pointsSnapshot.docs.forEach(d => pointsMap.set(d.id, { ...d.data(), id: d.id }));
-
-            const groups: ProblemGroup[] = [];
-            const assignedPointIds = new Set<string>();
-
-            problemsSnapshot.docs.forEach(probDoc => {
-                if (treatmentProblemIds.includes(probDoc.id)) {
-                    const probData = probDoc.data();
-                    const probProtocolIds = probData.protocolIds || (probData.protocolId ? [probData.protocolId] : []);
-                    const probMeasureIds = probData.measureIds || [];
-
-                    const protocols: HydratedProtocol[] = probProtocolIds.map((pid: string) => {
-                        const protoData = protocolsMap.get(pid);
-                        if (!protoData) return null;
-
-                        // Identify points from this protocol that were stung
-                        const rawPoints = protoData.points || [];
-                        const protoPointIds = Array.isArray(rawPoints) && rawPoints.length > 0 && typeof rawPoints[0] === 'object'
-                            ? rawPoints.map((p: any) => p.id)
-                            : rawPoints;
-
-                        const pointsInThisProtocol = (treatment.stungPointIds || [])
-                            .filter(id => protoPointIds.includes(id))
-                            .map(id => {
-                                assignedPointIds.add(id);
-                                return pointsMap.get(id);
-                            })
-                            .filter(p => !!p);
-
-                        return {
-                            protocolId: pid,
-                            protocolName: getMLValue(protoData.name, language),
-                            stungPoints: pointsInThisProtocol
-                        };
-                    }).filter((p: any) => !!p);
-
-                    const probMeasures = allMeasures.filter(m => probMeasureIds.includes(m.id));
-
-                    groups.push({
-                        problemId: probDoc.id,
-                        problemName: getMLValue(probData.name, language),
-                        protocols,
-                        measures: probMeasures
-                    });
-                }
-            });
-
-            // Handle Free Protocol if used OR if there are orphan points
-            if (treatment.freeProtocolUsed || treatment.protocolIds?.includes(freeProtoIdFromConfig)) {
-                const orphanPointIds = (treatment.stungPointIds || []).filter(id => !assignedPointIds.has(id));
-                const freeProtoId = freeProtoIdFromConfig || (treatment.protocolIds || []).find(id => !protocolsSnapshot.docs.some(d => d.id === id)); // fallback
-
-                if (orphanPointIds.length > 0 && freeProtoId) {
-                    const protoData = protocolsMap.get(freeProtoId);
-                    if (protoData) {
-                        groups.push({
-                            problemId: 'free_protocol',
-                            problemName: getMLValue(protoData.name, language) || (language === 'he' ? 'פרוטוקול חופשי' : 'Free Protocol'),
-                            protocols: [{
-                                protocolId: freeProtoId,
-                                protocolName: getMLValue(protoData.name, language),
-                                stungPoints: orphanPointIds.map(id => pointsMap.get(id)).filter(p => !!p)
-                            }],
-                            measures: []
-                        });
-                    }
-                }
-            }
-
-            setProblemGroups(groups);
 
         } catch (err) {
             console.error('TreatmentFeedback: failed to load data', err);
@@ -251,71 +156,16 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
     return (
         <div className={styles.container} dir={direction}>
             <div className={styles.grid}>
-                {/* Left Pane: Treatment Summary */}
                 <div className={styles.leftPane}>
                     <h3 className={styles.sectionTitle}>
                         <Info size={18} />
                         <T>Treatment</T> {treatment.treatmentNumber || ''} <T>Summary</T>
                     </h3>
-                    <div className={styles.treatmentInfo}>
-                        <div className={styles.infoBlock}>
-                            <span className={styles.infoLabel}><Calendar size={14} /> <T>Date & Time</T></span>
-                            <span className={styles.infoContent}>{formatDate(treatment.createdTimestamp)}</span>
-                        </div>
-
-                        <div className={styles.infoBlock}>
-                            <span className={styles.infoLabel}><FileText size={14} /> <T>Patient Report</T></span>
-                            <p className={styles.infoContent}>{treatment.patientReport || <T>No report.</T>}</p>
-                        </div>
-
-                        <div className={styles.infoBlock}>
-                            <span className={styles.infoLabel}><Syringe size={14} /> <T>Protocol Rounds</T></span>
-                            <div className={styles.roundsList}>
-                                {problemGroups.length === 0 ? (
-                                    <p className={styles.infoContent}>{tNoRounds}</p>
-                                ) : problemGroups.map((group) => (
-                                    <div key={group.problemId} className={styles.problemSection}>
-                                        <div className={styles.problemHeader}>
-                                            <Activity size={14} className={styles.problemIcon} />
-                                            <span className={styles.problemName}>{group.problemName}</span>
-                                        </div>
-                                        <div className={styles.problemContent}>
-                                            {group.protocols.map((proto) => (
-                                                <div key={proto.protocolId} className={styles.protocolBlock}>
-                                                    <div className={styles.protocolTitle}>{proto.protocolName}</div>
-                                                    <div className={styles.pointList}>
-                                                        {proto.stungPoints.length > 0 ? proto.stungPoints.map(p => (
-                                                            <span key={p.id} className={styles.pointBadge}>
-                                                                <span className={styles.pointCode}>{p.code}</span> {getMLValue(p.label, language)}
-                                                            </span>
-                                                        )) : <span className={styles.emptyText}><T>No points stung from this protocol</T></span>}
-                                                    </div>
-                                                </div>
-                                            ))}
-
-                                            {group.measures.length > 0 && (
-                                                <div className={styles.problemMeasures}>
-                                                    <span className={styles.measuresLabel}><T>Measures</T></span>
-                                                    <div className={styles.measureNamesList}>
-                                                        {group.measures.map(m => (
-                                                            <span key={m.id} className={styles.measureNameTag}>
-                                                                {getMLValue(m.name, language)}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className={styles.infoBlock}>
-                            <span className={styles.infoLabel}><FileText size={14} /> {tFinalNotes}</span>
-                            <p className={styles.infoContent}>{treatment.finalNotes || tNoNotes}</p>
-                        </div>
-                    </div>
+                    <TreatmentSummary 
+                        treatment={treatment} 
+                        language={language} 
+                        direction={direction} 
+                    />
                 </div>
 
                 {/* Right Pane: Feedback Form */}

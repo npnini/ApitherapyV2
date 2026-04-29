@@ -606,14 +606,37 @@ export const sendMissingProblemEmail = onCall(async (request) => {
 
     await sgMail.send({
       to: adminEmail,
-      from: senderEmail,
-      subject: `Missing Problem Reported: ${problemName}`,
-      text: `Caretaker ${caretakerName} reported a missing problem "${problemName}" for patient ${patientName} (${patientId}).`,
+      from: {
+        email: senderEmail,
+        name: "BeeLive System"
+      },
+      subject: `[ACTION REQUIRED] New Problem Report: ${problemName}`,
+      text: `Missing Protocol Report\n\nCaretaker: ${caretakerName}\nPatient: ${patientName}\nReported Problem: ${problemName}\n\nPlease update the system protocols accordingly.`,
       html: `
-        <h3>Missing Problem Reported</h3>
-        <p><strong>Problem:</strong> ${problemName}</p>
-        <p><strong>Reported by:</strong> ${caretakerName} (UID: ${caretakerId})</p>
-        <p><strong>Patient:</strong> ${patientName} (ID: ${patientId})</p>
+        <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Missing Problem Reported</h2>
+          <p>A caretaker has reported that a required problem or protocol is missing from the system.</p>
+          
+          <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px; background: #f9f9f9; font-weight: bold; width: 30%;">Missing Problem:</td>
+              <td style="padding: 10px; background: #f9f9f9;">${problemName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; font-weight: bold;">Reported By:</td>
+              <td style="padding: 10px;">${caretakerName} (UID: ${caretakerId})</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; background: #f9f9f9; font-weight: bold;">Patient:</td>
+              <td style="padding: 10px; background: #f9f9f9;">${patientName} (ID: ${patientId})</td>
+            </tr>
+          </table>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #777;">
+            <p>This is an automated notification from your Apitherapy Management System.</p>
+            <p>Admin Email: ${adminEmail}</p>
+          </div>
+        </div>
       `,
     });
 

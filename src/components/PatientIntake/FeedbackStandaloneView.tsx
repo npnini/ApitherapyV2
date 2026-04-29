@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Loader, CheckCircle, AlertTriangle, Activity } from 'lucide-react';
+import { Loader, CheckCircle, AlertTriangle, Activity, Info } from 'lucide-react';
 import styles from './FeedbackStandaloneView.module.css';
+import TreatmentSummary from './TreatmentSummary';
+import { TreatmentSession } from '../../types/treatmentSession';
 
 interface MeasureDef {
     id: string;
@@ -83,6 +85,7 @@ const translations: Record<string, Record<string, string>> = {
 
 const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) => {
     const [session, setSession] = useState<FeedbackSession | null>(null);
+    const [treatment, setTreatment] = useState<TreatmentSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -99,23 +102,14 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
 
                 if (docSnap.exists()) {
                     const sessionData = docSnap.data() as FeedbackSession;
+                    setSession(sessionData);
 
-                    // Check if treatment already has feedback
-                    const treatmentRef = doc(db, 'treatments', sessionData.treatmentId);
-                    const treatmentSnap = await getDoc(treatmentRef);
-
-                    if (treatmentSnap.exists()) {
-                        const treatmentData = treatmentSnap.data();
-                        if (treatmentData.patientFeedbackMeasureReadingId) {
-                            // Feedback already exists, show explicit message
-                            setError('You have already submitted feedback for this treatment.');
-                            // But keep session for language/direction
-                            setSession(sessionData);
-                        } else {
-                            setSession(sessionData);
+                    // Fetch treatment details
+                    if (sessionData.treatmentId) {
+                        const treatmentSnap = await getDoc(doc(db, 'treatments', sessionData.treatmentId));
+                        if (treatmentSnap.exists()) {
+                            setTreatment({ ...treatmentSnap.data(), id: treatmentSnap.id } as TreatmentSession);
                         }
-                    } else {
-                        setSession(sessionData);
                     }
                 } else {
                     setError('Invalid or expired link.');
@@ -200,63 +194,83 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
 
     return (
         <div className={styles.cardContainer} dir={isRtl ? 'rtl' : 'ltr'}>
-            <div className={styles.card}>
-                <div className={styles.header}>
-                    <Activity size={32} className={styles.headerIcon} />
-                    <h1 className={styles.title}>{t('Post-Treatment Feedback')}</h1>
+            <div className={styles.grid}>
+                <div className={styles.leftPane}>
+                    <div className={styles.header}>
+                        <Info size={24} className={styles.headerIcon} />
+                        <h2 className={styles.title}>{t('Treatment Summary')}</h2>
+                    </div>
+                    {treatment ? (
+                        <TreatmentSummary 
+                            treatment={treatment} 
+                            language={lang} 
+                            direction={isRtl ? 'rtl' : 'ltr'} 
+                        />
+                    ) : (
+                        <p>{t('Loading summary...')}</p>
+                    )}
                 </div>
 
-                <p className={styles.subtitle}>{t('Please tell us how you feel today.')}</p>
-
-                <div className={styles.formContainer}>
-                    <div className={styles.measuresGrid}>
-                        {measures.map(measure => {
-                            const value = measureValues[measure.id] ?? '';
-                            return (
-                                <div key={measure.id} className={styles.measureItem}>
-                                    <div className={styles.measureHeader}>
-                                        <span className={styles.measureName}>{getMLValue(measure.name, lang)}</span>
-                                        <span className={styles.measureDesc}>{getMLValue(measure.description, lang)}</span>
-                                    </div>
-                                    <input
-                                        type="number"
-                                        className={styles.measureInput}
-                                        value={value}
-                                        min={measure.min}
-                                        max={measure.max}
-                                        placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
-                                        onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <div className={styles.section}>
-                        <h4 className={styles.sectionTitle}>{t('General Comments')}</h4>
-                        <textarea
-                            className={styles.textarea}
-                            value={feedbackText}
-                            onChange={e => setFeedbackText(e.target.value)}
-                            placeholder={t('Enter your feedback here...')}
-                            rows={4}
-                        />
-                    </div>
-
-                    {error && (
-                        <div className={styles.errorMessage}>
-                            <AlertTriangle size={16} /> {t(error)}
+                <div className={styles.rightPane}>
+                    <div className={styles.card}>
+                        <div className={styles.header}>
+                            <Activity size={32} className={styles.headerIcon} />
+                            <h1 className={styles.title}>{t('Post-Treatment Feedback')}</h1>
                         </div>
-                    )}
 
-                    <button
-                        className={styles.submitBtn}
-                        onClick={handleSave}
-                        disabled={!isFormValid || isSaving}
-                    >
-                        {isSaving ? <Loader size={20} className={styles.spinner} /> : <CheckCircle size={20} />}
-                        {t('Submit Feedback')}
-                    </button>
+                        <p className={styles.subtitle}>{t('Please tell us how you feel today.')}</p>
+
+                        <div className={styles.formContainer}>
+                            <div className={styles.measuresGrid}>
+                                {measures.map(measure => {
+                                    const value = measureValues[measure.id] ?? '';
+                                    return (
+                                        <div key={measure.id} className={styles.measureItem}>
+                                            <div className={styles.measureHeader}>
+                                                <span className={styles.measureName}>{getMLValue(measure.name, lang)}</span>
+                                                <span className={styles.measureDesc}>{getMLValue(measure.description, lang)}</span>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                className={styles.measureInput}
+                                                value={value}
+                                                min={measure.min}
+                                                max={measure.max}
+                                                placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
+                                                onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className={styles.section}>
+                                <h4 className={styles.sectionTitle}>{t('General Comments')}</h4>
+                                <textarea
+                                    className={styles.textarea}
+                                    value={feedbackText}
+                                    onChange={e => setFeedbackText(e.target.value)}
+                                    placeholder={t('Enter your feedback here...')}
+                                    rows={4}
+                                />
+                            </div>
+
+                            {error && (
+                                <div className={styles.errorMessage}>
+                                    <AlertTriangle size={16} /> {t(error)}
+                                </div>
+                            )}
+
+                            <button
+                                className={styles.submitBtn}
+                                onClick={handleSave}
+                                disabled={!isFormValid || isSaving}
+                            >
+                                {isSaving ? <Loader size={20} className={styles.spinner} /> : <CheckCircle size={20} />}
+                                {t('Submit Feedback')}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
