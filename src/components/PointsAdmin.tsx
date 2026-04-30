@@ -134,6 +134,12 @@ const PointsAdmin: React.FC = () => {
             );
             if (descMatches) return true;
 
+            // Search in long text (Hebrew and English)
+            const longTextMatches = Object.values(point.longText || {}).some(val =>
+                typeof val === 'string' && val.toLowerCase().includes(term)
+            );
+            if (longTextMatches) return true;
+
             return false;
         });
     }, [points, searchTerm]);
@@ -158,6 +164,9 @@ const PointsAdmin: React.FC = () => {
         }
         if (typeof pointToEdit.documentUrl === 'string') {
             pointToEdit.documentUrl = { en: pointToEdit.documentUrl };
+        }
+        if (typeof pointToEdit.longText === 'string') {
+            pointToEdit.longText = { en: pointToEdit.longText };
         }
 
         setEditingPoint(pointToEdit);
@@ -703,6 +712,33 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                                     placeholder={getTranslation("Describe the point's purpose")}
                                     className={styles.textarea}
                                     rows={2}
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <div className={styles.labelWrapper}>
+                                    <label htmlFor="longText" className={styles.label}><T>Long Text</T></label>
+                                    <div className={styles.indicatorContainer}>
+                                        <Globe size={14} className={styles.indicatorIcon} />
+                                        <span className={styles.translationCounter}>
+                                            {Object.values(formData.longText || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
+                                        </span>
+                                    </div>
+                                </div>
+                                {activeLang !== appConfig.defaultLanguage && !((formData.longText as Record<string, string>)?.[activeLang]) && (
+                                    <TranslationReference
+                                        label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
+                                        text={(formData.longText as Record<string, string>)?.[appConfig.defaultLanguage]}
+                                    />
+                                )}
+                                <textarea
+                                    id="longText"
+                                    name="longText"
+                                    value={(formData.longText as Record<string, string>)?.[activeLang] || ''}
+                                    onChange={handleChange}
+                                    placeholder={getTranslation("Additional detailed description")}
+                                    className={styles.textarea}
+                                    rows={4}
                                 ></textarea>
                             </div>
 
