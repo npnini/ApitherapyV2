@@ -86,10 +86,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: var(--spacing-xs);
     padding: var(--spacing-xs) var(--spacing-md);
-    background-color: var(--color-primary-light);
-    color: var(--color-primary);
-    border: 1px solid var(--color-primary);
+    background-color: var(--color-background-offset);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-full);
     font-size: 0.875rem;
     font-weight: 500;
@@ -98,6 +99,17 @@
 }
 
 .protocolBadge:hover {
+    background-color: var(--color-background-hover);
+    border-color: var(--color-text-tertiary);
+}
+
+.badgeSelected {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.badgeSelected:hover {
     background-color: var(--color-primary);
     color: var(--color-text-inverse);
 }
@@ -124,16 +136,24 @@
     gap: 0.5rem;
     background-color: var(--color-primary);
     color: var(--color-text-inverse);
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 2rem;
     border: none;
     border-radius: var(--radius-md);
     font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
 }
 
-.btnPrimary:hover {
+.btnPrimary:hover:not(:disabled) {
     opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btnPrimary:disabled {
+    background-color: var(--color-text-tertiary);
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .btnSecondary {
@@ -232,4 +252,77 @@
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+.tableSection, .adhocSection, .measuresSection {
+    background: var(--color-background-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-top: 0;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 2px solid var(--color-primary-light);
+    display: inline-block;
+}
+
+.emptyRow {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-tertiary);
+    font-style: italic;
+}
+
+.measuresGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.measureItem {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.measureLabel {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.measureInput {
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    background: var(--color-background-input);
+    color: var(--color-text-primary);
+}
+
+.measureInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.actionsLeft {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.adhocLinkSelector {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background-color: var(--color-background-offset);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
 }

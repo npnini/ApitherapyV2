@@ -1,29 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { getTreatmentCount } from '../../firebase/patient';
 import { db, storage } from '../../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { JoinedPatientData, PatientProblem } from '../../types/patient';
 import { Problem } from '../../types/problem';
-import { Measure } from '../../types/measure';
+import { Protocol } from '../../types/protocol';
 import { VitalSigns } from '../../types/treatmentSession';
 import VitalsInputGroup from '../VitalsInputGroup';
 import { T, useT, useTranslationContext } from '../T';
-import { Loader, Camera, Plus, X } from 'lucide-react';
+import { Loader, Camera, Plus, X, ArrowRight } from 'lucide-react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import styles from './SessionOpening.module.css';
 
 export interface SessionOpeningData {
     patientReport: string;
-    measureReadings: Array<{ measureId: string; value: string | number }>;
     preTreatmentVitals: Partial<VitalSigns>;
-    preTreatmentMeasureReadingId?: string; // Captures the ID after saving to Firestore
     preTreatmentImage?: string; // URL of the uploaded image
     generatedTreatmentId?: string; // Pre-generated ID to link measured_values
     problems: PatientProblem[]; // Updated problems list
-    usedMeasureIds?: string[];
     treatmentNumber?: number;
+    // measureReadings and usedMeasureIds removed as per Requirement 75
 }
 
 interface SessionOpeningProps {
@@ -50,13 +48,9 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     const tCaption = useT('Caption (optional)');
     const tRemove = useT('Remove Photo');
     const tUploading = useT('Uploading...');
-    const tNextStep = useT('Next Step');
+    const tProceed = useT('Proceed to Selection');
     const tBack = useT('Back');
     const tExit = useT('Exit');
-    const tSendingRequest = useT('Sending...');
-    const tLoading = useT('Loading measures...');
-    const tGeneralMeasures = useT('General Measures');
-    const tProblemMeasures = useT('Problem-Specific Measures');
     const tProblems = useT('Problems');
     const tAddProblem = useT('Add Problem');
     const tProblemMissing = useT('Problem missing?');
@@ -77,114 +71,39 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
         initialData?.problems || patient.medicalRecord?.problems || []
     );
     const [allProblems, setAllProblems] = useState<Problem[]>([]);
+    const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
     const [showAddProblem, setShowAddProblem] = useState(false);
     const [showMissingProblemModal, setShowMissingProblemModal] = useState(false);
     const [missingProblemNote, setMissingProblemNote] = useState('');
     const [isSendingMissing, setIsSendingMissing] = useState(false);
     const [missingProblemStatus, setMissingProblemStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-    // Measures handling
-    const [generalMeasures, setGeneralMeasures] = useState<Measure[]>([]);
-    const [problemMeasures, setProblemMeasures] = useState<Measure[]>([]);
-    const [measureValues, setMeasureValues] = useState<Record<string, number | string>>(() => {
-        const initialMap: Record<string, number | string> = {};
-        initialData?.measureReadings?.forEach(r => {
-            initialMap[r.measureId] = r.value;
-        });
-        return initialMap;
-    });
-    const [isLoadingMeasures, setIsLoadingMeasures] = useState(true);
     const [treatmentCount, setTreatmentCount] = useState(0);
 
-    // Fetch initial data
+    // Fetch initial data (Problems and Protocols only)
     useEffect(() => {
         const fetchInitialData = async () => {
-            setIsLoadingMeasures(true);
             try {
                 if (patient.id && !initialData?.treatmentNumber) {
                     const count = await getTreatmentCount(patient.id);
                     setTreatmentCount(count);
                 } else if (initialData?.treatmentNumber) {
-                    // count should be treatmentNumber - 1 for logic below
                     setTreatmentCount(initialData.treatmentNumber - 1);
                 }
 
-                // Fetch App Config for general measures
-                const configSnap = await getDocs(collection(db, 'cfg_app_config'));
-                let generalMeasureIds: string[] = [];
-                if (!configSnap.empty) {
-                    const cfg = configSnap.docs[0].data();
-                    if (cfg.generalMeasures && Array.isArray(cfg.generalMeasures)) {
-                        generalMeasureIds = cfg.generalMeasures;
-                    }
-                }
-
-                // Fetch all problems
                 const probsSnap = await getDocs(collection(db, 'cfg_problems'));
                 const allProbs = probsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Problem));
                 setAllProblems(allProbs);
 
-                // Derived active activeProblem measure IDs
-                const activeProbs = problems.filter(p => p.problemStatus === 'Active');
-                const activeProbIds = activeProbs.map(ap => ap.problemId);
-                const probMeasureIds = new Set<string>();
-                activeProbIds.forEach(id => {
-                    const prob = allProbs.find(p => p.id === id);
-                    if (prob && prob.measureIds) {
-                        prob.measureIds.forEach(mId => probMeasureIds.add(mId));
-                    }
-                });
-
-                // Fetch all required measures
-                const historicalMeasureIds = initialData?.measureReadings?.map(r => r.measureId) || [];
-                const measuresToFetch = new Set([...generalMeasureIds, ...probMeasureIds, ...historicalMeasureIds]);
-                if (measuresToFetch.size > 0) {
-                    const msSnap = await getDocs(collection(db, 'cfg_measures'));
-                    const allMs = msSnap.docs.map(d => ({ id: d.id, ...d.data() } as Measure));
-
-                    if (treatmentCount >= 1) { // 0-indexed, so 0 is first treatment
-                        setGeneralMeasures(allMs.filter(m => generalMeasureIds.includes(m.id)));
-                    } else {
-                        setGeneralMeasures([]);
-                    }
-
-                    const allProblemRelatedMeasureIds = new Set([...probMeasureIds, ...historicalMeasureIds]);
-                    setProblemMeasures(allMs.filter(m => allProblemRelatedMeasureIds.has(m.id)));
-                } else {
-                    setGeneralMeasures([]);
-                    setProblemMeasures([]);
-                }
+                const protosSnap = await getDocs(collection(db, 'cfg_protocols'));
+                const allProtos = protosSnap.docs.map(d => ({ id: d.id, ...d.data() } as Protocol));
+                setAllProtocols(allProtos);
             } catch (err) {
                 console.error("Failed to fetch session opening data:", err);
-            } finally {
-                setIsLoadingMeasures(false);
             }
         };
         fetchInitialData();
-    }, [patient.id, treatmentCount]); // Depend on external data only, not 'problems'
-
-    // Dynamically update Problem Measures when local problems array changes
-    useEffect(() => {
-        if (allProblems.length === 0) return;
-        const activeProbs = problems.filter(p => p.problemStatus === 'Active');
-        const probMeasureIds = new Set<string>();
-        activeProbs.forEach(ap => {
-            const prob = allProblems.find(p => p.id === ap.problemId);
-            if (prob && prob.measureIds) {
-                prob.measureIds.forEach(mId => probMeasureIds.add(mId));
-            }
-        });
-
-        // We need to fetch cfg_measures again to ensure we have any new ones not yet loaded
-        getDocs(collection(db, 'cfg_measures')).then(snaps => {
-            const allMs = snaps.docs.map(d => ({ id: d.id, ...d.data() } as Measure));
-            setProblemMeasures(allMs.filter(m => probMeasureIds.has(m.id)));
-        });
-    }, [problems, allProblems]);
-
-    const handleMeasureChange = (measureId: string, val: number | string) => {
-        setMeasureValues(prev => ({ ...prev, [measureId]: val }));
-    };
+    }, [patient.id, initialData?.treatmentNumber]);
 
     const toggleProblemStatus = (problemId: string) => {
         setProblems(prev => prev.map(p => {
@@ -214,7 +133,6 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
             });
             setMissingProblemStatus('success');
             setMissingProblemNote('');
-            // Auto-close after a brief delay
             setTimeout(() => {
                 setShowMissingProblemModal(false);
                 setMissingProblemStatus('idle');
@@ -228,7 +146,6 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     };
 
     const processImageWithCaption = async (file: File, caption: string): Promise<Blob> => {
-        // ... (Same image logic)
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
@@ -272,10 +189,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     };
 
     const handleSubmit = async () => {
-        if (!patientReport.trim()) {
-            // Basic validation
-            return;
-        }
+        if (!patientReport.trim()) return;
 
         let preTreatmentImage = '';
         if (imageFile) {
@@ -293,26 +207,11 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
             }
         }
 
-        const allMeasures = [...generalMeasures, ...problemMeasures];
-        const measureReadings = allMeasures
-            .filter(m => measureValues[m.id] !== undefined && measureValues[m.id] !== '')
-            .map(m => {
-                const value = measureValues[m.id];
-                return {
-                    measureId: m.id,
-                    value,
-                };
-            });
-
-        const usedMeasureIds = measureReadings.map(r => r.measureId);
-
         onComplete({
             patientReport: patientReport.trim(),
-            measureReadings,
             preTreatmentVitals,
             preTreatmentImage,
             problems,
-            usedMeasureIds,
             generatedTreatmentId: initialData?.generatedTreatmentId,
             treatmentNumber: initialData?.treatmentNumber || (treatmentCount + 1)
         });
@@ -334,27 +233,12 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
             }
         }
 
-        const allMeasures = [...generalMeasures, ...problemMeasures];
-        const measureReadings = allMeasures
-            .filter(m => measureValues[m.id] !== undefined && measureValues[m.id] !== '')
-            .map(m => {
-                const value = measureValues[m.id];
-                return {
-                    measureId: m.id,
-                    value,
-                };
-            });
-
-        const usedMeasureIds = measureReadings.map(r => r.measureId);
-
         if (onExit) {
             onExit({
                 patientReport: patientReport.trim(),
-                measureReadings,
                 preTreatmentVitals,
                 preTreatmentImage,
                 problems,
-                usedMeasureIds,
                 generatedTreatmentId: initialData?.generatedTreatmentId,
                 treatmentNumber: initialData?.treatmentNumber || (treatmentCount + 1)
             } as SessionOpeningData);
@@ -362,8 +246,6 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     };
 
     const isFormValid = patientReport.trim().length > 0;
-
-    // Available problems for the "Add Problem" dropdown
     const availableToAdd = allProblems.filter(ap => !problems.find(p => p.problemId === ap.id));
 
     return (
@@ -373,13 +255,16 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
                 {/* 1. Patient Report */}
                 <section className={styles.section}>
                     <h3 className={styles.sectionTitle}>{tPatientReport} <span className={styles.required}>*</span></h3>
-                    <textarea
-                        className={styles.textarea}
-                        rows={4}
-                        value={patientReport}
-                        onChange={e => setPatientReport(e.target.value)}
-                        placeholder={tPatientReportPlaceholder}
-                    />
+                    <div className={styles.reportWrapper}>
+                        <textarea
+                            className={styles.textarea}
+                            rows={4}
+                            value={patientReport}
+                            onChange={e => setPatientReport(e.target.value)}
+                            placeholder={tPatientReportPlaceholder}
+                        />
+                        {/* Next Step button is now at the bottom of the form */}
+                    </div>
                 </section>
 
                 {/* 1.5 Problems Management */}
@@ -497,74 +382,6 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
                     </div>
                 </section>
 
-                {/* 4. Tracking Measures */}
-                <section className={styles.section}>
-                    {isLoadingMeasures ? (
-                        <div className={styles.loading}>
-                            <Loader size={20} className={styles.spinner} />
-                            <span>{tLoading}</span>
-                        </div>
-                    ) : (
-                        <div className={styles.measuresOverview}>
-                            {problemMeasures.length > 0 && (
-                                <div className={styles.measureGroup}>
-                                    <h3 className={styles.sectionTitle}>{tProblemMeasures}</h3>
-                                    <div className={styles.measuresGrid}>
-                                        {problemMeasures.map(measure => {
-                                            const name = getMLValue(measure.name, language);
-                                            const value = measureValues[measure.id] ?? '';
-                                            return (
-                                                <div key={measure.id} className={styles.measureItem}>
-                                                    <label className={styles.measureLabel}>{name}</label>
-                                                    <input
-                                                        type="number"
-                                                        className={styles.measureInput}
-                                                        value={value}
-                                                        min={measure.min}
-                                                        max={measure.max}
-                                                        placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
-                                                        onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                                    />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {generalMeasures.length > 0 && (
-                                <div className={styles.measureGroup}>
-                                    <h3 className={styles.sectionTitle}>{tGeneralMeasures}</h3>
-                                    <div className={styles.measuresGrid}>
-                                        {generalMeasures.map(measure => {
-                                            const name = getMLValue(measure.name, language);
-                                            const value = measureValues[measure.id] ?? '';
-                                            return (
-                                                <div key={measure.id} className={styles.measureItem}>
-                                                    <label className={styles.measureLabel}>{name}</label>
-                                                    <input
-                                                        type="number"
-                                                        className={styles.measureInput}
-                                                        value={value}
-                                                        min={measure.min}
-                                                        max={measure.max}
-                                                        placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
-                                                        onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                                    />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {problemMeasures.length === 0 && generalMeasures.length === 0 && (
-                                <p className={styles.noMeasuresText}><T>No tracking measures configured.</T></p>
-                            )}
-                        </div>
-                    )}
-                </section>
-
                 {/* Actions */}
                 <div className={styles.actions}>
                     <div className={styles.actionsLeft}>
@@ -579,11 +396,11 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
                     </div>
                     <button
                         type="button"
+                        className={styles.btnPrimary}
                         onClick={handleSubmit}
                         disabled={!isFormValid || isUploading}
-                        className={styles.btnPrimary}
                     >
-                        {isUploading ? tUploading : tNextStep}
+                        {isUploading ? <Loader size={20} className={styles.spinner} /> : <T>Next step</T>}
                     </button>
                 </div>
             </div>
@@ -638,3 +455,4 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
 };
 
 export default SessionOpening;
+

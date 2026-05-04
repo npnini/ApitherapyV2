@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'measures';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString';
   defaultValue: string | number | boolean | string[] | Record<string, any>;
 };
 
@@ -96,22 +96,10 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         type: 'number',
         defaultValue: 3,
       },
-      sensitivityProtocolIdentifier: {
-        label: 'Sensitivity Protocol Identifier',
-        description: 'The protocol to be used for initial sensitivity testing.',
-        type: 'protocol',
-        defaultValue: 'sensitivity_protocol_v1',
-      },
-      generalMeasures: {
-        label: 'General Measures',
-        description: 'Measures that are applicable globally across different treatments.',
-        type: 'measures',
-        defaultValue: [],
-      },
-      freeProtocolIdentifier: {
-        label: 'Free Protocol Identifier',
-        description: 'The protocol to be used for freely selecting sting points.',
-        type: 'protocol',
+      adhocProblemIdentifier: {
+        label: 'Ad-hoc Problem Identifier',
+        description: 'The problem that will be linked to ad-hoc (free selection) protocols.',
+        type: 'string',
         defaultValue: '',
       },
       enableAISuggestions: {

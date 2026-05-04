@@ -4,8 +4,10 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { db } from '../../firebase';
 import { T, useT, useTranslationContext } from '../T';
 import { Problem } from '../../types/problem';
+import { Protocol } from '../../types/protocol';
+import { JoinedPatientData, PatientProblem, StatusHistoryItem } from '../../types/patient';
 import { Measure } from '../../types/measure';
-import { JoinedPatientData, PatientProblem } from '../../types/patient';
+import { AppUser } from '../../types/user';
 import styles from './ProblemsTab.module.css';
 
 export interface ProblemsTabHandle {
@@ -17,33 +19,53 @@ export interface ProblemsTabHandle {
 interface ProblemsTabProps {
     patientData: JoinedPatientData;
     onDataChange: (data: Partial<JoinedPatientData>, isInternal?: boolean) => void;
+    user: AppUser;
 }
 
-const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientData, onDataChange }, ref) => {
+const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientData, onDataChange, user }, ref) => {
     const { language: currentLang } = useTranslationContext();
-    const tAvailableProblems = useT("Available Problems");
 
     // Data fetching
     const [problemsSnap, problemsLoading] = useCollection(query(collection(db, 'cfg_problems')));
-    const [measuresSnap, measuresLoading] = useCollection(query(collection(db, 'cfg_measures')));
+    const [protocolsSnap, protocolsLoading] = useCollection(query(collection(db, 'cfg_protocols')));
 
     const problems = useMemo(() => problemsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Problem)) || [], [problemsSnap]);
+    const protocols = useMemo(() => protocolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protocol)) || [], [protocolsSnap]);
+
+    const [measuresSnap, measuresLoading] = useCollection(query(collection(db, 'cfg_measures')));
     const measures = useMemo(() => measuresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Measure)) || [], [measuresSnap]);
 
     // UI Item Mappings
     const problemItems = useMemo(() => {
         return problems.map(p => {
             const nameStr = typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string);
-            return { id: p.id, name: nameStr };
-        }).sort((a, b) => a.name.localeCompare(b.name));
-    }, [problems, currentLang]);
+            
+            const linkedProtocolIds = Array.from(new Set([
+                ...(p.protocolId ? [p.protocolId] : []),
+                ...(Array.isArray(p.protocolIds) ? p.protocolIds : [])
+            ]));
+            
+            const linkedProtocols = linkedProtocolIds
+                .map(pid => protocols.find(proto => proto.id === pid))
+                .filter((proto): proto is Protocol => !!proto);
 
-    const measureItems = useMemo(() => {
-        return measures.map(m => {
-            const nameStr = typeof m.name === 'object' ? (m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || '') : (m.name as string);
-            return { id: m.id, name: nameStr };
+            const protocolNamesArr = linkedProtocols
+                .map(protocol => (typeof protocol.name === 'object' ? (protocol.name[currentLang] || protocol.name['en'] || Object.values(protocol.name)[0] || '') : protocol.name))
+                .filter(Boolean);
+            const protocolNames = Array.from(new Set(protocolNamesArr)).join(', ');
+
+            const measureIds = Array.from(new Set(linkedProtocols.flatMap(proto => proto.measureIds || [])));
+            const measureNames = measureIds
+                .map(mid => {
+                    const measure = measures.find(m => m.id === mid);
+                    return measure ? (typeof measure.name === 'object' ? (measure.name[currentLang] || measure.name['en'] || Object.values(measure.name)[0] || '') : measure.name) : '';
+                })
+                .filter(Boolean)
+                .join(', ');
+
+            return { id: p.id, name: nameStr, protocolName: protocolNames, measureNames };
         }).sort((a, b) => a.name.localeCompare(b.name));
-    }, [measures, currentLang]);
+    }, [problems, protocols, measures, currentLang]);
 
     // State
     const [selectedProblems, setSelectedProblems] = useState<PatientProblem[]>([]);
@@ -68,14 +90,14 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
     }, [patientData.id]);
 
     useEffect(() => {
-        if (!isInitialized && !problemsLoading && !measuresLoading && problemItems.length > 0) {
+        if (!isInitialized && !problemsLoading && !protocolsLoading && !measuresLoading && problemItems.length > 0) {
             const pld = patientData.medicalRecord;
             if (pld?.problems) {
                 setSelectedProblems(pld.problems);
             }
             setIsInitialized(true);
         }
-    }, [problemsLoading, measuresLoading, problemItems, measureItems, patientData, isInitialized]);
+    }, [problemsLoading, protocolsLoading, problemItems, patientData, isInitialized]);
 
     useImperativeHandle(ref, () => ({
         getReadings: () => [],
@@ -83,45 +105,33 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
         clearDirty: () => setIsDirtyLocal(false)
     }));
 
-    // Filter measures
-    const availableMeasureItems = useMemo(() => {
-        const allowedIds = new Set<string>();
-        // Only collect measures for 'Active' problems
-        selectedProblems.filter(sp => sp.problemStatus === 'Active').forEach(sp => {
-            const problem = problems.find(p => p.id === sp.problemId);
-            if (problem?.measureIds) {
-                problem.measureIds.forEach(id => allowedIds.add(id));
-            }
-        });
-        return measureItems.filter(m => allowedIds.has(m.id));
-    }, [selectedProblems, problems, measureItems]);
-
     // Sync selections to parent
     useEffect(() => {
         if (!isInitialized) return;
 
         const pld = patientData.medicalRecord;
-        const newMeasureIds = availableMeasureItems.map(m => m.id);
-
         const problemsChanged = JSON.stringify(pld?.problems || []) !== JSON.stringify(selectedProblems);
-        const measuresChanged = JSON.stringify(pld?.measureIds || []) !== JSON.stringify(newMeasureIds);
 
-        if (problemsChanged || measuresChanged) {
+        if (problemsChanged) {
             onDataChange({
                 ...patientData,
                 medicalRecord: {
                     ...patientData.medicalRecord,
-                    problems: selectedProblems,
-                    measureIds: newMeasureIds
+                    problems: selectedProblems
                 }
             }, false);
             setIsDirtyLocal(true);
         }
-    }, [selectedProblems, availableMeasureItems, isInitialized]);
+    }, [selectedProblems, isInitialized]);
 
     const handleToggleProblem = (problemId: string, isSelected: boolean) => {
         if (isSelected) {
-            setSelectedProblems(prev => [...prev, { problemId, problemStatus: 'Active' }]);
+            const newHistory: StatusHistoryItem = {
+                status: 'Active',
+                timestamp: new Date().toISOString(),
+                userId: user.uid
+            };
+            setSelectedProblems(prev => [...prev, { problemId, problemStatus: 'Active', problemStatusHistory: [newHistory] }]);
         } else {
             setSelectedProblems(prev => prev.filter(p => p.problemId !== problemId));
         }
@@ -130,7 +140,17 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
     const handleToggleStatus = (problemId: string) => {
         setSelectedProblems(prev => prev.map(p => {
             if (p.problemId === problemId) {
-                return { ...p, problemStatus: p.problemStatus === 'Active' ? 'Inactive' : 'Active' };
+                const newStatus = p.problemStatus === 'Active' ? 'Inactive' : 'Active';
+                const newHistoryItem: StatusHistoryItem = {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    userId: user.uid
+                };
+                return {
+                    ...p,
+                    problemStatus: newStatus,
+                    problemStatusHistory: [...(p.problemStatusHistory || []), newHistoryItem]
+                };
             }
             return p;
         }));
@@ -146,22 +166,40 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
             <fieldset className={styles.section}>
                 <legend><T>Selected Problems</T></legend>
                 <div className={styles.problemsList}>
+                    {selectedProblemItems.length > 0 && (
+                        <div className={styles.headerRow}>
+                            <div><T>Actions</T></div>
+                            <div><T>Problem Name</T></div>
+                            <div><T>Protocol</T></div>
+                            <div><T>Measures</T></div>
+                        </div>
+                    )}
                     {selectedProblemItems.length === 0 && <p className={styles.emptyText}><T>No problems selected</T></p>}
                     {selectedProblemItems.map(p => {
                         const selectedProb = selectedProblems.find(sp => sp.problemId === p.id)!;
+                        const isActive = selectedProb.problemStatus === 'Active';
                         const isUsed = usedProblemIds.has(p.id);
+
+                        let dateText = null;
+                        if (!isActive && selectedProb.problemStatusHistory?.length) {
+                            const lastInactive = selectedProb.problemStatusHistory
+                                .filter(h => h.status === 'Inactive')
+                                .pop();
+                            if (lastInactive && lastInactive.timestamp) {
+                                dateText = new Date(lastInactive.timestamp).toLocaleDateString(currentLang);
+                            }
+                        }
 
                         return (
                             <div key={p.id} className={styles.problemRow}>
-                                <div className={styles.problemInfo}>
-                                    <span>{p.name}</span>
-                                </div>
-                                <div className={styles.problemActions}>
+                                <div className={styles.columnActions}>
                                     <button
-                                        className={`${styles.statusToggleBtn} ${selectedProb.problemStatus === 'Active' ? styles.statusActive : styles.statusInactive}`}
+                                        className={`${styles.statusToggleBtn} ${isActive ? styles.statusActive : styles.statusInactive}`}
                                         onClick={() => handleToggleStatus(p.id)}
+                                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2' }}
                                     >
-                                        <T>{selectedProb.problemStatus}</T>
+                                        <span>{isActive ? <T>Active</T> : <T>Inactive</T>}</span>
+                                        {dateText && <span style={{ fontSize: '0.65em', fontWeight: 'normal', marginTop: '2px' }}>({dateText})</span>}
                                     </button>
                                     <button
                                         className={styles.removeBtn}
@@ -171,6 +209,15 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
                                     >
                                         <T>Remove</T>
                                     </button>
+                                </div>
+                                <div className={styles.columnName}>
+                                    <span className={styles.problemName}>{p.name}</span>
+                                </div>
+                                <div className={styles.columnProtocol}>
+                                    {p.protocolName && <span className={styles.protocolBadge}>{p.protocolName}</span>}
+                                </div>
+                                <div className={styles.columnMeasures}>
+                                    {p.measureNames && <span className={styles.measuresLabel}>{p.measureNames}</span>}
                                 </div>
                             </div>
                         );
@@ -183,28 +230,27 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
                     <legend><T>Available Problems</T></legend>
                     <div className={styles.availableList}>
                         {unselectedProblems.map(p => (
-                            <div key={p.id} className={styles.availableRow}>
-                                <span>{p.name}</span>
-                                <button
-                                    className={styles.addBtn}
-                                    onClick={() => handleToggleProblem(p.id, true)}
-                                >
-                                    <T>Add</T>
-                                </button>
+                            <div key={p.id} className={styles.problemRow}>
+                                <div className={styles.columnActions}>
+                                    <button
+                                        className={styles.addBtn}
+                                        onClick={() => handleToggleProblem(p.id, true)}
+                                    >
+                                        <T>Add</T>
+                                    </button>
+                                </div>
+                                <div className={styles.columnName}>
+                                    <span className={styles.problemName}>{p.name}</span>
+                                </div>
+                                <div className={styles.columnProtocol}>
+                                    {p.protocolName && <span className={styles.protocolBadge}>{p.protocolName}</span>}
+                                </div>
+                                <div className={styles.columnMeasures}>
+                                    {p.measureNames && <span className={styles.measuresLabel}>{p.measureNames}</span>}
+                                </div>
                             </div>
                         ))}
                     </div>
-                </fieldset>
-            )}
-
-            {availableMeasureItems.length > 0 && (
-                <fieldset className={styles.section}>
-                    <legend><T>Measures</T></legend>
-                    <ul className={styles.measureList}>
-                        {availableMeasureItems.map(m => (
-                            <li key={m.id}>{m.name}</li>
-                        ))}
-                    </ul>
                 </fieldset>
             )}
         </div>
@@ -212,3 +258,4 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
 });
 
 export default ProblemsTab;
+

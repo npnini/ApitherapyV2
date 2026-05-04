@@ -211,10 +211,60 @@
     background-color: var(--color-background-input);
 }
 
+.protocolGroups {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.protocolGroup {
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.protocolHeader {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--color-background-offset);
+    border: none;
+    border-bottom: 1px solid var(--color-border-light);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.protocolHeader:hover {
+    background-color: var(--color-background-input-hover);
+}
+
+.protocolGroupName {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.completedHeader .protocolGroupName {
+    color: var(--color-success);
+}
+
 .measuresGrid {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    padding: 1rem;
+}
+
+.noMeasures {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
 }
 
 .measureItem {

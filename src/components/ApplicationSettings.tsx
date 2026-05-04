@@ -18,6 +18,15 @@ interface ApplicationSettingsProps {
 interface Protocol {
     id: string;
     name: string | Record<string, string>;
+    type: 'standard' | 'sensitivity' | 'ad-hoc';
+    measureIds: string[];
+}
+
+interface Problem {
+    id: string;
+    name: Record<string, string>;
+    protocolId?: string;
+    protocolIds?: string[];
 }
 
 interface QuestionnaireQuestion {
@@ -85,6 +94,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
     const [protocols, setProtocols] = useState<Protocol[]>([]);
     const [allMeasures, setAllMeasures] = useState<MeasureInfo[]>([]);
     const [questionnaireQuestions, setQuestionnaireQuestions] = useState<QuestionnaireQuestion[]>([]);
+    const [allProblems, setAllProblems] = useState<Problem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -124,12 +134,11 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             '-- Select a Question --',
             'Available Languages',
             'Supported Languages',
-            'Available Measures',
-            'Selected General Measures',
             'English', 'Spanish', 'French', 'German', 'Hebrew', 'Arabic', 'Chinese', 'Russian',
             'Loading settings...',
             'Cancel',
             'Save Changes',
+            'select a problem linked to a protocol that is set with type=ad-hoc',
             ...schemaStrings
         ];
     }, []);
@@ -144,8 +153,23 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             try {
                 const protocolsCollectionRef = collection(db, 'cfg_protocols');
                 const protocolDocs = await getDocs(protocolsCollectionRef);
-                const fetchedProtocols = protocolDocs.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+                const fetchedProtocols = protocolDocs.docs.map(doc => ({ 
+                    id: doc.id, 
+                    name: doc.data().name,
+                    type: doc.data().type,
+                    measureIds: doc.data().measureIds || []
+                })) as Protocol[];
                 setProtocols(fetchedProtocols);
+
+                const problemsCollectionRef = collection(db, 'cfg_problems');
+                const problemDocs = await getDocs(problemsCollectionRef);
+                const fetchedProblems = problemDocs.docs.map(doc => ({
+                    id: doc.id,
+                    name: doc.data().name,
+                    protocolId: doc.data().protocolId,
+                    protocolIds: doc.data().protocolIds
+                })) as Problem[];
+                setAllProblems(fetchedProblems);
 
                 const measuresCollectionRef = collection(db, 'cfg_measures');
                 const measureDocs = await getDocs(measuresCollectionRef);
@@ -239,6 +263,22 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             }
 
             parentObject[path[path.length - 1]] = value;
+
+            // Validation for adhocProblemIdentifier
+            if (path.join('.') === 'treatmentSettings.adhocProblemIdentifier' && value) {
+                const selectedProblem = allProblems.find(p => p.id === value);
+                if (selectedProblem) {
+                    const linkedProtocolIds = selectedProblem.protocolIds || (selectedProblem.protocolId ? [selectedProblem.protocolId] : []);
+                    const hasAdhocProtocol = protocols.some(proto => 
+                        linkedProtocolIds.includes(proto.id) && proto.type === 'ad-hoc'
+                    );
+                    
+                    if (!hasAdhocProtocol) {
+                        setError(getTranslation('select a problem linked to a protocol that is set with type=ad-hoc'));
+                        // Optionally reset the value or just keep the error
+                    }
+                }
+            }
 
             if (path.join('.') === 'patientDashboard.domain') {
                 newSettings.patientDashboard.conditionQuestion = '';
@@ -541,37 +581,6 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     </select>
                 );
                 break;
-            case 'measures':
-                const selectedMeasureIds = Array.isArray(value) ? value : [];
-                const currentDefaultLang = settings.languageSettings?.defaultLanguage || 'en';
-
-                const selectedMeasureItems = allMeasures
-                    .filter(m => selectedMeasureIds.includes(m.id))
-                    .map(m => ({
-                        id: m.id,
-                        name: m.name[currentDefaultLang] || m.name['en'] || Object.values(m.name)[0] || m.id
-                    }));
-
-                const availableMeasureItems = allMeasures.map(m => ({
-                    id: m.id,
-                    name: m.name[currentDefaultLang] || m.name['en'] || Object.values(m.name)[0] || m.id
-                }));
-
-                control = (
-                    <div className={styles.control}>
-                        <ShuttleSelector
-                            availableItems={availableMeasureItems}
-                            selectedItems={selectedMeasureItems}
-                            onSelectionChange={(newSelection: ShuttleItem[]) => {
-                                const newIds = newSelection.map(item => item.id);
-                                handleSettingChange(path, newIds);
-                            }}
-                            availableTitle="Available Measures"
-                            selectedTitle="Selected General Measures"
-                        />
-                    </div>
-                );
-                break;
             case 'question':
                 control = (
                     <select
@@ -681,17 +690,57 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 );
                 break;
             case 'string':
-            default:
-                control = (
-                    <input
-                        id={key}
-                        type="text"
-                        className={styles.input}
-                        value={typeof value === 'string' ? value : ''}
-                        onChange={e => handleSettingChange(path, e.target.value)}
-                    />
-                );
+                if (key === 'treatmentSettings.adhocProblemIdentifier') {
+                    control = (
+                        <select
+                            id={key}
+                            className={styles.input}
+                            value={typeof value === 'string' ? value : ''}
+                            onChange={e => {
+                                const selectedProblemId = e.target.value;
+                                if (selectedProblemId) {
+                                    const problem = allProblems.find(p => p.id === selectedProblemId);
+                                    if (problem) {
+                                        const linkedProtocolIds = new Set<string>();
+                                        if (problem.protocolId) linkedProtocolIds.add(problem.protocolId);
+                                        if (Array.isArray(problem.protocolIds)) {
+                                            problem.protocolIds.forEach(id => linkedProtocolIds.add(id));
+                                        }
+
+                                        const linkedProtocols = protocols.filter(p => linkedProtocolIds.has(p.id));
+                                        const hasAdhoc = linkedProtocols.some(p => p.type === 'ad-hoc');
+
+                                        if (!hasAdhoc) {
+                                            setError(getTranslation('select a problem linked to a protocol that is set with type=ad-hoc'));
+                                            return;
+                                        }
+                                    }
+                                }
+                                setError(null);
+                                handleSettingChange(path, selectedProblemId);
+                            }}
+                        >
+                            <option value="">-- Select a Problem --</option>
+                            {allProblems.map(p => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name[settings.languageSettings?.defaultLanguage || 'en'] || p.name['en'] || Object.values(p.name)[0] || p.id}
+                                </option>
+                            ))}
+                        </select>
+                    );
+                } else {
+                    control = (
+                        <input
+                            id={key}
+                            type="text"
+                            className={styles.input}
+                            value={typeof value === 'string' ? value : ''}
+                            onChange={e => handleSettingChange(path, e.target.value)}
+                        />
+                    );
+                }
                 break;
+            default:
         }
 
         return (

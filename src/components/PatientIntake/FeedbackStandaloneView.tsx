@@ -141,7 +141,8 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
                 status: 'completed',
                 responses: measureValues,
                 feedbackText: feedbackText,
-                completedAt: serverTimestamp()
+                completedAt: serverTimestamp(),
+                event: 'post'
             });
 
             setSession({ ...session, status: 'completed' });

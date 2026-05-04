@@ -142,11 +142,6 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
             console.log(`[TRACER] TreatmentHistory: Found ${rawTreatments.length} treatments.`);
 
-            const configSnap = await getDoc(doc(db, 'cfg_app_config', 'main'));
-            const appConfig = configSnap.exists() ? configSnap.data() : {};
-            const fId = appConfig.treatmentSettings?.freeProtocolIdentifier;
-            setFreeProtoId(fId || null);
-
             // Fetch all acupuncture points
             const pointsSnapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
             const pointsMap = new Map<string, StingPoint>();
@@ -159,11 +154,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             pointsMapRef.current = pointsMap;
 
             // Fetch measures, protocols, and problems
-            const [measuresSnapshot, protocolsSnapshot, problemsSnapshot] = await Promise.all([
+            const [measuresSnapshot, protocolsSnapshot, problemsSnapshot, measuredValuesSnapshot] = await Promise.all([
                 getDocs(collection(db, 'cfg_measures')),
                 getDocs(collection(db, 'cfg_protocols')),
-                getDocs(collection(db, 'cfg_problems'))
+                getDocs(collection(db, 'cfg_problems')),
+                getDocs(query(collection(db, 'measured_values'), where('patientId', '==', patient.id)))
             ]);
+
+            const allProtocols = protocolsSnapshot.docs.map(d => ({ ...d.data(), id: d.id } as any));
+            const adhocProto = allProtocols.find(p => p.type === 'ad-hoc');
+            setFreeProtoId(adhocProto?.id || null);
 
             const measuresMap = new Map<string, string | Record<string, string>>();
             measuresSnapshot.docs.forEach(d => {
@@ -171,17 +171,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 measuresMap.set(d.id, data.name);
             });
 
-            const problemsMeasureMap = new Map<string, string[]>(); // problemId -> measureIds
-            problemsSnapshot.docs.forEach(d => {
-                problemsMeasureMap.set(d.id, d.data().measureIds || []);
+            const protocolsMeasureMap = new Map<string, string[]>(); // protocolId -> measureIds
+            protocolsSnapshot.docs.forEach(d => {
+                protocolsMeasureMap.set(d.id, d.data().measureIds || []);
             });
 
-            // Build union of all measures referenced by any treatment's problemIds
+            // Build union of all measures referenced by any treatment's protocolIds
             const allTreatmentMeasureIds = new Set<string>();
             rawTreatments.forEach(t => {
-                const problemIds = t.problemIds || (t.problemId ? [t.problemId] : []);
-                problemIds.forEach(pid => {
-                    (problemsMeasureMap.get(pid) || []).forEach(mid => allTreatmentMeasureIds.add(mid));
+                (t.protocolIds || []).forEach(pid => {
+                    (protocolsMeasureMap.get(pid) || []).forEach(mid => allTreatmentMeasureIds.add(mid));
                 });
             });
 
@@ -205,6 +204,18 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             });
             setProblemsNamesMap(problemsMap);
 
+            // Group all measured values by treatmentId
+            const allMeasuredValuesMap = new Map<string, any[]>();
+            measuredValuesSnapshot.docs.forEach(d => {
+                const data = d.data();
+                const tid = data.treatmentId;
+                if (!tid) return;
+                if (!allMeasuredValuesMap.has(tid)) {
+                    allMeasuredValuesMap.set(tid, []);
+                }
+                allMeasuredValuesMap.get(tid)?.push({ id: d.id, ...data });
+            });
+
             // Hydrate each treatment
             const hydratedTreatments = await Promise.all(rawTreatments.map(async (treatment): Promise<HydratedTreatment> => {
                 // Resolve stungPointIds → StingPoint objects
@@ -212,40 +223,35 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     .map(id => pointsMap.get(id))
                     .filter((p): p is StingPoint => p !== undefined);
 
-                // Fetch pre-treatment measured values
+                // Fetch all measured values for this treatment (from our aggregated map)
+                const treatmentReadings = allMeasuredValuesMap.get(treatment.id) || [];
+                
+                // Aggregate pre-treatment measures
+                const preReadings = treatmentReadings.filter(r => r.event === 'pre');
                 let measuredValues: Array<{ measureId: string; label: string; value: string | number }> = [];
-                if (treatment.preTreatmentMeasureReadingId) {
-                    try {
-                        const readingDoc = await getDoc(doc(db, 'measured_values', treatment.preTreatmentMeasureReadingId));
-                        if (readingDoc.exists()) {
-                            const data = readingDoc.data();
-                            measuredValues = (data.readings || []).map((r: any) => ({
-                                measureId: r.measureId,
-                                label: getMLValue(measuresMap.get(r.measureId), language),
-                                value: r.value
-                            }));
-                        }
-                    } catch (err) {
-                        console.error('Error fetching measure reading:', err);
-                    }
-                }
+                
+                preReadings.forEach(docData => {
+                    (docData.readings || []).forEach((r: any) => {
+                        measuredValues.push({
+                            measureId: r.measureId,
+                            label: getMLValue(measuresMap.get(r.measureId), language),
+                            value: r.value
+                        });
+                    });
+                });
 
-                // Fetch patient feedback measured values
+                // Aggregate feedback (post) measures
+                const postReadings = treatmentReadings.filter(r => r.event === 'post' || r.event === 'feedback');
                 let feedbackMeasuredValues: Array<{ label: string; value: string | number }> = [];
-                if (treatment.patientFeedbackMeasureReadingId) {
-                    try {
-                        const readingDoc = await getDoc(doc(db, 'measured_values', treatment.patientFeedbackMeasureReadingId));
-                        if (readingDoc.exists()) {
-                            const data = readingDoc.data();
-                            feedbackMeasuredValues = (data.readings || []).map((r: any) => ({
-                                label: getMLValue(measuresMap.get(r.measureId), language),
-                                value: r.value
-                            }));
-                        }
-                    } catch (err) {
-                        console.error('Error fetching patient feedback measure reading:', err);
-                    }
-                }
+                
+                postReadings.forEach(docData => {
+                    (docData.readings || []).forEach((r: any) => {
+                        feedbackMeasuredValues.push({
+                            label: getMLValue(measuresMap.get(r.measureId), language),
+                            value: r.value
+                        });
+                    });
+                });
 
                 return {
                     ...treatment,
@@ -444,8 +450,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                             </span>
                                         </td>
                                         {patientMeasureNames.map(m => {
-                                            const mv = t.measuredValues?.find(mv => mv.measureId === m.id);
-                                            return <td key={m.id} className={styles.measureCell}>{mv?.value ?? '-'}</td>;
+                                            const mvs = t.measuredValues?.filter(mv => mv.measureId === m.id);
+                                            const displayValue = mvs && mvs.length > 0 ? mvs.map(mv => mv.value).join(', ') : '-';
+                                            return <td key={m.id} className={styles.measureCell}>{displayValue}</td>;
                                         })}
                                         <td className={styles.multiIdCell} title={(t.problemIds || (t.problemId ? [t.problemId] : [])).map(id => getMLValue(problemsNamesMap.get(id), language)).join(', ') || undefined}>
                                             {(t.problemIds || (t.problemId ? [t.problemId] : [])).map(id => getMLValue(problemsNamesMap.get(id), language)).join(', ') || '-'}

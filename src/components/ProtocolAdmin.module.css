@@ -129,8 +129,8 @@
     background-color: var(--color-background-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: auto;
+    max-height: calc(100vh - 250px);
 }
 
 .table {
@@ -150,6 +150,10 @@
     color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--color-background-page);
 }
 
 .tableBody {
@@ -178,6 +182,7 @@
 
 .documentCell {
     text-align: center;
+    width: 100px;
 }
 
 .documentLink {
@@ -188,6 +193,7 @@
 
 .actionsCell {
     text-align: start;
+    width: 120px;
 }
 
 .actionButton {
@@ -681,4 +687,68 @@ input:checked+.slider:before {
     display: flex;
     gap: var(--spacing-md);
     align-items: flex-start;
+    margin-top: 0.5rem;
 }
+
+/* Protocol Type Badges & Selector */
+.typeBadge {
+    display: inline-flex;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badgeStandard {
+    background-color: var(--color-background-input-disabled);
+    color: var(--color-text-secondary);
+}
+
+.badgeSensitivity {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badgeAdhoc, .badgeAd-hoc {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.typeSelector {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: 0.5rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.typeButton {
+    flex: 1;
+    padding: 0.625rem;
+    border: 1.5px solid var(--color-border);
+    background-color: var(--color-background-input);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.typeButton:hover {
+    border-color: var(--color-border-hover);
+    background-color: var(--color-background-input-hover);
+}
+
+.typeButtonActive {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+.typeButtonActive:hover {
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}

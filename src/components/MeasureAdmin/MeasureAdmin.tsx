@@ -425,8 +425,7 @@ const MeasureAdmin: React.FC = () => {
             )}
 
             <div className={styles.tableContainer}>
-                <div className="overflow-x-auto">
-                    <table className={styles.table}>
+                <table className={styles.table}>
                         <thead className={styles.tableHeader}>
                             <tr>
                                 <th scope="col" className={styles.headerCell}><T>Name</T></th>
@@ -495,8 +494,7 @@ const MeasureAdmin: React.FC = () => {
                                 ))
                             )}
                         </tbody>
-                    </table>
-                </div>
+                </table>
             </div>
         </div>
     );

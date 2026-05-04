@@ -12,5 +12,7 @@ export interface Protocol {
     stingingPoints?: any[];
     documentUrl?: { [key: string]: string } | string;
     status: 'active' | 'inactive';
+    type: 'standard' | 'sensitivity' | 'ad-hoc';
+    measureIds: string[];
     reference_count: number;
 }

@@ -26,6 +26,7 @@ export interface ExecutionData {
 
 interface TreatmentExecutionProps {
     protocol?: Protocol;
+    displayTitle?: string;
     isSensitivityTest: boolean;
     accumulatedStungPointIds: string[];
     onRoundComplete: (stungPointIds: string[]) => void;
@@ -69,6 +70,7 @@ const getDocumentUrl = (documentUrl: any, lang: string): string | undefined => {
 
 const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     protocol,
+    displayTitle,
     isSensitivityTest,
     accumulatedStungPointIds,
     onRoundComplete,
@@ -188,12 +190,21 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                 return;
             }
 
-            const pointIds = (protocol as any).points as string[];
-            if (!pointIds || pointIds.length === 0) {
+            const rawPoints = (protocol as any).points;
+            if (!rawPoints || rawPoints.length === 0) {
                 setHydratedProtocol({ ...(protocol as any), points: [] });
                 setIsHydrating(false);
                 return;
             }
+
+            // Check if points are already hydrated (objects with an id and x/y/z)
+            if (typeof rawPoints[0] === 'object' && rawPoints[0] !== null && 'id' in rawPoints[0]) {
+                setHydratedProtocol({ ...(protocol as any), points: rawPoints as StingPoint[] });
+                setIsHydrating(false);
+                return;
+            }
+
+            const pointIds = rawPoints as string[];
             const pointDocs = await Promise.all(pointIds.map(id => getDoc(doc(db, 'cfg_acupuncture_points', id))));
             const points: StingPoint[] = pointDocs.map(d => {
                 if (!d.exists()) throw new Error(`Point with ID ${d.id} not found.`);
@@ -360,7 +371,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     <ChevronLeft size={20} />
                 </button>
                 <h2 className={styles.headerTitle}>
-                    {protocol ? getMLValue(protocol.name, language) : <T>Free Selection</T>}
+                    {displayTitle || (protocol ? getMLValue(protocol.name, language) : <T>Free Selection</T>)}
                     {/* Document icon if protocol has a document URL */}
                     {protocol && getDocumentUrl(protocol.documentUrl, language) && (
                         <a

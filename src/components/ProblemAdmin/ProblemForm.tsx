@@ -4,7 +4,6 @@ import { collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Problem } from '../../types/problem';
 import { Protocol } from '../../types/protocol';
-import { Measure } from '../../types/measure';
 import ShuttleSelector, { ShuttleItem } from '../shared/ShuttleSelector';
 import DocumentManagement from '../shared/DocumentManagement';
 import styles from './ProblemForm.module.css';
@@ -38,12 +37,10 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
   const [names, setNames] = useState<{ [key: string]: string }>({});
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({});
   const [protocolId, setProtocolId] = useState<string>('');
-  const [selectedMeasures, setSelectedMeasures] = useState<ShuttleItem[]>([]);
   const [documentUrl, setDocumentUrl] = useState<{ [key: string]: string } | undefined>(undefined);
   const [problemStatus, setProblemStatus] = useState<'active' | 'inactive'>('active');
 
   const [protocolsCollection] = useCollection(collection(db, 'cfg_protocols'));
-  const [measuresCollection] = useCollection(collection(db, 'cfg_measures'));
 
   const SUPPORTED_LANGS = appConfig.supportedLanguages;
   const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
@@ -73,22 +70,11 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
     protocolsCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Protocol)) || []
     , [protocolsCollection]);
 
-  const allMeasures = useMemo(() =>
-    measuresCollection?.docs.map(doc => ({ ...doc.data(), id: doc.id } as Measure)) || []
-    , [measuresCollection]);
-
   const activeProtocols = useMemo(() => {
     const initProtoId = initialData?.protocolId || (initialData?.protocolIds && initialData.protocolIds.length > 0 ? initialData.protocolIds[0] : null);
     return allProtocols.filter(p => !p.status || p.status === 'active' || initProtoId === p.id);
   }, [allProtocols, initialData]);
 
-  const availableMeasuresForShuttle = useMemo(() => {
-    const activeMeasures = allMeasures.filter(m => !m.status || m.status === 'active' || initialData?.measureIds?.includes(m.id));
-    return activeMeasures.map(m => ({
-      id: m.id,
-      name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || ''
-    }));
-  }, [allMeasures, currentLang, initialData]);
 
   useEffect(() => {
     if (initialData) {
@@ -111,31 +97,20 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       } else {
         setProtocolId('');
       }
-
-      if (allMeasures.length > 0) {
-        const initialMeasures = allMeasures.filter(m => initialData.measureIds?.includes(m.id));
-        setSelectedMeasures(initialMeasures.map(m => ({
-          id: m.id,
-          name: m.name[currentLang] || m.name['en'] || Object.values(m.name)[0] || ''
-        })));
-      }
     } else {
       setNames({});
       setDescriptions({});
       setDocumentUrl(undefined);
       setProtocolId('');
-      setSelectedMeasures([]);
     }
-  }, [initialData, allProtocols, allMeasures, currentLang]);
+  }, [initialData, allProtocols, currentLang]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const measureIds = selectedMeasures.map(m => m.id);
     onSubmit({
       name: names,
       description: descriptions,
       ...(protocolId ? { protocolId, protocolIds: [protocolId] } : {}),
-      measureIds,
       ...(documentUrl ? { documentUrl } : {}),
       status: problemStatus,
       reference_count: initialData?.reference_count || 0
@@ -148,12 +123,10 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
       return;
     }
     if (file) {
-      const measureIds = selectedMeasures.map(m => m.id);
       onFileUpdate({
         name: names,
         description: descriptions,
         ...(protocolId ? { protocolId, protocolIds: [protocolId] } : {}),
-        measureIds,
         documentUrl,
         status: problemStatus,
         reference_count: initialData?.reference_count || 0
@@ -166,8 +139,6 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
   };
 
   const isEditing = !!initialData;
-  const shuttleAvailableMeasures = useT('Available measures');
-  const shuttleSelectedMeasures = useT('Selected measures');
 
   const getLangDisplayName = (lang: string) => {
     switch (lang) {
@@ -302,15 +273,6 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
               </select>
             </div>
 
-            <div className={styles.shuttleContainer}>
-              <ShuttleSelector
-                availableItems={availableMeasuresForShuttle}
-                selectedItems={selectedMeasures}
-                onSelectionChange={setSelectedMeasures}
-                availableTitle={shuttleAvailableMeasures}
-                selectedTitle={shuttleSelectedMeasures}
-              />
-            </div>
 
             <DocumentManagement
               documentUrl={documentUrl}

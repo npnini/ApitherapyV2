@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { JoinedPatientData } from '../../types/patient';
 import { Measure } from '../../types/measure';
+import { Protocol } from '../../types/protocol';
 import { TreatmentSession } from '../../types/treatmentSession';
-import { StingPoint } from '../../types/apipuncture';
 import { addMeasuredValueReading, updateTreatmentFeedback } from '../../firebase/patient';
 import { T, useT, useTranslationContext } from '../T';
-import { Loader, CheckCircle, AlertTriangle, Activity, Info } from 'lucide-react';
+import { Loader, CheckCircle, AlertTriangle, Activity, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import styles from './TreatmentFeedback.module.css';
 import TreatmentSummary from './TreatmentSummary';
 
@@ -24,11 +24,11 @@ const getMLValue = (value: any, lang: string): string => {
     return '';
 };
 
-
 const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatment, onComplete, onBack }) => {
     const { language, direction } = useTranslationContext();
 
-    const [measures, setMeasures] = useState<Measure[]>([]);
+    const [allMeasures, setAllMeasures] = useState<Measure[]>([]);
+    const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
@@ -36,6 +36,7 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
     // Form state
     const [feedbackText, setFeedbackText] = useState('');
     const [measureValues, setMeasureValues] = useState<Record<string, string | number>>({});
+    const [expandedProtocols, setExpandedProtocols] = useState<Record<string, boolean>>({});
 
     const tTreatmentSummary = useT('Treatment Summary');
     const tPatientFeedback = useT('Patient Feedback');
@@ -44,51 +45,95 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
     const tSaveFeedback = useT('Save Feedback');
     const tSuccess = useT('Feedback saved successfully!');
     const tError = useT('Failed to save feedback.');
-    const tNoRounds = useT('No protocol rounds recorded.');
-    const tFinalNotes = useT('Final Notes');
-    const tNoNotes = useT('No notes.');
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // 1. Fetch Measures — derive from treatment.problemIds → problems → measureIds
-            const [measuresSnapshot, problemsSnapshot] = await Promise.all([
+            const [measuresSnapshot, protocolsSnapshot] = await Promise.all([
                 getDocs(collection(db, 'cfg_measures')),
-                getDocs(collection(db, 'cfg_problems')),
+                getDocs(collection(db, 'cfg_protocols')),
             ]);
-            const allMeasures: Measure[] = measuresSnapshot.docs.map(d => ({
-                ...(d.data() as Omit<Measure, 'id'>),
-                id: d.id,
-            }));
-
-            // Collect measure IDs linked to problems used in this treatment
-            const treatmentProblemIds = treatment.problemIds || [];
-            const relevantMeasureIds = new Set<string>();
-            problemsSnapshot.docs.forEach(d => {
-                if (treatmentProblemIds.includes(d.id)) {
-                    const probData = d.data();
-                    (probData.measureIds || []).forEach((mid: string) => relevantMeasureIds.add(mid));
-                }
-            });
-            setMeasures(allMeasures.filter(m => relevantMeasureIds.has(m.id)));
-
+            
+            setAllMeasures(measuresSnapshot.docs.map(d => ({ ...(d.data() as any), id: d.id })));
+            setAllProtocols(protocolsSnapshot.docs.map(d => ({ ...(d.data() as any), id: d.id })));
         } catch (err) {
             console.error('TreatmentFeedback: failed to load data', err);
         } finally {
             setIsLoading(false);
         }
-    }, [patient, treatment, language]);
+    }, []);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const activeProtocols = useMemo(() => {
+        const ids = new Set<string>(treatment.protocolIds || []);
+        if (treatment.isSensitivityTest) {
+            const sens = allProtocols.find(p => p.type === 'sensitivity');
+            if (sens) ids.add(sens.id);
+        }
+        return allProtocols.filter(p => ids.has(p.id));
+    }, [allProtocols, treatment]);
+
+    const protocolMeasuresMap = useMemo(() => {
+        const map: Record<string, Measure[]> = {};
+        activeProtocols.forEach(p => {
+            if (p.measureIds) {
+                map[p.id] = allMeasures.filter(m => p.measureIds.includes(m.id));
+            }
+        });
+        return map;
+    }, [activeProtocols, allMeasures]);
+
+    const uniqueMeasures = useMemo(() => {
+        const ids = new Set<string>();
+        activeProtocols.forEach(p => {
+            if (p.measureIds) p.measureIds.forEach(id => ids.add(id));
+        });
+        return allMeasures.filter(m => ids.has(m.id));
+    }, [activeProtocols, allMeasures]);
+
+    useEffect(() => {
+        // Expand by default ONLY if single protocol
+        const initial: Record<string, boolean> = {};
+        const shouldExpand = activeProtocols.length === 1;
+        activeProtocols.forEach(p => { initial[p.id] = shouldExpand; });
+        setExpandedProtocols(initial);
+    }, [activeProtocols]);
 
     const handleMeasureChange = (measureId: string, value: string | number) => {
         setMeasureValues(prev => ({ ...prev, [measureId]: value }));
         setSaveStatus(null);
     };
 
-    const isFormValid = measures.every(m => measureValues[m.id] !== undefined && measureValues[m.id] !== '');
+    const isProtocolCompleted = useCallback((protocolId: string) => {
+        const measures = protocolMeasuresMap[protocolId] || [];
+        if (measures.length === 0) return true;
+        return measures.every(m => measureValues[m.id] !== undefined && measureValues[m.id] !== '');
+    }, [protocolMeasuresMap, measureValues]);
+
+    const firstMissingProtocolName = useMemo(() => {
+        const missing = activeProtocols.find(p => !isProtocolCompleted(p.id));
+        return missing ? getMLValue(missing.name, language) : null;
+    }, [activeProtocols, isProtocolCompleted, language]);
+
+    const isFormValid = useMemo(() => {
+        const hasFeedback = feedbackText.trim() !== '';
+        const allMeasuresCompleted = activeProtocols.every(p => isProtocolCompleted(p.id));
+        return hasFeedback && allMeasuresCompleted;
+    }, [feedbackText, activeProtocols, isProtocolCompleted]);
+
+    const saveButtonTooltip = useMemo(() => {
+        if (isFormValid) return '';
+        if (feedbackText.trim() === '') return language === 'he' ? 'אנא הזן משוב' : 'Please enter feedback text';
+        if (firstMissingProtocolName) {
+            return language === 'he' 
+                ? `אנא הזן מדדים עבור: ${firstMissingProtocolName}` 
+                : `Please enter measures for ${firstMissingProtocolName}`;
+        }
+        return '';
+    }, [isFormValid, feedbackText, firstMissingProtocolName, language]);
 
     const handleSave = async () => {
         if (!isFormValid || isSaving) return;
@@ -96,33 +141,19 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
         setSaveStatus(null);
 
         try {
-            const readings = measures.map(m => {
-                const value = measureValues[m.id];
-                const numericValue = typeof value === 'number' ? value : undefined;
+            const readings = uniqueMeasures.map(m => ({
+                measureId: m.id,
+                value: measureValues[m.id],
+            }));
 
-                return {
-                    measureId: m.id,
-                    value,
-                };
-            }).filter(r => r.value !== undefined && r.value !== '');
-
-            const usedMeasureIds = readings.map(r => r.measureId);
-
-            if (!patient.id) {
-                console.error('TreatmentFeedback: patient.id is missing');
-                setSaveStatus('error');
-                return;
-            }
-
-            // 1. Save to measured_values
             const readingId = await addMeasuredValueReading(patient.id, {
                 treatmentId: treatment.id,
-                readings: readings as any,
-                usedMeasureIds: usedMeasureIds, // Added
-                note: feedbackText
+                readings: readings,
+                usedMeasureIds: uniqueMeasures.map(m => m.id),
+                note: feedbackText,
+                event: 'post'
             });
 
-            // 2. Update treatment with readingId and feedback text
             await updateTreatmentFeedback(treatment.id!, readingId, feedbackText);
 
             setSaveStatus('success');
@@ -133,15 +164,6 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
         } finally {
             setIsSaving(false);
         }
-    };
-
-    const formatDate = (ts: any) => {
-        if (!ts) return '';
-        const date = ts.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
-        return date.toLocaleString(language, {
-            year: 'numeric', month: 'numeric', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
     };
 
     if (isLoading) {
@@ -168,14 +190,11 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                     />
                 </div>
 
-                {/* Right Pane: Feedback Form */}
                 <div className={styles.rightPane}>
                     <h3 className={styles.sectionTitle}><Activity size={18} /> {tPatientFeedback}</h3>
                     <div className={styles.feedbackForm}>
-                        <div className={styles.section}>
+                        <div className={styles.textareaSection}>
                             <textarea
-                                id="patientFeedbackText"
-                                name="patientFeedbackText"
                                 className={styles.textarea}
                                 value={feedbackText}
                                 onChange={e => setFeedbackText(e.target.value)}
@@ -184,31 +203,54 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                             />
                         </div>
 
-                        <div className={styles.section}>
-                            <h4 className={styles.sectionTitle}>{tMeasures}</h4>
-                            <div className={styles.measuresGrid}>
-                                {measures.map(measure => {
-                                    const value = measureValues[measure.id] ?? '';
+                        <div className={styles.measuresSection}>
+                            <div className={styles.protocolGroups}>
+                                {activeProtocols.map(protocol => {
+                                    const protoMeasures = protocolMeasuresMap[protocol.id] || [];
+                                    const isExpanded = expandedProtocols[protocol.id];
+                                    const isCompleted = isProtocolCompleted(protocol.id);
+
                                     return (
-                                        <div key={measure.id} className={styles.measureItem}>
-                                            <div className={styles.measureHeader}>
-                                                <span className={styles.measureName}>{getMLValue(measure.name, language)}</span>
-                                                <span className={styles.measureDesc}>{getMLValue(measure.description, language)}</span>
-                                            </div>
-                                            <input
-                                                id={`measure-${measure.id}`}
-                                                name={`measure-${measure.id}`}
-                                                type="number"
-                                                className={styles.measureInput}
-                                                value={value}
-                                                min={measure.min}
-                                                max={measure.max}
-                                                placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
-                                                onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
-                                            />
+                                        <div key={protocol.id} className={styles.protocolGroup}>
+                                            <button 
+                                                className={`${styles.protocolHeader} ${isCompleted ? styles.completedHeader : ''}`} 
+                                                onClick={() => setExpandedProtocols(prev => ({ ...prev, [protocol.id]: !prev[protocol.id] }))}
+                                                type="button"
+                                            >
+                                                <span className={styles.protocolGroupName}>{getMLValue(protocol.name, language)}</span>
+                                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                            </button>
+                                            
+                                            {isExpanded && (
+                                                <div className={styles.measuresGrid}>
+                                                    {protoMeasures.map(measure => {
+                                                        const value = measureValues[measure.id] ?? '';
+                                                        return (
+                                                            <div key={measure.id} className={styles.measureItem}>
+                                                                <div className={styles.measureInfo}>
+                                                                    <span className={styles.measureName}>{getMLValue(measure.name, language)}</span>
+                                                                    <span className={styles.measureDesc}>{getMLValue(measure.description, language)}</span>
+                                                                </div>
+                                                                <input
+                                                                    type="number"
+                                                                    className={styles.measureInput}
+                                                                    value={value}
+                                                                    min={measure.min}
+                                                                    max={measure.max}
+                                                                    placeholder={`${measure.min ?? 0} – ${measure.max ?? 10}`}
+                                                                    onChange={e => handleMeasureChange(measure.id, e.target.value === '' ? '' : Number(e.target.value))}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
+                                {uniqueMeasures.length === 0 && (
+                                    <p className={styles.noMeasures}><T>No measures found for this treatment.</T></p>
+                                )}
                             </div>
                         </div>
 
@@ -217,6 +259,7 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                                 className={styles.btnPrimary}
                                 disabled={!isFormValid || isSaving}
                                 onClick={handleSave}
+                                title={saveButtonTooltip}
                             >
                                 {isSaving ? <Loader size={18} className={styles.spinner} /> : <CheckCircle size={18} />}
                                 {tSaveFeedback}

@@ -37,37 +37,38 @@ const TreatmentSummary: React.FC<TreatmentSummaryProps> = ({ treatment, language
         setIsLoading(true);
         try {
             // 1. Fetch Basic Config & Data
-            const [configSnap, measuresSnap, problemsSnap, protocolsSnap, pointsSnap] = await Promise.all([
-                getDoc(doc(db, 'cfg_app_config', 'main')),
+            const [measuresSnap, protocolsSnap, pointsSnap] = await Promise.all([
                 getDocs(collection(db, 'cfg_measures')),
-                getDocs(collection(db, 'cfg_problems')),
                 getDocs(collection(db, 'cfg_protocols')),
                 getDocs(collection(db, 'cfg_acupuncture_points')),
             ]);
 
-            const appConfig = configSnap.exists() ? configSnap.data() : null;
+            const allProtocols = protocolsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Protocol));
 
             // 2. Collect all relevant protocol IDs
             const protocolIds = new Set<string>(treatment.protocolIds || []);
-            if (treatment.isSensitivityTest && appConfig?.treatmentSettings?.sensitivityProtocolIdentifier) {
-                protocolIds.add(appConfig.treatmentSettings.sensitivityProtocolIdentifier);
+            
+            // If it was a sensitivity test, ensure the sensitivity protocol is included even if not explicitly in protocolIds
+            if (treatment.isSensitivityTest) {
+                const sensitivityProto = allProtocols.find(p => p.type === 'sensitivity');
+                if (sensitivityProto) protocolIds.add(sensitivityProto.id);
             }
 
             // 3. Hydrate Protocols
-            const allProtocols = protocolsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Protocol));
             setProtocols(allProtocols.filter(p => protocolIds.has(p.id)));
 
             // 4. Hydrate Points
             const allPoints = pointsSnap.docs.map(d => ({ ...d.data(), id: d.id } as StingPoint));
             setPoints(allPoints.filter(p => (treatment.stungPointIds || []).includes(p.id)));
 
-            // 5. Hydrate Measures based on treatment problems
+            // 5. Hydrate Measures based on protocols used in treatment
             const allMeasures = measuresSnap.docs.map(d => ({ ...d.data(), id: d.id } as Measure));
-            const treatmentProblemIds = treatment.problemIds || [];
             const relevantMeasureIds = new Set<string>();
-            problemsSnap.docs.forEach(d => {
-                if (treatmentProblemIds.includes(d.id)) {
-                    (d.data().measureIds || []).forEach((mid: string) => relevantMeasureIds.add(mid));
+
+            protocolIds.forEach(pid => {
+                const proto = allProtocols.find(p => p.id === pid);
+                if (proto && Array.isArray(proto.measureIds)) {
+                    proto.measureIds.forEach(mid => relevantMeasureIds.add(mid));
                 }
             });
             setMeasures(allMeasures.filter(m => relevantMeasureIds.has(m.id)));

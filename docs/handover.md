@@ -118,10 +118,9 @@ User will clear all `treatments`, `measured_values`, `feedback_sessions` collect
    - "Add Problem" button: fetch all `cfg_problems`, show dropdown of problems not yet added, clicking adds as Active
    - "Problem Missing?" link: opens a modal/popup with textarea. On send, calls the `sendMissingProblemEmail` Cloud Function (see §4.8)
 
-2. **Split measures into two groups**:
-   - **General Measures**: Need a new field `generalMeasures: string[]` (array of measure IDs) in `cfg_app_config`. Fetch from there. Only render this section when `treatmentCount > 1` (i.e., from treatment #2 onward)
-   - **Problem-Specific Measures**: Collect `measureIds` from all **Active** problems. Render always (from treatment #1)
-   - Current measure-fetching logic (lines 72-111) fetches from a single problem — replace with the multi-problem approach
+2. **Measure Collection**:
+   - Collect `measureIds` from all **Active** problems. Render always (from treatment #1).
+   - Current measure-fetching logic should be replaced with this multi-problem approach.
 
 3. **Keep photo upload** as-is (not mandatory). Current implementation on lines 130-182 and 258-303 is fine.
 

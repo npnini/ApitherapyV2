@@ -135,13 +135,32 @@
 }
 
 .problemRow {
-    display: flex;
+    display: grid;
+    grid-template-columns: 250px 1fr 1fr 1.5fr;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem;
+    gap: 1.5rem;
+    padding: 0.75rem;
     background-color: var(--color-background-page);
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border-light);
+}
+
+.headerRow {
+    display: grid;
+    grid-template-columns: 250px 1fr 1fr 1.5fr;
+    gap: 1.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-background-page);
+    border-bottom: 2px solid var(--color-border-light);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+}
+
+:global([dir="rtl"]) .problemRow {
+    grid-template-columns: 250px 1fr 1fr 1.5fr;
 }
 
 .checkboxLabel {
@@ -170,6 +189,30 @@
 
 .statusToggleBtn:hover {
     opacity: 0.8;
+}
+
+.columnActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.columnName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.columnProtocol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.columnMeasures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
 }
 
 .statusActive {
@@ -207,18 +250,30 @@
     margin: 0;
 }
 
-.problemInfo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 500;
+.problemName {
+    font-weight: 600;
+    color: var(--color-text-primary);
 }
 
-.problemActions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+.measuresLabel {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    font-weight: 400;
+    font-style: italic;
 }
+
+.protocolBadge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background-color: var(--color-background-input-disabled);
+    color: var(--color-text-secondary);
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    letter-spacing: 0.025em;
+}
+
+/* Removed .problemActions as it's no longer used in the new layout */
 
 .availableList {
     display: flex;
@@ -226,15 +281,6 @@
     gap: 0.5rem;
 }
 
-.availableRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    background-color: var(--color-background-offset);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-}
 
 .addBtn {
     background-color: var(--color-primary);

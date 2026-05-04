@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { Protocol } from '../types/protocol';
+import { Protocol, ProtocolType } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
+import { Measure } from '../types/measure';
 import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe, Search } from 'lucide-react';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import styles from './ProtocolAdmin.module.css';
@@ -13,8 +14,9 @@ import { T, useT, useTranslationContext } from './T';
 import Tooltip from './common/Tooltip';
 
 // A type for the form state, where points are an array of strings (IDs)
-interface ProtocolFormState extends Omit<Protocol, 'points'> {
+interface ProtocolFormState extends Omit<Protocol, 'points' | 'measureIds'> {
     points: string[];
+    measureIds: string[];
     status: 'active' | 'inactive';
     reference_count: number;
 }
@@ -24,6 +26,7 @@ const ProtocolAdmin: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [protocols, setProtocols] = useState<Protocol[]>([]);
     const [allAcuPoints, setAllAcuPoints] = useState<AcuPoint[]>([]);
+    const [allMeasures, setAllMeasures] = useState<Measure[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isFormLoading, setIsFormLoading] = useState<boolean>(false);
     const [editingProtocol, setEditingProtocol] = useState<Partial<ProtocolFormState> | null>(null);
@@ -69,9 +72,16 @@ const ProtocolAdmin: React.FC = () => {
         'Delete Protocol',
         'Edit Protocol',
         'Search protocols...',
-        'Could not fetch protocols and points',
         'Available points',
-        'Selected points'
+        'Selected points',
+        'Available measures',
+        'Selected measures',
+        'Protocol Type',
+        'Standard',
+        'Sensitivity',
+        'Ad-hoc',
+        'sensitivity_protocol_exists',
+        'adhoc_protocol_exists'
     ], []);
 
     useEffect(() => {
@@ -110,14 +120,16 @@ const ProtocolAdmin: React.FC = () => {
             setIsLoading(false);
             setProtocols([]);
             setAllAcuPoints([]);
+            setAllMeasures([]);
             return;
         }
 
         setIsLoading(true);
         try {
-            const [protocolSnapshot, pointsSnapshot] = await Promise.all([
+            const [protocolSnapshot, pointsSnapshot, measuresSnapshot] = await Promise.all([
                 getDocs(collection(db, 'cfg_protocols')),
-                getDocs(collection(db, 'cfg_acupuncture_points'))
+                getDocs(collection(db, 'cfg_acupuncture_points')),
+                getDocs(collection(db, 'cfg_measures'))
             ]);
 
             const protocolsList = protocolSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Protocol).sort((a, b) => {
@@ -129,6 +141,13 @@ const ProtocolAdmin: React.FC = () => {
 
             const pointsList = pointsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AcuPoint)).sort((a, b) => a.code.localeCompare(b.code));
             setAllAcuPoints(pointsList);
+
+            const measuresList = measuresSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Measure)).sort((a, b) => {
+                const nameA = (a.name[currentLang] || Object.values(a.name)[0] || '').toLowerCase();
+                const nameB = (b.name[currentLang] || Object.values(b.name)[0] || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+            setAllMeasures(measuresList);
 
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -184,6 +203,22 @@ const ProtocolAdmin: React.FC = () => {
         if (!protocol.points || protocol.points.length === 0) {
             setFormError(getTranslation('At least one point is required'));
             return false;
+        }
+
+        if (protocol.type === 'sensitivity') {
+            const existingSensitivity = protocols.find(p => p.type === 'sensitivity' && p.id !== protocol.id && p.status === 'active');
+            if (existingSensitivity) {
+                setFormError(getTranslation('Only one active Sensitivity protocol is allowed.'));
+                return false;
+            }
+        }
+
+        if (protocol.type === 'ad-hoc') {
+            const existingAdhoc = protocols.find(p => p.type === 'ad-hoc' && p.id !== protocol.id && p.status === 'active');
+            if (existingAdhoc) {
+                setFormError(getTranslation('Only one active Ad-hoc protocol is allowed.'));
+                return false;
+            }
         }
 
         const isNewProtocol = !protocol.id;
@@ -247,6 +282,8 @@ const ProtocolAdmin: React.FC = () => {
                 description: typeof editingProtocol.description === 'object' ? editingProtocol.description : { [appConfig.defaultLanguage]: editingProtocol.description },
                 rationale: typeof editingProtocol.rationale === 'object' ? editingProtocol.rationale : { [appConfig.defaultLanguage]: editingProtocol.rationale },
                 points: editingProtocol.points!,
+                measureIds: editingProtocol.measureIds || [],
+                type: editingProtocol.type || 'standard',
                 documentUrl: documentUrl && Object.keys(documentUrl).length > 0 ? documentUrl : null,
                 status: editingProtocol.status || 'active',
                 reference_count: editingProtocol.reference_count || 0,
@@ -351,6 +388,8 @@ const ProtocolAdmin: React.FC = () => {
         setEditingProtocol({
             ...proto,
             points: pointIds,
+            measureIds: proto.measureIds || [],
+            type: proto.type || 'standard',
             name: typeof proto.name === 'string' ? { [appConfig.defaultLanguage]: proto.name } : proto.name,
             description: typeof proto.description === 'string' ? { [appConfig.defaultLanguage]: proto.description } : proto.description,
             rationale: typeof proto.rationale === 'string' ? { [appConfig.defaultLanguage]: proto.rationale } : proto.rationale,
@@ -365,6 +404,8 @@ const ProtocolAdmin: React.FC = () => {
             description: { [appConfig.defaultLanguage]: '' },
             rationale: { [appConfig.defaultLanguage]: '' },
             points: [],
+            measureIds: [],
+            type: 'standard',
             status: 'active',
             reference_count: 0
         });
@@ -409,6 +450,7 @@ const ProtocolAdmin: React.FC = () => {
                         <thead className={styles.tableHeader}>
                             <tr>
                                 <th scope="col" className={styles.headerCell}><T>Protocol Name</T></th>
+                                <th scope="col" className={styles.headerCell}><T>Type</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Description</T></th>
                                 <th scope="col" className={styles.headerCell}><T>Status</T></th>
                                 <th scope="col" className={`${styles.headerCell} ${styles.documentCell}`}><T>Document</T></th>
@@ -443,6 +485,11 @@ const ProtocolAdmin: React.FC = () => {
                                     <tr key={protocol.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.protocolName}`}>
                                             {(typeof protocol.name === 'object' ? (protocol.name[currentLang] || protocol.name[appConfig.defaultLanguage] || Object.values(protocol.name)[0]) : protocol.name) as string}
+                                        </td>
+                                        <td className={styles.cell}>
+                                            <span className={`${styles.typeBadge} ${styles['badge' + (protocol.type || 'standard').charAt(0).toUpperCase() + (protocol.type || 'standard').slice(1)]}`}>
+                                                <T>{(protocol.type || 'standard').charAt(0).toUpperCase() + (protocol.type || 'standard').slice(1)}</T>
+                                            </span>
                                         </td>
                                         <td className={styles.cell}>
                                             {(typeof protocol.description === 'object' ? (protocol.description[currentLang] || protocol.description[appConfig.defaultLanguage] || Object.values(protocol.description)[0]) : protocol.description) as string}
@@ -490,6 +537,7 @@ const ProtocolAdmin: React.FC = () => {
             {editingProtocol && <EditProtocolForm
                 protocol={editingProtocol}
                 allAcuPoints={allAcuPoints}
+                allMeasures={allMeasures}
                 onSave={handleSave}
                 onCancel={() => setEditingProtocol(null)}
                 onUpdate={onUpdate}
@@ -516,6 +564,7 @@ const ProtocolAdmin: React.FC = () => {
 interface EditProtocolFormProps {
     protocol: Partial<ProtocolFormState>;
     allAcuPoints: AcuPoint[];
+    allMeasures: Measure[];
     onSave: () => void;
     onCancel: () => void;
     onUpdate: (protocol: Partial<ProtocolFormState>) => void;
@@ -539,7 +588,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
     );
 };
 
-const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, onSave, onCancel, onUpdate, onFileUpdate, error, isSubmitting, onFileDelete, isDirty, currentLang, appConfig, getTranslation }) => {
+const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoints, allMeasures, onSave, onCancel, onUpdate, onFileUpdate, error, isSubmitting, onFileDelete, isDirty, currentLang, appConfig, getTranslation }) => {
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
@@ -556,10 +605,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
     }, [allAcuPoints, protocol.points, currentLang, appConfig.defaultLanguage]);
 
     const selectedPointsForShuttle = useMemo(() => {
-        const selectedIds = new Set((protocol.points || []).map(String));
-        // We only want to show items that are actually in protocol.points
-        // To preserve order, we map the points array itself
-        return (protocol.points || []).map(String).map(id => {
+        return (protocol.points || []).map(id => {
             const point = allAcuPoints.find(p => String(p.id) === id);
             return {
                 id,
@@ -570,8 +616,33 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
         });
     }, [allAcuPoints, protocol.points, currentLang, appConfig.defaultLanguage]);
 
+    const availableMeasuresForShuttle = useMemo(() => {
+        return allMeasures
+            .filter(m => m.status === 'active' || (protocol.measureIds || []).includes(m.id))
+            .map(m => ({
+                id: String(m.id),
+                name: typeof m.name === 'object' ? (m.name[currentLang] || m.name[appConfig.defaultLanguage] || Object.values(m.name)[0] || '') : m.name
+            }));
+    }, [allMeasures, protocol.measureIds, currentLang, appConfig.defaultLanguage]);
+
+    const selectedMeasuresForShuttle = useMemo(() => {
+        return (protocol.measureIds || []).map(id => {
+            const measure = allMeasures.find(m => String(m.id) === id);
+            return {
+                id,
+                name: measure
+                    ? (typeof measure.name === 'object' ? (measure.name[currentLang] || measure.name[appConfig.defaultLanguage] || Object.values(measure.name)[0] || '') : measure.name)
+                    : id
+            };
+        });
+    }, [allMeasures, protocol.measureIds, currentLang, appConfig.defaultLanguage]);
+
     const handleShuttleChange = (newSelection: ShuttleItem[]) => {
         onUpdate({ ...protocol, points: newSelection.map(item => item.id) });
+    };
+
+    const handleMeasureShuttleChange = (newSelection: ShuttleItem[]) => {
+        onUpdate({ ...protocol, measureIds: newSelection.map(item => item.id) });
     };
 
     const getLangDisplayName = (lang: string) => {
@@ -624,6 +695,32 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                 <span className={`${styles.statusText} ${protocol.status === 'active' ? styles.statusActive : styles.statusInactive}`}>
                                     <T>{protocol.status === 'active' ? 'Active' : 'Inactive'}</T>
                                 </span>
+                            </div>
+                            <div>
+                                <label className={styles.formLabel}><T>Protocol Type</T></label>
+                                <div className={styles.typeSelector}>
+                                    <button
+                                        type="button"
+                                        className={`${styles.typeButton} ${protocol.type === 'standard' || !protocol.type ? styles.typeButtonActive : ''}`}
+                                        onClick={() => onUpdate({ ...protocol, type: 'standard' })}
+                                    >
+                                        <T>Standard</T>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`${styles.typeButton} ${protocol.type === 'sensitivity' ? styles.typeButtonActive : ''}`}
+                                        onClick={() => onUpdate({ ...protocol, type: 'sensitivity' })}
+                                    >
+                                        <T>Sensitivity</T>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`${styles.typeButton} ${protocol.type === 'ad-hoc' ? styles.typeButtonActive : ''}`}
+                                        onClick={() => onUpdate({ ...protocol, type: 'ad-hoc' })}
+                                    >
+                                        <T>Ad-hoc</T>
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <div className={styles.labelWrapper}>
@@ -723,8 +820,22 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                         availableItems={availablePointsForShuttle}
                                         selectedItems={selectedPointsForShuttle}
                                         onSelectionChange={handleShuttleChange}
-                                        availableTitle="Available points"
-                                        selectedTitle="Selected points"
+                                        availableTitle={getTranslation('Available points')}
+                                        selectedTitle={getTranslation('Selected points')}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className={styles.formLabel}>
+                                    <T>Select Measures</T>
+                                </h3>
+                                <div className={styles.shuttleContainer}>
+                                    <ShuttleSelector
+                                        availableItems={availableMeasuresForShuttle}
+                                        selectedItems={selectedMeasuresForShuttle}
+                                        onSelectionChange={handleMeasureShuttleChange}
+                                        availableTitle={getTranslation('Available measures')}
+                                        selectedTitle={getTranslation('Selected measures')}
                                     />
                                 </div>
                             </div>

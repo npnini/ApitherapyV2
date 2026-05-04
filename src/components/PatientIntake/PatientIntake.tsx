@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { doc, getDoc, getDocs, collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 import PersonalDetails from './PersonalDetails';
 import QuestionnaireStep from './QuestionnaireStep';
@@ -97,7 +97,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [sessionOpeningData, setSessionOpeningData] = useState<SessionOpeningData | null>(null);
 
     // Active problems from patient record for this session
-    const activeProblems = patient.medicalRecord?.problems?.filter((p: any) => p.problemStatus === 'Active') || [];
+    const activeProblems = useMemo(() => 
+        (patient.medicalRecord?.problems || []).filter((p: any) => p.problemStatus === 'Active'),
+        [patient.medicalRecord?.problems]
+    );
 
     const [freeProtocolPoints, setFreeProtocolPoints] = useState<StingPoint[]>([]);
     const [usedProtocolIds, setUsedProtocolIds] = useState<string[]>([]);
@@ -106,7 +109,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [accumulatedStungPointIds, setAccumulatedStungPointIds] = useState<string[]>([]);
     const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
     const [freeProtocolUsed, setFreeProtocolUsed] = useState(false);
+    const [selectedAdhocProtocol, setSelectedAdhocProtocol] = useState<Protocol | null>(null);
     const [showTreatmentSavedModal, setShowTreatmentSavedModal] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
 
     const [appConfig, setAppConfig] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -521,25 +526,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             generatedTreatmentId = `${patient.id}_${treatmentNumber}`;
         }
 
-        let preTreatmentMeasureReadingId: string | undefined = undefined;
-        // Write measure reading if any values entered
-        if (data.measureReadings.length > 0) {
-            try {
-                // UX-2: Derive stable ID for this reading
-                const readingDocId = `${generatedTreatmentId}_pre`;
-                preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
-                    patientId: patient.id,
-                    treatmentId: generatedTreatmentId,
-                    readings: data.measureReadings,
-                    usedMeasureIds: data.usedMeasureIds,
-                    note: data.patientReport,
-                }, readingDocId);
-            } catch (err) {
-                console.error('Failed to write measure reading:', err);
-            }
-        }
-        setSessionOpeningData({ ...data, preTreatmentMeasureReadingId, generatedTreatmentId, treatmentNumber });
-        console.log('PatientIntake: Session opening complete', { preTreatmentMeasureReadingId, generatedTreatmentId, treatmentNumber });
+        setSessionOpeningData({ ...data, generatedTreatmentId, treatmentNumber });
+        console.log('PatientIntake: Session opening complete', { generatedTreatmentId, treatmentNumber });
 
         // Fetch live config to avoid race condition where appConfig state may not yet be loaded
         let liveConfig: any = null;
@@ -548,7 +536,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             if (configSnap.exists()) liveConfig = configSnap.data();
         } catch { /* non-critical */ }
         const sensitivityThreshold = liveConfig?.treatmentSettings?.initialSensitivityTestTreatments ?? 0;
-        const sensitivityProtocolId = liveConfig?.treatmentSettings?.sensitivityProtocolIdentifier;
 
         // Save (or update) initial incomplete draft to DB
         try {
@@ -559,8 +546,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 patientReport: data.patientReport,
                 preTreatmentVitals: data.preTreatmentVitals,
                 preTreatmentImage: data.preTreatmentImage,
-                preTreatmentMeasureReadingId,
-                isSensitivityTest: count < sensitivityThreshold, // Use < here because count was before this treatment if it's new? 
+                preTreatmentMeasureReadingId: undefined,
+                isSensitivityTest: count < sensitivityThreshold,
                 treatmentNumber: treatmentNumber,
                 protocolIds: [],
                 problemIds: [],
@@ -571,90 +558,139 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             console.error('Failed to save initial draft:', err);
         }
 
-        if (sensitivityProtocolId && count < sensitivityThreshold) {
-            // Load the sensitivity protocol from Firestore
-            try {
-                const protSnap = await getDoc(doc(db, 'cfg_protocols', sensitivityProtocolId));
-                if (protSnap.exists()) {
-                    const sensitivityProtocol = { ...protSnap.data(), id: protSnap.id } as Protocol;
-                    setSelectedProtocol(sensitivityProtocol);
-                    setSelectedProblemId(''); // Empty string for sensitivity
-                    setIsSensitivitySession(true);
-                    setSessionIsSensitivityTest(true);
-                    setUsedProblemIds([]);
-                    setUsedProtocolIds([sensitivityProtocol.id]);
-                    setFreeProtocolUsed(false);
-                    setAccumulatedStungPointIds([]);
-                    setViewState('treatmentExecution');
-                    return;
-                }
-            } catch (err) {
-                console.error('Failed to load sensitivity protocol:', err);
-            }
-        }
-
-        // Not sensitivity -> Jump to problem selection
+        // Sensitivity shortcut removed - now all sessions route to ProtocolSelection first.
+        // This allows ProtocolSelection (Scenario 4) to handle the required sensitivity protocol choice.
         setViewState('problemSelection');
     };
 
 
-    const handleProtocolSelect = async (protocolId: string | null, problemId: string | null, isFreeSelection: boolean = false) => {
-        if (!protocolId || isFreeSelection) {
-            // Free selection path
-            setFreeProtocolUsed(true);
-            const finalProtoId = protocolId || appConfig?.treatmentSettings?.freeProtocolIdentifier;
-            
-            if (finalProtoId) {
-                setUsedProtocolIds(prev => [...new Set([...prev, finalProtoId])]);
-                
-                // If we have a specific free protocol ID, load its metadata to set as selectedProtocol
-                // This allows TreatmentExecution to show the protocol name and details.
-                try {
-                    const protocolDoc = await getDoc(doc(db, 'cfg_protocols', finalProtoId));
-                    if (protocolDoc.exists()) {
-                        setSelectedProtocol({ id: protocolDoc.id, ...protocolDoc.data() } as Protocol);
-                    }
-                } catch (err) {
-                    console.error('PatientIntake: Failed to load free protocol metadata', err);
-                }
-            }
-            
-            setViewState('freeSelection');
-            setSelectedProblemId(problemId || null);
-            if (problemId) {
-                setUsedProblemIds(prev => [...new Set([...prev, problemId])]);
-            }
-            return;
-        }
-
+    const handleProtocolSelect = async (protocolIds: string[], problemIds: string[], measureReadings: Array<{ measureId: string; value: string | number }>) => {
+        if (protocolIds.length === 0) return;
+        setIsTransitioning(true);
         setIsLoading(true);
         try {
-            const snap = await getDoc(doc(db, 'cfg_protocols', protocolId));
-            if (snap.exists()) {
-                setSelectedProtocol({ id: snap.id, ...snap.data() } as Protocol);
-                setSelectedProblemId(problemId);
+            // 1. Save measure readings — unique ID per protocol round so rounds don't overwrite each other
+            let preTreatmentMeasureReadingId = sessionOpeningData?.preTreatmentMeasureReadingId;
+            if (measureReadings.length > 0 && sessionOpeningData) {
+                const roundIndex = usedProtocolIds.length; // 0 for first protocol, 1 for second, etc.
+                const readingDocId = `${sessionOpeningData.generatedTreatmentId}_pre_r${roundIndex}`;
+                preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
+                    patientId: patient.id,
+                    treatmentId: sessionOpeningData.generatedTreatmentId,
+                    readings: measureReadings,
+                    usedMeasureIds: measureReadings.map(r => r.measureId),
+                    event: 'pre',
+                    note: sessionOpeningData.patientReport,
+                }, readingDocId);
 
-                // Track selected problem
-                if (problemId) {
-                    setUsedProblemIds(prev => [...new Set([...prev, problemId])]);
+                setSessionOpeningData(prev => prev ? { ...prev, preTreatmentMeasureReadingId } : null);
+            }
+
+            // 2. Load protocols
+            const protocols: Protocol[] = [];
+            for (const id of protocolIds) {
+                const snap = await getDoc(doc(db, 'cfg_protocols', id));
+                if (snap.exists()) {
+                    protocols.push({ id: snap.id, ...snap.data() } as Protocol);
+                }
+            }
+
+            if (protocols.length > 0) {
+                // Detect type flags from the actual protocol data (source of truth)
+                const hasSensitivity = protocols.some(p => (p as any).type === 'sensitivity');
+                const hasAdhoc = protocols.some(p => (p as any).type === 'ad-hoc' || (p as any).isAdhoc);
+                if (hasSensitivity) setSessionIsSensitivityTest(true);
+                if (hasAdhoc) setFreeProtocolUsed(true);
+                // Compute the definitive flag for the save below using local vars (state updates are async)
+                const isSensTest = sessionIsSensitivityTest || hasSensitivity;
+                const isFreeProto = freeProtocolUsed || hasAdhoc;
+
+                if (protocols.length === 1) {
+                    setSelectedProtocol(protocols[0]);
+                } else {
+                    const merged: Protocol = {
+                        id: 'merged_' + protocolIds.join('_').substring(0, 50),
+                        name: protocols.map(p => typeof p.name === 'string' ? p.name : (p.name as any).en || '').join(' + '),
+                        directive: protocols.map(p => typeof p.directive === 'string' ? p.directive : (p.directive as any)?.en || '').filter(Boolean).join('\n\n'),
+                        points: protocols.flatMap(p => p.points || []),
+                        type: 'standard',
+                        measureIds: [...new Set(protocols.flatMap(p => p.measureIds || []))]
+                    };
+                    setSelectedProtocol(merged);
                 }
 
+                setUsedProtocolIds(prev => [...new Set([...prev, ...protocolIds])]);
+                setUsedProblemIds(prev => [...new Set([...prev, ...problemIds])]);
+
+                // 3. Save treatment record
+                if (sessionOpeningData) {
+                    await saveTreatment(patient.id, {
+                        status: 'Incomplete',
+                        patientId: patient.id,
+                        caretakerId: user.uid,
+                        patientReport: sessionOpeningData.patientReport,
+                        preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
+                        preTreatmentImage: sessionOpeningData.preTreatmentImage,
+                        preTreatmentMeasureReadingId,
+                        isSensitivityTest: isSensTest,
+                        freeProtocolUsed: isFreeProto,
+                        treatmentNumber: sessionOpeningData.treatmentNumber,
+                        protocolIds: Array.from(new Set([...usedProtocolIds, ...protocolIds])),
+                        problemIds: Array.from(new Set([...usedProblemIds, ...problemIds])),
+                        stungPointIds: accumulatedStungPointIds,
+                    }, sessionOpeningData.generatedTreatmentId);
+                }
+
+                // Clear transitioning BEFORE changing view so overlay doesn't flash on TreatmentExecution
+                setIsTransitioning(false);
                 setViewState('treatmentExecution');
             }
         } catch (error) {
-            console.error('Error loading protocol:', error);
-            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to load protocol');
+            console.error('Error loading protocols:', error);
+            setTreatmentErrorMessage(error instanceof Error ? error.message : 'Failed to load protocols');
             setShowTreatmentErrorGuard(true);
         } finally {
             setIsLoading(false);
+            setIsTransitioning(false);
         }
     };
 
     const handleFreePointsSelected = (points: StingPoint[]) => {
+        // Keep freeProtocolPoints: empty = proximity tap, non-empty = pre-selected points
         setFreeProtocolPoints(points);
-        setSelectedProtocol(null); // Signal it's free selection
+        setSelectedProtocol(null); // No standard protocol — proximity tap or custom points mode
         setSelectedProblemId(null);
         setViewState('treatmentExecution');
+    };
+
+    const handleTargetedPainSelect = async (protocol: Protocol, measureReadings: { measureId: string; value: string | number }[] = [], problemId?: string) => {
+        setSelectedAdhocProtocol(protocol);
+        setFreeProtocolUsed(true);
+
+        // Save measures if present
+        if (measureReadings.length > 0 && sessionOpeningData) {
+            try {
+                const roundIndex = usedProtocolIds.length;
+                const readingDocId = `${sessionOpeningData.generatedTreatmentId}_pre_r${roundIndex}`;
+                await addMeasuredValueReading(patient.id, {
+                    treatmentId: sessionOpeningData.generatedTreatmentId,
+                    readings: measureReadings,
+                    usedMeasureIds: measureReadings.map(m => m.measureId),
+                    event: 'pre',
+                    protocolId: protocol.id,
+                    problemId: problemId
+                }, readingDocId);
+            } catch (err) {
+                console.error("Failed to save ad-hoc pre-treatment measures", err);
+            }
+        }
+
+        // Register targeted pain protocol ID and problem ID so they are saved to the treatment document
+        setUsedProtocolIds(prev => [...new Set([...prev, protocol.id])]);
+        if (problemId) {
+            setUsedProblemIds(prev => [...new Set([...prev, problemId])]);
+        }
+        setViewState('freeSelection');
     };
 
     const handleRoundComplete = async (roundStungPointIds: string[]) => {
@@ -669,6 +705,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             if (selectedProtocol) {
                 setUsedProtocolIds(prev => [...new Set([...prev, selectedProtocol.id])]);
             }
+
+            // Clear the targeted pain protocol — next round may select a different one
+            setSelectedAdhocProtocol(null);
+            setFreeProtocolPoints([]); // Clear custom/free points for next protocol
 
             // Return to problem selection for next protocol
             setViewState('problemSelection');
@@ -775,6 +815,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             value: r.value
                         })),
                         usedMeasureIds: currentData.usedMeasureIds || [],
+                        event: 'pre',
                         note: currentData.patientReport,
                     }, readingDocId);
                 }
@@ -980,6 +1021,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     ref={problemsTabRef}
                     patientData={patientData as JoinedPatientData}
                     onDataChange={handleDataChange}
+                    user={user}
                 />;
             case 'treatments':
                 return (
@@ -1130,6 +1172,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
                 {/* ── Content Area ──────────────────────────────────────────── */}
                 <div className={`${styles.contentArea} ${viewState !== 'tabs' ? styles.contentAreaFlow : ''}`}>
+                    {/* Transition overlay to prevent blink during async protocol load */}
+                    {isTransitioning && (
+                        <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-overlay, rgba(0,0,0,0.35))' }}>
+                            <div style={{ width: 40, height: 40, border: '4px solid var(--color-primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                        </div>
+                    )}
                     {viewState === 'tabs' && renderTabContent()}
 
                     {viewState !== 'tabs' && (
@@ -1145,10 +1193,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             )}
                             {viewState === 'problemSelection' && (
                                 <ProtocolSelection
-                                    problems={(sessionOpeningData?.problems ?? patientData.medicalRecord?.problems ?? []).filter((p: any) => p.problemStatus === 'Active')}
+                                    problems={activeProblems}
+                                    treatmentNumber={sessionOpeningData?.treatmentNumber || 1}
+                                    isSensitivityTestCompleted={usedProtocolIds.length > 0}
                                     onBack={() => setViewState(sessionOpeningData ? 'sessionOpening' : 'tabs')}
-                                    onProtocolSelect={(protocolId, problemId) => handleProtocolSelect(protocolId, problemId, false)}
-                                    onFreeSelect={(protocolId, problemId) => handleProtocolSelect(protocolId, problemId, true)}
+                                    onProtocolSelect={handleProtocolSelect}
+                                    onTargetedPainSelect={handleTargetedPainSelect}
                                     onExit={handleExitIncomplete}
                                     onRequestMissingProblem={handleRequestMissingProblem}
                                 />
@@ -1156,6 +1206,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             {viewState === 'treatmentExecution' && (
                                 <TreatmentExecution
                                     protocol={selectedProtocol!}
+                                    displayTitle={selectedAdhocProtocol ? (typeof selectedAdhocProtocol.name === 'string' ? selectedAdhocProtocol.name : (selectedAdhocProtocol.name as any)?.[user.preferredLanguage ?? 'en'] || (selectedAdhocProtocol.name as any)?.en) : undefined}
                                     isSensitivityTest={sessionIsSensitivityTest}
                                     accumulatedStungPointIds={accumulatedStungPointIds}
                                     onRoundComplete={handleRoundComplete}
@@ -1163,7 +1214,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     onBack={() => setViewState(isSensitivitySession ? 'sessionOpening' : 'problemSelection')}
                                     preferredModel={user.preferredModel}
                                     customPoints={freeProtocolPoints}
-                                    canGoToAnother={true} // Can always select another protocol/pick points
+                                    canGoToAnother={true}
                                     onExit={handleExitIncomplete}
                                 />
                             )}

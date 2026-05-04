@@ -41,10 +41,7 @@ C:\\Users\\User\\Dev\\Projects\\ApitherapyV2\\src\\components\\PatientIntake\\Se
 
   * **Feedback Loop:** If a problem is missing, the therapist can email the administrator via a popup. The caretaker shall be able to enter text describing what is missing. The email shall be sent to the email address contained in cfg\_app\_config.sendgridSenderEmail.
 
-* **Tracking Measures:**  
-  * **General Measures:** shall be entered from the second treatment onwards. The measures ids are set in cfg\_app\_config.generalMeasures. Display the measure names and enable entering a value. Validate the value against the limits defined for the measure.
-
-  * **Problem-Specific Measures:** this has to be displayed from the first treatment. Display the measures that are defined for the active problems defined for the patient, and let the user set a value for each measure. Value has to be validated or allowed according to the limits defined for the measure.
+* **Tracking Measures**: Display the measures that are defined for the active problems defined for the patient, and let the user set a value for each measure. Value has to be validated or allowed according to the limits defined for the measure. Display this from the first treatment.
 
   * **Vital Signs:** this has to be displayed from the first treatment. Let the user enter values for blood pressure and pulse.  
   * C:\\Users\\User\\Dev\\Projects\\ApitherapyV2\\src\\components\\VitalsInputGroup.tsx

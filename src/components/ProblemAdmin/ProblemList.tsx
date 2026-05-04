@@ -98,64 +98,66 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
       </div>
       {loading && <p className={styles.loadingText}><T>Loading problems...</T></p>}
       {error && <p className={styles.errorText}><T>Error loading problems.</T></p>}
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th><T>Name</T></th>
-            <th><T>Description</T></th>
-            <th><T>Status</T></th>
-            <th><T>Document</T></th>
-            <th><T>Actions</T></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredProblems.map(problem => {
-            const documentUrl = getDocumentUrl(problem);
-            const name = typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string);
-            const description = typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string);
-            return (
-              <tr key={problem.id}>
-                <td>{name}</td>
-                <td>{description}</td>
-                <td>
-                  <span className={`${styles.statusBadge || ''} ${problem.status === 'active' ? styles.badgeActive : styles.badgeInactive} `}>
-                    <T>{problem.status === 'active' ? 'Active' : 'Inactive'}</T>
-                  </span>
-                </td>
-                <td className={styles.documentCell}>
-                  {documentUrl && (
-                    <Tooltip text={useT('View Document')}>
-                      <a href={documentUrl} target="_blank" rel="noopener noreferrer">
-                        <FileCheck2 size={18} />
-                      </a>
-                    </Tooltip>
-                  )}
-                </td>
-                <td className={styles.actionCell}>
-                  <Tooltip text={useT('Edit Problem')}>
-                    <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
-                      <Edit size={18} />
-                    </button>
-                  </Tooltip>
-                  {problem.reference_count > 0 ? (
-                    <Tooltip text={getTranslation('Cannot delete: problem is referenced in other objects')}>
-                      <button className={`${styles.iconButton} ${styles.deleteButtonDisabled} `} disabled>
-                        <Trash2 size={18} />
+      <div className={styles.tableContainer}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th><T>Name</T></th>
+              <th><T>Description</T></th>
+              <th><T>Status</T></th>
+              <th><T>Document</T></th>
+              <th><T>Actions</T></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredProblems.map(problem => {
+              const documentUrl = getDocumentUrl(problem);
+              const name = typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string);
+              const description = typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string);
+              return (
+                <tr key={problem.id}>
+                  <td>{name}</td>
+                  <td>{description}</td>
+                  <td>
+                    <span className={`${styles.statusBadge || ''} ${problem.status === 'active' ? styles.badgeActive : styles.badgeInactive} `}>
+                      <T>{problem.status === 'active' ? 'Active' : 'Inactive'}</T>
+                    </span>
+                  </td>
+                  <td className={styles.documentCell}>
+                    {documentUrl && (
+                      <Tooltip text={useT('View Document')}>
+                        <a href={documentUrl} target="_blank" rel="noopener noreferrer">
+                          <FileCheck2 size={18} />
+                        </a>
+                      </Tooltip>
+                    )}
+                  </td>
+                  <td className={styles.actionCell}>
+                    <Tooltip text={useT('Edit Problem')}>
+                      <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
+                        <Edit size={18} />
                       </button>
                     </Tooltip>
-                  ) : (
-                    <Tooltip text={useT('Delete Problem')}>
-                      <button onClick={() => handleDeleteClick(problem.id)} className={`${styles.iconButton} ${styles.deleteButton} `}>
-                        <Trash2 size={18} />
-                      </button>
-                    </Tooltip>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    {problem.reference_count > 0 ? (
+                      <Tooltip text={getTranslation('Cannot delete: problem is referenced in other objects')}>
+                        <button className={`${styles.iconButton} ${styles.deleteButtonDisabled} `} disabled>
+                          <Trash2 size={18} />
+                        </button>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip text={useT('Delete Problem')}>
+                        <button onClick={() => handleDeleteClick(problem.id)} className={`${styles.iconButton} ${styles.deleteButton} `}>
+                          <Trash2 size={18} />
+                        </button>
+                      </Tooltip>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <Modal
         isOpen={isModalOpen}

@@ -248,6 +248,7 @@
 /* ── Content Area ──────────────────────────────────────────────────────────── */
 .contentArea {
     flex: 1;
+    position: relative;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -536,4 +537,8 @@
     gap: var(--spacing-xs);
     font-weight: 500;
     white-space: nowrap;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

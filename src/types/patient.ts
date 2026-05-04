@@ -4,9 +4,16 @@ export interface BaseDocument {
     updatedTimestamp: any; // serverTimestamp
 }
 
+export interface StatusHistoryItem {
+    status: 'Active' | 'Inactive';
+    timestamp: string;
+    userId: string;
+}
+
 export interface PatientProblem {
     problemId: string;
     problemStatus: 'Active' | 'Inactive';
+    problemStatusHistory?: StatusHistoryItem[];
 }
 
 export interface MedicalData extends BaseDocument {
@@ -25,6 +32,7 @@ export interface MeasuredValueReading extends BaseDocument {
     treatmentId?: string;
     note?: string;
     usedMeasureIds?: string[];
+    event?: 'pre' | 'post';
     readings: Array<{
         measureId: string;
         value: string | number;

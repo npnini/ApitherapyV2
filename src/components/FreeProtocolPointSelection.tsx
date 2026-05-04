@@ -19,8 +19,9 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
     const [selectedItems, setSelectedItems] = useState<ShuttleItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const tPickPoints = useT('Select Points for Free Protocol');
-    const tNextStep = useT('Next Step');
+    const tPickPoints = useT('Select Points for Targeted Pain');
+    const tStartTreatment = useT('Start Treatment');
+    const tProximityHint = useT('Select points above, or start immediately to tap the 3D model');
     const tLoading = useT('Loading points...');
     const tBack = useT('Back to Protocol Selection');
 
@@ -81,6 +82,7 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
     const handleNext = () => {
         const selectedIds = new Set(selectedItems.map(item => item.id));
         const finalSelectedPoints = allPoints.filter(p => selectedIds.has(p.id));
+        // If no points selected → pass empty array → TreatmentExecution uses proximity tap (Scenario 3)
         onPointsSelected(finalSelectedPoints);
     };
 
@@ -115,11 +117,12 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
                 </div>
 
                 <div className={styles.footer}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: '0 0 0.5rem' }}>{tProximityHint}</p>
                     <button
                         className={styles.nextButton}
                         onClick={handleNext}
                     >
-                        {tNextStep}
+                        {tStartTreatment}
                     </button>
                 </div>
             </div>
