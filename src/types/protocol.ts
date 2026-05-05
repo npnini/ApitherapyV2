@@ -11,6 +11,8 @@ export interface Protocol {
     points: any;
     stingingPoints?: any[];
     documentUrl?: { [key: string]: string } | string;
+    directive?: { [key: string]: string } | string;
+    isAdhoc?: boolean;
     status: 'active' | 'inactive';
     type: 'standard' | 'sensitivity' | 'ad-hoc';
     measureIds: string[];

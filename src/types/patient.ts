@@ -37,6 +37,8 @@ export interface MeasuredValueReading extends BaseDocument {
         measureId: string;
         value: string | number;
     }>;
+    protocolId?: string;
+    problemId?: string;
 }
 
 

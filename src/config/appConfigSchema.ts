@@ -74,16 +74,52 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       }
     }
   },
-  sendPatientDocuments: {
-    label: 'Send Patient Documents',
-    description: 'Configure SendGrid Email Templates ID for sending signed documents to patients.',
+  notificationSettings: {
+    label: 'Notifications & Feedback',
+    description: 'Configure email service and templates for all languages.',
     children: {
-      templateId: {
-        label: '',
-        description: '',
+      emailApiKey: {
+        label: 'Email API Key',
+        description: 'API key for the email provider (e.g. Resend).',
+        type: 'string',
+        defaultValue: '',
+      },
+      senderEmail: {
+        label: 'Sender Email',
+        description: 'Verified sender email address.',
+        type: 'string',
+        defaultValue: 'noreply@beelive.biz',
+      },
+      frontendDomain: {
+        label: 'Frontend URL Domain',
+        description: 'Domain for generating links in emails.',
+        type: 'string',
+        defaultValue: 'beelive.biz',
+      },
+      feedbackRetentionDays: {
+        label: 'Feedback Expiry (Days)',
+        description: 'Days before feedback links expire.',
+        type: 'number',
+        defaultValue: 7,
+      },
+      feedbackTemplateId: {
+        label: 'Feedback Email Template',
+        description: 'Template identifiers for the automated feedback outreach.',
         type: 'mlString',
         defaultValue: {},
       },
+      addProblemTemplateId: {
+        label: 'Add Problem Email Template',
+        description: 'Template identifiers for reporting missing protocols.',
+        type: 'mlString',
+        defaultValue: {},
+      },
+      intakeDocumentsTemplateId: {
+        label: 'Intake Documents Template',
+        description: 'Template identifiers for sending signed documents.',
+        type: 'mlString',
+        defaultValue: {},
+      }
     }
   },
   treatmentSettings: {
@@ -167,48 +203,6 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'Select the question that represents the severity of the patient\'s condition.',
         type: 'question',
         defaultValue: '',
-      },
-    },
-  },
-  feedbackLoop: {
-    label: 'Patient Feedback Loop',
-    description: 'Manage the automated post-treatment feedback outreach.',
-    children: {
-      feedbackRetentionDays: {
-        label: 'Feedback Link Expiry (Days)',
-        description: 'Number of days a feedback link remains valid before expiring.',
-        type: 'number',
-        defaultValue: 7,
-      },
-      sendgridApiKey: {
-        label: 'SendGrid API Key',
-        description: 'Your SendGrid API key for sending automated emails.',
-        type: 'string',
-        defaultValue: '',
-      },
-      feedbackEmailTemplateId_he: {
-        label: 'SendGrid Template ID (Hebrew)',
-        description: 'The dynamic template ID in SendGrid for the Hebrew feedback outreach.',
-        type: 'string',
-        defaultValue: '',
-      },
-      feedbackEmailTemplateId_en: {
-        label: 'SendGrid Template ID (English)',
-        description: 'The dynamic template ID in SendGrid for the English feedback outreach.',
-        type: 'string',
-        defaultValue: '',
-      },
-      sendgridSenderEmail: {
-        label: 'SendGrid Sender Email',
-        description: 'The verified sender email address in your SendGrid account (e.g., beelive.admin@beelive.biz).',
-        type: 'string',
-        defaultValue: '',
-      },
-      frontendDomain: {
-        label: 'Frontend URL Domain',
-        description: 'The domain where your app is hosted, used for rendering the feedback link in emails (e.g., beelive.biz).',
-        type: 'string',
-        defaultValue: 'beelive.biz',
       },
     },
   },

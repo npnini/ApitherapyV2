@@ -15,7 +15,7 @@ interface ProtocolSelectionProps {
     treatmentNumber: number;
     isSensitivityTestCompleted?: boolean;
     onProtocolSelect: (protocolIds: string[], problemIds: string[], measureReadings: Array<{ measureId: string; value: string | number }>) => void;
-    onTargetedPainSelect?: (protocol: Protocol, measureReadings: { measureId: string; value: string | number }[]) => void;
+    onTargetedPainSelect?: (protocol: Protocol, measureReadings: { measureId: string; value: string | number }[], problemId?: string) => void;
     onBack: () => void;
     onExit: () => void;
     onRequestMissingProblem?: (problemName: string) => void;

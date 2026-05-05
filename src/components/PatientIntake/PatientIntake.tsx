@@ -219,7 +219,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             getTreatmentCount(patient.id).then(count => {
                 setSessionOpeningData({
                     patientReport: '',
-                    measureReadings: [],
                     preTreatmentVitals: {},
                     problems: patient.medicalRecord?.problems || [],
                     treatmentNumber: count + 1
@@ -494,7 +493,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         // Reset session accumulation state
         setSessionOpeningData({
             patientReport: '',
-            measureReadings: [],
             preTreatmentVitals: {},
             problems: patientData.medicalRecord?.problems || [],
             treatmentNumber: nextTreatmentNumber
@@ -539,9 +537,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
         // Save (or update) initial incomplete draft to DB
         try {
-            await saveTreatment(patient.id, {
+            await saveTreatment(patient.id as string, {
                 status: 'Incomplete',
-                patientId: patient.id,
+                patientId: patient.id as string,
                 caretakerId: user.uid,
                 patientReport: data.patientReport,
                 preTreatmentVitals: data.preTreatmentVitals,
@@ -574,8 +572,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             if (measureReadings.length > 0 && sessionOpeningData) {
                 const roundIndex = usedProtocolIds.length; // 0 for first protocol, 1 for second, etc.
                 const readingDocId = `${sessionOpeningData.generatedTreatmentId}_pre_r${roundIndex}`;
-                preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
-                    patientId: patient.id,
+                preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id as string, {
+                    patientId: patient.id as string,
                     treatmentId: sessionOpeningData.generatedTreatmentId,
                     readings: measureReadings,
                     usedMeasureIds: measureReadings.map(r => r.measureId),
@@ -610,10 +608,26 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 } else {
                     const merged: Protocol = {
                         id: 'merged_' + protocolIds.join('_').substring(0, 50),
-                        name: protocols.map(p => typeof p.name === 'string' ? p.name : (p.name as any).en || '').join(' + '),
-                        directive: protocols.map(p => typeof p.directive === 'string' ? p.directive : (p.directive as any)?.en || '').filter(Boolean).join('\n\n'),
+                        name: {
+                            en: protocols.map(p => typeof p.name === 'string' ? p.name : p.name?.en || '').join(' + '),
+                            he: protocols.map(p => typeof p.name === 'string' ? p.name : p.name?.he || '').join(' + ')
+                        },
+                        directive: {
+                            en: protocols.map(p => typeof p.directive === 'string' ? p.directive : (p.directive as any)?.en || '').filter(Boolean).join('\n\n'),
+                            he: protocols.map(p => typeof p.directive === 'string' ? p.directive : (p.directive as any)?.he || '').filter(Boolean).join('\n\n')
+                        },
+                        description: {
+                            en: protocols.map(p => typeof p.description === 'string' ? p.description : p.description?.en || '').join(' + '),
+                            he: protocols.map(p => typeof p.description === 'string' ? p.description : p.description?.he || '').join(' + ')
+                        },
+                        rationale: {
+                            en: protocols.map(p => typeof p.rationale === 'string' ? p.rationale : p.rationale?.en || '').join(' + '),
+                            he: protocols.map(p => typeof p.rationale === 'string' ? p.rationale : p.rationale?.he || '').join(' + ')
+                        },
                         points: protocols.flatMap(p => p.points || []),
                         type: 'standard',
+                        status: 'active',
+                        reference_count: 0,
                         measureIds: [...new Set(protocols.flatMap(p => p.measureIds || []))]
                     };
                     setSelectedProtocol(merged);
@@ -624,9 +638,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
                 // 3. Save treatment record
                 if (sessionOpeningData) {
-                    await saveTreatment(patient.id, {
+                    await saveTreatment(patient.id as string, {
                         status: 'Incomplete',
-                        patientId: patient.id,
+                        patientId: patient.id as string,
                         caretakerId: user.uid,
                         patientReport: sessionOpeningData.patientReport,
                         preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
@@ -672,7 +686,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             try {
                 const roundIndex = usedProtocolIds.length;
                 const readingDocId = `${sessionOpeningData.generatedTreatmentId}_pre_r${roundIndex}`;
-                await addMeasuredValueReading(patient.id, {
+                await addMeasuredValueReading(patient.id as string, {
                     treatmentId: sessionOpeningData.generatedTreatmentId,
                     readings: measureReadings,
                     usedMeasureIds: measureReadings.map(m => m.measureId),
@@ -741,9 +755,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setTreatmentErrorMessage(null);
 
         try {
-            await saveTreatment(patient.id, {
+            await saveTreatment(patient.id as string, {
                 status: data.finalVitals && Object.keys(data.finalVitals).length > 0 ? 'Completed' : 'Incomplete',
-                patientId: patient.id,
+                patientId: patient.id as string,
                 caretakerId: user.uid,
                 patientReport: sessionOpeningData.patientReport,
                 preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
@@ -771,7 +785,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setLatestTreatment({
                 id: sessionOpeningData.generatedTreatmentId,
                 status: data.finalVitals && Object.keys(data.finalVitals).length > 0 ? 'Completed' : 'Incomplete',
-                patientId: patient.id,
+                patientId: patient.id as string,
                 caretakerId: user.uid,
                 protocolIds: usedProtocolIds,
                 problemIds: usedProblemIds,
@@ -807,8 +821,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 if (currentData.measureReadings && currentData.measureReadings.length > 0) {
                     // UX-2: Derive stable ID for this reading
                     const readingDocId = `${treatmentId}_pre`;
-                    preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id, {
-                        patientId: patient.id,
+                    preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id as string, {
+                        patientId: patient.id as string,
                         treatmentId: treatmentId,
                         readings: currentData.measureReadings.map((r: any) => ({
                             measureId: r.measureId,
@@ -820,9 +834,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     }, readingDocId);
                 }
 
-                await saveTreatment(patient.id, {
+                await saveTreatment(patient.id as string, {
                     status: 'Incomplete',
-                    patientId: patient.id,
+                    patientId: patient.id as string,
                     caretakerId: user.uid,
                     patientReport: currentData.patientReport || '',
                     preTreatmentVitals: currentData.preTreatmentVitals || {},
@@ -864,9 +878,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         if (sessionOpeningData && patient.id) {
             setIsLoading(true);
             try {
-                await saveTreatment(patient.id, {
+                await saveTreatment(patient.id as string, {
                     status: 'Incomplete',
-                    patientId: patient.id,
+                    patientId: patient.id as string,
                     caretakerId: user.uid,
                     patientReport: sessionOpeningData.patientReport,
                     preTreatmentVitals: sessionOpeningData.preTreatmentVitals,
@@ -1240,7 +1254,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     treatment={latestTreatment || ({
                                         ...sessionOpeningData!.preTreatmentVitals,
                                         id: sessionOpeningData!.generatedTreatmentId,
-                                        patientId: patient.id,
+                                        patientId: patient.id as string,
                                         caretakerId: user.uid,
                                         createdTimestamp: Date.now(),
                                         status: 'Completed',

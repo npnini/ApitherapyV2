@@ -13,7 +13,7 @@ const stripUndefined = (obj: any): any => {
     if (obj && typeof obj === 'object') {
         // If it looks like a Firestore FieldValue (internal structure often has _methodName or similar)
         // or other non-plain objects we want to preserve, return it as is.
-        if (obj.constructor?.name === 'FieldValue' ||
+        if (obj.constructor && obj.constructor.name === 'FieldValue' ||
             (obj._methodName && typeof obj._methodName === 'string')) {
             return obj;
         }
@@ -35,7 +35,7 @@ const stripUndefined = (obj: any): any => {
 export const savePatient = async (patientData: Partial<PatientData>, patientId?: string) => {
     let patientDocRef;
     if (patientId) {
-        patientDocRef = doc(db, 'patients', patientId);
+        patientDocRef = doc(db, 'patients', patientId as string);
     } else {
         patientDocRef = doc(collection(db, 'patients'));
     }

@@ -21,7 +21,9 @@ export interface SessionOpeningData {
     generatedTreatmentId?: string; // Pre-generated ID to link measured_values
     problems: PatientProblem[]; // Updated problems list
     treatmentNumber?: number;
-    // measureReadings and usedMeasureIds removed as per Requirement 75
+    preTreatmentMeasureReadingId?: string;
+    usedMeasureIds?: string[];
+    measureReadings?: Array<{ measureId: string; value: string | number }>;
 }
 
 interface SessionOpeningProps {

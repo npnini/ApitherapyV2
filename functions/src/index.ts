@@ -4,7 +4,7 @@ import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import sgMail from "@sendgrid/mail";
+import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import { BigQuery } from "@google-cloud/bigquery";
 
@@ -49,21 +49,20 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
   // Fetch Config
   const configDoc = await db.collection("cfg_app_config").doc("main").get();
   const configData = configDoc.data() || {};
-  const feedbackConfig = configData.feedbackLoop || {};
+  const notificationSettings = configData.notificationSettings || {};
 
-  const retentionDays = feedbackConfig.feedbackRetentionDays || 7;
-  const apiKey = (feedbackConfig.sendgridApiKey || "").trim();
-  const templateIdHe = (feedbackConfig.feedbackEmailTemplateId_he || "").trim();
-  const templateIdEn = (feedbackConfig.feedbackEmailTemplateId_en || "").trim();
-  const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim() || "noreply@apitherapy-system.com";
+  const retentionDays = notificationSettings.feedbackRetentionDays || 7;
+  const apiKey = (notificationSettings.emailApiKey || "").trim();
+  const senderEmail = (notificationSettings.senderEmail || "").trim() || "noreply@beelive.biz";
+  const feedbackTemplates = notificationSettings.feedbackTemplateId || {};
   const defaultLang = configData.languageSettings?.defaultLanguage || "he";
 
-  if (!apiKey || (!templateIdHe && !templateIdEn)) {
-    logger.error("SendGrid configuration missing in cfg_app_config/main");
+  if (!apiKey) {
+    logger.error("Email API Key missing in cfg_app_config/main");
     return;
   }
 
-  sgMail.setApiKey(apiKey);
+  const resend = new Resend(apiKey);
 
   const newBatch = db.batch();
   const emailPromises: Promise<unknown>[] = [];
@@ -101,12 +100,10 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
     }
 
     // Select the template ID based on language
-    const templateId = preferredLang === "en" ?
-      (templateIdEn || templateIdHe) :
-      (templateIdHe || templateIdEn);
+    const templateId = (feedbackTemplates[preferredLang] || feedbackTemplates[defaultLang] || Object.values(feedbackTemplates)[0] || "").trim();
 
     if (!templateId) {
-      logger.warn(`No SendGrid template found for language ${preferredLang}. Skipping email.`);
+      logger.warn(`No email template found for language ${preferredLang}. Skipping email.`);
       continue;
     }
 
@@ -159,7 +156,7 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
       expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
     });
 
-    const frontendDomain = (feedbackConfig.frontendDomain || "beelive.biz").trim();
+    const frontendDomain = (notificationSettings.frontendDomain || "beelive.biz").trim();
     const link = `https://${frontendDomain}/feedback/${sessionId}`;
 
     // Send Email
@@ -167,19 +164,21 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
     const fullName = patient.fullName || "Patient";
 
     emailPromises.push(
-      sgMail.send({
+      resend.emails.send({
         to: patient.email,
         from: senderEmail,
-        templateId: templateId,
-        dynamicTemplateData: {
-          patientName: firstName, // Maintain backward compatibility if user uses this
-          firstName: firstName, // More explicit
-          fullName: fullName, // Full name as requested
-          sessionId: sessionId,
-          feedbackLink: link,
-        },
-      }).catch((err) => {
-        logger.error(`SendGrid error for patient ${patientId}`, err.response?.body || err);
+        template: {
+          id: templateId,
+          variables: {
+            patientName: firstName, // Maintain backward compatibility if user uses this
+            firstName: firstName, // More explicit
+            fullName: fullName, // Full name as requested
+            sessionId: sessionId,
+            feedbackLink: link,
+          },
+        }
+      } as any).catch((err) => {
+        logger.error(`Resend error for patient ${patientId}`, err);
       })
     );
     processedCount++;
@@ -274,17 +273,16 @@ export const sendDocumentEmail = onCall(async (request) => {
     // 1. Fetch Config
     const configDoc = await db.collection("cfg_app_config").doc("main").get();
     const configData = configDoc.data() || {};
-    const feedbackConfig = configData.feedbackLoop || {};
-    const sendDocsConfig = configData.sendPatientDocuments || {};
+    const notificationSettings = configData.notificationSettings || {};
 
-    const apiKey = (feedbackConfig.sendgridApiKey || "").trim();
-    const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim();
-    const templateId = (sendDocsConfig.templateId?.[language] || "").trim();
+    const apiKey = (notificationSettings.emailApiKey || "").trim();
+    const senderEmail = (notificationSettings.senderEmail || "").trim();
+    const templateId = (notificationSettings.intakeDocumentsTemplateId?.[language] || "").trim();
 
     if (!apiKey || !templateId) {
       throw new HttpsError(
         "failed-precondition",
-        "SendGrid or Template configuration missing."
+        "Email API Key or Template configuration missing."
       );
     }
 
@@ -307,16 +305,18 @@ export const sendDocumentEmail = onCall(async (request) => {
     const caretakerName = caretakerData.fullName || caretakerData.displayName || "Your Caretaker";
 
     // 4. Send Email
-    sgMail.setApiKey(apiKey);
-    await sgMail.send({
+    const resend = new Resend(apiKey);
+    await resend.emails.send({
       to: patientEmail,
       from: senderEmail,
-      templateId: templateId,
-      dynamicTemplateData: {
-        fullName: patientData.fullName || "Patient",
-        caretakerName: caretakerName,
-        documentUrl: documentUrl,
-      },
+      template: {
+        id: templateId,
+        variables: {
+          fullName: patientData.fullName || "Patient",
+          caretakerName: caretakerName,
+          documentUrl: documentUrl,
+        },
+      }
     });
 
     logger.info(`Document email sent to patient ${patientId} by user ${caretakerId}`);
@@ -584,61 +584,90 @@ export const sendMissingProblemEmail = onCall(async (request) => {
   try {
     const configDoc = await db.collection("cfg_app_config").doc("main").get();
     const configData = configDoc.data() || {};
-    const feedbackConfig = configData.feedbackLoop || {};
-    const apiKey = (feedbackConfig.sendgridApiKey || "").trim();
-    const senderEmail = (feedbackConfig.sendgridSenderEmail || "").trim() || "noreply@apitherapy-system.com";
-    const adminEmail = (configData.sendgridSenderEmail || feedbackConfig.sendgridSenderEmail || configData.adminEmail || "admin@apitherapy-system.com").trim();
+    const notificationSettings = configData.notificationSettings || {};
+    const apiKey = (notificationSettings.emailApiKey || "").trim();
+    const senderEmail = (notificationSettings.senderEmail || "").trim() || "noreply@beelive.biz";
+    const adminEmail = (configData.adminEmail || "admin@apitherapy-system.com").trim();
 
     if (!apiKey) {
-      throw new HttpsError("failed-precondition", "SendGrid API key missing.");
+      throw new HttpsError("failed-precondition", "Email API Key missing.");
     }
-
-    sgMail.setApiKey(apiKey);
 
     const caretakerId = request.auth.uid;
     const caretakerDoc = await db.collection("users").doc(caretakerId).get();
     const caretakerData = caretakerDoc.data() || {};
     const caretakerName = caretakerData.fullName || caretakerData.displayName || caretakerId;
+    const preferredLang = caretakerData.preferredLanguage || configData.languageSettings?.defaultLanguage || "he";
+
+    const addProblemTemplates = notificationSettings.addProblemTemplateId || {};
+    const templateId = (addProblemTemplates[preferredLang] || addProblemTemplates["en"] || Object.values(addProblemTemplates)[0] || "").trim();
 
     const patientDoc = await db.collection("patients").doc(patientId).get();
     const patientData = patientDoc.data() || {};
     const patientName = patientData.fullName || patientId;
 
-    await sgMail.send({
-      to: adminEmail,
-      from: {
-        email: senderEmail,
-        name: "BeeLive System"
-      },
-      subject: `[ACTION REQUIRED] New Problem Report: ${problemName}`,
-      text: `Missing Protocol Report\n\nCaretaker: ${caretakerName}\nPatient: ${patientName}\nReported Problem: ${problemName}\n\nPlease update the system protocols accordingly.`,
-      html: `
-        <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Missing Problem Reported</h2>
-          <p>A caretaker has reported that a required problem or protocol is missing from the system.</p>
-          
-          <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 10px; background: #f9f9f9; font-weight: bold; width: 30%;">Missing Problem:</td>
-              <td style="padding: 10px; background: #f9f9f9;">${problemName}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; font-weight: bold;">Reported By:</td>
-              <td style="padding: 10px;">${caretakerName} (UID: ${caretakerId})</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; background: #f9f9f9; font-weight: bold;">Patient:</td>
-              <td style="padding: 10px; background: #f9f9f9;">${patientName} (ID: ${patientId})</td>
-            </tr>
-          </table>
-          
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #777;">
-            <p>This is an automated notification from your Apitherapy Management System.</p>
-            <p>Admin Email: ${adminEmail}</p>
+    const resend = new Resend(apiKey);
+
+    if (templateId) {
+      await resend.emails.send({
+        to: adminEmail,
+        from: senderEmail,
+        template: {
+          id: templateId,
+          variables: {
+            problemName: problemName,
+            problemDescription: problemName,
+            caretakerName: caretakerName,
+            caretakerEmail: caretakerData.email || "N/A",
+            caretakerMobile: caretakerData.mobile || "N/A",
+            patientName: patientName,
+            caretakerId: caretakerId,
+            patientId: patientId,
+          },
+        }
+      } as any);
+    } else {
+      // Fallback to raw HTML if no template is configured
+      await resend.emails.send({
+        to: adminEmail,
+        from: senderEmail,
+        subject: `[ACTION REQUIRED] New Problem Report: ${problemName}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Missing Problem Reported</h2>
+            <p>A caretaker has reported that a required problem or protocol is missing from the system.</p>
+            
+            <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; background: #f9f9f9; font-weight: bold; width: 30%;">Missing Problem:</td>
+                <td style="padding: 10px; background: #f9f9f9;">${problemName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Caretaker:</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${caretakerName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Contact Email:</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${caretakerData.email || "N/A"}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Contact Mobile:</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${caretakerData.mobile || "N/A"}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Patient:</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${patientName} (ID: ${patientId})</td>
+              </tr>
+            </table>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #777;">
+              <p>This is an automated notification from your Apitherapy Management System.</p>
+              <p>Admin Email: ${adminEmail}</p>
+            </div>
           </div>
-        </div>
-      `,
-    });
+        `,
+      });
+    }
 
     logger.info(`Missing problem email sent for "${problemName}" by user ${caretakerId}`);
     return { success: true };
