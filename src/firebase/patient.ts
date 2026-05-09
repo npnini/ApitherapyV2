@@ -167,7 +167,7 @@ export const getLatestTreatment = async (patientId: string): Promise<TreatmentSe
         colRef,
         where('__name__', '>=', `${patientId}_`),
         where('__name__', '<=', `${patientId}_\uf8ff`),
-        orderBy('__name__', 'desc'),
+        orderBy('__name__', 'asc'),
         limit(1)
     );
     const snapshot = await getDocs(q);

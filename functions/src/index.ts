@@ -13,6 +13,11 @@ setGlobalOptions({ region: "me-west1" });
 admin.initializeApp();
 const db = admin.firestore();
 
+// BigQuery Dataset Configuration
+const BQ_DATASET = process.env.FUNCTIONS_EMULATOR 
+  ? "apitherapy_clinical_analytics_dev" 
+  : "apitherapy_clinical_analytics_stage";
+
 /**
  * 1. Scheduled Sweeper
  * Runs daily at 5:00 AM to sweep yesterday's treatments, clean up old sessions,
@@ -448,7 +453,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
 
   // Build Filter Clauses
   const filters = [];
-  filters.push("(initial_session_start BETWEEN @startDate AND @endDate OR final_session_start BETWEEN @startDate AND @endDate)");
+  filters.push("treatment_date >= @startDate AND treatment_date < TIMESTAMP_ADD(CAST(@endDate AS TIMESTAMP), INTERVAL 1 DAY)");
 
   if (actualCaretakerId) {
     filters.push("(caretaker_id = @caretakerId OR @caretakerId IS NULL)");
@@ -478,7 +483,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       SELECT
         problem_name_en, problem_name_he, measure_name_en, measure_name_he,
         AVG(effectiveness_value) AS avg_effectiveness 
-      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      FROM \`${BQ_DATASET}.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4
       ORDER BY ${pName} ASC, ${mName} ASC
@@ -493,7 +498,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       SELECT
         caretaker_id, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
         AVG(effectiveness_value) AS avg_effectiveness
-      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      FROM \`${BQ_DATASET}.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
       ORDER BY caretaker_id ASC, ${pName} ASC, ${mName} ASC
@@ -504,9 +509,9 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       query = `
       SELECT
         patient_id, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
-        initial_reading, final_reading, effectiveness_value AS effectiveness,
-        initial_session_start, final_session_start
-      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+        pre_value AS initial_reading, post_value AS final_reading, effectiveness_value AS effectiveness,
+        pre_recorded_at AS initial_session_start, post_recorded_at AS final_session_start
+      FROM \`${BQ_DATASET}.view_treatment_effectiveness\`
       ${whereClause}
       ORDER BY ${pName} ASC, ${mName} ASC, patient_id ASC
     `;
@@ -517,7 +522,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       SELECT
         patient_gender, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
         AVG(effectiveness_value) AS avg_effectiveness
-      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      FROM \`${BQ_DATASET}.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
       ORDER BY ${pName} ASC, ${mName} ASC, patient_gender ASC
@@ -530,7 +535,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
         CAST(FLOOR(patient_age / 10) * 10 AS STRING) || '-' || CAST(FLOOR(patient_age / 10) * 10 + 9 AS STRING) AS age_group,
         problem_name_en, problem_name_he, measure_name_en, measure_name_he,
         AVG(effectiveness_value) AS avg_effectiveness
-      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      FROM \`${BQ_DATASET}.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
       ORDER BY ${pName} ASC, ${mName} ASC, age_group ASC
@@ -542,7 +547,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
       SELECT
         patient_age, problem_name_en, problem_name_he, measure_name_en, measure_name_he,
         AVG(effectiveness_value) AS avg_effectiveness
-      FROM \`apitherapy_clinical_analytics_dev.view_treatment_effectiveness\`
+      FROM \`${BQ_DATASET}.view_treatment_effectiveness\`
       ${whereClause}
       GROUP BY 1, 2, 3, 4, 5
       ORDER BY ${pName} ASC, ${mName} ASC, patient_age ASC

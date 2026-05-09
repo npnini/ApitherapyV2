@@ -1,5 +1,20 @@
 {
   "projects": {
     "default": "apitherapyv2"
+  },
+  "targets": {},
+  "etags": {
+    "apitherapyv2": {
+      "extensionInstances": {
+        "fs-bq-export-cfg-acupuncture-points": "85e4592946d7bcffefb688c14738a9ef08a31ef0a9819e80087465b487174d97",
+        "fs-bq-export-cfg-measures": "ccfe4706de74c2ebf6c0f719ebc654dee0a6f021582dbef593a32a144d8e6a4b",
+        "fs-bq-export-cfg-problems": "26f7648ad083c3d694eb92365d2404d8463a58b558fbee4c4f4a32973cf4f7e6",
+        "fs-bq-export-cfg-protocols": "aa95fe23831b1f01bde8efe013d0b12f394df99761233629379a75323d8cad14",
+        "fs-bq-export-measured-values": "b1d5798f4725c696c11523c3986abb6d4833757d825e63cce72d420ddd7fcbbf",
+        "fs-bq-export-patient-medical-data": "8162312f7fbb321af210b06c4f760336e0b989d56a7170f992cd26ba1765f750",
+        "fs-bq-export-patients": "4470157ec319833d4aa349e251aec5810f4707052a865c5432916f62bbaa6d16",
+        "fs-bq-export-treatments": "3d1a2b16f438729dd5f9cdc4eee3247c7b37af0664063169e8883b12a18f483d"
+      }
+    }
   }
 }

@@ -4,8 +4,7 @@ export interface Problem {
   id: string;
   name: { [key: string]: string };
   description: { [key: string]: string };
-  protocolId?: string;
-  protocolIds?: string[];
+  protocolId: string;
   measureIds: string[];
   documentUrl?: { [key: string]: string } | string;
   status: 'active' | 'inactive';

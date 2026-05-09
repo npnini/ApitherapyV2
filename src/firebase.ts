@@ -1,9 +1,9 @@
 // 1. Change the import: Remove getFirestore, add initializeFirestore
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions";
+import { getAuth, GoogleAuthProvider, connectAuthEmulator } from "firebase/auth";
+import { initializeFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -25,3 +25,12 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
 });
 export const functions = getFunctions(app, "me-west1");
+
+// Connect to emulators in development mode
+if (import.meta.env.DEV) {
+  console.log("Connecting to Firebase Emulators...");
+  connectAuthEmulator(auth, "http://localhost:9099");
+  connectFirestoreEmulator(db, "localhost", 8080);
+  connectStorageEmulator(storage, "localhost", 9199);
+  connectFunctionsEmulator(functions, "localhost", 5001);
+}

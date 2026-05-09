@@ -136,6 +136,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
     };
 
     const handleHighLevel = () => {
+        setHistory([]);
         fetchLevel('high-level', {}, tHighLevel);
     };
 

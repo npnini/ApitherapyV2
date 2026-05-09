@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
+    "sync-data": "node scripts/sync-firestore.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.0.8",

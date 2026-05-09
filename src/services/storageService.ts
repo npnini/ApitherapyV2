@@ -72,7 +72,7 @@ export const getTreatmentsByPatientId = async (patientId: string): Promise<Treat
         treatmentsRef,
         where('__name__', '>=', `${patientId}_`),
         where('__name__', '<=', `${patientId}_\uf8ff`),
-        orderBy('__name__', 'desc')
+        orderBy('__name__', 'asc')
     );
 
     try {

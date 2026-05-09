@@ -52,5 +52,39 @@
         "*.local"
       ]
     }
-  ]
+  ],
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "pubsub": {
+      "port": 8085
+    },
+    "ui": {
+      "enabled": true
+    },
+    "singleProjectMode": true
+  },
+  "extensions": {
+    "fs-bq-export-cfg-acupuncture-points": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-cfg-measures": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-cfg-problems": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-cfg-protocols": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-measured-values": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-patient-medical-data": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-patients": "firebase/firestore-bigquery-export@0.2.10",
+    "fs-bq-export-treatments": "firebase/firestore-bigquery-export@0.2.10"
+  }
 }
