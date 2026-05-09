@@ -14,8 +14,8 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // BigQuery Dataset Configuration
-const BQ_DATASET = process.env.FUNCTIONS_EMULATOR 
-  ? "apitherapy_clinical_analytics_dev" 
+const BQ_DATASET = process.env.FUNCTIONS_EMULATOR
+  ? "apitherapy_clinical_analytics_dev"
   : "apitherapy_clinical_analytics_stage";
 
 /**
