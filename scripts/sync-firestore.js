@@ -24,7 +24,8 @@ const COLLECTIONS = [
   "patients",
   "questionnaire_responses",
   "treatments",
-  "users"
+  "users",
+  "feedback_sessions"
 ];
 
 const PROJECT_ID = 'apitherapyv2';
@@ -33,8 +34,13 @@ const BUCKET_NAME = `${PROJECT_ID}.firebasestorage.app`; // Default bucket
 async function sync() {
   console.log('🚀 Starting FULL sync from live to local...');
 
+  // Load service account
+  const serviceAccountPath = path.resolve(process.cwd(), 'service-account.json');
+  const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
   // 1. Initialize LIVE app
   const liveApp = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
     projectId: PROJECT_ID,
     storageBucket: BUCKET_NAME
   }, 'live');
@@ -96,6 +102,42 @@ async function sync() {
     console.log('✅ Storage sync completed.');
   } catch (err) {
     console.warn('⚠️ Storage sync failed (bucket might be empty or inaccessible):', err.message);
+  }
+
+  // --- SYNC AUTH ---
+  console.log('\n--- 🔑 Syncing Authentication ---');
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+  
+  try {
+    const usersResult = await liveApp.auth().listUsers(1000);
+    const users = usersResult.users;
+    
+    if (users.length > 0) {
+      console.log(`Found ${users.length} users in live auth.`);
+      
+      // Import users to local emulator
+      // Note: This only imports user records, not passwords. 
+      // For the emulator, users can usually sign in with any password or no password depending on config,
+      // but importing them preserves their UIDs which is critical for Firestore references.
+      await localApp.auth().importUsers(users.map(u => ({
+        uid: u.uid,
+        email: u.email,
+        emailVerified: u.emailVerified,
+        displayName: u.displayName,
+        photoURL: u.photoURL,
+        phoneNumber: u.phoneNumber,
+        disabled: u.disabled,
+        metadata: u.metadata,
+        customClaims: u.customClaims,
+        providerData: u.providerData,
+      })));
+      
+      console.log('✅ Auth sync completed.');
+    } else {
+      console.log('   (no users found)');
+    }
+  } catch (err) {
+    console.warn('⚠️ Auth sync failed:', err.message);
   }
 
   console.log('\n✨ FULL sync completed successfully!');

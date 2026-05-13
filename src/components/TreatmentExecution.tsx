@@ -12,6 +12,8 @@ import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
 import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
+import { useStorageUrl } from "../hooks/useStorageUrl";
+import { resolveStoragePath, getFieldContent } from '../utils/storageUtils';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
     points: StingPoint[];
@@ -38,35 +40,7 @@ interface TreatmentExecutionProps {
     canGoToAnother: boolean;
 }
 
-const getMLValue = (value: any, lang: string): string => {
-    if (typeof value === 'string') return value;
-    if (value && typeof value === 'object') return value[lang] || value.en || Object.values(value)[0] || '';
-    return '';
-};
-
-const transformGDriveLink = (url: string | undefined, mode: 'view' | 'preview' | 'img' = 'view'): string | undefined => {
-    if (!url || typeof url !== 'string') return url;
-    if (url.includes('drive.google.com')) {
-        // Extract ID from /d/ID/view or ?id=ID
-        const fileId = url.match(/\/d\/(.+?)\//)?.[1] || url.match(/id=(.+?)(&|$)/)?.[1];
-        if (fileId) {
-            if (mode === 'preview') return `https://drive.google.com/file/d/${fileId}/preview`;
-            if (mode === 'img') return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-            return `https://drive.google.com/uc?export=view&id=${fileId}`;
-        }
-    }
-    return url;
-};
-
-const getDocumentUrl = (documentUrl: any, lang: string): string | undefined => {
-    if (!documentUrl) return undefined;
-    let url: string | undefined;
-    if (typeof documentUrl === 'string') url = documentUrl;
-    else if (typeof documentUrl === 'object') {
-        url = documentUrl[lang] || documentUrl.en || Object.values(documentUrl)[0] as string;
-    }
-    return transformGDriveLink(url, 'view');
-};
+// Removed legacy transformGDriveLink and getDocumentUrl helpers as they are now handled by resolveStoragePath and useStorageUrl
 
 const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     protocol,
@@ -81,6 +55,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     canGoToAnother,
 }) => {
     const { language, direction, getTranslation } = useTranslationContext();
+    const { url: protocolDocUrl } = useStorageUrl(protocol?.documentUrl, language, 'doc');
 
     const tFailedToLoadModel = useT('Failed to load 3D model data.');
     const tNotesPlaceholder = useT('Add any final observations or notes here...');
@@ -297,12 +272,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         return 'Medium';
     };
 
-    const getPointDocUrl = (p: StingPoint): string | null => {
-        if (!p.documentUrl) return null;
-        let url: string | undefined;
-        if (typeof p.documentUrl === 'string') url = p.documentUrl;
-        else url = p.documentUrl[language] || p.documentUrl['en'] || Object.values(p.documentUrl)[0] as string;
-        return transformGDriveLink(url, 'preview') || null;
+    const hasPointDoc = (p: StingPoint): boolean => {
+        return !!getFieldContent(p.documentUrl, language);
     };
 
     const hasPointLongText = (p: StingPoint): boolean => {
@@ -371,11 +342,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     <ChevronLeft size={20} />
                 </button>
                 <h2 className={styles.headerTitle}>
-                    {displayTitle || (protocol ? getMLValue(protocol.name, language) : <T>Free Selection</T>)}
+                    {displayTitle || (protocol ? getFieldContent(protocol.name, language) : <T>Free Selection</T>)}
                     {/* Document icon if protocol has a document URL */}
-                    {protocol && getDocumentUrl(protocol.documentUrl, language) && (
+                    {protocol && protocolDocUrl && (
                         <a
-                            href={getDocumentUrl(protocol.documentUrl, language)}
+                            href={protocolDocUrl}
                             target="_blank"
                             rel="noreferrer"
                             className={styles.docLink}
@@ -481,7 +452,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     {displayedPoints.length > 0 && (
                         <div className={styles.pointsList}>
                         {displayedPoints.map(p => {
-                            const docUrl = getPointDocUrl(p);
+
                             const pointHasLongText = hasPointLongText(p);
                             const isStung = stungPoints.some(sp => sp.id === p.id) || 
                                            accumulatedStungPointIds.includes(p.id);
@@ -499,10 +470,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 >
                                     <div className={styles.pointInfo}>
                                         <span className={styles.pointCode} style={{ color }}>{p.code}</span>
-                                        <span className={styles.pointLabel} style={{ color }}>{getMLValue(p.label, language)}</span>
+                                        <span className={styles.pointLabel} style={{ color }}>{getFieldContent(p.label, language)}</span>
                                     </div>
                                     <div className={styles.pointActions}>
-                                        {docUrl && (
+                                        {hasPointDoc(p) && (
                                             <button
                                                 className={styles.pointDocLink}
                                                 onClick={(e) => { e.stopPropagation(); setPointDetailToShow({ point: p, type: 'doc' }); }}
@@ -606,7 +577,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                             className={`${styles.stungItem} ${styles.stungItemPrev}`}
                                             onClick={() => setActivePointId(p.id)}
                                         >
-                                            <span><span className={styles.pointCode}>{p.code}</span> – {getMLValue(p.label, language)}</span>
+                                            <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -624,7 +595,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                     className={`${styles.stungItem} ${activePointId === p.id ? styles.stungItemActive : ''}`}
                                     onClick={() => setActivePointId(p.id)}
                                 >
-                                    <span><span className={styles.pointCode}>{p.code}</span> – {getMLValue(p.label, language)}</span>
+                                    <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
                                     <button onClick={e => { e.stopPropagation(); handleRemoveStungPoint(p.id); }} className={styles.removeBtn}>
                                         <Trash2 size={14} />
                                     </button>
@@ -638,9 +609,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         <div className={styles.directiveBox}>
                             <AlertTriangle size={16} />
                             <span>
-                                {(getMLValue(appConfig?.treatmentSettings?.sensitivityWaitDirective, language) || tSensDirectiveFallback)
-                                    .replace(/End Treatment/g, tNextStep)
-                                    .replace(/סיום טיפול/g, tNextStep)}
+                                {getFieldContent(appConfig?.treatmentSettings?.sensitivityWaitDirective, language) || tSensDirectiveFallback}
                             </span>
                         </div>
                     )}
@@ -664,83 +633,99 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     </div>
                 </div>
             </div>
+            {pointDetailToShow && (
+                <PointDetailModal
+                    point={pointDetailToShow.point}
+                    type={pointDetailToShow.type}
+                    language={language}
+                    onClose={() => setPointDetailToShow(null)}
+                    tNoAdditionalDetails={tNoAdditionalDetails}
+                />
+            )}
+        </div>
+    );
+};
 
-            {/* Detail Modal Overlay — relocated outside major columns for full-width capability */}
-            {pointDetailToShow && (() => {
-                const pToShow = pointDetailToShow.point;
-                const detailType = pointDetailToShow.type;
-                const detailDocUrl = getPointDocUrl(pToShow);
-                const detailHasLongText = hasPointLongText(pToShow);
-                const detailHasImage = !!pToShow.imageURL;
-                const detailHasDoc = !!detailDocUrl;
+interface PointDetailModalProps {
+    point: StingPoint;
+    type: 'doc' | 'image' | 'text';
+    language: string;
+    onClose: () => void;
+    tNoAdditionalDetails: any;
+}
 
-                const hasRequestedContent =
-                    (detailType === 'text' && detailHasLongText) ||
-                    (detailType === 'image' && detailHasImage) ||
-                    (detailType === 'doc' && detailHasDoc);
+const PointDetailModal: React.FC<PointDetailModalProps> = ({ point, type, language, onClose, tNoAdditionalDetails }) => {
+    const { url: imageUrl } = useStorageUrl(point.imageURL, language, 'image');
+    const { url: docUrl } = useStorageUrl(point.documentUrl, language, 'doc');
 
-                return (
-                    <div className={styles.detailModalOverlay} onClick={() => setPointDetailToShow(null)}>
-                        <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
-                            <div className={styles.detailModalHeader}>
-                                <h3 className={styles.detailModalTitle}>
-                                    {pToShow.code} - {getMLValue(pToShow.label, language)}
-                                </h3>
-                                <button className={styles.detailModalClose} onClick={() => setPointDetailToShow(null)}>
-                                    <X size={20} />
-                                </button>
+    const hasLongText = !!(point.longText && point.longText[language]);
+    const hasImage = !!imageUrl;
+    const hasDoc = !!docUrl;
+
+    const hasRequestedContent =
+        (type === 'text' && hasLongText) ||
+        (type === 'image' && hasImage) ||
+        (type === 'doc' && hasDoc);
+
+    return (
+        <div className={styles.detailModalOverlay} onClick={onClose}>
+            <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.detailModalHeader}>
+                    <h3 className={styles.detailModalTitle}>
+                        {point.code} - {getFieldContent(point.label, language)}
+                    </h3>
+                    <button className={styles.detailModalClose} onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className={styles.detailModalBody}>
+                    {!hasRequestedContent && (
+                        <p className={styles.noData}>{tNoAdditionalDetails}</p>
+                    )}
+
+                    {type === 'text' && hasLongText && (
+                        <div className={styles.detailSection}>
+                            <div className={styles.detailSectionLabel}>
+                                <BookOpen size={14} />
+                                <T>Details</T>
                             </div>
-                            <div className={styles.detailModalBody}>
-                                {!hasRequestedContent && (
-                                    <p className={styles.noData}>{tNoAdditionalDetails}</p>
-                                )}
-
-                                {detailType === 'text' && detailHasLongText && (
-                                    <div className={styles.detailSection}>
-                                        <div className={styles.detailSectionLabel}>
-                                            <BookOpen size={14} />
-                                            <T>Details</T>
-                                        </div>
-                                        <div className={styles.longTextContainer}>
-                                            {pToShow.longText![language].split('\n').map((text: string, idx: number) => (
-                                                <p key={idx} className={styles.paragraph}>{text}</p>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {detailType === 'image' && detailHasImage && (
-                                    <div className={styles.detailSection}>
-                                        <div className={styles.detailSectionLabel}>
-                                            <Image size={14} />
-                                            <T>Image</T>
-                                        </div>
-                                        <img
-                                            src={transformGDriveLink(pToShow.imageURL, 'img')}
-                                            alt={pToShow.code}
-                                            className={styles.detailImage}
-                                        />
-                                    </div>
-                                )}
-
-                                {detailType === 'doc' && detailHasDoc && (
-                                    <div className={styles.detailSection}>
-                                        <div className={styles.detailSectionLabel}>
-                                            <FileText size={14} />
-                                            <T>Document</T>
-                                        </div>
-                                        <iframe
-                                            src={detailDocUrl!}
-                                            className={styles.detailIframe}
-                                            title={`${pToShow.code} document`}
-                                        />
-                                    </div>
-                                )}
+                            <div className={styles.longTextContainer}>
+                                {(getFieldContent(point.longText, language) || '').split('\n').map((text: string, idx: number) => (
+                                    <p key={idx} className={styles.paragraph}>{text}</p>
+                                ))}
                             </div>
                         </div>
-                    </div>
-                );
-            })()}
+                    )}
+
+                    {type === 'image' && hasImage && (
+                        <div className={styles.detailSection}>
+                            <div className={styles.detailSectionLabel}>
+                                <Image size={14} />
+                                <T>Image</T>
+                            </div>
+                            <img
+                                src={imageUrl}
+                                alt={point.code}
+                                className={styles.detailImage}
+                            />
+                        </div>
+                    )}
+
+                    {type === 'doc' && hasDoc && (
+                        <div className={styles.detailSection}>
+                            <div className={styles.detailSectionLabel}>
+                                <FileText size={14} />
+                                <T>Document</T>
+                            </div>
+                            <iframe
+                                src={docUrl}
+                                className={styles.detailIframe}
+                                title={`${point.code} document`}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

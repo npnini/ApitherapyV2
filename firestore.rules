@@ -62,8 +62,7 @@ service cloud.firestore {
     }
 
     match /cfg_app_config/{configId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+        allow read, write: if isAdmin();
     }
 
     match /cfg_translations/{document=**} {
@@ -104,14 +103,14 @@ service cloud.firestore {
     }
     
     match /feedback_sessions/{sessionId} {
-  	// Allow the patient to read their specific session if it's still pending
-  	allow get: if resource.data.status == 'pending';
+      // Allow the patient to read their specific session if it exists
+      allow get: if true;
   
-  	// Allow the patient to update only the responses and status to 'completed'
-  	allow update: if resource.data.status == 'pending' 
+      // Allow the patient to update only the responses and status to 'completed'
+      allow update: if resource.data.status == 'pending' 
                && request.resource.data.status == 'completed'
                && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['responses', 'status', 'completedAt', 'feedbackText']);
-		}
+                  .hasOnly(['responses', 'status', 'completedAt', 'feedbackText', 'event']);
+    }
   }
 }

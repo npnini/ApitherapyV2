@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { getTreatmentCount } from '../../firebase/patient';
 import { db, storage } from '../../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
+import { resolveStoragePath } from '../../utils/storageUtils';
 import { JoinedPatientData, PatientProblem } from '../../types/patient';
 import { Problem } from '../../types/problem';
 import { Protocol } from '../../types/protocol';
@@ -64,7 +65,14 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
 
     // Photo handling
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [uploadPreview, setUploadPreview] = useState<string | null>(initialData?.preTreatmentImage || null);
+    const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+    useEffect(() => {
+        if (initialData?.preTreatmentImage) {
+            resolveStoragePath(initialData.preTreatmentImage).then(url => {
+                if (url) setUploadPreview(url);
+            });
+        }
+    }, [initialData?.preTreatmentImage]);
     const [imageCaption, setImageCaption] = useState('');
     const [isUploading, setIsUploading] = useState(false);
 
@@ -200,7 +208,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
                 const processedBlob = await processImageWithCaption(imageFile, imageCaption);
                 const storageRef = ref(storage, `Patients/${patient.id}/pre_treatment_${Date.now()}.jpg`);
                 await uploadBytes(storageRef, processedBlob);
-                preTreatmentImage = await getDownloadURL(storageRef);
+                preTreatmentImage = storageRef.fullPath;
                 setIsUploading(false);
             } catch (err) {
                 console.error('Error processing/uploading image:', err);
@@ -227,7 +235,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
                 const processedBlob = await processImageWithCaption(imageFile, imageCaption);
                 const storageRef = ref(storage, `Patients/${patient.id}/pre_treatment_${Date.now()}.jpg`);
                 await uploadBytes(storageRef, processedBlob);
-                preTreatmentImage = await getDownloadURL(storageRef);
+                preTreatmentImage = storageRef.fullPath;
                 setIsUploading(false);
             } catch (err) {
                 console.error('Error processing/uploading image during exit:', err);

@@ -12,6 +12,8 @@ import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
 import { T, useT, useTranslationContext } from './T';
 import Tooltip from './common/Tooltip';
+import { StorageLink } from './shared/StorageComponents';
+import { getFieldContent } from '../utils/storageUtils';
 
 // A type for the form state, where points are an array of strings (IDs)
 interface ProtocolFormState extends Omit<Protocol, 'points' | 'measureIds'> {
@@ -463,24 +465,6 @@ const ProtocolAdmin: React.FC = () => {
                             {filteredProtocols.length === 0 ? (
                                 <tr><td colSpan={5} className={styles.emptyCell}><T>No protocols found</T></td></tr>
                             ) : filteredProtocols.map(protocol => {
-                                const docUrlObject = protocol.documentUrl;
-                                let docUrlForLang: string | undefined;
-                                let docUrlEn: string | undefined;
-
-                                if (docUrlObject) {
-                                    if (typeof docUrlObject === 'object') {
-                                        docUrlForLang = (docUrlObject as any)[currentLang];
-                                        docUrlEn = (docUrlObject as any)['en'];
-                                    } else if (typeof docUrlObject === 'string') { // Legacy support
-                                        docUrlEn = docUrlObject;
-                                        if (currentLang === 'en') {
-                                            docUrlForLang = docUrlObject;
-                                        }
-                                    }
-                                }
-
-                                const finalDocUrl = docUrlForLang || (currentLang !== 'en' ? docUrlEn : undefined);
-
                                 return (
                                     <tr key={protocol.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.protocolName}`}>
@@ -500,11 +484,13 @@ const ProtocolAdmin: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
-                                            {finalDocUrl && (
-                                                <a href={finalDocUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-                                                    <FileCheck2 size={18} />
-                                                </a>
-                                            )}
+                                            <StorageLink 
+                                                path={protocol.documentUrl} 
+                                                lang={currentLang}
+                                                className={styles.documentLink}
+                                            >
+                                                <FileCheck2 size={18} />
+                                            </StorageLink>
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
                                             <div className={styles.actionsWrapper}>

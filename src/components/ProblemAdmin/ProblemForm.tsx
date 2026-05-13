@@ -9,6 +9,7 @@ import DocumentManagement from '../shared/DocumentManagement';
 import styles from './ProblemForm.module.css';
 import { T, useT, useTranslationContext } from '../T';
 import { X, Globe } from 'lucide-react';
+import { getFieldContent } from '../../utils/storageUtils';
 
 interface ProblemFormProps {
   initialData?: Problem;
@@ -267,7 +268,7 @@ const ProblemForm: React.FC<ProblemFormProps> = ({ initialData, onSubmit, onFile
                 <option value="">{getTranslation('Select a protocol')}</option>
                 {activeProtocols.map(p => (
                   <option key={p.id} value={p.id}>
-                    {typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string)}
+                    {getFieldContent(p.name, currentLang)}
                   </option>
                 ))}
               </select>

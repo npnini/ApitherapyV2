@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { logger } from '../../utils/logger';
 import { T, useT, useTranslationContext } from '../T';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
@@ -10,6 +11,8 @@ import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
 import { uploadFile, deleteFile } from '../../services/storageService';
+import { resolveStoragePath } from '../../utils/storageUtils';
+import { StorageImage } from '../shared/StorageComponents';
 import { sendDocumentEmail } from '../../services/emailService';
 
 interface ConsentTabProps {
@@ -29,7 +32,6 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
     const [patientSignature, setPatientSignature] = useState<string>('');
     const [caretakerSignature, setCaretakerSignature] = useState<string>('');
     const [imgError, setImgError] = useState(false);
-    const [displayUrl, setDisplayUrl] = useState<string>('');
     const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; message: string }>({
         isOpen: false,
@@ -58,15 +60,20 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                     const data = configDoc.data();
                     const templateUrl = data.consentSettings?.consent_files?.apitherapy?.[language];
                     if (templateUrl) {
-                        const response = await fetch(templateUrl);
-                        const text = await response.text();
-                        setTemplate(text);
+                        const resolvedUrl = await resolveStoragePath(templateUrl);
+                        if (resolvedUrl) {
+                            const response = await fetch(resolvedUrl);
+                            const text = await response.text();
+                            setTemplate(text);
+                        } else {
+                            setTemplate(noTemplateMsg);
+                        }
                     } else {
                         setTemplate(noTemplateMsg);
                     }
                 }
             } catch (err) {
-                console.error('Failed to fetch consent template:', err);
+                logger.error('Failed to fetch consent template:', err);
                 const isFetchError = err instanceof TypeError && err.message === 'Failed to fetch';
                 if (isFetchError) {
                     setTemplate(errorMsg + ' (Possible CORS or Connectivity error)');
@@ -87,24 +94,10 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
 
     useEffect(() => {
         if (consentSignedUrl) {
-            setDisplayUrl(consentSignedUrl);
             setImgError(false);
         }
     }, [consentSignedUrl]);
 
-    const handleImageError = async () => {
-        if (displayUrl && !imgError) {
-            try {
-                console.log('ConsentTab: Refreshing stale storage URL...');
-                const storageRef = sRef(storage, displayUrl);
-                const freshUrl = await getDownloadURL(storageRef);
-                setDisplayUrl(freshUrl);
-            } catch (err) {
-                console.error('ConsentTab: Failed to refresh download URL:', err);
-                setImgError(true);
-            }
-        }
-    };
 
     const injectData = (text: string) => {
         if (!text) return '';
@@ -144,7 +137,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
             return match;
         });
 
-        console.log('ConsentTab: Data injected. Heuristics used:', heuristicCount);
+        logger.log('ConsentTab: Data injected. Heuristics used:', heuristicCount);
         return result;
     };
 
@@ -154,9 +147,10 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
         if (!consentSignedUrl || !patientData.id) return;
         setIsSendingEmail(true);
         try {
+            const resolvedUrl = await resolveStoragePath(consentSignedUrl);
             await sendDocumentEmail({
                 patientId: patientData.id,
-                documentUrl: consentSignedUrl,
+                documentUrl: resolvedUrl || consentSignedUrl,
                 language: language
             });
             setModalConfig({
@@ -165,7 +159,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                 message: tSentSuccess
             });
         } catch (error) {
-            console.error('Failed to send consent:', error);
+            logger.error('Failed to send consent:', error);
             setModalConfig({
                 isOpen: true,
                 title: tErrorTitle,
@@ -224,7 +218,7 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                 setCaretakerSignature('');
                 return url;
             } catch (err) {
-                console.error('Consent generation/upload failed:', err);
+                logger.error('Consent generation/upload failed:', err);
                 return null;
             }
         }
@@ -236,11 +230,11 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                 <div className={styles.placeholderTab}><T>Loading template...</T></div>
             ) : consentSignedUrl && !imgError ? (
                 <div className={styles.signedView}>
-                    <img
-                        src={displayUrl || consentSignedUrl}
+                    <StorageImage
+                        path={consentSignedUrl}
                         alt="Signed Consent"
                         className={styles.signedDocumentImage}
-                        onError={handleImageError}
+                        onError={() => setImgError(true)}
                     />
                     <div className={styles.fileActions}>
                         <button

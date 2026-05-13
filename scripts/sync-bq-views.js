@@ -1,34 +1,60 @@
 import { BigQuery } from '@google-cloud/bigquery';
 
 /**
- * BIGQUERY VIEW SYNC SCRIPT (Summary Version)
+ * BIGQUERY VIEW SYNC SCRIPT
  * 
  * Usage:
- *   node scripts/sync-bq-views.js --dry   (Show list of changes only)
- *   node scripts/sync-bq-views.js --wet   (Apply changes to Staging)
+ *   node scripts/sync-bq-views.js --diff --dev_stage    (Compare Dev and Stage)
+ *   node scripts/sync-bq-views.js --deploy --dev_stage  (Sync Dev to Stage)
+ *   node scripts/sync-bq-views.js --deploy --stage_prod (Sync Stage to Prod)
  */
 
-const PROJECT_ID = 'apitherapyv2';
-const SOURCE_DS = 'apitherapy_clinical_analytics_dev';
-const TARGET_DS = 'apitherapy_clinical_analytics_stage';
+// --- ARGUMENT PARSING & VALIDATION ---
+const args = process.argv;
+const action = args.includes('--diff') ? 'diff' : args.includes('--deploy') ? 'deploy' : null;
+const envPair = args.includes('--dev_stage') ? 'dev_stage' : args.includes('--stage_prod') ? 'stage_prod' : null;
 
-const bq = new BigQuery({ projectId: PROJECT_ID });
+if (!action) {
+  console.error("❌ Error: Missing action. Use --diff or --deploy");
+  process.exit(1);
+}
+if (!envPair) {
+  console.error("❌ Error: Missing environment pair. Use --dev_stage or --stage_prod");
+  process.exit(1);
+}
+
+// --- CONFIGURATION LOGIC ---
+let SOURCE_PROJECT, SOURCE_DS, TARGET_PROJECT, TARGET_DS;
+
+if (envPair === 'dev_stage') {
+  SOURCE_PROJECT = 'apitherapyv2';
+  SOURCE_DS = 'apitherapy_clinical_analytics_dev';
+  TARGET_PROJECT = 'apitherapyv2';
+  TARGET_DS = 'apitherapy_clinical_analytics_stage';
+} else {
+  SOURCE_PROJECT = 'apitherapyv2';
+  SOURCE_DS = 'apitherapy_clinical_analytics_stage';
+  TARGET_PROJECT = 'apitherapy-c94a6';
+  TARGET_DS = 'apitherapy_clinical_analytics_prod';
+}
+
+const bqSource = new BigQuery({ projectId: SOURCE_PROJECT });
+const bqTarget = new BigQuery({ projectId: TARGET_PROJECT });
 
 function normalizeSql(sql) {
   if (!sql) return '';
-  // Normalize SQL for a robust logical comparison (ignore case, backticks, whitespace)
   return sql.replace(/`/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 async function syncViews() {
-  const isWet = process.argv.includes('--wet');
-  const isDry = !isWet;
+  const isWet = (action === 'deploy');
+  const displayTarget = envPair === 'dev_stage' ? 'STAGING' : 'PRODUCTION';
 
-  console.log(`\n🚀 BigQuery View Sync [${isWet ? 'WET MODE - APPLYING' : 'DRY MODE - REPORTING'}]`);
-  console.log(`Comparing [${SOURCE_DS}] to [${TARGET_DS}]...\n`);
+  console.log(`\n🚀 BigQuery View Sync [${action.toUpperCase()} MODE]`);
+  console.log(`Comparing [${SOURCE_PROJECT}:${SOURCE_DS}] to [${TARGET_PROJECT}:${TARGET_DS}]...\n`);
 
   try {
-    const [sourceTables] = await bq.dataset(SOURCE_DS).getTables({ maxResults: 1000 });
+    const [sourceTables] = await bqSource.dataset(SOURCE_DS).getTables({ maxResults: 1000 });
     const sourceViews = sourceTables.filter(t => t.metadata.type === 'VIEW');
 
     let outOfSync = [];
@@ -43,7 +69,7 @@ async function syncViews() {
       if (!sourceSql) continue;
 
       const transformedSql = sourceSql.replace(new RegExp(SOURCE_DS, 'g'), TARGET_DS);
-      const targetView = bq.dataset(TARGET_DS).table(viewId);
+      const targetView = bqTarget.dataset(TARGET_DS).table(viewId);
       
       try {
         const [targetMetadata] = await targetView.getMetadata();
@@ -52,8 +78,8 @@ async function syncViews() {
         if (normalizeSql(currentTargetSql) !== normalizeSql(transformedSql)) {
           outOfSync.push(viewId);
           if (isWet) {
-            const query = `CREATE OR REPLACE VIEW \`${PROJECT_ID}.${TARGET_DS}.${viewId}\` AS ${transformedSql}`;
-            await bq.query({ query });
+            const query = `CREATE OR REPLACE VIEW \`${TARGET_PROJECT}.${TARGET_DS}.${viewId}\` AS ${transformedSql}`;
+            await bqTarget.query({ query });
           }
         } else {
           upToDateCount++;
@@ -62,8 +88,8 @@ async function syncViews() {
         if (err.code === 404) {
           newViews.push(viewId);
           if (isWet) {
-            const query = `CREATE OR REPLACE VIEW \`${PROJECT_ID}.${TARGET_DS}.${viewId}\` AS ${transformedSql}`;
-            await bq.query({ query });
+            const query = `CREATE OR REPLACE VIEW \`${TARGET_PROJECT}.${TARGET_DS}.${viewId}\` AS ${transformedSql}`;
+            await bqTarget.query({ query });
           }
         } else {
           throw err;
@@ -73,7 +99,7 @@ async function syncViews() {
 
     // --- REPORTING ---
     if (newViews.length > 0) {
-      console.log(`✨ NEW VIEWS (To be created in Staging):`);
+      console.log(`✨ NEW VIEWS (To be created in ${displayTarget}):`);
       newViews.forEach(name => console.log(`   [+] ${name}`));
       console.log('');
     }
@@ -90,9 +116,9 @@ async function syncViews() {
       console.log(`--------------------------------------------------`);
       console.log(`Summary: ${upToDateCount} up-to-date, ${outOfSync.length} modified, ${newViews.length} new.`);
       if (isWet) {
-        console.log(`Status: ALL CHANGES APPLIED TO STAGING.`);
+        console.log(`Status: ALL CHANGES APPLIED TO ${displayTarget}.`);
       } else {
-        console.log(`Status: DRY RUN ONLY. No changes made to Staging.`);
+        console.log(`Status: DIFF REPORT ONLY. No changes made to ${displayTarget}.`);
       }
       console.log(`--------------------------------------------------`);
     }

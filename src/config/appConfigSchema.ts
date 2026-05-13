@@ -8,7 +8,7 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'password';
   defaultValue: string | number | boolean | string[] | Record<string, any>;
 };
 
@@ -81,7 +81,7 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       emailApiKey: {
         label: 'Email API Key',
         description: 'API key for the email provider (e.g. Resend).',
-        type: 'string',
+        type: 'password',
         defaultValue: '',
       },
       senderEmail: {

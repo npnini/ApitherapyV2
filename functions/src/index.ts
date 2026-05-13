@@ -14,16 +14,19 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // BigQuery Dataset Configuration
+const projectId = process.env.GCLOUD_PROJECT;
 const BQ_DATASET = process.env.FUNCTIONS_EMULATOR
   ? "apitherapy_clinical_analytics_dev"
-  : "apitherapy_clinical_analytics_stage";
+  : (projectId === "apitherapy-c94a6"
+    ? "apitherapy_clinical_analytics_prod"
+    : "apitherapy_clinical_analytics_stage");
 
 /**
  * 1. Scheduled Sweeper
  * Runs daily at 5:00 AM to sweep yesterday's treatments, clean up old sessions,
  * and dispatch emails via SendGrid.
  */
-export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: "europe-west1" }, async () => {
+export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *" }, async () => {
   const now = admin.firestore.Timestamp.now();
 
   // A. Cleanup expired sessions
@@ -49,6 +52,7 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
   const treatmentsSnapshot = await db.collection("treatments")
     .where("createdTimestamp", ">=", tsStart)
     .where("createdTimestamp", "<", tsEnd)
+    .where("status", "==", "Completed")
     .get();
 
   // Fetch Config
@@ -150,6 +154,17 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
       }
     }
 
+    // Fetch protocol names for the summary
+    const protocolNames: string[] = [];
+    const protocolIds = treatment.protocolIds || [];
+    for (const pId of protocolIds) {
+      const pDoc = await db.collection("cfg_protocols").doc(pId).get();
+      if (pDoc.exists) {
+        const data = pDoc.data() || {};
+        protocolNames.push(data.name?.[preferredLang] || data.name?.en || "Unknown Protocol");
+      }
+    }
+
     const sessionRef = db.collection("feedback_sessions").doc(sessionId);
     newBatch.set(sessionRef, {
       treatmentId: doc.id,
@@ -157,6 +172,8 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", region: 
       measures: measuresData, // Embedded array of objects
       status: "pending",
       language: preferredLang, // Store the caretaker's preference
+      treatmentDate: treatment.createdTimestamp || admin.firestore.FieldValue.serverTimestamp(),
+      treatmentSummary: protocolNames.join(", "),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
     });
@@ -338,7 +355,7 @@ export const sendDocumentEmail = onCall(async (request) => {
  * Target Region: europe-west1 (Belgium)
  * This function serves as a transform hook for the Firestore-to-BigQuery extension.
  */
-export const filterPiiTransform = onRequest({ region: "europe-west1" }, (req, res) => {
+export const filterPiiTransform = onRequest(async (req, res) => {
   const payload = req.body;
 
   if (!payload || !payload.data) {
@@ -591,8 +608,8 @@ export const sendMissingProblemEmail = onCall(async (request) => {
     const configData = configDoc.data() || {};
     const notificationSettings = configData.notificationSettings || {};
     const apiKey = (notificationSettings.emailApiKey || "").trim();
-    const senderEmail = (notificationSettings.senderEmail || "").trim() || "noreply@beelive.biz";
-    const adminEmail = (configData.adminEmail || "admin@apitherapy-system.com").trim();
+    const senderEmail = (notificationSettings.senderEmail || configData.senderEmail || "noreply@beelive.biz").trim();
+    const adminEmail = senderEmail;
 
     if (!apiKey) {
       throw new HttpsError("failed-precondition", "Email API Key missing.");

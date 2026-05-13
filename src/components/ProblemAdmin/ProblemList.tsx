@@ -8,6 +8,8 @@ import { Plus, Trash2, Edit, Search, X, FileCheck2 } from 'lucide-react';
 import Modal from '../shared/Modal';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
+import { StorageLink } from '../shared/StorageComponents';
+import { getFieldContent } from '../../utils/storageUtils';
 
 interface ProblemListProps {
   onEdit: (id: string) => void;
@@ -28,30 +30,17 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
     return problemsCollection.docs.map(doc => ({ ...doc.data(), id: doc.id } as Problem));
   }, [problemsCollection]);
 
-  const getDocumentUrl = (problem: Problem) => {
-    if (problem.documentUrl && typeof problem.documentUrl === 'object') {
-      return problem.documentUrl[currentLang] || problem.documentUrl['en'];
-    }
-    // Fallback for old string-based URLs, if any
-    if (typeof problem.documentUrl === 'string') {
-      return problem.documentUrl;
-    }
-    return undefined;
-  };
+
 
   const filteredProblems = useMemo(() => {
     if (!searchTerm.trim()) return problems;
 
     const term = searchTerm.toLowerCase().trim();
     return problems.filter(problem => {
-      const name = typeof problem.name === 'object'
-        ? (problem.name[currentLang] || problem.name[appConfig.defaultLanguage] || Object.values(problem.name)[0] || '')
-        : (problem.name as string);
+      const name = getFieldContent(problem.name, currentLang);
       if (name.toLowerCase().includes(term)) return true;
 
-      const description = typeof problem.description === 'object'
-        ? (problem.description[currentLang] || problem.description[appConfig.defaultLanguage] || Object.values(problem.description)[0] || '')
-        : (problem.description as string);
+      const description = getFieldContent(problem.description, currentLang);
       if (description.toLowerCase().includes(term)) return true;
 
       return false;
@@ -111,9 +100,8 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
           </thead>
           <tbody>
             {filteredProblems.map(problem => {
-              const documentUrl = getDocumentUrl(problem);
-              const name = typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string);
-              const description = typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string);
+              const name = getFieldContent(problem.name, currentLang);
+              const description = getFieldContent(problem.description, currentLang);
               return (
                 <tr key={problem.id}>
                   <td>{name}</td>
@@ -124,13 +112,14 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
                     </span>
                   </td>
                   <td className={styles.documentCell}>
-                    {documentUrl && (
+                    <StorageLink 
+                      path={problem.documentUrl} 
+                      lang={currentLang}
+                    >
                       <Tooltip text={useT('View Document')}>
-                        <a href={documentUrl} target="_blank" rel="noopener noreferrer">
-                          <FileCheck2 size={18} />
-                        </a>
+                        <FileCheck2 size={18} />
                       </Tooltip>
-                    )}
+                    </StorageLink>
                   </td>
                   <td className={styles.actionCell}>
                     <Tooltip text={useT('Edit Problem')}>

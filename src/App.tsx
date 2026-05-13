@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { logger } from './utils/logger';
 
 import { TranslationProvider, useTranslationContext, T, useT } from './components/T';
 import { auth, db } from './firebase';
@@ -70,7 +71,7 @@ const AppInner: React.FC = () => {
                     setAppConfig(configDocSnap.data());
                 }
             } catch (err) {
-                console.error("Config fetch failed:", err);
+                logger.error("Config fetch failed:", err);
             }
         };
         fetchAppConfig();
@@ -158,7 +159,7 @@ const AppInner: React.FC = () => {
             const resolvedPatients = await Promise.all(patientsDataPromises);
             setPatients(resolvedPatients);
         } catch (error) {
-            console.error("Error fetching patient data:", error);
+            logger.error("Error fetching patient data:", error);
         } finally {
             setIsLoading(false);
         }
@@ -184,7 +185,7 @@ const AppInner: React.FC = () => {
             const params = new URLSearchParams(window.location.search);
             const urlPatientId = params.get('patientId');
             if (urlPatientId) {
-                console.log(`[TRACER] App: Detected patientId in URL: "${urlPatientId}"`);
+                logger.trace("App", `Detected patientId in URL: "${urlPatientId}"`);
                 handlePatientClick(urlPatientId);
                 // Clear the param from URL to prevent re-triggering on manual refreshes if desired, 
                 // but usually keeping it is fine for SPAs.
@@ -331,7 +332,7 @@ const AppInner: React.FC = () => {
                     if (pid) {
                         await updateDoc(doc(db, 'cfg_problems', pid), {
                             reference_count: increment(-1)
-                        }).catch(err => console.error("Failed to decrement problem ref count", err));
+                        }).catch(err => logger.error("Failed to decrement problem ref count", err));
                     }
                 }
 
@@ -366,7 +367,7 @@ const AppInner: React.FC = () => {
             return true;
 
         } catch (error) {
-            console.error("Error saving patient data:", error);
+            logger.error("Error saving patient data:", error);
             setErrorMessage(error instanceof Error ? error.message : "Failed to save patient data.");
             setSaveStatus('error');
             return false;
@@ -380,7 +381,7 @@ const AppInner: React.FC = () => {
             await deleteDoc(doc(db, "patients", patientId));
             await fetchInitialData(appUser);
         } catch (error) {
-            console.error("Error deleting patient:", error);
+            logger.error("Error deleting patient:", error);
         } finally {
             setSaveStatus('idle');
         }
@@ -412,16 +413,16 @@ const AppInner: React.FC = () => {
 
     const handlePatientClick = async (patientIdInput: string | number) => {
         const patientId = String(patientIdInput).trim();
-        console.log(`[TRACER] App.handlePatientClick: Received ID: "${patientId}" (input: ${patientIdInput})`);
+        logger.trace("App.handlePatientClick", `Received ID: "${patientId}" (input: ${patientIdInput})`);
         if (!patientId) return;
 
         let patient = patients.find(p => p.id === patientId || p.identityNumber === patientId);
         if (patient) {
-            console.log(`[TRACER] App.handlePatientClick: Found patient in local state: "${patient.fullName}" (id: ${patient.id})`);
+            logger.trace("App.handlePatientClick", `Found patient in local state: "${patient.fullName}" (id: ${patient.id})`);
         }
 
         if (!patient) {
-            console.log(`[TRACER] App.handlePatientClick: Patient not found in local state, fetching from Firestore...`);
+            logger.trace("App.handlePatientClick", `Patient not found in local state, fetching from Firestore...`);
             setIsLoading(true);
             try {
                 // Try technical ID first
@@ -429,33 +430,33 @@ const AppInner: React.FC = () => {
 
                 // If not found, it might be an identity number used as an ID, or we need to query by identityNumber field
                 if (!pDoc.exists()) {
-                    console.log(`[TRACER] App.handlePatientClick: Doc "${patientId}" not found, trying identityNumber query...`);
+                    logger.trace("App.handlePatientClick", `Doc "${patientId}" not found, trying identityNumber query...`);
                     const q = query(collection(db, 'patients'), where('identityNumber', '==', patientId));
                     const qSnap = await getDocs(q);
                     if (!qSnap.empty) {
                         pDoc = qSnap.docs[0];
-                        console.log(`[TRACER] App.handlePatientClick: Found doc via identityNumber query. Doc ID: ${pDoc.id}`);
+                        logger.trace("App.handlePatientClick", `Found doc via identityNumber query. Doc ID: ${pDoc.id}`);
                     }
                 }
 
                 if (pDoc.exists()) {
                     const data = pDoc.data();
-                    console.log(`[TRACER] App.handlePatientClick: Fetched data for "${data.fullName}". Document ID: ${pDoc.id}`);
+                    logger.trace("App.handlePatientClick", `Fetched data for "${data.fullName}". Document ID: ${pDoc.id}`);
                     const pii = { ...data, id: pDoc.id, patientId: pDoc.id } as any;
                     const mDoc = await getDoc(doc(db, 'patient_medical_data', pDoc.id));
                     const medicalRecord = mDoc.exists() ? { ...mDoc.data(), id: mDoc.id, patientId: pDoc.id } : { patientId: pDoc.id };
                     patient = { ...pii, medicalRecord };
                 } else {
-                    console.warn(`[TRACER] App.handlePatientClick: No patient document found for "${patientId}"`);
+                    logger.warn(`[TRACER] App.handlePatientClick: No patient document found for "${patientId}"`);
                 }
             } catch (err) {
-                console.error("[TRACER] App.handlePatientClick: Deep link fetch failed:", err);
+                logger.error("[TRACER] App.handlePatientClick: Deep link fetch failed:", err);
             } finally {
                 setIsLoading(false);
             }
         }
         if (patient) {
-            console.log(`[TRACER] App.handlePatientClick: Successfully resolved patient, showing treatments view.`);
+            logger.trace("App.handlePatientClick", `Successfully resolved patient, showing treatments view.`);
             handleShowTreatments(patient);
         }
     };

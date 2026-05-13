@@ -1,4 +1,4 @@
-﻿{
+{
   "indexes": [
     {
       "collectionGroup": "questionnaire_responses",
@@ -23,7 +23,11 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "__name__",
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdTimestamp",
           "order": "DESCENDING"
         }
       ]

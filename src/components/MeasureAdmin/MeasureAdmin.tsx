@@ -10,6 +10,7 @@ import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
 import DocumentManagement from '../shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../T';
+import { StorageLink } from '../shared/StorageComponents';
 import Tooltip from '../common/Tooltip';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -466,9 +467,9 @@ const MeasureAdmin: React.FC = () => {
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {measure.documentUrl && getDocumentUrl(measure.documentUrl) && (
                                                 <Tooltip text={useT('View Document')}>
-                                                    <a href={getDocumentUrl(measure.documentUrl)} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
+                                                    <StorageLink path={getDocumentUrl(measure.documentUrl) || ''} className={styles.documentLink}>
                                                         <FileCheck2 size={18} />
-                                                    </a>
+                                                    </StorageLink>
                                                 </Tooltip>
                                             )}
                                         </td>

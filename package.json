@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
+    "emulators:autosave": "node scripts/auto-save-emulator.js",
+    "dev:all": "node scripts/start-dev.js",
     "sync-data": "node scripts/sync-firestore.js"
   },
   "dependencies": {

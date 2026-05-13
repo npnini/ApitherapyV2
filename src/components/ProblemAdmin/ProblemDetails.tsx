@@ -4,6 +4,9 @@ import styles from './ProblemDetails.module.css';
 import { T, useTranslationContext } from '../T';
 import { ChevronLeft, Edit as EditIcon, FileCheck2 } from 'lucide-react';
 
+import { StorageLink } from '../shared/StorageComponents';
+import { getFieldContent } from '../../utils/storageUtils';
+
 interface ProblemDetailsProps {
   problem: Problem;
   onEdit: () => void;
@@ -13,18 +16,6 @@ interface ProblemDetailsProps {
 const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack }) => {
   const { language: currentLang } = useTranslationContext();
 
-  const getDocumentUrl = () => {
-    if (typeof problem.documentUrl === 'string') {
-      return problem.documentUrl;
-    }
-    if (problem.documentUrl && typeof problem.documentUrl === 'object') {
-      return problem.documentUrl[currentLang] || problem.documentUrl.en;
-    }
-    return null;
-  };
-
-  const documentUrl = getDocumentUrl();
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -32,7 +23,7 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
           <ChevronLeft size={20} />
           <T>Back to list</T>
         </button>
-        <h2 className={styles.title}>{typeof problem.name === 'object' ? (problem.name[currentLang] || problem.name['en'] || Object.values(problem.name)[0] || '') : (problem.name as string)}</h2>
+        <h2 className={styles.title}>{getFieldContent(problem.name, currentLang)}</h2>
         <button onClick={onEdit} className={styles.editButton}>
           <EditIcon size={20} />
           <T>Edit</T>
@@ -40,14 +31,17 @@ const ProblemDetails: React.FC<ProblemDetailsProps> = ({ problem, onEdit, onBack
       </div>
 
       <div className={styles.content}>
-        <p className={styles.description}>{typeof problem.description === 'object' ? (problem.description[currentLang] || problem.description['en'] || Object.values(problem.description)[0] || '') : (problem.description as string)}</p>
+        <p className={styles.description}>{getFieldContent(problem.description, currentLang)}</p>
 
-        {documentUrl && (
+        {problem.documentUrl && (
           <div className={styles.documentSection}>
             <h3 className={styles.sectionTitle}><T>Related document</T></h3>
-            <a href={documentUrl} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-              <FileCheck2 size={18} /> <T>View document</T>
-            </a>
+            <StorageLink 
+              path={problem.documentUrl} 
+              lang={currentLang} 
+              className={styles.documentLink}
+              label={<><FileCheck2 size={18} /> <T>View document</T></>}
+            />
           </div>
         )}
 

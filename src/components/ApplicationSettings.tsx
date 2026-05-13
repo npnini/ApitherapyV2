@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase
 import { db } from '../firebase';
 import { AppUser } from '../types/user';
 import { uploadFile, deleteFile } from '../services/storageService';
+import { resolveStoragePath } from '../utils/storageUtils';
 import { appConfigSchema, ConfigGroup, ConfigSetting } from '../config/appConfigSchema';
 import styles from './ApplicationSettings.module.css';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
@@ -621,14 +622,20 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                                             <button
                                                 type="button"
                                                 className={styles.viewBtn}
-                                                onClick={() => openInNewTab(fileUrl, isConsent)}
+                                                onClick={async () => {
+                                                    const resolved = await resolveStoragePath(fileUrl);
+                                                    if (resolved) openInNewTab(resolved, isConsent);
+                                                }}
                                             >
                                                 <T>View</T>
                                             </button>
                                             <button
                                                 type="button"
                                                 className={styles.downloadBtn}
-                                                onClick={() => forceDownload(fileUrl, filename)}
+                                                onClick={async () => {
+                                                    const resolved = await resolveStoragePath(fileUrl);
+                                                    if (resolved) forceDownload(resolved, filename);
+                                                }}
                                             >
                                                 <T>Download</T>
                                             </button>
@@ -687,6 +694,18 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                             );
                         })}
                     </div>
+                );
+                break;
+            case 'password':
+                control = (
+                    <input
+                        id={key}
+                        type="password"
+                        className={styles.input}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={e => handleSettingChange(path, e.target.value)}
+                        autoComplete="new-password"
+                    />
                 );
                 break;
             case 'string':

@@ -55,6 +55,12 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Pending strings waiting to be translated this render cycle
     const pendingRef = useRef<Set<string>>(new Set());
 
+    // Strings that failed to translate (to prevent infinite retry loops)
+    const failedRef = useRef<Set<string>>(new Set());
+
+    // Flag to prevent concurrent translation batches
+    const isProcessingRef = useRef(false);
+
     // Timeout for batching forceUpdates
     const flushTimeoutRef = useRef<any>(null);
 
@@ -71,6 +77,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (language === 'en') return;
         if (cacheRef.current[language]?.[text]) return; // already cached
         if (pendingRef.current.has(text)) return; // already in queue
+        if (failedRef.current.has(`${language}:${text}`)) return; // already failed this session
 
         pendingRef.current.add(text);
 
@@ -96,12 +103,20 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const pending = Array.from(pendingRef.current);
 
         // Batch processing logic
-        // We only trigger if there are pending strings OR if we haven't loaded the firestore cache for this lang yet
         if (pending.length === 0 && cacheRef.current[language]) return;
+        if (isProcessingRef.current) return;
 
+        isProcessingRef.current = true;
         pendingRef.current = new Set();
 
-        translateBatch(pending, language, cacheRef.current).then(() => {
+        // Mark strings as "tried" immediately to prevent re-registration during the async call
+        pending.forEach(s => failedRef.current.add(`${language}:${s}`));
+
+        translateBatch(pending, language, cacheRef.current).then((failedStrings) => {
+            // If they actually succeeded, they will be in cacheRef.current[language]
+            // and registerString will skip them anyway. 
+            // If they failed, they are already in failedRef.
+            isProcessingRef.current = false;
             forceUpdate(n => n + 1);
         });
     }); // Run after every render to catch newly registered strings
@@ -158,7 +173,7 @@ async function translateBatch(
     strings: string[],
     targetLang: string,
     cache: Record<string, Record<string, string>>
-): Promise<void> {
+): Promise<string[]> {
     if (!cache[targetLang]) cache[targetLang] = {};
 
     const firestoreDocId = `ui_${targetLang}`;
@@ -182,13 +197,15 @@ async function translateBatch(
     // ── Step 2: Find strings still missing after Firestore lookup ────────────
     const toTranslate = strings.filter(s => !cache[targetLang][s]);
     console.log(`[T] Batch processing for ${targetLang}. Total requested: ${strings.length}, To translate via API: ${toTranslate.length}`);
-    if (toTranslate.length === 0) return;
+    if (toTranslate.length === 0) return [];
 
     // ── Step 3: Call Google Translate API in one batched request ─────────────
     if (!TRANSLATION_API_KEY) {
         console.warn('[T] No VITE_GOOGLE_TRANSLATE_KEY set. Strings will display in English.');
-        return;
+        return toTranslate; // Mark as failed/skipped
     }
+
+    console.log(`[T] Calling Google Translate API with Key starting with: ${TRANSLATION_API_KEY.substring(0, 6)}...`);
 
     try {
         const response = await fetch(
@@ -238,7 +255,10 @@ async function translateBatch(
             console.log('[T] Skipping Firestore cache update: user not authenticated.');
         }
 
+        return []; // Success, no failed strings
+
     } catch (e) {
         console.error('[T] Translation API call failed:', e);
+        return toTranslate; // Return the strings that failed
     }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -8,20 +9,10 @@ import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import { T, useT, useTranslationContext } from '../components/T';
 import Tooltip from './common/Tooltip';
+import { StorageLink } from './shared/StorageComponents';
 import PointPlacementScene from './PointPlacementScene';
 import DocumentManagement from './shared/DocumentManagement';
-
-// Helper to get the correct document URL for the current language
-const getDocumentUrlForLang = (docUrl: any, lang: string): string | null => {
-    if (typeof docUrl === 'object' && docUrl !== null) {
-        return docUrl[lang] || null;
-    }
-    // Handle legacy data where the URL is just a string (assume English)
-    if (typeof docUrl === 'string' && lang === 'en') {
-        return docUrl;
-    }
-    return null;
-};
+import { getFieldContent } from '../utils/storageUtils';
 
 const PointsAdmin: React.FC = () => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
@@ -82,7 +73,7 @@ const PointsAdmin: React.FC = () => {
                     });
                 }
             } catch (err) {
-                console.error("Error fetching app config:", err);
+                logger.error("Error fetching app config:", err);
             }
         };
         fetchConfig();
@@ -105,7 +96,7 @@ const PointsAdmin: React.FC = () => {
             setError(null);
         } catch (err) {
             setError(getTranslation('Failed to fetch points'));
-            console.error(err);
+            logger.error(err);
         }
         setIsLoading(false);
     }, [user, pointsCollectionRef, getTranslation]);
@@ -213,7 +204,7 @@ const PointsAdmin: React.FC = () => {
                 setEditingPoint({ ...updatedPoint, documentUrl: newDocUrls });
                 setFormError(null);
             } catch (err) {
-                console.error("Error uploading file during update:", err);
+                logger.error("Error uploading file during update:", err);
                 setFormError(getTranslation('Failed to upload file.'));
             } finally {
                 setIsSubmitting(false);
@@ -240,7 +231,7 @@ const PointsAdmin: React.FC = () => {
 
                 for (const [l, url] of Object.entries(oldUrls)) {
                     if (url && !currentUrls[l]) {
-                        await deleteFile(url).catch(err => console.error("Error deleting orphaned file:", err));
+                        await deleteFile(url).catch(err => logger.error("Error deleting orphaned file:", err));
                     }
                 }
             }
@@ -264,11 +255,11 @@ const PointsAdmin: React.FC = () => {
 
             if (isNewPoint) {
                 const newDocRef = await addDoc(pointsCollectionRef, { ...dataToSave, createdAt: serverTimestamp() });
-                console.log(`[DEBUG-SAVE-SUCCESS] New point created with ID: ${newDocRef.id}`);
+                logger.log(`[DEBUG-SAVE-SUCCESS] New point created with ID: ${newDocRef.id}`);
             } else {
                 const pointDoc = doc(db, 'cfg_acupuncture_points', pointToSave.id!);
                 await updateDoc(pointDoc, dataToSave);
-                console.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointToSave.id} updated.`);
+                logger.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointToSave.id} updated.`);
             }
 
             setEditingPoint(null);
@@ -276,7 +267,7 @@ const PointsAdmin: React.FC = () => {
             fetchPoints();
 
         } catch (err) {
-            console.error('Save failed:', err);
+            logger.error('Save failed:', err);
             setFormError(getTranslation('Failed to save the point'));
         } finally {
             setIsSubmitting(false);
@@ -285,7 +276,7 @@ const PointsAdmin: React.FC = () => {
 
     const confirmDelete = async () => {
         if (!deletingPoint) return;
-        console.log(`%c[DEBUG-DELETE-01] Deleting point ID: ${deletingPoint.id}`, 'color: orange; font-weight: bold;', deletingPoint);
+        logger.log(`[DEBUG-DELETE-01] Deleting point ID: ${deletingPoint.id}`, deletingPoint);
 
         setIsSubmitting(true);
         try {
@@ -294,20 +285,20 @@ const PointsAdmin: React.FC = () => {
                 const urls = typeof deletingPoint.documentUrl === 'string' ? [deletingPoint.documentUrl] : Object.values(deletingPoint.documentUrl);
                 for (const url of urls) {
                     try {
-                        console.log(`[DEBUG-DELETE-02] Deleting file from storage: ${url}`);
+                        logger.log(`[DEBUG-DELETE-02] Deleting file from storage: ${url}`);
                         await deleteFile(url);
                     } catch (storageError) {
-                        console.error("[DEBUG-DELETE-ERROR] Failed to delete file from storage, but proceeding with Firestore deletion.", storageError);
+                        logger.error("[DEBUG-DELETE-ERROR] Failed to delete file from storage, but proceeding with Firestore deletion.", storageError);
                     }
                 }
             }
 
             const pointDoc = doc(db, 'cfg_acupuncture_points', deletingPoint.id);
             await deleteDoc(pointDoc);
-            console.log('[DEBUG-DELETE-SUCCESS] Point deleted from Firestore.');
+            logger.log('[DEBUG-DELETE-SUCCESS] Point deleted from Firestore.');
             fetchPoints();
         } catch (err) {
-            console.error('%c[DEBUG-DELETE-ERROR] Firestore deletion failed.', 'color: red; font-weight: bold;', err);
+            logger.error('[DEBUG-DELETE-ERROR] Firestore deletion failed.', err);
             setError(getTranslation('Failed to delete the point'));
         }
         setIsSubmitting(false);
@@ -406,7 +397,6 @@ const PointsAdmin: React.FC = () => {
                             <tr><td colSpan={6} className={styles.emptyCell}>{!user ? <T>Please log in</T> : <T>No points found</T>}</td></tr>
                         ) : (
                             filteredPoints.map(point => {
-                                const docUrlForCurrentLang = getDocumentUrlForLang(point.documentUrl, currentLang);
                                 return (
                                     <tr key={point.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.codeCell}`}>{point.code}</td>
@@ -418,13 +408,15 @@ const PointsAdmin: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
-                                            {docUrlForCurrentLang && (
+                                            <StorageLink 
+                                                path={point.documentUrl} 
+                                                lang={currentLang}
+                                                className={styles.documentLink}
+                                            >
                                                 <Tooltip text={getTranslation('View Document')}>
-                                                    <a href={docUrlForCurrentLang} target="_blank" rel="noopener noreferrer" className={styles.documentLink}>
-                                                        <FileCheck2 size={18} />
-                                                    </a>
+                                                    <FileCheck2 size={18} />
                                                 </Tooltip>
-                                            )}
+                                            </StorageLink>
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
                                             <div className={styles.actionsWrapper}>

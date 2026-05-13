@@ -11,7 +11,7 @@ const db = getFirestore(app);
  * @param file The file to upload.
  * @param folderPath The path in storage to upload the file to (e.g., 'point_documents').
  * @param customFileName Optional custom filename.
- * @returns A promise that resolves with the public download URL of the file.
+ * @returns A promise that resolves with the storage path (relative) of the file.
  */
 export const uploadFile = async (file: File, folderPath: string, customFileName?: string): Promise<string> => {
     if (!file) {
@@ -21,7 +21,9 @@ export const uploadFile = async (file: File, folderPath: string, customFileName?
     const storageRef = ref(storage, `${folderPath}/${fileName}`);
 
     // Set metadata to ensure correct encoding (especially for Hebrew/UTF-8)
-    const metadata: any = {};
+    const metadata: any = {
+        contentDisposition: 'inline'
+    };
     if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
         metadata.contentType = (file.type || 'text/plain') + '; charset=utf-8';
     } else if (file.type) {
@@ -29,23 +31,22 @@ export const uploadFile = async (file: File, folderPath: string, customFileName?
     }
 
     await uploadBytes(storageRef, file, metadata);
-    const downloadURL = await getDownloadURL(storageRef);
-
-    return downloadURL;
+    // Return the relative path instead of the download URL
+    return storageRef.fullPath;
 };
 
 /**
- * Deletes a file from Firebase Storage using its download URL.
- * @param fileUrl The public download URL of the file to delete.
+ * Deletes a file from Firebase Storage.
+ * @param pathOrUrl The storage path or public download URL of the file to delete.
  * @returns A promise that resolves when the file is deleted.
  */
-export const deleteFile = async (fileUrl: string): Promise<void> => {
-    if (!fileUrl) {
+export const deleteFile = async (pathOrUrl: string): Promise<void> => {
+    if (!pathOrUrl) {
         return;
     }
 
     try {
-        const storageRef = ref(storage, fileUrl);
+        const storageRef = ref(storage, pathOrUrl);
         await deleteObject(storageRef);
     } catch (error: any) {
         console.error("Error deleting file from storage:", error);

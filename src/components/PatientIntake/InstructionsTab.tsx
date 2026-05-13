@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { logger } from '../../utils/logger';
 import { T, useT, useTranslationContext } from '../T';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
@@ -10,6 +11,8 @@ import { JoinedPatientData, PatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
 import { generateDocumentImage } from '../../utils/documentUtils';
 import { uploadFile, deleteFile } from '../../services/storageService';
+import { resolveStoragePath } from '../../utils/storageUtils';
+import { StorageImage } from '../shared/StorageComponents';
 import { sendDocumentEmail } from '../../services/emailService';
 
 interface InstructionsTabProps {
@@ -28,7 +31,6 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
     const [isLoading, setIsLoading] = useState(true);
     const [patientSignature, setPatientSignature] = useState<string>('');
     const [imgError, setImgError] = useState(false);
-    const [displayUrl, setDisplayUrl] = useState<string>('');
     const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; message: string }>({
         isOpen: false,
@@ -57,15 +59,20 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                     const data = configDoc.data();
                     const templateUrl = data.treatmentInstructions?.instructionsFiles?.apitherapy?.[language];
                     if (templateUrl) {
-                        const response = await fetch(templateUrl);
-                        const text = await response.text();
-                        setTemplate(text);
+                        const resolvedUrl = await resolveStoragePath(templateUrl);
+                        if (resolvedUrl) {
+                            const response = await fetch(resolvedUrl);
+                            const text = await response.text();
+                            setTemplate(text);
+                        } else {
+                            setTemplate(noTemplateMsg);
+                        }
                     } else {
                         setTemplate(noTemplateMsg);
                     }
                 }
             } catch (err) {
-                console.error('Failed to fetch instructions template:', err);
+                logger.error('Failed to fetch instructions template:', err);
                 // Check if it's potentially a CORS or networking error
                 const isFetchError = err instanceof TypeError && err.message === 'Failed to fetch';
                 if (isFetchError) {
@@ -87,24 +94,10 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
 
     useEffect(() => {
         if (instructionsSignedUrl) {
-            setDisplayUrl(instructionsSignedUrl);
             setImgError(false);
         }
     }, [instructionsSignedUrl]);
 
-    const handleImageError = async () => {
-        if (displayUrl && !imgError) {
-            try {
-                console.log('InstructionsTab: Refreshing stale storage URL...');
-                const storageRef = sRef(storage, displayUrl);
-                const freshUrl = await getDownloadURL(storageRef);
-                setDisplayUrl(freshUrl);
-            } catch (err) {
-                console.error('InstructionsTab: Failed to refresh download URL:', err);
-                setImgError(true);
-            }
-        }
-    };
 
     const injectData = (text: string) => {
         if (!text) return '';
@@ -144,9 +137,10 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
         if (!instructionsSignedUrl || !patientData.id) return;
         setIsSendingEmail(true);
         try {
+            const resolvedUrl = await resolveStoragePath(instructionsSignedUrl);
             await sendDocumentEmail({
                 patientId: patientData.id,
-                documentUrl: instructionsSignedUrl,
+                documentUrl: resolvedUrl || instructionsSignedUrl,
                 language: language
             });
             setModalConfig({
@@ -155,7 +149,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 message: tSentSuccess
             });
         } catch (error) {
-            console.error('Failed to send guidelines:', error);
+            logger.error('Failed to send guidelines:', error);
             setModalConfig({
                 isOpen: true,
                 title: tErrorTitle,
@@ -202,7 +196,7 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 setPatientSignature(''); // Clear signature to prevent redundant uploads
                 return url;
             } catch (err) {
-                console.error('Instructions generation/upload failed:', err);
+                logger.error('Instructions generation/upload failed:', err);
                 return null;
             }
         }
@@ -214,11 +208,11 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
                 <div className={styles.placeholderTab}><T>Loading template...</T></div>
             ) : instructionsSignedUrl && !imgError ? (
                 <div className={styles.signedView}>
-                    <img
-                        src={displayUrl || instructionsSignedUrl}
+                    <StorageImage
+                        path={instructionsSignedUrl}
                         alt="Signed Instructions"
                         className={styles.signedDocumentImage}
-                        onError={handleImageError}
+                        onError={() => setImgError(true)}
                     />
                     <div className={styles.fileActions}>
                         <button

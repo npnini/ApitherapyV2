@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { FileUp, Trash2, ExternalLink, Upload } from 'lucide-react';
 import styles from './DocumentManagement.module.css';
 import { T, useTranslationContext } from '../T';
+import { useStorageUrl } from '../../hooks/useStorageUrl';
 
 interface DocumentManagementProps {
   documentUrl?: { [key: string]: string };
@@ -16,9 +17,14 @@ interface DocumentManagementProps {
 const getFilenameFromUrl = (url: string | null | undefined): string => {
   if (!url) return '';
   try {
-    const path = url.split('?')[0];
-    const filename = path.split('%2F').pop();
-    return filename ? decodeURIComponent(filename) : '';
+    // If it's a full URL
+    if (url.startsWith('http')) {
+      const path = url.split('?')[0];
+      const filename = path.split('%2F').pop();
+      return filename ? decodeURIComponent(filename) : '';
+    }
+    // If it's a path
+    return url.split('/').pop() || '';
   } catch (error) {
     console.error("Error parsing filename from URL:", error);
     return '';
@@ -58,6 +64,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   };
 
   const currentDocumentUrl = documentUrl ? documentUrl[effectiveLang] : undefined;
+  const { url: resolvedUrl } = useStorageUrl(currentDocumentUrl, effectiveLang);
   const hasDocumentForCurrentLang = !!currentDocumentUrl;
 
   const getLangDisplayName = (lang: string) => {
@@ -97,7 +104,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
             <>
               <button
                 type="button"
-                onClick={() => window.open(currentDocumentUrl, '_blank')}
+                onClick={() => resolvedUrl && window.open(resolvedUrl, '_blank')}
                 className={`${styles.documentActionButton} ${styles.blueButton}`}
                 disabled={isSubmitting}
               >

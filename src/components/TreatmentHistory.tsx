@@ -6,6 +6,7 @@ import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
+import { StorageImage } from './shared/StorageComponents';
 import styles from './TreatmentHistory.module.css';
 
 const getMLValue = (value: any, lang: string): string => {
@@ -578,8 +579,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         {treatment.preTreatmentImage && (
                                             <div className={styles.imageDetailItem}>
                                                 <h4 className={styles.detailLabel}><T>Pre-Treatment Photo</T></h4>
-                                                <img
-                                                    src={treatment.preTreatmentImage}
+                                                <StorageImage
+                                                    path={treatment.preTreatmentImage}
                                                     alt="Pre-treatment"
                                                     className={styles.treatmentPhoto}
                                                 />

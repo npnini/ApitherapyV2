@@ -23,6 +23,8 @@ interface FeedbackSession {
     measures: MeasureDef[];
     responses?: Record<string, any>;
     feedbackText?: string;
+    treatmentDate?: any;
+    treatmentSummary?: string;
 }
 
 const getMLValue = (value: any, lang: string): string => {
@@ -103,14 +105,6 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
                 if (docSnap.exists()) {
                     const sessionData = docSnap.data() as FeedbackSession;
                     setSession(sessionData);
-
-                    // Fetch treatment details
-                    if (sessionData.treatmentId) {
-                        const treatmentSnap = await getDoc(doc(db, 'treatments', sessionData.treatmentId));
-                        if (treatmentSnap.exists()) {
-                            setTreatment({ ...treatmentSnap.data(), id: treatmentSnap.id } as TreatmentSession);
-                        }
-                    }
                 } else {
                     setError('Invalid or expired link.');
                 }
@@ -201,15 +195,21 @@ const FeedbackStandaloneView: React.FC<{ sessionId: string }> = ({ sessionId }) 
                         <Info size={24} className={styles.headerIcon} />
                         <h2 className={styles.title}>{t('Treatment Summary')}</h2>
                     </div>
-                    {treatment ? (
-                        <TreatmentSummary 
-                            treatment={treatment} 
-                            language={lang} 
-                            direction={isRtl ? 'rtl' : 'ltr'} 
-                        />
-                    ) : (
-                        <p>{t('Loading summary...')}</p>
-                    )}
+                    <div className={styles.infoBlock}>
+                        <span className={styles.infoLabel}><Calendar size={14} /> {t('Date & Time')}</span>
+                        <span className={styles.infoContent}>
+                            {session.treatmentDate ? (
+                                session.treatmentDate.seconds 
+                                    ? new Date(session.treatmentDate.seconds * 1000).toLocaleString(lang)
+                                    : new Date(session.treatmentDate).toLocaleString(lang)
+                            ) : '-'}
+                        </span>
+                    </div>
+
+                    <div className={styles.infoBlock}>
+                        <span className={styles.infoLabel}><Activity size={14} /> {t('Protocols')}</span>
+                        <p className={styles.infoContent}>{session.treatmentSummary || t('General Treatment')}</p>
+                    </div>
                 </div>
 
                 <div className={styles.rightPane}>
