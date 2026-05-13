@@ -1,10 +1,33 @@
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import path from 'path';
+import fs from 'fs';
+
+console.log('🧹 Cleaning up hanging emulator ports...');
+try {
+  // Kill processes holding common Firebase emulator ports to prevent "port taken" errors
+  const ports = [4000, 4400, 5001, 8080, 8085, 9000, 9099, 9199];
+  const psCommand = `Get-NetTCPConnection -LocalPort ${ports.join(',')} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force }`;
+  execSync(`powershell -NoProfile -Command "${psCommand}"`, { stdio: 'ignore' });
+  console.log('✨ Ports cleared.');
+} catch (e) {
+  // Ignore errors (usually means no processes were found, which is fine)
+}
 
 console.log('🚀 Starting Firebase Emulators...');
 
+// 0. Process any pending auto-saves to bypass Windows file locks
+const TEMP_DATA = './emulator-data-temp';
+const MAIN_DATA = './emulator-data';
+if (fs.existsSync(TEMP_DATA)) {
+  console.log('📦 Promoting auto-saved data to main directory...');
+  if (fs.existsSync(MAIN_DATA)) {
+    fs.rmSync(MAIN_DATA, { recursive: true, force: true });
+  }
+  fs.renameSync(TEMP_DATA, MAIN_DATA);
+}
+
 // 1. Start the emulators
-const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', '--export-on-exit=./emulator-data'], {
+const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data'], {
   shell: true,
   stdio: ['inherit', 'pipe', 'inherit']
 });
@@ -18,12 +41,17 @@ emulators.stdout.on('data', (data) => {
     console.log('\n✨ Emulators are ready!');
     console.log('📂 Launching Auto-Save service in a new window...');
 
-    // 3. Kick off the autosave script in a NEW PowerShell window
-    // This command opens a new terminal so you can see the auto-save logs separately
-    spawn('powershell', ['-NoExit', '-Command', 'npm run emulators:autosave'], {
-      detached: true,
-      stdio: 'ignore'
-    }).unref();
+    // 3. Kick off the autosave script as an attached process
+    // This ensures it dies cleanly when the main process dies
+    const autoSave = spawn('npm', ['run', 'emulators:autosave'], {
+      shell: true,
+      stdio: 'inherit'
+    });
+
+    // Make sure we kill the autosave script when emulators close
+    emulators.on('close', (code) => {
+      autoSave.kill();
+    });
   }
 });
 

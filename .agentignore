@@ -35,3 +35,6 @@ firestore-export/
 seed-data/
 *.db
 *.sqlite
+emulator-data/
+firebase-export-*/
+temp_migration/

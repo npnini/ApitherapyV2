@@ -37,12 +37,13 @@ This document tracks all tasks required to safely move the Apitherapy applicatio
 - [x] **Auth Migration**: 
     - [x] `firebase auth:export users.json --project apitherapyv2`
     - [x] `firebase auth:import users.json --project prod`
-- [ ] **Firestore Data**: 
-    - Export from staging to GCS: `gcloud firestore export gs://apitherapy-prod-backup/init --project=apitherapyv2`
-    - Import to prod: `gcloud firestore import gs://apitherapy-prod-backup/init --project=apitherapy-prod`
+- [ ] **Data Migration (Isolated)**:
+    - [x] **One-time Setup** — Grant Prod Firestore SA access to the existing prod storage bucket (reads from `.env.production`):
+        `.\scripts\setup-migration-permissions.ps1`
+    - [ ] **Run Migration** — Exports Staging, downloads locally, uploads & imports to Prod:
+        `.\scripts\migrate-stage-to-prod.ps1`
+    > Firestore backup lands in `gs://apitherapy-c94a6.firebasestorage.app/backups/`. App files sync to root of same bucket.
 
-- [ ] **Storage Sync**: 
-    - `gsutil rsync -r gs://apitherapyv2.appspot.com gs://apitherapy-prod.appspot.com`
 - [ ] **BigQuery Tables**:
     - Copy base tables from staging to prod dataset using `bq cp`.
 

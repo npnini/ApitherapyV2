@@ -29,6 +29,7 @@ yarn-error.log*
 .firebase/
 *-debug.log
 emulator-data/
+emulator-data-temp/
 firebase-export-*/
 
 # Service account keys - More specific so we don't ignore firebase.json
