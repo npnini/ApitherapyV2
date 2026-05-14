@@ -44,3 +44,8 @@ credentials.json
 .agents/
 .FullName
 scratch/
+
+# Migration artifacts
+temp_migration/
+migration_*/
+.last_prod_deploy

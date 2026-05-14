@@ -21,7 +21,11 @@ $STAGING_PROJECT  = ($EnvStaging | Where-Object Key -eq 'VITE_PROJECT_ID').Value
 $PROD_PROJECT     = ($EnvProd    | Where-Object Key -eq 'VITE_PROJECT_ID').Value
 $STAGING_BUCKET   = "gs://$($($EnvStaging | Where-Object Key -eq 'VITE_STORAGE_BUCKET').Value)"
 $PROD_BUCKET      = "gs://$($($EnvProd    | Where-Object Key -eq 'VITE_STORAGE_BUCKET').Value)"
-$PROD_BACKUPS     = "$PROD_BUCKET/backups"  # Subfolder inside prod bucket for Firestore imports
+
+# Handle region mismatch: Staging Firestore is me-west1, but default bucket is us-central1.
+# We must export to a bucket in me-west1.
+$STAGING_EXPORT_BUCKET = "gs://apitherapyv2-israel-temp"
+$PROD_BACKUPS          = "$PROD_BUCKET/backups"  # Subfolder inside prod bucket for Firestore imports
 
 $TEMP_DIR    = "$PSScriptRoot/../temp_migration"
 $TIMESTAMP   = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -47,19 +51,19 @@ New-Item -ItemType Directory -Path "$TEMP_DIR/storage"   | Out-Null
 # ---------------------------------------------------------------------------
 # 2. FIRESTORE EXPORT (runs inside Staging — no prod contact)
 # ---------------------------------------------------------------------------
-Write-Host "[1/6] Exporting Firestore from Staging to Staging bucket..." -ForegroundColor Yellow
-gcloud firestore export "$STAGING_BUCKET/exports/$EXPORT_PATH" --project=$STAGING_PROJECT
+Write-Host "[1/6] Exporting Firestore from Staging to Staging bucket ($STAGING_EXPORT_BUCKET)..." -ForegroundColor Yellow
+gcloud firestore export "$STAGING_EXPORT_BUCKET/exports/$EXPORT_PATH" --project=$STAGING_PROJECT
 if ($LASTEXITCODE -ne 0) { Write-Error "Firestore export failed. Aborting."; exit 1 }
 
 # ---------------------------------------------------------------------------
 # 3. DOWNLOAD TO LOCAL (your machine bridges the gap)
 # ---------------------------------------------------------------------------
 Write-Host "[2/6] Downloading Firestore export to local machine..." -ForegroundColor Yellow
-gcloud storage cp -r "$STAGING_BUCKET/exports/$EXPORT_PATH" "$TEMP_DIR/firestore/"
+gcloud storage cp -r "$STAGING_EXPORT_BUCKET/exports/$EXPORT_PATH" "$TEMP_DIR/firestore/"
 if ($LASTEXITCODE -ne 0) { Write-Error "Firestore download failed. Aborting."; exit 1 }
 
-Write-Host "[3/6] Downloading Storage files to local machine (excluding extension artifacts)..." -ForegroundColor Yellow
-gcloud storage rsync -r "$STAGING_BUCKET" "$TEMP_DIR/storage" --exclude="(exports|firebase-export-.*)\/.*"
+Write-Host "[3/6] Downloading Storage files to local machine (excluding extension artifacts & old backups)..." -ForegroundColor Yellow
+gcloud storage rsync -r "$STAGING_BUCKET" "$TEMP_DIR/storage" --exclude="(exports|firebase-export-.*|migration_backup)\/.*"
 if ($LASTEXITCODE -ne 0) { Write-Error "Storage download failed. Aborting."; exit 1 }
 
 # ---------------------------------------------------------------------------
@@ -79,6 +83,12 @@ if ($LASTEXITCODE -ne 0) { Write-Error "Storage sync failed. Aborting."; exit 1 
 Write-Host "[6/6] Importing Firestore data into Production database..." -ForegroundColor Yellow
 gcloud firestore import "$PROD_BACKUPS/$EXPORT_PATH" --project=$PROD_PROJECT
 if ($LASTEXITCODE -ne 0) { Write-Error "Firestore import failed. Aborting."; exit 1 }
+
+# ---------------------------------------------------------------------------
+# 6. METADATA OPTIMIZATION (Fixes Hebrew rendering)
+# ---------------------------------------------------------------------------
+Write-Host "Optimizing metadata for Hebrew rendering (UTF-8)..." -ForegroundColor Cyan
+gcloud storage objects update "$PROD_BUCKET/**/*.txt" --content-type="text/plain; charset=utf-8"
 
 # ---------------------------------------------------------------------------
 # Done

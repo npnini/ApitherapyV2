@@ -16,6 +16,18 @@
         "fs-bq-export-patients": "f22f772110bf7be9ec8ac411dd9ea3b03ee775006e56cb4aa4e0c5528714d230",
         "fs-bq-export-treatments": "32f4b2015aa47499bfb98307d9cd3f86356d160be222d129824a23759057174f"
       }
+    },
+    "apitherapy-c94a6": {
+      "extensionInstances": {
+        "fs-bq-export-cfg-acupuncture-points": "b0767b52ad98159550bb50702e0c11d84cdb4a406abd2c5448c4d2edcae0bd3e",
+        "fs-bq-export-cfg-measures": "127ad39d5b85541eaa62d75a269db8737a23880d198395476d46bfeab8152080",
+        "fs-bq-export-cfg-problems": "400348f568e650647fe9017acdc5678a15cc957a98f777b3abb53adb010941bf",
+        "fs-bq-export-cfg-protocols": "7568329b30451ba7a4064d6cf868873e9b9955f56a5fcc80f15bfff1572b0b2d",
+        "fs-bq-export-measured-values": "aca8bb5ca69e89246cf287a9a2cff4679de4bbc37d380f60e38e119289652bc0",
+        "fs-bq-export-patient-medical-data": "83ed559adae57cdefc3862f712fe55dc86c4662e856de988d0811f34183b6e6e",
+        "fs-bq-export-patients": "b3c3f5cd35fd5e856d0f34bf19c001f886d0e634576ce620d12feb97c65d0f9c",
+        "fs-bq-export-treatments": "c5363d53d8e51b40e04955175be2e267aab14007fc94309a9d0ce046cb0214a9"
+      }
     }
   }
 }

@@ -68,7 +68,9 @@ async function syncViews() {
 
       if (!sourceSql) continue;
 
-      const transformedSql = sourceSql.replace(new RegExp(SOURCE_DS, 'g'), TARGET_DS);
+      const transformedSql = sourceSql
+        .replace(new RegExp(SOURCE_DS, 'g'), TARGET_DS)
+        .replace(new RegExp(SOURCE_PROJECT, 'g'), TARGET_PROJECT);
       const targetView = bqTarget.dataset(TARGET_DS).table(viewId);
       
       try {

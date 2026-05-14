@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider, connectAuthEmulator } from "firebase/auth"
 import { initializeFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -38,7 +38,7 @@ if (import.meta.env.DEV) {
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
 }
 
-// App Check Initialization
+// App Check Initialization (Updated)
 const appCheckSiteKey = import.meta.env.VITE_APP_CHECK_SITE_KEY;
 if (appCheckSiteKey) {
   if (import.meta.env.DEV) {

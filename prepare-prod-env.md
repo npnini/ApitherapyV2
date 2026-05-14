@@ -40,12 +40,15 @@ This document tracks all tasks required to safely move the Apitherapy applicatio
 - [ ] **Data Migration (Isolated)**:
     - [x] **One-time Setup** — Grant Prod Firestore SA access to the existing prod storage bucket (reads from `.env.production`):
         `.\scripts\setup-migration-permissions.ps1`
-    - [ ] **Run Migration** — Exports Staging, downloads locally, uploads & imports to Prod:
+    - [x] **Run Migration** — Exports Staging, downloads locally, uploads & imports to Prod:
         `.\scripts\migrate-stage-to-prod.ps1`
     > Firestore backup lands in `gs://apitherapy-c94a6.firebasestorage.app/backups/`. App files sync to root of same bucket.
+    > *Note: Used `gs://apitherapyv2-israel-temp` for staging export due to region requirements.*
 
-- [ ] **BigQuery Tables**:
-    - Copy base tables from staging to prod dataset using `bq cp`.
+- [x] **BigQuery Backfill**:
+    - [x] Deploy extensions: `firebase deploy --only extensions --project prod`
+    - [x] Run backfill for all collections using `npx @firebaseextensions/fs-bq-import-collection`.
+    - [x] Sync views: `node scripts/sync-bq-views.js --deploy --stage_prod`
 
 ## 4. Third-Party Services & Final Configuration
 *Update external keys and environment-specific settings AFTER data migration.*
@@ -56,14 +59,14 @@ This document tracks all tasks required to safely move the Apitherapy applicatio
     - [ ] Update webhook URLs to point to production Cloud Functions.
 - [ ] **App Configuration Update**: 
     - [ ] Update `cfg_app_config/main` -> `notificationSettings.emailApiKey` with Production Resend Key.
-    - [ ] Update `cfg_app_config/main` -> `notificationSettings.frontendDomain` to `apitherapy.beelive.biz`.
+    - [x] Update `cfg_app_config/main` -> `notificationSettings.frontendDomain` to `apitherapy.beelive.biz`.
 - [ ] **Error Monitoring**: Initialize production project in Sentry (or equivalent).
 
 ## 5. Launch & Monitoring
 *Manual deployment and post-deployment checks.*
 
-- [ ] **Extension Service Account**: Grant `BigQuery Data Editor` role to the extension service account on the prod project (Required for BQ Sync).
-- [ ] **Initial Extensions Deploy**: Run `firebase deploy --only extensions --project prod`.
+- [x] **Extension Service Account**: Grant `BigQuery Data Editor` role to the extension service account on the prod project (Required for BQ Sync).
+- [x] **Initial Extensions Deploy**: Run `firebase deploy --only extensions --project prod`.
 - [ ] **Full Production Deploy**: Run `.\deploy-prod.ps1`.
 - [ ] **Smoke Test**: Verify login and core clinical workflows on the live domain.
 - [ ] **App Check Enforcement**: Switch App Check to 'Enforce' mode.

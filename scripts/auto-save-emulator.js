@@ -7,22 +7,38 @@ const SAVE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const EXPORT_PATH = './emulator-data-temp'; // Export to a temp dir so we don't hit Windows file lock on the active import dir
 
 async function saveEmulatorData(reason = 'scheduled') {
+  const timestamp = Date.now();
+  const UNIQUE_EXPORT_PATH = `./firebase-export-${timestamp}`;
+  
   try {
     console.log(`[${new Date().toLocaleTimeString()}] 💾 Auto-saving emulator data (${reason})...`);
 
-    // We export to emulator-data-temp. The start-dev.js script will merge this into emulator-data on next boot.
-    // This entirely bypasses the Windows EPERM file lock issue.
+    // 1. Export to a UNIQUE folder (this avoids the EPERM rename lock)
+    const { stderr } = await execPromise(
+      `npx firebase emulators:export ${UNIQUE_EXPORT_PATH} --project apitherapyv2 --force`
+    );
+    if (stderr) console.warn('⚠️ Export warning:', stderr);
+
+    // 2. Move to the official temp location using Copy-Delete (Windows safe)
     if (fs.existsSync(EXPORT_PATH)) {
       fs.rmSync(EXPORT_PATH, { recursive: true, force: true });
     }
+    fs.cpSync(UNIQUE_EXPORT_PATH, EXPORT_PATH, { recursive: true });
+    fs.rmSync(UNIQUE_EXPORT_PATH, { recursive: true, force: true });
 
-    const { stderr } = await execPromise(
-      `npx firebase emulators:export ${EXPORT_PATH} --project apitherapyv2 --force`
-    );
-    if (stderr) console.warn('⚠️ Export warning:', stderr);
+    // 3. Cleanup any orphaned "firebase-export-*" folders left by failed CLI attempts
+    const files = fs.readdirSync('.');
+    files.forEach(file => {
+      if (file.startsWith('firebase-export-') && file !== UNIQUE_EXPORT_PATH) {
+        try { fs.rmSync(file, { recursive: true, force: true }); } catch (e) {}
+      }
+    });
+
     console.log('✅ Auto-save completed.');
   } catch (error) {
-    console.error('❌ Auto-save failed (Are the emulators running?):', error.message);
+    console.error('❌ Auto-save failed:', error.message);
+    // Cleanup if we failed partway
+    if (fs.existsSync(UNIQUE_EXPORT_PATH)) fs.rmSync(UNIQUE_EXPORT_PATH, { recursive: true, force: true });
   }
 }
 

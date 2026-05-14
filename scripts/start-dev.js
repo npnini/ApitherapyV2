@@ -21,9 +21,26 @@ const MAIN_DATA = './emulator-data';
 if (fs.existsSync(TEMP_DATA)) {
   console.log('📦 Promoting auto-saved data to main directory...');
   if (fs.existsSync(MAIN_DATA)) {
-    fs.rmSync(MAIN_DATA, { recursive: true, force: true });
+    try {
+      fs.rmSync(MAIN_DATA, { recursive: true, force: true });
+    } catch (e) {
+      console.warn('⚠️ Could not fully clear main-data, proceeding anyway...');
+    }
   }
-  fs.renameSync(TEMP_DATA, MAIN_DATA);
+  
+  try {
+    // Try fast rename first
+    fs.renameSync(TEMP_DATA, MAIN_DATA);
+  } catch (err) {
+    // Fallback for Windows EPERM issues: Copy and then Delete
+    console.log('⚠️ Rename locked by Windows. Using Copy-Delete fallback...');
+    try {
+      fs.cpSync(TEMP_DATA, MAIN_DATA, { recursive: true });
+      fs.rmSync(TEMP_DATA, { recursive: true, force: true });
+    } catch (fallbackErr) {
+      console.error('❌ Failed to promote data:', fallbackErr.message);
+    }
+  }
 }
 
 // 1. Start the emulators
