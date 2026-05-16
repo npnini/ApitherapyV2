@@ -37,7 +37,7 @@ This document tracks all tasks required to safely move the Apitherapy applicatio
 - [x] **Auth Migration**: 
     - [x] `firebase auth:export users.json --project apitherapyv2`
     - [x] `firebase auth:import users.json --project prod`
-- [ ] **Data Migration (Isolated)**:
+- [x] **Data Migration (Isolated)**:
     - [x] **One-time Setup** — Grant Prod Firestore SA access to the existing prod storage bucket (reads from `.env.production`):
         `.\scripts\setup-migration-permissions.ps1`
     - [x] **Run Migration** — Exports Staging, downloads locally, uploads & imports to Prod:
@@ -54,24 +54,31 @@ This document tracks all tasks required to safely move the Apitherapy applicatio
 *Update external keys and environment-specific settings AFTER data migration.*
 
 - [ ] **Resend (Email)**:
-    - [ ] Create production API Key.
-    - [ ] Add and verify production domain via DNS (SPF, DKIM).
-    - [ ] Update webhook URLs to point to production Cloud Functions.
-- [ ] **App Configuration Update**: 
-    - [ ] Update `cfg_app_config/main` -> `notificationSettings.emailApiKey` with Production Resend Key.
+    - [x] Create production API Key.
+    - [-] Add and verify production domain via DNS (SPF, DKIM).
+    - [-] Update webhook URLs to point to production Cloud Functions. [Optional]
+    - [x] Create environment-specific email addresses:
++        - [x] `apitherapy@beelive.biz` (Production)
++        - [x] `staging-apitherapy@beelive.biz` (Staging)
++        - [x] `dev-apitherapy@beelive.biz` (Local/Dev)
+- [x] **App Configuration Update**: 
+    - [x] Update `cfg_app_config/main` -> `notificationSettings.emailApiKey` with Production Resend Key.
     - [x] Update `cfg_app_config/main` -> `notificationSettings.frontendDomain` to `apitherapy.beelive.biz`.
-- [ ] **Error Monitoring**: Initialize production project in Sentry (or equivalent).
+- [x] **Error Monitoring**: Initialized log-based alerts in Google Cloud for Cloud Function errors (Severity >= ERROR).
 
 ## 5. Launch & Monitoring
 *Manual deployment and post-deployment checks.*
 
 - [x] **Extension Service Account**: Grant `BigQuery Data Editor` role to the extension service account on the prod project (Required for BQ Sync).
 - [x] **Initial Extensions Deploy**: Run `firebase deploy --only extensions --project prod`.
-- [ ] **Full Production Deploy**: Run `.\deploy-prod.ps1`.
+- [x] **Full Production Deploy**: Run `.\deploy-prod.ps1`.
 - [ ] **Smoke Test**: Verify login and core clinical workflows on the live domain.
 - [ ] **App Check Enforcement**: Switch App Check to 'Enforce' mode.
-- [ ] **Daily Backups**: Configure Cloud Scheduler for automated Firestore daily exports.
-- [ ] **Error Alerts**: Set up Log-based metrics for Cloud Function errors.
+- [x] **Daily Backups**: Implement 3-tier strategy:
+    *   **Tier 1**: Firestore Daily Full Snapshots to `apitherapy-prod-backups` bucket (dated folders).
+    *   **Tier 2**: Storage Object Versioning enabled on live bucket (protects against single-file errors).
+    *   **Tier 3**: Storage Disaster Recovery via Daily Copy to `apitherapy-prod-backups`.
+    *   **Retention**: 30-day auto-purge enabled on backup bucket.
 
 ## 6. CI/CD Automation (Post-Launch)
 *Automate the delivery pipeline for long-term maintenance.*

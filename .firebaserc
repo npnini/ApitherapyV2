@@ -1,6 +1,7 @@
 {
   "projects": {
     "default": "apitherapyv2",
+    "staging": "apitherapyv2",
     "prod": "apitherapy-c94a6"
   },
   "targets": {},
