@@ -10,7 +10,7 @@ Write-Host "--- STARTING PRODUCTION DEPLOYMENT ---" -ForegroundColor Cyan
 # 1. CHECK FOR EXTENSION CHANGES
 Write-Host "[1/6] Checking for extension configuration changes..." -ForegroundColor Yellow
 if (Test-Path $LAST_DEPLOY_FILE) {
-    $lastDeployDate = Get-Date (Get-Content $LAST_DEPLOY_FILE | Select-Object -First 1)
+    $lastDeployDate = (Get-Item $LAST_DEPLOY_FILE).LastWriteTime
     $envProdFiles = Get-ChildItem "extensions/*.env.prod"
     
     foreach ($file in $envProdFiles) {
