@@ -13,6 +13,13 @@ try {
   // Ignore errors (usually means no processes were found, which is fine)
 }
 
+console.log('🔄 Setting active Firebase project to "default" (dev env)...');
+try {
+  execSync('npx firebase use default', { stdio: 'inherit', shell: true });
+} catch (e) {
+  console.warn('⚠️ Could not switch project automatically. Proceeding anyway...');
+}
+
 console.log('🚀 Starting Firebase Emulators...');
 
 // 0. Process any pending auto-saves to bypass Windows file locks

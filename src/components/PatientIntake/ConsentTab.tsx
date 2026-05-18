@@ -3,7 +3,7 @@ import { logger } from '../../utils/logger';
 import { T, useT, useTranslationContext } from '../T';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
-import { ref as sRef, getDownloadURL } from 'firebase/storage';
+import { ref as sRef, getDownloadURL, getBytes } from 'firebase/storage';
 import SignaturePad from './SignaturePad';
 import ConfirmationModal from '../ConfirmationModal';
 import styles from './PatientIntake.module.css';
@@ -60,12 +60,27 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
                     const data = configDoc.data();
                     const templateUrl = data.consentSettings?.consent_files?.apitherapy?.[language];
                     if (templateUrl) {
-                        const resolvedUrl = await resolveStoragePath(templateUrl);
-                        if (resolvedUrl) {
-                            const response = await fetch(resolvedUrl);
-                            const text = await response.text();
-                            setTemplate(text);
-                        } else {
+                        try {
+                            // Use Firebase SDK getBytes() instead of raw fetch() to avoid CORS issues.
+                            // getBytes() routes through the SDK/emulator layer which handles CORS correctly.
+                            const storagePath = templateUrl.startsWith('http')
+                                ? templateUrl  // legacy full URL: fall back to fetch
+                                : null;
+
+                            if (storagePath) {
+                                // Legacy full URL path - try direct fetch
+                                const response = await fetch(storagePath);
+                                const text = await response.text();
+                                setTemplate(text);
+                            } else {
+                                // Preferred path: use Firebase Storage SDK (CORS-safe)
+                                const storageRef = sRef(storage, templateUrl);
+                                const bytes = await getBytes(storageRef);
+                                const text = new TextDecoder('utf-8').decode(bytes);
+                                setTemplate(text);
+                            }
+                        } catch (fetchErr) {
+                            logger.error('Failed to load template file:', fetchErr);
                             setTemplate(noTemplateMsg);
                         }
                     } else {

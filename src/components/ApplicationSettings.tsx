@@ -297,8 +297,29 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         setSaveSuccess(false);
 
         try {
-            await setDoc(configRef, settings);
-            setInitialSettings(settings);
+            const settingsToSave = JSON.parse(JSON.stringify(settings));
+
+            // Extract emailApiKey and save to cfg_secrets if it has been updated
+            if (settingsToSave.notificationSettings) {
+                const newEmailApiKey = settingsToSave.notificationSettings.emailApiKey;
+                if (newEmailApiKey && newEmailApiKey.trim() !== '') {
+                    const secretsRef = doc(db, 'cfg_secrets', 'main');
+                    await setDoc(secretsRef, { emailApiKey: newEmailApiKey }, { merge: true });
+                }
+                // Never save the API key to the public app config
+                delete settingsToSave.notificationSettings.emailApiKey;
+            }
+
+            await setDoc(configRef, settingsToSave);
+
+            // Reset the emailApiKey in the local state so it stays write-only (empty)
+            if (settingsToSave.notificationSettings) {
+                settingsToSave.notificationSettings.emailApiKey = '';
+            }
+
+            setInitialSettings(settingsToSave);
+            setSettings(settingsToSave);
+
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);

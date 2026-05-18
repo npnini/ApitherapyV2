@@ -8,14 +8,19 @@ const EXPORT_PATH = './emulator-data-temp'; // Export to a temp dir so we don't 
 
 async function saveEmulatorData(reason = 'scheduled') {
   const timestamp = Date.now();
-  const UNIQUE_EXPORT_PATH = `./firebase-export-${timestamp}`;
+  const UNIQUE_EXPORT_PATH = `./.firebase-exports/export-${timestamp}`;
   
   try {
     console.log(`[${new Date().toLocaleTimeString()}] 💾 Auto-saving emulator data (${reason})...`);
 
+    // Ensure the hidden directory exists
+    if (!fs.existsSync('./.firebase-exports')) {
+      fs.mkdirSync('./.firebase-exports');
+    }
+
     // 1. Export to a UNIQUE folder (this avoids the EPERM rename lock)
     const { stderr } = await execPromise(
-      `npx firebase emulators:export ${UNIQUE_EXPORT_PATH} --project apitherapyv2 --force`
+      `npx firebase emulators:export ${UNIQUE_EXPORT_PATH} --force`
     );
     if (stderr) console.warn('⚠️ Export warning:', stderr);
 
@@ -26,11 +31,12 @@ async function saveEmulatorData(reason = 'scheduled') {
     fs.cpSync(UNIQUE_EXPORT_PATH, EXPORT_PATH, { recursive: true });
     fs.rmSync(UNIQUE_EXPORT_PATH, { recursive: true, force: true });
 
-    // 3. Cleanup any orphaned "firebase-export-*" folders left by failed CLI attempts
-    const files = fs.readdirSync('.');
+    // 3. Cleanup any orphaned folders left by failed CLI attempts
+    const files = fs.readdirSync('./.firebase-exports');
     files.forEach(file => {
-      if (file.startsWith('firebase-export-') && file !== UNIQUE_EXPORT_PATH) {
-        try { fs.rmSync(file, { recursive: true, force: true }); } catch (e) {}
+      const fullPath = `./.firebase-exports/${file}`;
+      if (fullPath !== UNIQUE_EXPORT_PATH) {
+        try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) {}
       }
     });
 

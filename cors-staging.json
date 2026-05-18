@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://staging.apitherapy.beelive.biz",
+      "http://localhost:5173",
+      "http://localhost:5000"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Disposition"],
+    "maxAgeSeconds": 3600
+  }
+]

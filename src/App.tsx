@@ -69,9 +69,12 @@ const AppInner: React.FC = () => {
                 const configDocSnap = await getDoc(configDocRef);
                 if (configDocSnap.exists()) {
                     setAppConfig(configDocSnap.data());
+                } else {
+                    setAppConfig({}); // Fallback if it doesn't exist
                 }
             } catch (err) {
                 logger.error("Config fetch failed:", err);
+                setAppConfig({}); // Fallback so the app doesn't freeze forever
             }
         };
         fetchAppConfig();

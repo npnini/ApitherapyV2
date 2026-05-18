@@ -62,7 +62,12 @@ service cloud.firestore {
     }
 
     match /cfg_app_config/{configId} {
-        allow read, write: if isAdmin();
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+    }
+
+    match /cfg_secrets/{secretId} {
+        allow write: if isAdmin();
     }
 
     match /cfg_translations/{document=**} {

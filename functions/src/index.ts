@@ -61,7 +61,8 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *" }, async 
   const notificationSettings = configData.notificationSettings || {};
 
   const retentionDays = notificationSettings.feedbackRetentionDays || 7;
-  const apiKey = (notificationSettings.emailApiKey || "").trim();
+  const secretsDoc = await db.collection("cfg_secrets").doc("main").get();
+  const apiKey = (secretsDoc.data()?.emailApiKey || "").trim();
   const senderEmail = (notificationSettings.senderEmail || "").trim() || "noreply@beelive.biz";
   const feedbackTemplates = notificationSettings.feedbackTemplateId || {};
   const defaultLang = configData.languageSettings?.defaultLanguage || "he";
@@ -297,7 +298,8 @@ export const sendDocumentEmail = onCall(async (request) => {
     const configData = configDoc.data() || {};
     const notificationSettings = configData.notificationSettings || {};
 
-    const apiKey = (notificationSettings.emailApiKey || "").trim();
+    const secretsDoc = await db.collection("cfg_secrets").doc("main").get();
+    const apiKey = (secretsDoc.data()?.emailApiKey || "").trim();
     const senderEmail = (notificationSettings.senderEmail || "").trim();
     const templateId = (notificationSettings.intakeDocumentsTemplateId?.[language] || "").trim();
 
@@ -607,7 +609,8 @@ export const sendMissingProblemEmail = onCall(async (request) => {
     const configDoc = await db.collection("cfg_app_config").doc("main").get();
     const configData = configDoc.data() || {};
     const notificationSettings = configData.notificationSettings || {};
-    const apiKey = (notificationSettings.emailApiKey || "").trim();
+    const secretsDoc = await db.collection("cfg_secrets").doc("main").get();
+    const apiKey = (secretsDoc.data()?.emailApiKey || "").trim();
     const senderEmail = (notificationSettings.senderEmail || configData.senderEmail || "noreply@beelive.biz").trim();
     const adminEmail = senderEmail;
 

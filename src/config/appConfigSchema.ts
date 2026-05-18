@@ -80,7 +80,7 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
     children: {
       emailApiKey: {
         label: 'Email API Key',
-        description: 'API key for the email provider (e.g. Resend).',
+        description: 'API key for the email provider (e.g. Resend). This is a write-only secret; it will not be displayed after saving.',
         type: 'password',
         defaultValue: '',
       },
