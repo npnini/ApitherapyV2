@@ -1378,6 +1378,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 message={<T>Update failed. Please notify the administrator.</T>}
                 onConfirm={() => setShowTreatmentErrorGuard(false)}
                 showCancelButton={false}
+                type="error"
             />
 
             {/* ── Treatment Saved Modal ──────────────────────────────────── */}
@@ -1388,6 +1389,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 confirmLabel={tOK}
                 onConfirm={handleConfirmSaved}
                 showCancelButton={false}
+                type="success"
             />
 
             {/* ── Missing Problem Modals ─────────────────────────────────── */}
@@ -1398,6 +1400,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 confirmLabel={<T>OK</T>}
                 onConfirm={() => setShowMissingProblemSuccessModal(false)}
                 showCancelButton={false}
+                type="success"
             />
             <ConfirmationModal
                 isOpen={showMissingProblemErrorModal}
@@ -1406,6 +1409,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 confirmLabel={<T>OK</T>}
                 onConfirm={() => setShowMissingProblemErrorModal(false)}
                 showCancelButton={false}
+                type="error"
             />
         </div >
     );

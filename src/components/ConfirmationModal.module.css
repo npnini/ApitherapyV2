@@ -41,7 +41,18 @@
 .modalIcon {
     margin-left: auto;
     margin-right: auto;
+}
+
+.modalIconWarning {
     color: var(--color-warning);
+}
+
+.modalIconSuccess {
+    color: var(--color-success);
+}
+
+.modalIconError {
+    color: var(--color-error);
 }
 
 .modalTitle {

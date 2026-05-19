@@ -35,36 +35,62 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
     const [measuresSnap, measuresLoading] = useCollection(query(collection(db, 'cfg_measures')));
     const measures = useMemo(() => measuresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Measure)) || [], [measuresSnap]);
 
+    // Helper: extract the best localised string from a multilingual map
+    const getLocalStr = (field: { [key: string]: string } | string | undefined): string => {
+        if (!field) return '';
+        if (typeof field === 'string') return field;
+        return field[currentLang] || field['en'] || Object.values(field)[0] || '';
+    };
+
     // UI Item Mappings
     const problemItems = useMemo(() => {
         return problems.map(p => {
-            const nameStr = typeof p.name === 'object' ? (p.name[currentLang] || p.name['en'] || Object.values(p.name)[0] || '') : (p.name as string);
-            
+            const nameStr = getLocalStr(p.name);
+            const descriptionStr = getLocalStr(p.description);
+
             const linkedProtocolIds = Array.from(new Set([
                 ...(p.protocolId ? [p.protocolId] : []),
-                ...(Array.isArray(p.protocolIds) ? p.protocolIds : [])
+                ...(Array.isArray((p as any).protocolIds) ? (p as any).protocolIds : [])
             ]));
-            
+
             const linkedProtocols = linkedProtocolIds
                 .map(pid => protocols.find(proto => proto.id === pid))
                 .filter((proto): proto is Protocol => !!proto);
 
-            const protocolNamesArr = linkedProtocols
-                .map(protocol => (typeof protocol.name === 'object' ? (protocol.name[currentLang] || protocol.name['en'] || Object.values(protocol.name)[0] || '') : protocol.name))
-                .filter(Boolean);
-            const protocolNames = Array.from(new Set(protocolNamesArr)).join(', ');
+            const protocolNames = Array.from(new Set(
+                linkedProtocols.map(proto => getLocalStr(proto.name)).filter(Boolean)
+            )).join(', ');
+
+            // Collect all protocol descriptions and rationales for full-text search
+            const protocolDescriptions = linkedProtocols
+                .map(proto => getLocalStr(proto.description))
+                .filter(Boolean)
+                .join(' ');
+            const protocolRationales = linkedProtocols
+                .map(proto => getLocalStr(proto.rationale))
+                .filter(Boolean)
+                .join(' ');
 
             const measureIds = Array.from(new Set(linkedProtocols.flatMap(proto => proto.measureIds || [])));
             const measureNames = measureIds
                 .map(mid => {
                     const measure = measures.find(m => m.id === mid);
-                    return measure ? (typeof measure.name === 'object' ? (measure.name[currentLang] || measure.name['en'] || Object.values(measure.name)[0] || '') : measure.name) : '';
+                    return measure ? getLocalStr(measure.name as any) : '';
                 })
                 .filter(Boolean)
                 .join(', ');
 
-            return { id: p.id, name: nameStr, protocolName: protocolNames, measureNames };
+            return {
+                id: p.id,
+                name: nameStr,
+                description: descriptionStr,
+                protocolName: protocolNames,
+                protocolDescriptions,
+                protocolRationales,
+                measureNames,
+            };
         }).sort((a, b) => a.name.localeCompare(b.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [problems, protocols, measures, currentLang]);
 
     // State
@@ -72,6 +98,7 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
     const [isInitialized, setIsInitialized] = useState(false);
     const [isDirty, setIsDirtyLocal] = useState(false);
     const [usedProblemIds, setUsedProblemIds] = useState<Set<string>>(new Set());
+    const [searchText, setSearchText] = useState('');
 
     useEffect(() => {
         if (patientData.id) {
@@ -160,6 +187,21 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
     const selectedProblemItems = problemItems.filter(p => selectedProblems.find(sp => sp.problemId === p.id));
     const tCannotRemove = useT("Cannot remove problem used in treatments");
     const tRemove = useT("Remove");
+    const tSearchPlaceholder = useT("Search problems...");
+
+    const filteredUnselectedProblems = searchText.trim()
+        ? unselectedProblems.filter(p => {
+            const q = searchText.toLowerCase();
+            return (
+                p.name.toLowerCase().includes(q) ||
+                p.description.toLowerCase().includes(q) ||
+                p.protocolName.toLowerCase().includes(q) ||
+                p.protocolDescriptions.toLowerCase().includes(q) ||
+                p.protocolRationales.toLowerCase().includes(q) ||
+                p.measureNames.toLowerCase().includes(q)
+            );
+          })
+        : unselectedProblems;
 
     return (
         <div className={styles.tabContainer}>
@@ -228,8 +270,20 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
             {unselectedProblems.length > 0 && (
                 <fieldset className={styles.section}>
                     <legend><T>Available Problems</T></legend>
+                    <div className={styles.searchContainer}>
+                        <input
+                            type="text"
+                            className={styles.searchInput}
+                            placeholder={tSearchPlaceholder}
+                            value={searchText}
+                            onChange={e => setSearchText(e.target.value)}
+                        />
+                    </div>
                     <div className={styles.availableList}>
-                        {unselectedProblems.map(p => (
+                        {filteredUnselectedProblems.length === 0 && (
+                            <p className={styles.emptyText}><T>No problems match your search</T></p>
+                        )}
+                        {filteredUnselectedProblems.map(p => (
                             <div key={p.id} className={styles.problemRow}>
                                 <div className={styles.columnActions}>
                                     <button
