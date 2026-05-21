@@ -88,9 +88,17 @@ service cloud.firestore {
         allow write: if isAdmin();
     }
 
+    // --- FIXED CONFIGURATION TRANSLATIONS ---
     match /cfg_translations/{document=**} {
+      // 1. Every authenticated user must be able to read language files to load the UI
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      
+      // 2. Admins/Superadmins retain full permissions to modify, fix, or delete records directly
+      allow write: if isAdmin();
+      
+      // 3. Automated frontend translation components (T.tsx) can ONLY append missing strings.
+      // They are explicitly blocked from modifying (updating) or purging (deleting) existing caches.
+      allow create: if isAuthenticated();
     }
 
     // --- REFACTORED PATIENT COLLECTIONS ---
