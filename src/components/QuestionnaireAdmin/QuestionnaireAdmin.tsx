@@ -135,7 +135,7 @@ const QuestionnaireAdmin: React.FC = () => {
                             <div>
                                 <h2 className={styles.modalTitle}><T>Delete Questionnaire</T></h2>
                                 <p className={styles.modalText}>
-                                    <T>{`Are you sure you want to delete questionnaire for domain ${deletingItem.domain} (version ${deletingItem.versionNumber})?`}</T>
+                                    <T>Are you sure you want to delete questionnaire for domain</T> {deletingItem.domain} (<T>version</T> {deletingItem.versionNumber})?
                                 </p>
                             </div>
                         </div>

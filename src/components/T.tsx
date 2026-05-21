@@ -19,8 +19,19 @@
  */
 
 import React, { useState, useEffect, useContext, createContext, useCallback, useRef } from 'react';
-import { db, auth } from '../firebase'; // ← VERIFY: adjust this path to match your project's firebase init file
+import { db, auth, functions } from '../firebase'; // ← VERIFY: adjust this path to match your project's firebase init file
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+
+const STATIC_FALLBACKS: Record<string, Record<string, string>> = {
+    he: {
+        "Welcome please signin": "ברוכים הבאים, אנא התחברו",
+        "Login with Google": "התחבר באמצעות Google",
+        "Initializing...": "מאתחל...",
+        "Loading Patient Data...": "טוען נתוני מטופל..."
+    }
+};
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,7 +104,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Returns the translated string if available, otherwise the original English
     const getTranslation = useCallback((text: string): string => {
         if (language === 'en') return text;
-        return cacheRef.current[language]?.[text] ?? text;
+        return cacheRef.current[language]?.[text] ?? STATIC_FALLBACKS[language]?.[text] ?? text;
     }, [language]);
 
     // After each render cycle, flush pending strings to the translation API
@@ -152,11 +163,8 @@ export const useT = (text: string): string => {
 //
 // Strategy:
 //   1. Check Firestore cache first (shared across all users)
-//   2. For strings not in Firestore, call Google Translate API
+//   2. For strings not in Firestore, call translateText Cloud Function
 //   3. Store results back to Firestore so future users get them for free
-
-const TRANSLATION_API_KEY = import.meta.env.VITE_GOOGLE_TRANSLATE_KEY;
-// ↑ VERIFY: this must match the variable name you added to .env in Step 1.2
 
 /**
  * Removes Hebrew Niqqud (vowels) and cantillation marks from a string.
@@ -196,41 +204,25 @@ async function translateBatch(
 
     // ── Step 2: Find strings still missing after Firestore lookup ────────────
     const toTranslate = strings.filter(s => !cache[targetLang][s]);
-    console.log(`[T] Batch processing for ${targetLang}. Total requested: ${strings.length}, To translate via API: ${toTranslate.length}`);
+    console.log(`[T] Batch processing for ${targetLang}. Total requested: ${strings.length}, To translate via Proxy: ${toTranslate.length}`);
     if (toTranslate.length === 0) return [];
 
-    // ── Step 3: Call Google Translate API in one batched request ─────────────
-    if (!TRANSLATION_API_KEY) {
-        console.warn('[T] No VITE_GOOGLE_TRANSLATE_KEY set. Strings will display in English.');
-        return toTranslate; // Mark as failed/skipped
-    }
-
-    console.log(`[T] Calling Google Translate API with Key starting with: ${TRANSLATION_API_KEY.substring(0, 6)}...`);
-
+    // ── Step 3: Call translation proxy Cloud Function ────────────────────────
     try {
-        const response = await fetch(
-            `https://translation.googleapis.com/language/translate/v2?key=${TRANSLATION_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    q: toTranslate,
-                    target: targetLang,
-                    source: 'en',
-                    format: 'text',
-                }),
-            }
-        );
+        const translateTextCall = httpsCallable(functions, 'translateText');
+        const result = await translateTextCall({
+            q: toTranslate,
+            target: targetLang,
+            source: 'en'
+        });
 
-        if (!response.ok) {
-            throw new Error(`Translation API responded with ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log(`[T] API Translation data received for ${targetLang}:`, data);
+        // The Cloud Function returns { data: { data: { translations: [...] } } }
+        const resData = (result.data as any).data;
+        console.log(`[T] Proxy Translation data received for ${targetLang}:`, resData);
+        
         const newTranslations: Record<string, string> = {};
 
-        data.data.translations.forEach((item: { translatedText: string }, index: number) => {
+        resData.data.translations.forEach((item: { translatedText: string }, index: number) => {
             const original = toTranslate[index];
             let translated = item.translatedText;
 
@@ -239,7 +231,7 @@ async function translateBatch(
                 translated = stripHebrewNiqqud(translated);
             }
 
-            console.log(`[T] API Result: "${original}" -> "${translated}"`);
+            console.log(`[T] Proxy Result: "${original}" -> "${translated}"`);
             cache[targetLang][original] = translated;
             newTranslations[original] = translated;
         });
@@ -258,7 +250,7 @@ async function translateBatch(
         return []; // Success, no failed strings
 
     } catch (e) {
-        console.error('[T] Translation API call failed:', e);
+        console.error('[T] Translation proxy call failed:', e);
         return toTranslate; // Return the strings that failed
     }
 }

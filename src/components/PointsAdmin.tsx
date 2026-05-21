@@ -362,7 +362,7 @@ const PointsAdmin: React.FC = () => {
                             <div>
                                 <h2 className={styles.modalTitle}><T>Delete Point</T></h2>
                                 <p className={styles.modalText}>
-                                    <T>{`Are you sure you want to delete the point '${deletingPoint.code}'?`}</T>
+                                    <T>Are you sure you want to delete the point</T> '{deletingPoint.code}'?
                                 </p>
                             </div>
                         </div>

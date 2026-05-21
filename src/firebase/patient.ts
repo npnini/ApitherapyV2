@@ -165,9 +165,8 @@ export const getLatestTreatment = async (patientId: string): Promise<TreatmentSe
     const colRef = collection(db, 'treatments');
     const q = query(
         colRef,
-        where('__name__', '>=', `${patientId}_`),
-        where('__name__', '<=', `${patientId}_\uf8ff`),
-        orderBy('__name__', 'asc'),
+        where('patientId', '==', patientId),
+        orderBy('__name__', 'desc'),
         limit(1)
     );
     const snapshot = await getDocs(q);
@@ -196,8 +195,7 @@ export const getTreatmentCount = async (patientId: string): Promise<number> => {
     const colRef = collection(db, 'treatments');
     const q = query(
         colRef,
-        where('__name__', '>=', `${patientId}_`),
-        where('__name__', '<=', `${patientId}_\uf8ff`)
+        where('patientId', '==', patientId)
     );
     const snapshot = await getDocs(q);
     return snapshot.size;
@@ -210,8 +208,7 @@ export const getMeasuredValueReadings = async (patientId: string): Promise<Measu
     const colRef = collection(db, 'measured_values');
     const q = query(
         colRef,
-        where('__name__', '>=', `${patientId}_`),
-        where('__name__', '<=', `${patientId}_\uf8ff`),
+        where('patientId', '==', patientId),
         orderBy('__name__', 'asc')
     );
     const snapshot = await getDocs(q);
@@ -242,8 +239,7 @@ export const hasMeasuredValueReadings = async (patientId: string): Promise<boole
     const colRef = collection(db, 'measured_values');
     const q = query(
         colRef,
-        where('__name__', '>=', `${patientId}_`),
-        where('__name__', '<=', `${patientId}_\uf8ff`),
+        where('patientId', '==', patientId),
         limit(1)
     );
     const snapshot = await getDocs(q);
@@ -254,14 +250,19 @@ export const hasMeasuredValueReadings = async (patientId: string): Promise<boole
  * Uses the 'usedMeasureIds' array field.
  */
 export const isMeasureUsed = async (measureId: string): Promise<boolean> => {
-    const colRef = collection(db, 'measured_values');
-    const q = query(
-        colRef,
-        where('usedMeasureIds', 'array-contains', measureId),
-        limit(1)
-    );
-    const snapshot = await getDocs(q);
-    return !snapshot.empty;
+    try {
+        const colRef = collection(db, 'measured_values');
+        const q = query(
+            colRef,
+            where('usedMeasureIds', 'array-contains', measureId),
+            limit(1)
+        );
+        const snapshot = await getDocs(q);
+        return !snapshot.empty;
+    } catch (error) {
+        console.warn("Failed to check if measure is used (possibly due to restricted permissions):", error);
+        return false;
+    }
 };
 
 export const requestMissingProblem = async (problemName: string, patientId: string) => {

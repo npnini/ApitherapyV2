@@ -20,7 +20,8 @@ if (Test-Path $LAST_DEPLOY_FILE) {
             break
         }
     }
-} else {
+}
+else {
     Write-Host "   [!] No deployment record found. Extensions will be included by default." -ForegroundColor Yellow
     $NEEDS_EXT_DEPLOY = $true
 }
@@ -45,19 +46,45 @@ Push-Location functions
 npm run build
 Pop-Location
 
-# 6. DEPLOY SERVICES
-$deployTargets = "hosting,functions,storage,firestore"
+# ====================================================================
+# 6. DEPLOY SERVICES (Phased Sequence to Prevent Race Conditions)
+# ====================================================================
 if ($NEEDS_EXT_DEPLOY) {
-    $deployTargets += ",extensions"
-    Write-Host "[6/6] Deploying Core Services + Extensions to PRODUCTION (This may take 10+ mins)..." -ForegroundColor Cyan
-} else {
-    Write-Host "[6/6] Deploying Core Services to PRODUCTION..." -ForegroundColor Cyan
+    Write-Host "[6/6] Deploying Core Services + Extensions to PRODUCTION (Phased Sequence)..." -ForegroundColor Cyan
+}
+else {
+    Write-Host "[6/6] Deploying Core Services to PRODUCTION (Phased Sequence)..." -ForegroundColor Cyan
 }
 
-firebase deploy --only $deployTargets --project prod
+try {
+    # Phase A: Database Configurations & Security Rules First
+    Write-Host "`n -> Phase A: Deploying Firestore & Storage configurations..." -ForegroundColor Yellow
+    firebase deploy --only firestore, storage --project prod
 
-# 7. UPDATE DEPLOYMENT RECORD
-if ($?) {
+    # Phase B: Extensions (Only deployed if changes were detected)
+    if ($NEEDS_EXT_DEPLOY) {
+        Write-Host "`n -> Phase B: Deploying Firebase Extensions..." -ForegroundColor Yellow
+        firebase deploy --only extensions --project prod
+    }
+
+    # Phase C: Backend Infrastructure (Cloud Functions)
+    Write-Host "`n -> Phase C: Deploying Cloud Functions (Container compilation)..." -ForegroundColor Yellow
+    firebase deploy --only functions --project prod
+
+    # Phase D: Frontend Interface (Hosting)
+    # This runs LAST. It will only push live if your backend passes all health checks!
+    Write-Host "`n -> Phase D: Deploying Frontend Application to Web Hosting..." -ForegroundColor Yellow
+    firebase deploy --only hosting --project prod
+
+    # ====================================================================
+    # 7. UPDATE DEPLOYMENT RECORD
+    # ====================================================================
     Get-Date | Out-File $LAST_DEPLOY_FILE
-    Write-Host "`nDeployment to PRODUCTION Successful!" -ForegroundColor Green
+    Write-Host "`n--- PRODUCTION DEPLOYMENT COMPLETED SUCCESSFULLY ---" -ForegroundColor Green
+
+}
+catch {
+    Write-Host "`n[!] Deployment Pipeline Halted Due to an Error." -ForegroundColor Red
+    Write-Host "If Functions failed, your live Web App (Hosting) was kept safe and untouched." -ForegroundColor Yellow
+    exit 1
 }

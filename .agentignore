@@ -37,4 +37,5 @@ seed-data/
 *.sqlite
 emulator-data/
 firebase-export-*/
-temp_migration/
+.gemini/
+.firebase/

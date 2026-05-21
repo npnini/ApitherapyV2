@@ -5,8 +5,6 @@
 // It uses the Firebase v10+ SDK and focuses on cost-optimization by using one-time fetches and pagination.
 
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
   getRedirectResult,
@@ -28,26 +26,7 @@ import {
 import { auth, db } from '../firebase';
 
 // --- Authentication Functions ---
-
-/**
- * Registers a new user with email and password.
- * @param {string} email - The user's email.
- * @param {string} password - The user's password.
- * @returns {Promise<UserCredential>} - A promise that resolves with the user credential.
- */
-export const registerWithEmail = (email: string, password: string): Promise<UserCredential> => {
-  return createUserWithEmailAndPassword(auth, email, password);
-};
-
-/**
- * Signs in a user with email and password.
- * @param {string} email - The user's email.
- * @param {string} password - The user's password.
- * @returns {Promise<UserCredential>} - A promise that resolves with the user credential.
- */
-export const signInWithEmail = (email: string, password: string): Promise<UserCredential> => {
-  return signInWithEmailAndPassword(auth, email, password);
-};
+// Note: This app uses Google OAuth exclusively. Email/password auth is intentionally not supported.
 
 export const signInWithGoogle = (): Promise<UserCredential> => {
   const provider = new GoogleAuthProvider();

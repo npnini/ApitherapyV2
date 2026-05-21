@@ -20,7 +20,6 @@ interface SidebarProps {
     onUserManagementClick: () => void;
     viewAsCaretakerId: string | null;
     onViewAsCaretakerChange: (id: string | null) => void;
-    appConfig: any;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -38,7 +37,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     onUserManagementClick,
     viewAsCaretakerId,
     onViewAsCaretakerChange,
-    appConfig
 }) => {
     const [configOpen, setConfigOpen] = useState(false);
     const [superAdminOpen, setSuperAdminOpen] = useState(false);
@@ -50,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const direction = isRtl ? 'rtl' : 'ltr';
 
-    const canImpersonate = user?.role === 'superadmin' || (user?.role === 'admin' && user?.canImpersonate && appConfig?.adminSettings?.enableGlobalImpersonation);
+    const canImpersonate = user?.role === 'superadmin' || (user?.role === 'admin' && user?.canImpersonate);
 
     const userUid = user?.uid;
 

@@ -274,7 +274,7 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
  * 3. Callable: sendDocumentEmail
  * Sends a signed document to a patient via SendGrid.
  */
-export const sendDocumentEmail = onCall(async (request) => {
+export const sendDocumentEmail = onCall({ enforceAppCheck: true }, async (request) => {
   // Check authentication
   if (!request.auth) {
     throw new HttpsError(
@@ -293,7 +293,38 @@ export const sendDocumentEmail = onCall(async (request) => {
   }
 
   try {
-    // 1. Fetch Config
+    // 1. Fetch Patient Data
+    const patientDoc = await db.collection("patients").doc(patientId).get();
+    if (!patientDoc.exists) {
+      throw new HttpsError("not-found", "Patient not found.");
+    }
+    const patientData = patientDoc.data() || {};
+
+    // 2. Fetch Caretaker (Sender) Data
+    const caretakerId = request.auth.uid;
+    const caretakerDoc = await db.collection("users").doc(caretakerId).get();
+    const caretakerData = caretakerDoc.data() || {};
+
+    // 3. Verify Caretaker Ownership or Admin Access
+    const isOwner = patientData.caretakerId === caretakerId;
+    const role = caretakerData.role;
+    const canImpersonate = caretakerData.canImpersonate === true || role === "superadmin" || role === "admin";
+
+    if (!isOwner && !canImpersonate) {
+      throw new HttpsError(
+        "permission-denied",
+        "Caretaker does not own this patient."
+      );
+    }
+
+    const patientEmail = patientData.email;
+    if (!patientEmail) {
+      throw new HttpsError("failed-precondition", "Patient has no email address.");
+    }
+
+    const caretakerName = caretakerData.fullName || caretakerData.displayName || "Your Caretaker";
+
+    // 4. Fetch Config
     const configDoc = await db.collection("cfg_app_config").doc("main").get();
     const configData = configDoc.data() || {};
     const notificationSettings = configData.notificationSettings || {};
@@ -309,24 +340,6 @@ export const sendDocumentEmail = onCall(async (request) => {
         "Email API Key or Template configuration missing."
       );
     }
-
-    // 2. Fetch Patient Data
-    const patientDoc = await db.collection("patients").doc(patientId).get();
-    if (!patientDoc.exists) {
-      throw new HttpsError("not-found", "Patient not found.");
-    }
-    const patientData = patientDoc.data() || {};
-    const patientEmail = patientData.email;
-
-    if (!patientEmail) {
-      throw new HttpsError("failed-precondition", "Patient has no email address.");
-    }
-
-    // 3. Fetch Caretaker (Sender) Data
-    const caretakerId = request.auth.uid;
-    const caretakerDoc = await db.collection("users").doc(caretakerId).get();
-    const caretakerData = caretakerDoc.data() || {};
-    const caretakerName = caretakerData.fullName || caretakerData.displayName || "Your Caretaker";
 
     // 4. Send Email
     const resend = new Resend(apiKey);
@@ -405,7 +418,7 @@ export const filterPiiTransform = onRequest(async (req, res) => {
  * 5. Data Analysis: Treatment Effectiveness
  * Securely queries the BigQuery view based on user role and drill-down level.
  */
-export const getTreatmentEffectiveness = onCall(async (request) => {
+export const getTreatmentEffectiveness = onCall({ enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",
@@ -595,7 +608,7 @@ export const getTreatmentEffectiveness = onCall(async (request) => {
  * 6. Callable: sendMissingProblemEmail
  * Notifies admin when a caretaker cannot find a specific problem in the system.
  */
-export const sendMissingProblemEmail = onCall(async (request) => {
+export const sendMissingProblemEmail = onCall({ enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated.");
   }
@@ -606,6 +619,31 @@ export const sendMissingProblemEmail = onCall(async (request) => {
   }
 
   try {
+    // 1. Fetch Patient Data
+    const patientDoc = await db.collection("patients").doc(patientId).get();
+    if (!patientDoc.exists) {
+      throw new HttpsError("not-found", "Patient not found.");
+    }
+    const patientData = patientDoc.data() || {};
+
+    // 2. Fetch Caretaker (Sender) Data
+    const caretakerId = request.auth.uid;
+    const caretakerDoc = await db.collection("users").doc(caretakerId).get();
+    const caretakerData = caretakerDoc.data() || {};
+
+    // 3. Verify Caretaker Ownership or Admin Access
+    const isOwner = patientData.caretakerId === caretakerId;
+    const role = caretakerData.role;
+    const canImpersonate = caretakerData.canImpersonate === true || role === "superadmin" || role === "admin";
+
+    if (!isOwner && !canImpersonate) {
+      throw new HttpsError(
+        "permission-denied",
+        "Caretaker does not own this patient."
+      );
+    }
+
+    // 4. Fetch Config & Secrets
     const configDoc = await db.collection("cfg_app_config").doc("main").get();
     const configData = configDoc.data() || {};
     const notificationSettings = configData.notificationSettings || {};
@@ -618,17 +656,12 @@ export const sendMissingProblemEmail = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "Email API Key missing.");
     }
 
-    const caretakerId = request.auth.uid;
-    const caretakerDoc = await db.collection("users").doc(caretakerId).get();
-    const caretakerData = caretakerDoc.data() || {};
     const caretakerName = caretakerData.fullName || caretakerData.displayName || caretakerId;
     const preferredLang = caretakerData.preferredLanguage || configData.languageSettings?.defaultLanguage || "he";
 
     const addProblemTemplates = notificationSettings.addProblemTemplateId || {};
     const templateId = (addProblemTemplates[preferredLang] || addProblemTemplates["en"] || Object.values(addProblemTemplates)[0] || "").trim();
 
-    const patientDoc = await db.collection("patients").doc(patientId).get();
-    const patientData = patientDoc.data() || {};
     const patientName = patientData.fullName || patientId;
 
     const resend = new Resend(apiKey);
@@ -702,3 +735,75 @@ export const sendMissingProblemEmail = onCall(async (request) => {
     throw new HttpsError("internal", "Failed to send email.");
   }
 });
+
+/**
+ * 7. Callable: translateText
+ * Proxy for Google Translate API to avoid exposing the Translate API Key on the frontend.
+ */
+export const translateText = onCall({ enforceAppCheck: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Only authenticated users can call the translation service."
+    );
+  }
+
+  const { q, target, source } = request.data;
+  if (!q || !target) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing query (q) or target language (target)."
+    );
+  }
+
+  if (!Array.isArray(q)) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Query (q) must be an array of strings."
+    );
+  }
+
+  try {
+    const secretsDoc = await db.collection("cfg_secrets").doc("main").get();
+    const apiKey = (secretsDoc.data()?.googleTranslateApiKey || "").trim();
+
+    if (!apiKey) {
+      logger.error("Google Translate API Key missing in cfg_secrets/main");
+      throw new HttpsError(
+        "failed-precondition",
+        "Translation API configuration is missing on the server."
+      );
+    }
+
+    const response = await fetch(
+      `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          q: q,
+          target: target,
+          source: source || "en",
+          format: "text",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("Translation API responded with error:", errorText);
+      throw new Error(`Translation API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error: any) {
+    logger.error("Error in translateText proxy:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError(
+      "internal",
+      error.message || "Failed to execute translation proxy."
+    );
+  }
+});
+

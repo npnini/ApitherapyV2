@@ -36,6 +36,18 @@ if (import.meta.env.DEV) {
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
   connectStorageEmulator(storage, "127.0.0.1", 9199);
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+
+  // Expose to window for manual debugging/testing of security rules in browser console
+  (window as any).db = db;
+  (window as any).testRulesWrite = async (collectionName, documentId, data = { test: true }) => {
+    const { doc, setDoc } = await import('firebase/firestore');
+    try {
+      await setDoc(doc(db, collectionName, documentId), data, { merge: true });
+      console.log(`%cWrite to ${collectionName}/${documentId} SUCCEEDED!`, 'color: green; font-weight: bold;');
+    } catch (error) {
+      console.error(`%cWrite to ${collectionName}/${documentId} FAILED:`, 'color: red; font-weight: bold;', error);
+    }
+  };
 }
 
 // App Check Initialization (Updated)

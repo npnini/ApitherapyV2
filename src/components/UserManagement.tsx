@@ -111,7 +111,7 @@ const UserManagement: React.FC = () => {
                                         onChange={(e) => handleUpdateRole(user.uid, e.target.value as AppUser['role'])}
                                         className={styles.roleSelect}
                                     >
-                                        <option value="user"><T>Caretaker</T></option>
+                                        <option value="caretaker"><T>Caretaker</T></option>
                                         <option value="admin"><T>Admin</T></option>
                                         <option value="superadmin"><T>SuperAdmin</T></option>
                                     </select>

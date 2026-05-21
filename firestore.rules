@@ -20,8 +20,26 @@ service cloud.firestore {
       return isAuthenticated() && (role == 'admin' || role == 'superadmin');
     }
 
+    function canImpersonate() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canImpersonate == true
+      );
+    }
+
+    function canReadPatientData(patientId) {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid ||
+        canImpersonate()
+      );
+    }
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        canImpersonate() ||
+        ( (isCaretaker() || isAdmin()) && (resource == null || resource.data.role != 'patient') )
+      );
       // Only superadmins can change roles or impersonation flags.
       // Regular users can only update their own profile EXCEPT for those fields.
       allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.role == 'caretaker' && !('canImpersonate' in request.resource.data);
@@ -71,51 +89,60 @@ service cloud.firestore {
     }
 
     match /cfg_translations/{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
     // --- REFACTORED PATIENT COLLECTIONS ---
 
+    function isPatientCaretaker(patientId) {
+      return (isCaretaker() || isAdmin()) && get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid;
+    }
+
     // 1. Personal Details
     match /patients/{patientId} {
-      allow read: if isAuthenticated();
-      allow write: if isCaretaker() || isAdmin();
+      allow read: if isAuthenticated() && (resource.data.caretakerId == request.auth.uid || canImpersonate());
+      allow create: if (isCaretaker() || isAdmin()) && request.resource.data.caretakerId == request.auth.uid;
+      allow update, delete: if (isCaretaker() || isAdmin()) && resource.data.caretakerId == request.auth.uid;
     }
 
     // 2. Medical Data (Singleton per patient)
     match /patient_medical_data/{patientId} {
-      allow read: if isAuthenticated();
-      allow write: if isCaretaker() || isAdmin();
+      allow read: if canReadPatientData(patientId);
+      allow write: if isPatientCaretaker(patientId);
     }
 
     // 3. Questionnaire Responses (Multiple per patient)
     match /questionnaire_responses/{responseId} {
-      allow read: if isAuthenticated();
-      allow write: if isCaretaker() || isAdmin();
+      allow read: if canReadPatientData(resource.data.patientId);
+      allow create: if isPatientCaretaker(request.resource.data.patientId);
+      allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
 
     // 4. Treatments (Multiple per patient)
     match /treatments/{treatmentId} {
-      allow read: if isAuthenticated();
-      allow write: if isCaretaker() || isAdmin();
+      allow read: if canReadPatientData(resource.data.patientId);
+      allow create: if isPatientCaretaker(request.resource.data.patientId);
+      allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
 
     // 5. Measured Values (Multiple per patient)
     match /measured_values/{readingId} {
-      allow read: if isAuthenticated();
-      allow write: if isCaretaker() || isAdmin();
+      allow read: if canReadPatientData(resource.data.patientId);
+      allow create: if isPatientCaretaker(request.resource.data.patientId);
+      allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
     
     match /feedback_sessions/{sessionId} {
-      // Allow the patient to read their specific session if it exists
       allow get: if true;
-  
-      // Allow the patient to update only the responses and status to 'completed'
-      allow update: if resource.data.status == 'pending' 
+      allow list: if isAuthenticated() && canReadPatientData(resource.data.patientId);
+      allow create: if isPatientCaretaker(request.resource.data.patientId);
+      allow update: if (resource.data.status == 'pending' 
                && request.resource.data.status == 'completed'
                && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['responses', 'status', 'completedAt', 'feedbackText', 'event']);
+                  .hasOnly(['responses', 'status', 'completedAt', 'feedbackText', 'event']))
+               || isPatientCaretaker(resource.data.patientId);
+      allow delete: if isPatientCaretaker(resource.data.patientId);
     }
   }
 }

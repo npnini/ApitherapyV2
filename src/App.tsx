@@ -299,11 +299,11 @@ const AppInner: React.FC = () => {
             ]);
 
             if (isNewPatient) {
-                if (!identitySnapshot.empty) throw new Error(`A patient with identity number '${identityNumber}' already exists.`);
-                if (email && !emailSnapshot.empty) throw new Error(`A patient with email '${email}' already exists.`);
+                if (!identitySnapshot.empty) throw new Error("A patient with this identity number already exists.");
+                if (email && !emailSnapshot.empty) throw new Error("A patient with this email already exists.");
             } else {
-                if (identitySnapshot.docs.some(doc => doc.id !== patientData.id)) throw new Error(`A patient with identity number '${identityNumber}' already exists.`);
-                if (email && emailSnapshot.docs.some(doc => doc.id !== patientData.id)) throw new Error(`A patient with email '${email}' already exists.`);
+                if (identitySnapshot.docs.some(doc => doc.id !== patientData.id)) throw new Error("A patient with this identity number already exists.");
+                if (email && emailSnapshot.docs.some(doc => doc.id !== patientData.id)) throw new Error("A patient with this email already exists.");
             }
 
             // 2. Save PII

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { db } from '../../firebase';
 import { T, useT, useTranslationContext } from '../T';
@@ -102,7 +102,11 @@ const ProblemsTab = forwardRef<ProblemsTabHandle, ProblemsTabProps>(({ patientDa
 
     useEffect(() => {
         if (patientData.id) {
-            getDocs(collection(db, `patients/${patientData.id}/treatments`))
+            const q = query(
+                collection(db, 'treatments'),
+                where('patientId', '==', patientData.id)
+            );
+            getDocs(q)
                 .then(snap => {
                     const used = new Set<string>();
                     snap.docs.forEach(d => {

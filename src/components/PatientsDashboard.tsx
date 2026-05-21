@@ -118,7 +118,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <div>
                     <p className={styles.patientName}>{getFullName(patient)}</p>
                     <p className={styles.patientId}>
-                      <T>{`Identity: ${patient.identityNumber}`}</T>
+                      <T>Identity</T>: {patient.identityNumber}
                     </p>
                   </div>
                 </div>
@@ -177,7 +177,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
             <AlertTriangle className={styles.modalIcon} size={48} />
             <h3 className={styles.modalTitle}><T>Are you sure?</T></h3>
             <p className={styles.modalDescription}>
-              <T>{`This action is irreversible. Patient: ${getFullName(patientToDelete)}`}</T>
+              <T>This action is irreversible. Patient</T>: {getFullName(patientToDelete)}
             </p>
             <div className={styles.modalActions}>
               <button onClick={cancelDelete} className={styles.modalCancelButton}><T>Cancel</T></button>
