@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "skipLibCheck": true, // 👈 Forces TS to ignore type declaration mismatches inside node_modules
+    "skipDefaultLibCheck": true, // 👈 Protects standard library definitions
     "module": "NodeNext",
     "esModuleInterop": true,
     "moduleResolution": "nodenext",

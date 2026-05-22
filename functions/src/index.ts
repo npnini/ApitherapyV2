@@ -8,6 +8,13 @@ import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import { BigQuery } from "@google-cloud/bigquery";
 
+import { v1 } from "@google-cloud/firestore";
+import { Storage } from "@google-cloud/storage";
+
+// Initialize the external clients right below your imports
+const firestoreClient = new v1.FirestoreAdminClient();
+const storage = new Storage();
+
 setGlobalOptions({ region: "me-west1" });
 
 admin.initializeApp();
@@ -807,3 +814,100 @@ export const translateText = onCall({ enforceAppCheck: true }, async (request) =
   }
 });
 
+/**
+ * Universal Unified Backup Engine
+ * Triggered automatically via Cloud Scheduler or manually forced.
+ * Adapts dynamically to Staging and Production via environment variables.
+ */
+export const runDailyUnifiedBackup = onSchedule(
+  {
+    schedule: "0 3 * * *",
+    timeZone: "Asia/Jerusalem",
+    // region is automatically set to me-west1 by your setGlobalOptions
+    timeoutSeconds: 1800, // 30 minutes window for heavy asset transfers
+    memory: "512MiB",     // Breathing room to process large file arrays safely
+  },
+  async (event) => {
+    // 1. Dynamic extraction of Project and Bucket coordinates from Environment variables
+    const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+    const sourceMediaBucket = process.env.SOURCE_MEDIA_BUCKET;
+    const targetBackupBucket = process.env.TARGET_BACKUP_BUCKET;
+
+    // Safety fallback guards
+    if (!projectId) {
+      logger.error("[Backup System] Failed to resolve Google Cloud Project ID.");
+      return;
+    }
+    if (!targetBackupBucket) {
+      logger.error("[Backup System] Missing TARGET_BACKUP_BUCKET configuration.");
+      return;
+    }
+
+    // 2. Exact Israel Local Time structure calculation (Matches your old Cloud Shell script)
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: "Asia/Jerusalem",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    };
+
+    const formatter = new Intl.DateTimeFormat("en-US", options);
+    const parts = formatter.formatToParts(new Date());
+
+    const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    const timestampFolder = `${partMap.day}-${partMap.month}-${partMap.year}-${partMap.hour}-${partMap.minute}-${partMap.second}`;
+
+    const baseDirectory = `ScheduledBackup/${timestampFolder}`;
+
+    logger.info(`[Backup System] Starting operation for Project: ${projectId}`);
+    logger.info(`[Backup System] Destination Root: gs://${targetBackupBucket}/${baseDirectory}`);
+
+    try {
+      // --- PART A: FIRESTORE DATABASE BACKUP ---
+      const databaseName = firestoreClient.databasePath(projectId, "(default)");
+      const firestoreOutputUri = `gs://${targetBackupBucket}/${baseDirectory}/Firestore`;
+
+      logger.info(`[Backup System] Dispatching Firestore export to: ${firestoreOutputUri}`);
+
+      await firestoreClient.exportDocuments({
+        name: databaseName,
+        outputUriPrefix: firestoreOutputUri,
+        collectionIds: [] // Blank array instructs Firestore to dump all collections
+      });
+
+      logger.info("[Backup System] Firestore database export safely dispatched to background manager.");
+
+      // --- PART B: APP STORAGE FILES BACKUP ---
+      if (!sourceMediaBucket) {
+        logger.warn("[Backup System] SOURCE_MEDIA_BUCKET variable omitted. Skipping Storage file backup step.");
+      } else {
+        logger.info(`[Backup System] Connecting to source media storage: gs://${sourceMediaBucket}`);
+        const [files] = await storage.bucket(sourceMediaBucket).getFiles();
+
+        if (files.length === 0) {
+          logger.info("[Backup System] Source bucket is clean. No application media assets to replicate.");
+        } else {
+          logger.info(`[Backup System] Processing synchronization for ${files.length} binary assets...`);
+
+          const copyPromises = files.map(file => {
+            const destFile = storage.bucket(targetBackupBucket).file(`${baseDirectory}/Storage/${file.name}`);
+            return file.copy(destFile);
+          });
+
+          // Await completion of all multi-threaded object file duplications
+          await Promise.all(copyPromises);
+          logger.info(`[Backup System] Storage payload synchronization complete. Moved ${files.length} files.`);
+        }
+      }
+
+      logger.info(`[Backup System] Success: Unified backup workflow complete for ${timestampFolder}`);
+    } catch (error) {
+      logger.error("[Backup System] Critical environment backup layout execution error:", error);
+      throw error;
+    }
+  }
+);

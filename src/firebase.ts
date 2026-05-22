@@ -31,15 +31,25 @@ import { logger } from "./utils/logger";
 
 // Connect to emulators in development mode
 if (import.meta.env.DEV) {
-  logger.log("Connecting to Firebase Emulators...");
-  connectAuthEmulator(auth, "http://127.0.0.1:9099");
-  connectFirestoreEmulator(db, "127.0.0.1", 8080);
-  connectStorageEmulator(storage, "127.0.0.1", 9199);
-  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  const useStagingStorage = import.meta.env.VITE_USE_STAGING_STORAGE === "true";
+
+  if (useStagingStorage) {
+    logger.warn(
+      "⚠️  VITE_USE_STAGING_STORAGE=true — ALL emulators are BYPASSED. " +
+      `App is running fully against staging (project: ${import.meta.env.VITE_PROJECT_ID}, ` +
+      `bucket: ${import.meta.env.VITE_STORAGE_BUCKET}).`
+    );
+  } else {
+    logger.log("Connecting to Firebase Emulators (all services)...");
+    connectAuthEmulator(auth, "http://127.0.0.1:9099");
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectStorageEmulator(storage, "127.0.0.1", 9199);
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  }
 
   // Expose to window for manual debugging/testing of security rules in browser console
   (window as any).db = db;
-  (window as any).testRulesWrite = async (collectionName, documentId, data = { test: true }) => {
+  (window as any).testRulesWrite = async (collectionName: string, documentId: string, data = { test: true }) => {
     const { doc, setDoc } = await import('firebase/firestore');
     try {
       await setDoc(doc(db, collectionName, documentId), data, { merge: true });
@@ -49,6 +59,7 @@ if (import.meta.env.DEV) {
     }
   };
 }
+
 
 // App Check Initialization (Updated)
 const appCheckSiteKey = import.meta.env.VITE_APP_CHECK_SITE_KEY;
