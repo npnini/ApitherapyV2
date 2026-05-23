@@ -63,6 +63,8 @@ export interface PatientData extends BaseDocument {
     caretakerId: string;
     gender?: 'male' | 'female';
     age: number | string;
+    height?: string;
+    weight?: string;
 }
 
 export interface JoinedPatientData extends PatientData {

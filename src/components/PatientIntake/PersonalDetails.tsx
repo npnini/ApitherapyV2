@@ -101,7 +101,7 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                 <input type="text" id="age" name="age" value={age} className={styles.input} disabled />
             </div>
 
-            <div className={styles.colSpan2}>
+            <div>
                 <label className={`${styles.label} ${showErrors && !patientData.gender ? styles.errorLabel : ''}`}>
                     <T>Gender</T> <span className={styles.requiredStar}>*</span>
                 </label>
@@ -128,6 +128,11 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                         <T>Gender selection is required</T>
                     </p>
                 )}
+            </div>
+
+            <div className={styles.heightWeightGroup}>
+                {renderInput('height', 'Height (cm)', 'Height cannot be empty', 'text', false)}
+                {renderInput('weight', 'Weight (kg)', 'Weight cannot be empty', 'text', false)}
             </div>
 
             {renderInput('profession', 'Profession', 'Profession cannot be empty')}
