@@ -27,4 +27,8 @@ Write-Host "Deploying to Firebase (Hosting, Functions, Storage, Firestore)..." -
 # Using --project to ensure it targets the correct Firebase project
 firebase deploy --only "hosting,functions,storage,firestore" --project apitherapyv2
 
+# 5. APPLY CORS
+Write-Host "Applying CORS configuration to Staging Storage Bucket..." -ForegroundColor Cyan
+gcloud storage buckets update gs://apitherapyv2-staging-storage --cors-file=cors-staging.json
+
 Write-Host "Deployment successful!" -ForegroundColor Green

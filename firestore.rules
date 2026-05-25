@@ -1,4 +1,5 @@
 rules_version = '2';
+// Rules updated with null-safety checks for non-existent documents.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -109,7 +110,7 @@ service cloud.firestore {
 
     // 1. Personal Details
     match /patients/{patientId} {
-      allow read: if isAuthenticated() && (resource.data.caretakerId == request.auth.uid || canImpersonate());
+      allow read: if isAuthenticated() && (resource == null || resource.data.get('caretakerId', null) == request.auth.uid || canImpersonate());
       allow create: if (isCaretaker() || isAdmin()) && request.resource.data.caretakerId == request.auth.uid;
       allow update, delete: if (isCaretaker() || isAdmin()) && resource.data.caretakerId == request.auth.uid;
     }
@@ -122,21 +123,21 @@ service cloud.firestore {
 
     // 3. Questionnaire Responses (Multiple per patient)
     match /questionnaire_responses/{responseId} {
-      allow read: if canReadPatientData(resource.data.patientId);
+      allow read: if resource == null || canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
 
     // 4. Treatments (Multiple per patient)
     match /treatments/{treatmentId} {
-      allow read: if canReadPatientData(resource.data.patientId);
+      allow read: if resource == null || canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
 
     // 5. Measured Values (Multiple per patient)
     match /measured_values/{readingId} {
-      allow read: if canReadPatientData(resource.data.patientId);
+      allow read: if resource == null || canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }

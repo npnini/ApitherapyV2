@@ -61,6 +61,9 @@ try {
     Write-Host "`n -> Phase A: Deploying Firestore & Storage configurations..." -ForegroundColor Yellow
     firebase deploy --only firestore, storage --project prod
 
+    Write-Host "`n -> Phase A.5: Applying CORS to Production Storage Bucket..." -ForegroundColor Yellow
+    gcloud storage buckets update gs://apitherapy-c94a6.firebasestorage.app --cors-file=cors-production.json
+
     # Phase B: Extensions (Only deployed if changes were detected)
     if ($NEEDS_EXT_DEPLOY) {
         Write-Host "`n -> Phase B: Deploying Firebase Extensions..." -ForegroundColor Yellow

@@ -22,6 +22,7 @@ import React, { useState, useEffect, useContext, createContext, useCallback, use
 import { db, auth, functions } from '../firebase'; // ← VERIFY: adjust this path to match your project's firebase init file
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const STATIC_FALLBACKS: Record<string, Record<string, string>> = {
     he: {
@@ -83,6 +84,18 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLanguageState(lang);
     }, []);
 
+    // When the user logs in, we might have skipped translating some strings or failed them.
+    // Clear the failed cache and force a re-render to retry them.
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                failedRef.current.clear();
+                forceUpdate(n => n + 1);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     // Called by every <T> and useT() on render to register their string
     const registerString = useCallback((text: string) => {
         if (language === 'en') return;
@@ -114,6 +127,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const pending = Array.from(pendingRef.current);
 
         // Batch processing logic
+        if (!auth.currentUser) return; // Do not attempt translation if unauthenticated
         if (pending.length === 0 && cacheRef.current[language]) return;
         if (isProcessingRef.current) return;
 

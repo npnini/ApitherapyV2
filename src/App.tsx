@@ -290,8 +290,8 @@ const AppInner: React.FC = () => {
 
             if (!identityNumber) throw new Error("Identity Number cannot be empty");
 
-            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber));
-            const emailQuery = email ? query(collection(db, "patients"), where("email", "==", email)) : null;
+            const identityQuery = query(collection(db, "patients"), where("identityNumber", "==", identityNumber), where("caretakerId", "==", appUser.uid));
+            const emailQuery = email ? query(collection(db, "patients"), where("email", "==", email), where("caretakerId", "==", appUser.uid)) : null;
 
             const [identitySnapshot, emailSnapshot] = await Promise.all([
                 getDocs(identityQuery),

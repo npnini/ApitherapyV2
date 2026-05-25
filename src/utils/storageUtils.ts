@@ -21,25 +21,55 @@ export async function resolveStoragePath(path: string | undefined): Promise<stri
 }
 
 /**
+ * Extracts a Google Drive file ID from various link formats.
+ */
+function extractGDriveId(url: string): string | null {
+  const match = url.match(/\/file\/d\/([^\/?#]+)/) || url.match(/[?&]id=([^&?#]+)/);
+  return match?.[1] ?? null;
+}
+
+/**
  * Transforms a Google Drive link into a direct image or preview link.
+ *
+ * For images: uses `uc?export=view` which respects the user's Google
+ * session cookies — works for files shared at the org level, not just
+ * "Anyone with the link".
+ *
+ * For docs: uses the `/preview` iframe format.
  */
 export function transformGDriveLink(url: string | undefined, type: 'image' | 'doc' = 'image'): string | undefined {
   if (!url) return undefined;
   if (!url.includes('drive.google.com')) return url;
 
-  // Extract ID from /file/d/ID/view or /uc?id=ID or /open?id=ID
-  const match = url.match(/\/file\/d\/([^\/?#]+)/) || url.match(/[?&]id=([^&?#]+)/);
-  if (match && match[1]) {
-    const id = match[1];
-    if (type === 'image') {
-      // Use the thumbnail/direct link format for images
-      return `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
-    } else {
-      // Use the preview format for iframes/docs
-      return `https://drive.google.com/file/d/${id}/preview`;
-    }
+  const id = extractGDriveId(url);
+  if (!id) return url;
+
+  if (type === 'image') {
+    // uc?export=view sends the raw file with session-based auth
+    return `https://drive.google.com/uc?export=view&id=${id}`;
+  } else {
+    // preview format for iframes/docs
+    return `https://drive.google.com/file/d/${id}/preview`;
   }
-  return url;
+}
+
+/**
+ * Returns an ordered list of fallback image URLs to try if the primary one fails.
+ * Used by <img onError> to cycle through alternative Google Drive URL formats.
+ */
+export function getGDriveFallbackUrls(url: string | undefined): string[] {
+  if (!url) return [];
+  if (!url.includes('drive.google.com')) return [];
+
+  const id = extractGDriveId(url);
+  if (!id) return [];
+
+  return [
+    // 1. High-res thumbnail (works for publicly-shared files)
+    `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
+    // 2. Lh3 content host (works for some Google-internal files)
+    `https://lh3.googleusercontent.com/d/${id}`,
+  ];
 }
 
 /**

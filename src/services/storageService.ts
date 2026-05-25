@@ -1,10 +1,7 @@
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getFirestore, collection, query, getDocs, orderBy, where } from 'firebase/firestore';
-import { app } from '../firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
+import { db, storage } from '../firebase';
 import { Treatment } from '../types/treatment';
-
-const storage = getStorage(app);
-const db = getFirestore(app);
 
 /**
  * Uploads a file to Firebase Storage.

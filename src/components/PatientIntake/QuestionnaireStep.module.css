@@ -203,7 +203,7 @@
 
 .consentText {
     color: var(--color-text-secondary);
-    font-size: small;
+    font-size: inherit;
 }
 
 .signaturePadWrapper {

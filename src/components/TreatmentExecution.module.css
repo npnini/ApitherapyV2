@@ -2,6 +2,7 @@
 
 /* ── Container ────────────────────────────────────────────── */
 .container {
+    position: relative; /* Required so position:absolute overlays are constrained here */
     display: flex;
     flex-direction: column;
     height: 100%;

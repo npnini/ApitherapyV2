@@ -35,9 +35,9 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
 
     const isValueOutOfRange = (field: VitalField, value: number) => {
         switch (field) {
-            case 'systolic': return value < 90 || value > 140;
-            case 'diastolic': return value < 60 || value > 90;
-            case 'heartRate': return value < 40 || value > 100;
+            case 'systolic': return value < 70 || value > 280;
+            case 'diastolic': return value < 40 || value > 180;
+            case 'heartRate': return value < 30 || value > 300;
             default: return false;
         }
     };

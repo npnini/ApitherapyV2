@@ -15,7 +15,7 @@ import { Storage } from "@google-cloud/storage";
 const firestoreClient = new v1.FirestoreAdminClient();
 const storage = new Storage();
 
-setGlobalOptions({ region: "me-west1" });
+setGlobalOptions({ region: "me-west1", memory: "512MiB" });
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -312,15 +312,11 @@ export const sendDocumentEmail = onCall({ enforceAppCheck: true }, async (reques
     const caretakerDoc = await db.collection("users").doc(caretakerId).get();
     const caretakerData = caretakerDoc.data() || {};
 
-    // 3. Verify Caretaker Ownership or Admin Access
-    const isOwner = patientData.caretakerId === caretakerId;
-    const role = caretakerData.role;
-    const canImpersonate = caretakerData.canImpersonate === true || role === "superadmin" || role === "admin";
-
-    if (!isOwner && !canImpersonate) {
+    // 3. Authorization: only the patient's assigned caretaker may send documents.
+    if (patientData.caretakerId !== caretakerId) {
       throw new HttpsError(
         "permission-denied",
-        "Caretaker does not own this patient."
+        "Only the patient's assigned caretaker can send documents."
       );
     }
 

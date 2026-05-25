@@ -83,6 +83,7 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     const [allProblems, setAllProblems] = useState<Problem[]>([]);
     const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
     const [showAddProblem, setShowAddProblem] = useState(false);
+    const [problemSearchTerm, setProblemSearchTerm] = useState('');
     const [showMissingProblemModal, setShowMissingProblemModal] = useState(false);
     const [missingProblemNote, setMissingProblemNote] = useState('');
     const [isSendingMissing, setIsSendingMissing] = useState(false);
@@ -257,6 +258,13 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
 
     const isFormValid = patientReport.trim().length > 0;
     const availableToAdd = allProblems.filter(ap => !problems.find(p => p.problemId === ap.id));
+    const filteredProblemsToAdd = availableToAdd.filter(ap => {
+        const term = problemSearchTerm.toLowerCase();
+        if (!term) return true;
+        const nameMatch = getMLValue(ap.name, language).toLowerCase().includes(term);
+        const descMatch = ap.description ? getMLValue(ap.description, language).toLowerCase().includes(term) : false;
+        return nameMatch || descMatch;
+    });
 
     return (
         <div className={styles.container} dir={direction}>
@@ -311,26 +319,41 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
 
                     <div className={styles.addProblemContainer}>
                         {!showAddProblem ? (
-                            <button className={styles.btnAddProblem} onClick={() => setShowAddProblem(true)}>
+                            <button className={styles.btnAddProblem} onClick={() => { setShowAddProblem(true); setProblemSearchTerm(''); }}>
                                 <Plus size={16} /> {tAddProblem}
                             </button>
                         ) : (
                             <div className={styles.addProblemDropdownWrapper}>
-                                <select
-                                    className={styles.problemSelect}
-                                    onChange={(e) => {
-                                        if (e.target.value) addProblem(e.target.value);
-                                    }}
-                                    defaultValue=""
-                                >
-                                    <option value="" disabled><T>Select a problem to add...</T></option>
-                                    {availableToAdd.map(ap => (
-                                        <option key={ap.id} value={ap.id}>{getMLValue(ap.name, language)}</option>
-                                    ))}
-                                </select>
-                                <button className={styles.btnCancelAdd} onClick={() => setShowAddProblem(false)}>
+                                <input
+                                    type="text"
+                                    className={styles.problemSearchInput}
+                                    placeholder={useT('Select a problem to add...')}
+                                    value={problemSearchTerm}
+                                    onChange={(e) => setProblemSearchTerm(e.target.value)}
+                                    autoFocus
+                                />
+                                <button className={styles.btnCancelAdd} onClick={() => { setShowAddProblem(false); setProblemSearchTerm(''); }}>
                                     <X size={20} />
                                 </button>
+                                {filteredProblemsToAdd.length > 0 && (
+                                    <ul className={styles.problemDropdownList}>
+                                        {filteredProblemsToAdd.map(ap => (
+                                            <li
+                                                key={ap.id}
+                                                className={styles.problemDropdownItem}
+                                                onClick={() => {
+                                                    addProblem(ap.id);
+                                                    setProblemSearchTerm('');
+                                                }}
+                                            >
+                                                <div className={styles.problemDropdownItemName}>{getMLValue(ap.name, language)}</div>
+                                                {ap.description && getMLValue(ap.description, language) && (
+                                                    <div className={styles.problemDropdownItemDesc}>{getMLValue(ap.description, language)}</div>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         )}
                     </div>

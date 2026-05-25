@@ -13,7 +13,7 @@ import VitalsInputGroup from './VitalsInputGroup';
 import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 import { useStorageUrl } from "../hooks/useStorageUrl";
-import { resolveStoragePath, getFieldContent } from '../utils/storageUtils';
+import { resolveStoragePath, getFieldContent, getGDriveFallbackUrls } from '../utils/storageUtils';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
     points: StingPoint[];
@@ -655,8 +655,23 @@ interface PointDetailModalProps {
 }
 
 const PointDetailModal: React.FC<PointDetailModalProps> = ({ point, type, language, onClose, tNoAdditionalDetails }) => {
-    const { url: imageUrl } = useStorageUrl(point.imageURL, language, 'image');
-    const { url: docUrl } = useStorageUrl(point.documentUrl, language, 'doc');
+    const { url: imageUrl, loading: imageLoading, error: imageError } = useStorageUrl(point.imageURL, language, 'image');
+    const { url: docUrl, loading: docLoading, error: docError } = useStorageUrl(point.documentUrl, language, 'doc');
+
+    const isLoading = (type === 'image' && imageLoading) || (type === 'doc' && docLoading);
+
+    // Fallback URLs for Google Drive images — tried in order on <img> onError
+    const fallbackUrlsRef = useRef<string[]>([]);
+    useEffect(() => {
+        fallbackUrlsRef.current = getGDriveFallbackUrls(imageUrl);
+    }, [imageUrl]);
+
+    const handleImgError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+        const next = fallbackUrlsRef.current.shift();
+        if (next) {
+            (e.target as HTMLImageElement).src = next;
+        }
+    }, []);
 
     const hasLongText = !!(point.longText && point.longText[language]);
     const hasImage = !!imageUrl;
@@ -664,8 +679,14 @@ const PointDetailModal: React.FC<PointDetailModalProps> = ({ point, type, langua
 
     const hasRequestedContent =
         (type === 'text' && hasLongText) ||
-        (type === 'image' && hasImage) ||
-        (type === 'doc' && hasDoc);
+        (type === 'image' && (imageLoading || hasImage || !!imageError)) ||
+        (type === 'doc' && (docLoading || hasDoc || !!docError));
+
+    // Raw storage path / URL for "Open in new tab" error fallback
+    const rawDocPath = typeof point.documentUrl === 'string'
+        ? point.documentUrl
+        : (point.documentUrl as Record<string, string>)?.[language] ?? (point.documentUrl as Record<string, string>)?.en;
+    const rawImagePath = typeof point.imageURL === 'string' ? point.imageURL : undefined;
 
     return (
         <div className={styles.detailModalOverlay} onClick={onClose}>
@@ -679,10 +700,20 @@ const PointDetailModal: React.FC<PointDetailModalProps> = ({ point, type, langua
                     </button>
                 </div>
                 <div className={styles.detailModalBody}>
-                    {!hasRequestedContent && (
+
+                    {/* Loading spinner while blob URL is being fetched */}
+                    {isLoading && (
+                        <div className={styles.centeredMsg}>
+                            <Loader size={28} className={styles.spinner} />
+                        </div>
+                    )}
+
+                    {/* No-content fallback (only shown once loading is done) */}
+                    {!isLoading && !hasRequestedContent && (
                         <p className={styles.noData}>{tNoAdditionalDetails}</p>
                     )}
 
+                    {/* Long text */}
                     {type === 'text' && hasLongText && (
                         <div className={styles.detailSection}>
                             <div className={styles.detailSectionLabel}>
@@ -697,31 +728,57 @@ const PointDetailModal: React.FC<PointDetailModalProps> = ({ point, type, langua
                         </div>
                     )}
 
-                    {type === 'image' && hasImage && (
+                    {/* Image — renders once blob URL is ready */}
+                    {type === 'image' && !imageLoading && (
                         <div className={styles.detailSection}>
                             <div className={styles.detailSectionLabel}>
                                 <Image size={14} />
                                 <T>Image</T>
                             </div>
-                            <img
-                                src={imageUrl}
-                                alt={point.code}
-                                className={styles.detailImage}
-                            />
+                            {imageError ? (
+                                <p className={styles.noData}>
+                                    <T>Failed to load image.</T>{' '}
+                                    {rawImagePath && (
+                                        <a href={rawImagePath} target="_blank" rel="noopener noreferrer">
+                                            <T>Open in new tab</T>
+                                        </a>
+                                    )}
+                                </p>
+                            ) : hasImage ? (
+                                <img
+                                    src={imageUrl}
+                                    alt={point.code}
+                                    className={styles.detailImage}
+                                    onError={handleImgError}
+                                    referrerPolicy="no-referrer"
+                                />
+                            ) : null}
                         </div>
                     )}
 
-                    {type === 'doc' && hasDoc && (
+                    {/* Document — renders inline via blob URL (avoids Content-Disposition: attachment) */}
+                    {type === 'doc' && !docLoading && (
                         <div className={styles.detailSection}>
                             <div className={styles.detailSectionLabel}>
                                 <FileText size={14} />
                                 <T>Document</T>
                             </div>
-                            <iframe
-                                src={docUrl}
-                                className={styles.detailIframe}
-                                title={`${point.code} document`}
-                            />
+                            {docError ? (
+                                <p className={styles.noData}>
+                                    <T>Failed to load document.</T>{' '}
+                                    {rawDocPath && (
+                                        <a href={rawDocPath} target="_blank" rel="noopener noreferrer">
+                                            <T>Open in new tab</T>
+                                        </a>
+                                    )}
+                                </p>
+                            ) : hasDoc ? (
+                                <iframe
+                                    src={docUrl}
+                                    className={styles.detailIframe}
+                                    title={`${point.code} document`}
+                                />
+                            ) : null}
                         </div>
                     )}
                 </div>

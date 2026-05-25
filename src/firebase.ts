@@ -18,7 +18,9 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
+export const storage = import.meta.env.DEV
+  ? getStorage(app, `gs://${firebaseConfig.projectId}.firebasestorage.app`)
+  : getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // 2. Replace 'export const db = getFirestore(app);' with this:
@@ -31,21 +33,11 @@ import { logger } from "./utils/logger";
 
 // Connect to emulators in development mode
 if (import.meta.env.DEV) {
-  const useStagingStorage = import.meta.env.VITE_USE_STAGING_STORAGE === "true";
-
-  if (useStagingStorage) {
-    logger.warn(
-      "⚠️  VITE_USE_STAGING_STORAGE=true — ALL emulators are BYPASSED. " +
-      `App is running fully against staging (project: ${import.meta.env.VITE_PROJECT_ID}, ` +
-      `bucket: ${import.meta.env.VITE_STORAGE_BUCKET}).`
-    );
-  } else {
-    logger.log("Connecting to Firebase Emulators (all services)...");
-    connectAuthEmulator(auth, "http://127.0.0.1:9099");
-    connectFirestoreEmulator(db, "127.0.0.1", 8080);
-    connectStorageEmulator(storage, "127.0.0.1", 9199);
-    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
-  }
+  logger.log("Connecting to Firebase Emulators (all services)...");
+  connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  connectStorageEmulator(storage, "127.0.0.1", 9199);
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
 
   // Expose to window for manual debugging/testing of security rules in browser console
   (window as any).db = db;
