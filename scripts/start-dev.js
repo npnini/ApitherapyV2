@@ -50,6 +50,12 @@ if (fs.existsSync(TEMP_DATA)) {
   }
 }
 
+// 0.5 Ensure the main-data directory exists (required by --import)
+if (!fs.existsSync(MAIN_DATA)) {
+  console.log('📂 Creating blank main database directory...');
+  fs.mkdirSync(MAIN_DATA);
+}
+
 // 1. Start the emulators
 const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', '--export-on-exit=./emulator-data-temp'], {
   shell: true,
