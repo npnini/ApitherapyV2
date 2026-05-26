@@ -1,17 +1,47 @@
 import { spawn, execSync } from 'child_process';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
 console.log('🧹 Cleaning up hanging emulator ports...');
+const ports = new Set([4000, 4400, 5001, 8080, 8085, 9000, 9099, 9199]);
 try {
-  // Kill processes holding common Firebase emulator ports to prevent "port taken" errors
-  const ports = [4000, 4400, 5001, 8080, 8085, 9000, 9099, 9199];
-  const psCommand = `Get-NetTCPConnection -LocalPort ${ports.join(',')} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force }`;
-  execSync(`powershell -NoProfile -Command "${psCommand}"`, { stdio: 'ignore' });
-  console.log('✨ Ports cleared.');
+  // Run netstat once and scan all ports in a single pass
+  const result = execSync('netstat -ano', { encoding: 'utf8', timeout: 8000 });
+  const pidsToKill = new Set();
+  for (const line of result.split('\n')) {
+    if (!line.includes('LISTENING')) continue;
+    const match = line.match(/:(\d+)\s+.*LISTENING\s+(\d+)/);
+    if (match && ports.has(Number(match[1]))) {
+      pidsToKill.add(match[2]);
+    }
+  }
+  for (const pid of pidsToKill) {
+    try {
+      execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore', timeout: 3000 });
+      console.log(`  ✓ Killed process tree ${pid}`);
+    } catch (e) {
+      // Process may have already exited
+    }
+  }
+
+  // Verify all ports are actually free after killing
+  const stillLocked = [];
+  const verify = execSync('netstat -ano', { encoding: 'utf8', timeout: 8000 });
+  for (const line of verify.split('\n')) {
+    if (!line.includes('LISTENING')) continue;
+    const match = line.match(/:(\d+)\s+.*LISTENING\s+(\d+)/);
+    if (match && ports.has(Number(match[1]))) {
+      stillLocked.push(match[1]);
+    }
+  }
+  if (stillLocked.length > 0) {
+    console.warn(`⚠️  Ports still locked: ${stillLocked.join(', ')}. Please close any terminal windows running Firebase emulators and try again.`);
+    process.exit(1);
+  }
 } catch (e) {
-  // Ignore errors (usually means no processes were found, which is fine)
+  console.warn('⚠️ Could not check ports, proceeding anyway...');
 }
+console.log('✨ Ports cleared.');
 
 console.log('🔄 Setting active Firebase project to "default" (dev env)...');
 try {
@@ -20,68 +50,31 @@ try {
   console.warn('⚠️ Could not switch project automatically. Proceeding anyway...');
 }
 
-console.log('🚀 Starting Firebase Emulators...');
-
-// 0. Process any pending auto-saves to bypass Windows file locks
-const TEMP_DATA = './emulator-data-temp';
-const MAIN_DATA = './emulator-data';
-if (fs.existsSync(TEMP_DATA)) {
-  console.log('📦 Promoting auto-saved data to main directory...');
-  if (fs.existsSync(MAIN_DATA)) {
-    try {
-      fs.rmSync(MAIN_DATA, { recursive: true, force: true });
-    } catch (e) {
-      console.warn('⚠️ Could not fully clear main-data, proceeding anyway...');
-    }
-  }
-  
-  try {
-    // Try fast rename first
-    fs.renameSync(TEMP_DATA, MAIN_DATA);
-  } catch (err) {
-    // Fallback for Windows EPERM issues: Copy and then Delete
-    console.log('⚠️ Rename locked by Windows. Using Copy-Delete fallback...');
-    try {
-      fs.cpSync(TEMP_DATA, MAIN_DATA, { recursive: true });
-      fs.rmSync(TEMP_DATA, { recursive: true, force: true });
-    } catch (fallbackErr) {
-      console.error('❌ Failed to promote data:', fallbackErr.message);
-    }
-  }
+// Build TypeScript functions before starting emulators
+console.log('🔨 Building Cloud Functions (TypeScript)...');
+try {
+  execSync('npm run build', { stdio: 'inherit', shell: true, cwd: './functions' });
+  console.log('✅ Functions built successfully.');
+} catch (e) {
+  console.warn('⚠️ Functions build failed. Emulators will start but functions may not work.');
 }
 
-// 0.5 Ensure the main-data directory exists (required by --import)
+// Ensure the data directory exists (required by --import)
+const MAIN_DATA = './emulator-data';
 if (!fs.existsSync(MAIN_DATA)) {
-  console.log('📂 Creating blank main database directory...');
+  console.log('📂 Creating blank emulator data directory...');
   fs.mkdirSync(MAIN_DATA);
 }
 
-// 1. Start the emulators
-const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', '--export-on-exit=./emulator-data-temp'], {
+console.log('🚀 Starting Firebase Emulators (data will be saved on Ctrl+C)...');
+console.log('🌐 Emulator web console will be available at: http://localhost:5000');
+
+const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', '--export-on-exit=./emulator-data'], {
   shell: true,
-  stdio: ['inherit', 'pipe', 'inherit']
-});
-
-emulators.stdout.on('data', (data) => {
-  const output = data.toString();
-  process.stdout.write(output); // Print emulator logs to current terminal
-
-  // 2. Look for the "Ready" message
-  if (output.includes('All emulators ready')) {
-    console.log('\n✨ Emulators are ready!');
-    console.log('📂 Launching Auto-Save service in a new window...');
-
-    // 3. Kick off the autosave script as an attached process
-    // This ensures it dies cleanly when the main process dies
-    const autoSave = spawn('npm', ['run', 'emulators:autosave'], {
-      shell: true,
-      stdio: 'inherit'
-    });
-
-    // Make sure we kill the autosave script when emulators close
-    emulators.on('close', (code) => {
-      autoSave.kill();
-    });
+  stdio: 'inherit',
+  env: {
+    ...process.env,
+    GOOGLE_APPLICATION_CREDENTIALS: path.resolve('./service-account.json')
   }
 });
 

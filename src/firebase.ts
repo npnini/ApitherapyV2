@@ -19,7 +19,7 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = import.meta.env.DEV
-  ? getStorage(app, `gs://${firebaseConfig.projectId}.firebasestorage.app`)
+  ? getStorage(app, `gs://${firebaseConfig.storageBucket}`)
   : getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
