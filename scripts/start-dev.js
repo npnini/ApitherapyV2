@@ -51,7 +51,7 @@ if (fs.existsSync(TEMP_DATA)) {
 }
 
 // 1. Start the emulators
-const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data'], {
+const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', '--export-on-exit=./emulator-data-temp'], {
   shell: true,
   stdio: ['inherit', 'pipe', 'inherit']
 });
