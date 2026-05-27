@@ -30,6 +30,7 @@ yarn-error.log*
 *-debug.log
 emulator-data/
 emulator-data-temp/
+emulator-data - Copy/
 .firebase-exports/
 firebase-export-*/
 
