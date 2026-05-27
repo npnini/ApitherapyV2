@@ -8,6 +8,7 @@ import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, G
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import { T, useT, useTranslationContext } from '../components/T';
+import { logAction } from '../services/auditLogService';
 import Tooltip from './common/Tooltip';
 import { StorageLink } from './shared/StorageComponents';
 import PointPlacementScene from './PointPlacementScene';
@@ -262,6 +263,19 @@ const PointsAdmin: React.FC = () => {
                 logger.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointToSave.id} updated.`);
             }
 
+            if (user) {
+                const pointDisplayName = typeof pointToSave.label === 'object'
+                    ? Object.values(pointToSave.label)[0] || ''
+                    : pointToSave.code || '';
+                logAction(user, {
+                    category: 'config',
+                    action: isNewPoint ? 'create' : 'update',
+                    entityType: 'point',
+                    entityId: pointToSave.id || '',
+                    entityName: pointDisplayName,
+                });
+            }
+
             setEditingPoint(null);
             setIsDirty(false);
             fetchPoints();
@@ -291,6 +305,20 @@ const PointsAdmin: React.FC = () => {
                         logger.error("[DEBUG-DELETE-ERROR] Failed to delete file from storage, but proceeding with Firestore deletion.", storageError);
                     }
                 }
+            }
+
+            // Log before delete — after deleteDoc, reactive state may re-render/unmount
+            if (user) {
+                const pointDisplayName = typeof deletingPoint.label === 'object'
+                    ? Object.values(deletingPoint.label).find(v => v) || ''
+                    : deletingPoint.code || '';
+                logAction(user, {
+                    category: 'config',
+                    action: 'delete',
+                    entityType: 'point',
+                    entityId: deletingPoint.id,
+                    entityName: pointDisplayName,
+                });
             }
 
             const pointDoc = doc(db, 'cfg_acupuncture_points', deletingPoint.id);

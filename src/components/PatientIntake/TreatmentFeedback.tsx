@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
+import { logAction } from '../../services/auditLogService';
 import { JoinedPatientData } from '../../types/patient';
 import { Measure } from '../../types/measure';
 import { Protocol } from '../../types/protocol';
@@ -155,6 +156,18 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
             });
 
             await updateTreatmentFeedback(treatment.id!, readingId, feedbackText);
+
+            const authUser = auth.currentUser;
+            if (authUser) {
+                logAction(authUser, {
+                    category: 'patient',
+                    action: 'update',
+                    entityType: 'treatment',
+                    entityId: treatment.id!,
+                    entityName: patient.fullName || '',
+                    detail: `feedback - treatment ${treatment.treatmentNumber || ''}`,
+                });
+            }
 
             setSaveStatus('success');
             setTimeout(() => onComplete(), 2000);

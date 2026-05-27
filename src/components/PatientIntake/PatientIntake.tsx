@@ -6,7 +6,7 @@ import QuestionnaireStep from './QuestionnaireStep';
 import TreatmentHistory from '../TreatmentHistory';
 import { JoinedPatientData, PatientData } from '../../types/patient';
 import styles from './PatientIntake.module.css';
-import { T, useT } from '../T';
+import { T, useT, useTranslationContext } from '../T';
 import ConfirmationModal from '../ConfirmationModal';
 import ConsentTab, { ConsentTabHandle } from './ConsentTab';
 import InstructionsTab, { InstructionsTabHandle } from './InstructionsTab';
@@ -28,6 +28,7 @@ import { VitalSigns, TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
 import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
+import { logAction } from '../../services/auditLogService';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
 type TabKey =
@@ -84,6 +85,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     onTreatmentComplete,
 }) => {
     // ── State ─────────────────────────────────────────────────────────────────
+    const { language: currentLang } = useTranslationContext();
     const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'personal');
     const [viewState, setViewState] = useState<ViewState>(initialViewState ?? 'tabs');
     const [savedTabs, setSavedTabs] = useState<Set<TabKey>>(new Set());
@@ -401,6 +403,71 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 problemsTabRef.current.clearDirty();
             }
             markTabSaved(activeTab);
+            if (patientData.id) {
+                if (activeTab === 'problems') {
+                    // Resolve problem names asynchronously, then log
+                    const oldProblems = patient.medicalRecord?.problems || [];
+                    const newProblems = finalData.medicalRecord?.problems || [];
+                    const oldIds = new Set(oldProblems.map((p: any) => p.problemId));
+                    const newIds = new Set(newProblems.map((p: any) => p.problemId));
+                    const addedIds = newProblems.filter((p: any) => !oldIds.has(p.problemId)).map((p: any) => p.problemId);
+                    const removedIds = oldProblems.filter((p: any) => !newIds.has(p.problemId)).map((p: any) => p.problemId);
+                    const allIds = [...addedIds, ...removedIds];
+
+                    if (allIds.length > 0) {
+                        Promise.all(allIds.map((id: string) => getDoc(doc(db, 'cfg_problems', id)))).then(snaps => {
+                            const nameMap: Record<string, string> = {};
+                            snaps.forEach(snap => {
+                                if (snap.exists()) {
+                                    const data = snap.data();
+                                    const name = typeof data.name === 'object'
+                                        ? (data.name[currentLang] || Object.values(data.name).find(v => v) || snap.id)
+                                        : snap.id;
+                                    nameMap[snap.id] = name;
+                                }
+                            });
+                            const parts: string[] = [];
+                            if (addedIds.length) parts.push(`added: ${addedIds.map((id: string) => nameMap[id] || id).join(', ')}`);
+                            if (removedIds.length) parts.push(`removed: ${removedIds.map((id: string) => nameMap[id] || id).join(', ')}`);
+                            logAction(user, {
+                                category: 'patientIntake',
+                                action: 'update',
+                                entityType: 'patient',
+                                entityId: patientData.id!,
+                                entityName: patientData.fullName || '',
+                                detail: parts.join('; '),
+                            });
+                        }).catch(() => {
+                            logAction(user, {
+                                category: 'patientIntake',
+                                action: 'update',
+                                entityType: 'patient',
+                                entityId: patientData.id!,
+                                entityName: patientData.fullName || '',
+                                detail: 'problems',
+                            });
+                        });
+                    } else {
+                        logAction(user, {
+                            category: 'patientIntake',
+                            action: 'update',
+                            entityType: 'patient',
+                            entityId: patientData.id,
+                            entityName: patientData.fullName || '',
+                            detail: 'problems (no changes)',
+                        });
+                    }
+                } else {
+                    logAction(user, {
+                        category: 'patientIntake',
+                        action: 'update',
+                        entityType: 'patient',
+                        entityId: patientData.id,
+                        entityName: patientData.fullName || '',
+                        detail: activeTab,
+                    });
+                }
+            }
         }
         return success;
     };
@@ -475,6 +542,16 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         }
         setViewState('tabs');
         setActiveTab(tab);
+        if (patientData.id) {
+            logAction(user, {
+                category: 'patientIntake',
+                action: 'view',
+                entityType: 'patient',
+                entityId: patientData.id,
+                entityName: patientData.fullName || '',
+                detail: tab,
+            });
+        }
     };
 
     // Step 5: Start New Treatment → now goes to sessionOpening
@@ -557,6 +634,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 stungPointIds: [],
             }, generatedTreatmentId);
             setLastSavedAt(new Date());
+            logAction(user, {
+                category: 'patient',
+                action: 'create',
+                entityType: 'treatment',
+                entityId: generatedTreatmentId,
+                entityName: patientData.fullName || '',
+                detail: `treatment ${treatmentNumber}`,
+            });
         } catch (err) {
             console.error('Failed to save initial draft:', err);
         }
@@ -1043,7 +1128,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     user={user}
                 />;
             case 'documents':
-                return <DocumentsTab patientId={patient.id} />;
+                return <DocumentsTab patientId={patient.id} patientName={patientData.fullName || ''} />;
             case 'treatments':
                 return (
                     <TreatmentHistory

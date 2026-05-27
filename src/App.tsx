@@ -19,6 +19,7 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
 import UserManagement from './components/UserManagement';
+import ActivityLog from './components/ActivityLog';
 import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
@@ -26,12 +27,13 @@ import { AppUser } from './types/user';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
+import { logAction } from './services/auditLogService';
 import PatientIntake from './components/PatientIntake/PatientIntake';
 import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandaloneView';
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -234,6 +236,7 @@ const AppInner: React.FC = () => {
     const handleAppSettingsClick = () => { setIsSettingsModalOpen(true); };
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
     const handleDataAnalysisClick = () => { setCurrentView('data_analysis'); };
+    const handleActivityLogClick = () => { setCurrentView('activity_log'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
@@ -241,6 +244,15 @@ const AppInner: React.FC = () => {
         const userRef = doc(db, 'users', updatedUser.uid);
         const { uid, ...userDataToSave } = updatedUser;
         await updateDoc(userRef, userDataToSave);
+
+        logAction(appUser, {
+            category: 'config',
+            action: 'update',
+            entityType: 'user',
+            entityId: updatedUser.uid,
+            entityName: updatedUser.fullName || updatedUser.displayName || '',
+            detail: 'profile',
+        });
 
         if (updatedUser.uid === appUser.uid) {
             setAppUser(updatedUser);
@@ -355,6 +367,16 @@ const AppInner: React.FC = () => {
                 await addMeasuredValueReading(finalPatientId, {
                     readings: pendingReadings,
                     usedMeasureIds: pendingReadings.map((r: any) => r.measureId)
+                });
+            }
+
+            if (isNewPatient || closeModal) {
+                logAction(appUser, {
+                    category: 'patient',
+                    action: isNewPatient ? 'create' : 'update',
+                    entityType: 'patient',
+                    entityId: finalPatientId,
+                    entityName: patientData.fullName || '',
                 });
             }
 
@@ -497,6 +519,7 @@ const AppInner: React.FC = () => {
                     onProblemsAdminClick={handleProblemsAdminClick}
                     onQuestionnaireAdminClick={handleQuestionnaireAdminClick}
                     onUserManagementClick={() => setCurrentView('admin_users')}
+                    onActivityLogClick={handleActivityLogClick}
                     viewAsCaretakerId={viewAsCaretakerId}
                     onViewAsCaretakerChange={setViewAsCaretakerId}
                     appConfig={appConfig}
@@ -523,7 +546,9 @@ const AppInner: React.FC = () => {
                                                         <QuestionnaireAdmin />
                                                         : currentView === 'admin_users' ?
                                                             <UserManagement />
-                                                            : currentView === 'data_analysis' && effectiveUser ?
+                                                            : currentView === 'activity_log' ?
+                                                                <ActivityLog />
+                                                                : currentView === 'data_analysis' && effectiveUser ?
                                                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} isFlex={true}>
                                                                     <TreatmentEffectiveness user={effectiveUser} onPatientClick={handlePatientClick} />
                                                                 </Modal>

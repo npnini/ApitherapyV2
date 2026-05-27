@@ -206,4 +206,16 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       },
     },
   },
+  auditLogSettings: {
+    label: 'Audit Log',
+    description: 'Settings for the application activity log.',
+    children: {
+      retentionDays: {
+        label: 'Retention (Days)',
+        description: 'Number of days to keep audit log entries. Older entries are automatically deleted nightly.',
+        type: 'number',
+        defaultValue: 90,
+      },
+    },
+  },
 };

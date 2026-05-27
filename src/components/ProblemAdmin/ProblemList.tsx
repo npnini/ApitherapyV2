@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
+import { logAction } from '../../services/auditLogService';
 import { Problem } from '../../types/problem';
 import styles from './ProblemList.module.css';
 import { Plus, Trash2, Edit, Search, X, FileCheck2 } from 'lucide-react';
@@ -54,6 +55,23 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
 
   const handleConfirmDelete = async () => {
     if (problemToDelete) {
+      const problem = problems.find(p => p.id === problemToDelete);
+      const authUser = auth.currentUser;
+
+      // Log before delete — after deleteDoc, reactive useCollection may re-render/unmount
+      if (authUser && problem) {
+        const problemDisplayName = typeof problem.name === 'object'
+            ? (problem.name[currentLang] || Object.values(problem.name).find(v => v) || '')
+            : '';
+        logAction(authUser, {
+            category: 'config',
+            action: 'delete',
+            entityType: 'problem',
+            entityId: problemToDelete,
+            entityName: problemDisplayName,
+        });
+      }
+
       await deleteDoc(doc(db, 'cfg_problems', problemToDelete));
       setIsModalOpen(false);
       setProblemToDelete(null);

@@ -11,6 +11,7 @@ import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
 import { T, useT, useTranslationContext } from './T';
+import { logAction } from '../services/auditLogService';
 import Tooltip from './common/Tooltip';
 import { StorageLink } from './shared/StorageComponents';
 import { getFieldContent } from '../utils/storageUtils';
@@ -298,11 +299,26 @@ const ProtocolAdmin: React.FC = () => {
             const addedPoints = newPoints.filter((p: string) => !originalPoints.includes(p));
             const removedPoints = originalPoints.filter((p: string) => !newPoints.includes(p));
 
-            if (editingProtocol.id) {
-                const protocolRef = doc(db, 'cfg_protocols', editingProtocol.id);
+            const isUpdate = !!editingProtocol.id;
+            if (isUpdate) {
+                const protocolRef = doc(db, 'cfg_protocols', editingProtocol.id!);
                 await updateDoc(protocolRef, protocolToSave);
             } else {
                 await addDoc(collection(db, 'cfg_protocols'), { ...protocolToSave, createdAt: serverTimestamp() });
+            }
+
+            if (user) {
+                const nameObj = protocolToSave.name || editingProtocol.name;
+                const protocolDisplayName = typeof nameObj === 'object'
+                    ? (nameObj[currentLang] || Object.values(nameObj).find(v => v) || '')
+                    : String(nameObj || '');
+                logAction(user, {
+                    category: 'config',
+                    action: isUpdate ? 'update' : 'create',
+                    entityType: 'protocol',
+                    entityId: editingProtocol.id || '',
+                    entityName: protocolDisplayName,
+                });
             }
 
             // Update reference counts for points
@@ -347,6 +363,21 @@ const ProtocolAdmin: React.FC = () => {
                     await deleteFile(deletingProtocol.documentUrl);
                 }
             }
+            // Log before delete — after deleteDoc, reactive state may re-render/unmount
+            if (user) {
+                const nameObj = deletingProtocol.name;
+                const protocolDisplayName = typeof nameObj === 'object'
+                    ? (nameObj[currentLang] || Object.values(nameObj).find(v => v) || '')
+                    : String(nameObj || '');
+                logAction(user, {
+                    category: 'config',
+                    action: 'delete',
+                    entityType: 'protocol',
+                    entityId: deletingProtocol.id,
+                    entityName: protocolDisplayName,
+                });
+            }
+
             await deleteDoc(doc(db, 'cfg_protocols', deletingProtocol.id));
 
             // Decement reference counts for all points

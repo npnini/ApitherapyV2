@@ -9,6 +9,8 @@ import QuestionnaireForm from './QuestionnaireForm';
 import styles from './QuestionnaireAdmin.module.css';
 import { saveQuestionnaire } from '../../firebase/questionnaire';
 import { T, useT } from '../T';
+import { auth } from '../../firebase';
+import { logAction } from '../../services/auditLogService';
 
 const QuestionnaireAdmin: React.FC = () => {
     const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
@@ -70,6 +72,18 @@ const QuestionnaireAdmin: React.FC = () => {
         setFormError(null);
         try {
             await saveQuestionnaire(itemToSave);
+
+            const authUser = auth.currentUser;
+            if (authUser) {
+                logAction(authUser, {
+                    category: 'config',
+                    action: itemToSave.id ? 'update' : 'create',
+                    entityType: 'questionnaire',
+                    entityId: itemToSave.id || '',
+                    entityName: itemToSave.domain || '',
+                });
+            }
+
             setIsEditing(null);
             await fetchData();
         } catch (err) {

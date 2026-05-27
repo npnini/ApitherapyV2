@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2 } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
@@ -18,6 +18,7 @@ interface SidebarProps {
     onQuestionnaireAdminClick: () => void;
     onAppSettingsClick: () => void;
     onUserManagementClick: () => void;
+    onActivityLogClick: () => void;
     viewAsCaretakerId: string | null;
     onViewAsCaretakerChange: (id: string | null) => void;
 }
@@ -35,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onQuestionnaireAdminClick,
     onAppSettingsClick,
     onUserManagementClick,
+    onActivityLogClick,
     viewAsCaretakerId,
     onViewAsCaretakerChange,
 }) => {
@@ -195,6 +197,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <button onClick={onUserManagementClick} className={styles.configButton}>
                                     <Users size={16} className={styles.iconSecondary} />
                                     <span><T>User Management</T></span>
+                                </button>
+                                <button onClick={onActivityLogClick} className={styles.configButton}>
+                                    <ClipboardList size={16} className={styles.iconSecondary} />
+                                    <span><T>Activity Log</T></span>
                                 </button>
                             </div>
                         )}

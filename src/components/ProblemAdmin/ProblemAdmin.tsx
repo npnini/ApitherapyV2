@@ -10,6 +10,8 @@ import { uploadFile, deleteFile } from '../../services/storageService';
 import styles from './ProblemAdmin.module.css';
 import { useTranslationContext } from '../T';
 import { getDoc } from 'firebase/firestore';
+import { auth } from '../../firebase';
+import { logAction } from '../../services/auditLogService';
 
 type View = 'list' | 'details' | 'form';
 
@@ -165,10 +167,25 @@ const ProblemAdmin: React.FC = () => {
         updatedAt: serverTimestamp(),
       };
 
-      if (selectedProblemId) {
-        await updateDoc(doc(db, 'cfg_problems', selectedProblemId), dataToSave);
+      const isUpdate = !!selectedProblemId;
+      if (isUpdate) {
+        await updateDoc(doc(db, 'cfg_problems', selectedProblemId!), dataToSave);
       } else {
         await addDoc(collection(db, 'cfg_problems'), { ...dataToSave, createdAt: serverTimestamp() });
+      }
+
+      const authUser = auth.currentUser;
+      if (authUser) {
+        const problemDisplayName = typeof formData.name === 'object'
+            ? Object.values(formData.name)[0] || ''
+            : '';
+        logAction(authUser, {
+            category: 'config',
+            action: isUpdate ? 'update' : 'create',
+            entityType: 'problem',
+            entityId: selectedProblemId || '',
+            entityName: problemDisplayName,
+        });
       }
 
       handleBackToList();

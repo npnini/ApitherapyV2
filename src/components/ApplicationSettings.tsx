@@ -10,6 +10,7 @@ import styles from './ApplicationSettings.module.css';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import { Question, Questionnaire } from '../types/questionnaire';
 import { T, useT, useTranslationContext } from './T';
+import { logAction } from '../services/auditLogService';
 
 interface ApplicationSettingsProps {
     user: AppUser;
@@ -311,6 +312,18 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             }
 
             await setDoc(configRef, settingsToSave);
+
+            const changedKeys = Object.keys(settingsToSave).filter(k =>
+                JSON.stringify(settingsToSave[k]) !== JSON.stringify(initialSettings[k])
+            );
+            logAction(user, {
+                category: 'config',
+                action: 'update',
+                entityType: 'appSettings',
+                entityId: 'main',
+                entityName: 'Application Settings',
+                detail: changedKeys.join(', '),
+            });
 
             // Reset the emailApiKey in the local state so it stays write-only (empty)
             if (settingsToSave.notificationSettings) {

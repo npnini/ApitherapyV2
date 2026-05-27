@@ -12,6 +12,7 @@ import DocumentManagement from '../shared/DocumentManagement';
 import { T, useT, useTranslationContext } from '../T';
 import { StorageLink } from '../shared/StorageComponents';
 import Tooltip from '../common/Tooltip';
+import { logAction } from '../../services/auditLogService';
 import { CSS } from '@dnd-kit/utilities';
 
 const MeasureAdmin: React.FC = () => {
@@ -270,6 +271,19 @@ const MeasureAdmin: React.FC = () => {
                 await updateDoc(measureDoc, dataToSave);
             }
 
+            if (user) {
+                const measureDisplayName = typeof measureToSave.name === 'object'
+                    ? Object.values(measureToSave.name)[0] || ''
+                    : measureToSave.name || '';
+                logAction(user, {
+                    category: 'config',
+                    action: isNewMeasure ? 'create' : 'update',
+                    entityType: 'measure',
+                    entityId: measureToSave.id || '',
+                    entityName: measureDisplayName,
+                });
+            }
+
             setEditingMeasure(null);
             setIsDirty(false);
             fetchMeasures();
@@ -291,6 +305,20 @@ const MeasureAdmin: React.FC = () => {
                 for (const url of urlsToDelete) {
                     await deleteFile(url);
                 }
+            }
+
+            // Log before delete — after deleteDoc, reactive state may re-render/unmount
+            if (user) {
+                const measureDisplayName = typeof deletingMeasure.name === 'object'
+                    ? Object.values(deletingMeasure.name).find(v => v) || ''
+                    : deletingMeasure.name || '';
+                logAction(user, {
+                    category: 'config',
+                    action: 'delete',
+                    entityType: 'measure',
+                    entityId: deletingMeasure.id,
+                    entityName: measureDisplayName,
+                });
             }
 
             await deleteDoc(doc(db, 'cfg_measures', deletingMeasure.id));

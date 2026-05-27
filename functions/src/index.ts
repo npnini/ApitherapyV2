@@ -907,3 +907,60 @@ export const runDailyUnifiedBackup = onSchedule(
     }
   }
 );
+
+/**
+ * cleanupAuditLog
+ * Runs nightly at 3:30 AM Israel time.
+ * Deletes audit log entries older than the configured retention period.
+ * Retention is read from cfg_app_config/main → auditLogSettings.retentionDays (default: 90 days).
+ */
+export const cleanupAuditLog = onSchedule(
+  {
+    schedule: "30 3 * * *",
+    timeZone: "Asia/Jerusalem",
+    timeoutSeconds: 300,
+  },
+  async () => {
+    // 1. Read retention config
+    const configSnap = await db.doc("cfg_app_config/main").get();
+    const configData = configSnap.data();
+    const retentionDays: number =
+      configData?.auditLogSettings?.retentionDays ?? 90;
+
+    // 2. Compute cutoff timestamp
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - retentionDays);
+    logger.info(
+      `[Audit Cleanup] Retention: ${retentionDays} days. Deleting entries before ${cutoff.toISOString()}`
+    );
+
+    // 3. Batch-delete in loops of 500
+    let totalDeleted = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const snapshot = await db
+        .collection("app_audit_log")
+        .where("timestamp", "<", cutoff)
+        .limit(500)
+        .get();
+
+      if (snapshot.empty) {
+        hasMore = false;
+        break;
+      }
+
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      totalDeleted += snapshot.size;
+
+      // If fewer than 500 returned, we're done
+      if (snapshot.size < 500) {
+        hasMore = false;
+      }
+    }
+
+    logger.info(`[Audit Cleanup] Done. Deleted ${totalDeleted} entries.`);
+  }
+);

@@ -10,21 +10,23 @@ import {
     orderBy,
 } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { db, storage, auth } from '../../firebase';
 import { PatientDocument } from '../../types/patient';
 import { uploadFile, deleteFile } from '../../services/storageService';
 import Modal from '../common/Modal';
 import ConfirmationModal from '../ConfirmationModal';
 import { T, useT } from '../T';
+import { logAction } from '../../services/auditLogService';
 import { FileText, Image as ImageIcon, Trash2, ExternalLink, Plus, Loader, Search } from 'lucide-react';
 import styles from './PatientIntake.module.css';
 import docStyles from './DocumentsTab.module.css';
 
 interface DocumentsTabProps {
     patientId: string | undefined;
+    patientName?: string;
 }
 
-const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
+const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId, patientName }) => {
     const [documents, setDocuments] = useState<PatientDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchText, setSearchText] = useState('');
@@ -96,6 +98,19 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
     const handleDeleteConfirm = async () => {
         if (!documentToDelete || !patientId) return;
         try {
+            // Log before delete — after deleteDoc, reactive state may re-render/unmount
+            const authUser = auth.currentUser;
+            if (authUser) {
+                logAction(authUser, {
+                    category: 'patientIntake',
+                    action: 'delete',
+                    entityType: 'document',
+                    entityId: documentToDelete.id,
+                    entityName: patientName || '',
+                    detail: documentToDelete.description,
+                });
+            }
+
             await deleteFile(documentToDelete.url);
             await deleteDoc(
                 doc(db, 'patient_medical_data', patientId, 'documents', documentToDelete.id)
@@ -129,6 +144,19 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
                 createdAt: new Date() as any,
             };
             setDocuments(prev => [newDoc, ...prev]);
+
+            const authUser = auth.currentUser;
+            if (authUser) {
+                logAction(authUser, {
+                    category: 'patientIntake',
+                    action: 'create',
+                    entityType: 'document',
+                    entityId: docRef.id,
+                    entityName: patientName || '',
+                    detail: newDescription.trim(),
+                });
+            }
+
             closeNewModal();
         } catch (err) {
             console.error('DocumentsTab: Failed to upload document:', err);

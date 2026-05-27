@@ -148,6 +148,12 @@ service cloud.firestore {
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
     
+    match /app_audit_log/{docId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
     match /feedback_sessions/{sessionId} {
       allow get: if true;
       allow list: if isAuthenticated() && canReadPatientData(resource.data.patientId);
