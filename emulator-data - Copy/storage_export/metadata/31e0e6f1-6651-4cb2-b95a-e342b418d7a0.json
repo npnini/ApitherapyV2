@@ -1,0 +1,20 @@
+{
+  "name": "Points/rHAxCnQY9Q8l6h7CiqWO/1776609236038__TW15(SJ15) TianLiao  (1).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098200,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "64e4f7b6-5756-44c8-b601-0df7ba268556"
+  ],
+  "etag": "HK8rEWCiw2hJeNMgYenhRHHpEPU",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776609237814208"
+  },
+  "timeCreated": "2026-05-26T20:08:18.200Z",
+  "updated": "2026-05-26T20:08:18.200Z",
+  "size": 214212,
+  "md5Hash": "fk01UNnRjJMAXAjEOfMdFA==",
+  "crc32c": "1076804212"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1776108933297__SP9 - Yinlingquan (1).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097547,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "d721164b-5dac-495f-8378-d1622ce71ca8"
+  ],
+  "etag": "OMcPThzPgJJ8fUuEcEl7Ip+jWyw",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776108935423413"
+  },
+  "timeCreated": "2026-05-26T20:08:17.547Z",
+  "updated": "2026-05-26T20:08:17.547Z",
+  "size": 182940,
+  "md5Hash": "3q9HLQObOxc0+p9vS1MVQg==",
+  "crc32c": "537785662"
+}

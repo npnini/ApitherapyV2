@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1776241053519_GV4 - Mingmen (1).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097615,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "43cb5e44-4711-4de7-b849-50f52847b864"
+  ],
+  "etag": "1caQPkiEYK+9fNzafMzaRLPV4Qc",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776241055416995"
+  },
+  "timeCreated": "2026-05-26T20:08:17.615Z",
+  "updated": "2026-05-26T20:08:17.615Z",
+  "size": 314768,
+  "md5Hash": "WZ+1afMa8EDz8U2pM9PrlQ==",
+  "crc32c": "3025545955"
+}

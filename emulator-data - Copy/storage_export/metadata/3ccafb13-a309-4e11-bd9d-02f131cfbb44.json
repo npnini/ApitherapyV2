@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1774699810481_לחץ נפשי.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098953,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "c2248fcf-49bb-4014-b944-e0b94634b1b4"
+  ],
+  "etag": "4Pn695T41MCHFaAuiJ03quWQJjg",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1774699811880339"
+  },
+  "timeCreated": "2026-05-26T20:08:18.953Z",
+  "updated": "2026-05-26T20:08:18.953Z",
+  "size": 84190,
+  "md5Hash": "FeSpnn8aLxCvf2pMIIJlkA==",
+  "crc32c": "4020239637"
+}

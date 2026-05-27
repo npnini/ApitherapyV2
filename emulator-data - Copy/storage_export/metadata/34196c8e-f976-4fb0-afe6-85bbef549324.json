@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/Pp576CRoUtJ7r2l0DhPa/1778077836693_פרקינסון.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098734,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "cd3622a1-d4a4-4082-af7a-39f4dbb6ca43"
+  ],
+  "etag": "fBRHUGQytmhOpDD5YrvsNVVHdWs",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778077838356204"
+  },
+  "timeCreated": "2026-05-26T20:08:18.734Z",
+  "updated": "2026-05-26T20:08:18.734Z",
+  "size": 157503,
+  "md5Hash": "Ilbvf78NEgvturDYTjrS4A==",
+  "crc32c": "1690145158"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Points/NPKCVFjg4yoLNDTgsETL/1775378966167_GB34 - Yanglingquan.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096797,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "9973a252-5899-4f33-b40e-bd0702c48415"
+  ],
+  "etag": "YcypbRbJgyu/3tCtxtZ41gUjzDo",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775378967988649"
+  },
+  "timeCreated": "2026-05-26T20:08:16.797Z",
+  "updated": "2026-05-26T20:08:16.797Z",
+  "size": 241023,
+  "md5Hash": "QZGd9z3+jKmjFo2Wu/Htgw==",
+  "crc32c": "919064393"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Points/C5TSzVIACXuHSItLAWmq/1774705536188_CV 12.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096339,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "7b52dda0-bd34-4555-beb0-104acd6c6e9e"
+  ],
+  "etag": "uRenCq2MrRrILpCN2J8zrxeoWCQ",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1774705536936730"
+  },
+  "timeCreated": "2026-05-26T20:08:16.339Z",
+  "updated": "2026-05-26T20:08:16.339Z",
+  "size": 65307,
+  "md5Hash": "Koiy9RYjy5OIIn9HRsPf1w==",
+  "crc32c": "4197664872"
+}

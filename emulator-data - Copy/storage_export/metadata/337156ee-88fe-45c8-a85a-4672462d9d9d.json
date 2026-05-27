@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/gqJzaKKiZCVeqZgDQFVl/1778054867203_איזון בלוטת התריס (1).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098861,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "59d1b79f-4154-47be-b0b9-c02918e9ccba"
+  ],
+  "etag": "fDZ30HODrsovF+3rbvudRr+PXQ4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778054869035547"
+  },
+  "timeCreated": "2026-05-26T20:08:18.861Z",
+  "updated": "2026-05-26T20:08:18.861Z",
+  "size": 97819,
+  "md5Hash": "Afq7FloJsh2fHmkf3khQYw==",
+  "crc32c": "693825681"
+}

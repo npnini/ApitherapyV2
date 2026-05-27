@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1776154016633_פרוטוקול אפיתרפיה לפרקינסון.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098978,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "a2322d87-93f7-442f-9567-fa493f769bdb"
+  ],
+  "etag": "52i5XVm/7e11PLSBbS79xG80IdU",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776154018669401"
+  },
+  "timeCreated": "2026-05-26T20:08:18.978Z",
+  "updated": "2026-05-26T20:08:18.978Z",
+  "size": 99100,
+  "md5Hash": "cjkFy9OmhIFc/EpyWin44g==",
+  "crc32c": "2379763358"
+}

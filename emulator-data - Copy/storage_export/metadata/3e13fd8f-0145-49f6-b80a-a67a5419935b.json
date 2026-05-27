@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1776529386036_פוריות נשית.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099011,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "9567f175-4a34-4ddb-8afe-63dd90c13956"
+  ],
+  "etag": "Jvl6tetml3en20Uv+OY+YgoqQaI",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776529387603065"
+  },
+  "timeCreated": "2026-05-26T20:08:19.011Z",
+  "updated": "2026-05-26T20:08:19.011Z",
+  "size": 89491,
+  "md5Hash": "qimfCbe9kYaD0diyWvSlUQ==",
+  "crc32c": "4249796030"
+}

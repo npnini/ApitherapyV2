@@ -1,0 +1,20 @@
+{
+  "name": "Points/LU6/",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096603,
+  "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "0f1b23ea-70f4-4312-b1a7-76b47117ab35"
+  ],
+  "etag": "mfiTLbL4s+L2kZRDgh0WHg+oN1s",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1773856762558471"
+  },
+  "timeCreated": "2026-05-26T20:08:16.603Z",
+  "updated": "2026-05-26T20:08:16.603Z",
+  "size": 0,
+  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+  "crc32c": "0"
+}

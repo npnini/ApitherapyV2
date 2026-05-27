@@ -1,0 +1,20 @@
+{
+  "name": "Points/9IqMT2VhSimhqqM4NZ2B/1776251958234_GV24 (DU24)-ShénTíng.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096257,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "2ac075c3-9c9a-434e-8897-8d76d1e77296"
+  ],
+  "etag": "GMchdkDH0nZN7JpYPVSbg2ONjJs",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776251960237131"
+  },
+  "timeCreated": "2026-05-26T20:08:16.257Z",
+  "updated": "2026-05-26T20:08:16.257Z",
+  "size": 196072,
+  "md5Hash": "tHcUJuVLVjNSliuW0O6A5w==",
+  "crc32c": "3097628568"
+}

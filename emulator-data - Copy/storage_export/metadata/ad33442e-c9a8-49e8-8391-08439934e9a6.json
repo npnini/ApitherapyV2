@@ -1,0 +1,20 @@
+{
+  "name": "Points/4HdFcbEgCFt2JWc9p6t7/1774546009004_LU 9.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096149,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "123400ae-30c3-417a-9c3b-f1ac69eb3c44"
+  ],
+  "etag": "FPM2jZVaZwCl+4NrO/jOnAJ6BTc",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1774546010169610"
+  },
+  "timeCreated": "2026-05-26T20:08:16.149Z",
+  "updated": "2026-05-26T20:08:16.149Z",
+  "size": 52892,
+  "md5Hash": "qiO3qZAhL5VstHBpSwcsVQ==",
+  "crc32c": "3882321857"
+}

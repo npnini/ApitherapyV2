@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1778521932702_פרוטוקול נקודת דיקור BL 40 (Weizhong).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098109,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "c40cc9f8-0389-4bb6-8c4a-bbb6c7ce7521"
+  ],
+  "etag": "wmgSuYjBGuRgAxWArz0MED2dDSQ",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778521935149766"
+  },
+  "timeCreated": "2026-05-26T20:08:18.109Z",
+  "updated": "2026-05-26T20:08:18.109Z",
+  "size": 210047,
+  "md5Hash": "3f8BJbzQsYU0Hdi7TjUn3A==",
+  "crc32c": "2748437383"
+}

@@ -121,6 +121,12 @@ service cloud.firestore {
       allow write: if isPatientCaretaker(patientId);
     }
 
+    // 2a. Patient Documents (subcollection of medical data)
+    match /patient_medical_data/{patientId}/documents/{docId} {
+      allow read: if canReadPatientData(patientId);
+      allow write: if isPatientCaretaker(patientId);
+    }
+
     // 3. Questionnaire Responses (Multiple per patient)
     match /questionnaire_responses/{responseId} {
       allow read: if resource == null || canReadPatientData(resource.data.patientId);

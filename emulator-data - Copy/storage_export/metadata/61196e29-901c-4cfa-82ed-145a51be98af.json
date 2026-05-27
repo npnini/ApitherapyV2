@@ -1,0 +1,20 @@
+{
+  "name": "Points/hFWzvCjZLqgeDR60BY9Z/1776107698993_פרוטוקול נקודת דיקור CV4 - שער המקור.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096990,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "e2724640-4abc-4418-8223-22663374863c"
+  ],
+  "etag": "z0iGmFsRX5nhNMigT0UsMrZ7UEE",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776107701112370"
+  },
+  "timeCreated": "2026-05-26T20:08:16.990Z",
+  "updated": "2026-05-26T20:08:16.990Z",
+  "size": 208828,
+  "md5Hash": "9tZGLkrItJfK9R/F9Hq0uQ==",
+  "crc32c": "784206629"
+}

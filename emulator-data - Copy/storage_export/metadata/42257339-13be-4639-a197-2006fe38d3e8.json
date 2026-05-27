@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1777448305361_טיפול לנפגעי PTSD.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099103,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "51f89acf-0c72-4a2c-bb12-f1c2252f9bb4"
+  ],
+  "etag": "Nec9XaG4GPEkzruy1JTt/f/uFLA",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777448307145986"
+  },
+  "timeCreated": "2026-05-26T20:08:19.103Z",
+  "updated": "2026-05-26T20:08:19.103Z",
+  "size": 79903,
+  "md5Hash": "qP3RQg0lLckp7mVB83p9aQ==",
+  "crc32c": "1270213674"
+}

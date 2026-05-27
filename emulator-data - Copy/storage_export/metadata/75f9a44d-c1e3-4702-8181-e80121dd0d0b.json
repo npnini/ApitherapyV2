@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1777388976798_SI4 - Wangu.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098025,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "5775dc34-0714-4e97-b1f1-b0c217f48662"
+  ],
+  "etag": "0/8yCLF3+G0Y48gXLg79vHy2Koc",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777388978105740"
+  },
+  "timeCreated": "2026-05-26T20:08:18.025Z",
+  "updated": "2026-05-26T20:08:18.025Z",
+  "size": 151008,
+  "md5Hash": "CPdIHdOM/C30tG/b5v4xrw==",
+  "crc32c": "62323847"
+}

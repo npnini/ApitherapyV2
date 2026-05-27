@@ -1,0 +1,20 @@
+{
+  "name": "Patients/hjj30feyTcutF0hZJ6rn/1779127907306_consent.png",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826095689,
+  "contentType": "image/png",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "43736129-94c4-4e7a-af14-f5ea61113934"
+  ],
+  "etag": "wddBOWsJz7Pi/Cf5YwIb3lCaDrM",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1779127908561696"
+  },
+  "timeCreated": "2026-05-26T20:08:15.689Z",
+  "updated": "2026-05-26T20:08:15.689Z",
+  "size": 223639,
+  "md5Hash": "KMlTFmJtgRG0DdC9JhSLGA==",
+  "crc32c": "2343001751"
+}

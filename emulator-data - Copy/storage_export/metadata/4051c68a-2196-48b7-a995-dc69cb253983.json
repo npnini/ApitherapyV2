@@ -1,0 +1,20 @@
+{
+  "name": "Points/p9Te7xNq5JuksDzy0a1d/1776344233176_BL62 - Shenmai.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098161,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "3fcffbeb-006d-4381-8a4b-df76c585be17"
+  ],
+  "etag": "fVlIjy9jGg7Qok/ZDbttGU6/W8A",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776344234846759"
+  },
+  "timeCreated": "2026-05-26T20:08:18.161Z",
+  "updated": "2026-05-26T20:08:18.161Z",
+  "size": 218944,
+  "md5Hash": "X2rXmf6BodzayEfY4fEKQg==",
+  "crc32c": "3883566032"
+}

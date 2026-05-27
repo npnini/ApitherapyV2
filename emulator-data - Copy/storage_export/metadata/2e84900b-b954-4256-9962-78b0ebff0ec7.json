@@ -1,0 +1,20 @@
+{
+  "name": "Patients/hjj30feyTcutF0hZJ6rn/1779127884006_treatment_instructions.png",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826095672,
+  "contentType": "image/png",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "3a463928-62f0-4d2e-8d8e-9e6580bf1d7f"
+  ],
+  "etag": "npKnMVFDh8ofY2hzn96MSk6Nvh8",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1779127885401252"
+  },
+  "timeCreated": "2026-05-26T20:08:15.673Z",
+  "updated": "2026-05-26T20:08:15.673Z",
+  "size": 145806,
+  "md5Hash": "xLbA/JBpAwZ1HhTaSE0KDQ==",
+  "crc32c": "4156185607"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Points/DU14/",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096416,
+  "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "ac97b1f3-8126-41e8-b648-e44b6efab3c2"
+  ],
+  "etag": "3U0OkovBRgZmDpLJ1LgyluEq3qM",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1773857992917427"
+  },
+  "timeCreated": "2026-05-26T20:08:16.416Z",
+  "updated": "2026-05-26T20:08:16.416Z",
+  "size": 0,
+  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+  "crc32c": "0"
+}

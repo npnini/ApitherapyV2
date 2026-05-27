@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1775384849863_HN1 - Sishencong.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097450,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "b172b7a5-fadf-4d1e-8a6d-4d71188e56da"
+  ],
+  "etag": "uGvGOSX7zVlU9f/zRgYq7p01dQg",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775384851329171"
+  },
+  "timeCreated": "2026-05-26T20:08:17.450Z",
+  "updated": "2026-05-26T20:08:17.450Z",
+  "size": 203511,
+  "md5Hash": "n9KLVgpGeivIvEYM0F2TLA==",
+  "crc32c": "570460075"
+}

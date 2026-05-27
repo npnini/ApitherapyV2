@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/rnlcarxLBVz0nXzFj3X0/1778067297272_השמנת יתר (1).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099174,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "2e99a50f-2da4-413f-a2b9-ecbc7c151b2a"
+  ],
+  "etag": "UZ6uhjeWbBv3Wfp1oOS4pIRMBr4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778067298952084"
+  },
+  "timeCreated": "2026-05-26T20:08:19.174Z",
+  "updated": "2026-05-26T20:08:19.174Z",
+  "size": 75721,
+  "md5Hash": "kmHDZ7tXIbTElCQ/FMagvg==",
+  "crc32c": "3589201916"
+}

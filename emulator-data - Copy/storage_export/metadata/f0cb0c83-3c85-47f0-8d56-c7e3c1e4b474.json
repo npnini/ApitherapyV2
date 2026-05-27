@@ -1,0 +1,20 @@
+{
+  "name": "Points/pZnFLA5D3GnJDvYQTxfX/1775414224294_ST36 – Zu San Li.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098186,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "75289b07-f2f9-4cb3-a67a-a4039af14594"
+  ],
+  "etag": "bW5ab0U4ta0ufEHbLF31liPoYM4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775414225700962"
+  },
+  "timeCreated": "2026-05-26T20:08:18.186Z",
+  "updated": "2026-05-26T20:08:18.186Z",
+  "size": 171895,
+  "md5Hash": "V4E8tEyi8cj+vUSYuyvNCQ==",
+  "crc32c": "499898797"
+}

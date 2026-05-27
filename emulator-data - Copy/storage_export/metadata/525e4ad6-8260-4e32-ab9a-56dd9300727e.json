@@ -1,0 +1,20 @@
+{
+  "name": "Problems/new/1774463856010_עייפות.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098524,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "d2a62efb-f293-4002-8973-9015720c765d"
+  ],
+  "etag": "Q1ZlAlUvvXitsijczEmXN52/Y6w",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1774463856863345"
+  },
+  "timeCreated": "2026-05-26T20:08:18.524Z",
+  "updated": "2026-05-26T20:08:18.524Z",
+  "size": 37863,
+  "md5Hash": "HejinM0er1+cRK7yVCZbPA==",
+  "crc32c": "1517133070"
+}

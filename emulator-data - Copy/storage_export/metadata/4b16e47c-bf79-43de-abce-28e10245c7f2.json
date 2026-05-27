@@ -1,0 +1,20 @@
+{
+  "name": "Points/DU14/Dazhui DU-14.jpg",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096432,
+  "contentType": "image/jpeg",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "ddcf00de-6a14-41f9-a4e0-f288bbd8af6c"
+  ],
+  "etag": "Yy/hqF6jOkxWZPUG+ahFPTKy+Yw",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1773858005972467"
+  },
+  "timeCreated": "2026-05-26T20:08:16.432Z",
+  "updated": "2026-05-26T20:08:16.432Z",
+  "size": 25595,
+  "md5Hash": "beIza2Hx2ez39q8trZfAhA==",
+  "crc32c": "515216848"
+}

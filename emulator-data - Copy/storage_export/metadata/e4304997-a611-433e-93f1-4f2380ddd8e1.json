@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1774699109634_Yintang – EX-HN 3.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097154,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "53d821b2-da45-43a6-b1c6-3b364839fbd2"
+  ],
+  "etag": "LXfpaGGBx1KSbbumn1I6ePUUzks",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1774699110250289"
+  },
+  "timeCreated": "2026-05-26T20:08:17.154Z",
+  "updated": "2026-05-26T20:08:17.154Z",
+  "size": 60341,
+  "md5Hash": "J57YZM+IZ3NoCL5ZJqmC9g==",
+  "crc32c": "4027159640"
+}

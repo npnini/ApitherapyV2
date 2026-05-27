@@ -1,0 +1,20 @@
+{
+  "name": "Problems/6JrQFbNkorxthhvpFlEk/1771689290867_דוגמת מסמך בעיה בעברית.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098469,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "8a3c0dd6-4926-4c34-9905-2d5d5a77580d"
+  ],
+  "etag": "7A9447ljh0LdBBsZgxLtp5oSzWY",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1771689305630167"
+  },
+  "timeCreated": "2026-05-26T20:08:18.469Z",
+  "updated": "2026-05-26T20:08:18.469Z",
+  "size": 30163,
+  "md5Hash": "5Kuq3QyU+jske5w4iWKAsA==",
+  "crc32c": "3859942438"
+}

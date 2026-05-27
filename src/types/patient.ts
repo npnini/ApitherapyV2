@@ -1,3 +1,11 @@
+export interface PatientDocument {
+    id: string;
+    url: string;         // Firebase Storage fullPath
+    description: string;
+    type: 'Document' | 'Image';
+    createdAt: any;      // Firestore Timestamp
+}
+
 export interface BaseDocument {
     id?: string;
     createdTimestamp: any; // serverTimestamp

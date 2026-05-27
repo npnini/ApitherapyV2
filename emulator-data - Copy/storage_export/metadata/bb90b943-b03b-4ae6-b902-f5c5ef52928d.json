@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/h78Lp4qXJLtEtOMyFVOV/1778269572738_חניכיים (2).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098872,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "5bd233af-7f45-429b-9f41-7fc04ac29eee"
+  ],
+  "etag": "SLsFSpoNs2Nt5+U5FG3wcrjpOKI",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778269573724545"
+  },
+  "timeCreated": "2026-05-26T20:08:18.872Z",
+  "updated": "2026-05-26T20:08:18.872Z",
+  "size": 84574,
+  "md5Hash": "9QF01ZqIRymXpdTMlUGiTA==",
+  "crc32c": "873748421"
+}

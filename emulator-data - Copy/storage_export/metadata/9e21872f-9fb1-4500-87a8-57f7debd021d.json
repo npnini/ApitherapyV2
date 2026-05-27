@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1775377758496_BL 32 - Ciliao .pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097317,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "4da45d29-5de2-4194-966e-4a434f0000f6"
+  ],
+  "etag": "d0dFoEovkFKiP/AIXNZSNdC2odM",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775377760283710"
+  },
+  "timeCreated": "2026-05-26T20:08:17.317Z",
+  "updated": "2026-05-26T20:08:17.317Z",
+  "size": 353620,
+  "md5Hash": "9lGjalcmptkEU6lznnCj4Q==",
+  "crc32c": "780980050"
+}

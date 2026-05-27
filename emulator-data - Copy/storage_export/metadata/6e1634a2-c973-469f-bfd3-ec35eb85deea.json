@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1777394809882_HT3 - Shaohai.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098038,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "a6b1bd1a-3a7c-4ace-948c-de7d78640c3e"
+  ],
+  "etag": "V1gP5h1IxFWRpveg7VdruACVuls",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777394811582168"
+  },
+  "timeCreated": "2026-05-26T20:08:18.038Z",
+  "updated": "2026-05-26T20:08:18.038Z",
+  "size": 185785,
+  "md5Hash": "1Uwx6myiMhA5tY+qoql8rA==",
+  "crc32c": "253556690"
+}

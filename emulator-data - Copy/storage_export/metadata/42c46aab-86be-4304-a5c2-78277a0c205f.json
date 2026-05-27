@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1777306427597_קוליטיס (Colitis).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099067,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "bd1308e5-7648-4020-b260-0138b3307335"
+  ],
+  "etag": "DU7wS4SZ87/a/U1k+rf+/H2LzR4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777306428841822"
+  },
+  "timeCreated": "2026-05-26T20:08:19.068Z",
+  "updated": "2026-05-26T20:08:19.068Z",
+  "size": 74794,
+  "md5Hash": "798TacdYyX6HiN1qzJSawA==",
+  "crc32c": "4202960079"
+}

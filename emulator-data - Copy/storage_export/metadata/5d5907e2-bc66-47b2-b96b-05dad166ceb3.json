@@ -1,0 +1,20 @@
+{
+  "name": "Points/XGqlFtA1sRUim1uodvk7/1775378093472_CV3 - Zhongji.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096883,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "8e591504-5200-40a8-8569-e1be43c36190"
+  ],
+  "etag": "1XUcoVVQGQlnzlnLg9LHz6sWXF4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775378095015488"
+  },
+  "timeCreated": "2026-05-26T20:08:16.883Z",
+  "updated": "2026-05-26T20:08:16.883Z",
+  "size": 329097,
+  "md5Hash": "JliBO5XA4PSmjs5xN9ssXA==",
+  "crc32c": "1877129238"
+}

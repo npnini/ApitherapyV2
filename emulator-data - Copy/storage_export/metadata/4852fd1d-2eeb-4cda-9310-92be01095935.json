@@ -1,0 +1,20 @@
+{
+  "name": "Measures/",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826095490,
+  "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "64d44c47-b89f-4250-8e18-fca9e0b498c2"
+  ],
+  "etag": "A3jxccdPBeyxtVIh/V90KN9ZWAY",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1770889847910710"
+  },
+  "timeCreated": "2026-05-26T20:08:15.491Z",
+  "updated": "2026-05-26T20:08:15.491Z",
+  "size": 0,
+  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+  "crc32c": "0"
+}

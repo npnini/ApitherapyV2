@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1775384544918_GV16 – Fengfu.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097374,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "95f99999-af20-4427-97ec-1a7b73fed6a2"
+  ],
+  "etag": "jD2gOi30tQOTVNMG5tANgQZZaKI",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775384546444451"
+  },
+  "timeCreated": "2026-05-26T20:08:17.374Z",
+  "updated": "2026-05-26T20:08:17.374Z",
+  "size": 272886,
+  "md5Hash": "sTUVJECaR4oPACqpFhRWDg==",
+  "crc32c": "2690982668"
+}

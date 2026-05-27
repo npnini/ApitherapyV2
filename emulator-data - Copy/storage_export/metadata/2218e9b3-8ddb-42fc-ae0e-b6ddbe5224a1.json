@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1776695154382_LIV13 Zhangmen.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097872,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "5e14526b-bd69-4220-83dd-bdd66c5c16ca"
+  ],
+  "etag": "MEnwUKcaL9tzPgRAqVRF9JtD0Zw",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776695155951764"
+  },
+  "timeCreated": "2026-05-26T20:08:17.872Z",
+  "updated": "2026-05-26T20:08:17.872Z",
+  "size": 175080,
+  "md5Hash": "jfB/VefqjCNcufTvP9sLKA==",
+  "crc32c": "3536926336"
+}

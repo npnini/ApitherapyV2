@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1778517620646_אלצהיימר (1).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099139,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "153a997d-6fca-421b-8c26-cd76b558254a"
+  ],
+  "etag": "EisxS5GLBrzK8JM8/wt+HrFKE3Q",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778517622078209"
+  },
+  "timeCreated": "2026-05-26T20:08:19.139Z",
+  "updated": "2026-05-26T20:08:19.139Z",
+  "size": 69912,
+  "md5Hash": "oP7hKsj3vr4JYeErCWNsjA==",
+  "crc32c": "3966773312"
+}

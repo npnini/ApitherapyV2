@@ -16,6 +16,7 @@ import { getQuestionnaire } from '../../firebase/questionnaire';
 import { Questionnaire } from '../../types/questionnaire';
 import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
+import DocumentsTab from './DocumentsTab';
 import ProtocolSelection from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
@@ -35,6 +36,7 @@ type TabKey =
     | 'consent'
     | 'instructions'
     | 'problems'
+    | 'documents'
     | 'treatments'
     | 'measures';
 
@@ -46,6 +48,7 @@ const TAB_ORDER: TabKey[] = [
     'instructions',
     'consent',
     'problems',
+    'documents',
     'treatments',
     'measures',
 ];
@@ -138,6 +141,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tProblems = useT('Problems');
     const tTreatments = useT('Treatments History');
     const tMeasures = useT('Measures History');
+    const tDocuments = useT('Documents');
     const tStartNewTreatment = useT('Start New Treatment');
     const tUpdate = useT('Update');
     const tNextStep = useT('Next Step');
@@ -156,6 +160,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         consent: tConsent,
         instructions: tInstructions,
         problems: tProblems,
+        documents: tDocuments,
         treatments: tTreatments,
         measures: tMeasures,
     };
@@ -1037,6 +1042,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     onDataChange={handleDataChange}
                     user={user}
                 />;
+            case 'documents':
+                return <DocumentsTab patientId={patient.id} />;
             case 'treatments':
                 return (
                     <TreatmentHistory
@@ -1072,8 +1079,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // ── Bottom bar visibility (UX-8) ─────────────────────────────────────────
     const showBottomBar = viewState === 'tabs';
 
-    // UX-4: hide Update on Treatments History & Measures History tabs
-    const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures';
+    // UX-4: hide Update on read-only / self-saving tabs
+    const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures' && activeTab !== 'documents';
 
     return (
         <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>

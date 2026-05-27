@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1777308620030_בצקות ברגליים.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099080,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "ef44727e-ef15-4944-9cc6-012845c0caff"
+  ],
+  "etag": "OTziTp4xkh3pHfXUicM3awxHJno",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777308621189155"
+  },
+  "timeCreated": "2026-05-26T20:08:19.080Z",
+  "updated": "2026-05-26T20:08:19.080Z",
+  "size": 86301,
+  "md5Hash": "UDDoNijfG2qJGl2K5Ros9g==",
+  "crc32c": "2862010922"
+}

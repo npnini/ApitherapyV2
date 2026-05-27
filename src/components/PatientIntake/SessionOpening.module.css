@@ -354,7 +354,29 @@
     }
 }
 
-/* ── Photo upload area ──────────────────────────────────── */
+/* ── Document upload area ───────────────────────────────── */
+.documentUploadGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.docTypeRow {
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: center;
+}
+
+.radioLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+/* ── Photo/file upload area ─────────────────────────────── */
 .photoContainer {
     width: 100%;
 }

@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider, connectAuthEmulator } from "firebase/auth"
 import { initializeFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
-import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -53,13 +53,10 @@ if (import.meta.env.DEV) {
 }
 
 
-// App Check Initialization (Updated)
+// App Check: only active in non-DEV builds (staging / production).
+// Skipped in local development — debug token exchange is unreliable with the emulator.
 const appCheckSiteKey = import.meta.env.VITE_APP_CHECK_SITE_KEY;
-if (appCheckSiteKey) {
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APP_CHECK_DEBUG_TOKEN || true;
-  }
+if (appCheckSiteKey && !import.meta.env.DEV) {
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(appCheckSiteKey),
     isTokenAutoRefreshEnabled: true,

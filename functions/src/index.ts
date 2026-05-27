@@ -743,7 +743,7 @@ export const sendMissingProblemEmail = onCall({ enforceAppCheck: true }, async (
  * 7. Callable: translateText
  * Proxy for Google Translate API to avoid exposing the Translate API Key on the frontend.
  */
-export const translateText = onCall({ enforceAppCheck: true }, async (request) => {
+export const translateText = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true' }, async (request) => {
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",

@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1778523482813__GB 30 (Huantiao).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098122,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "2b51898f-d501-4ed9-9dac-895dc48f4625"
+  ],
+  "etag": "+PLj+cmD1D2S0kjcdMN9J2XgYQ4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778523484427880"
+  },
+  "timeCreated": "2026-05-26T20:08:18.122Z",
+  "updated": "2026-05-26T20:08:18.122Z",
+  "size": 234285,
+  "md5Hash": "9cCOQUUcw0i/6Ef5RGignA==",
+  "crc32c": "4265210892"
+}

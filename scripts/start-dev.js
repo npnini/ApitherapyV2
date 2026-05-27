@@ -61,15 +61,23 @@ try {
 
 // Ensure the data directory exists (required by --import)
 const MAIN_DATA = './emulator-data';
+const EXIT_DATA = './emulator-data-exit';
 if (!fs.existsSync(MAIN_DATA)) {
   console.log('📂 Creating blank emulator data directory...');
   fs.mkdirSync(MAIN_DATA);
 }
 
+// Clean up any leftover exit-export folder from a previous run
+if (fs.existsSync(EXIT_DATA)) {
+  fs.rmSync(EXIT_DATA, { recursive: true, force: true });
+}
+
 console.log('🚀 Starting Firebase Emulators (data will be saved on Ctrl+C)...');
 console.log('🌐 Emulator web console will be available at: http://localhost:5000');
 
-const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', '--export-on-exit=./emulator-data'], {
+// Export to a FRESH folder (emulator-data-exit) so Windows doesn't hit EPERM
+// renaming over an existing directory. After exit we copy it into emulator-data.
+const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emulator-data', `--export-on-exit=${EXIT_DATA}`], {
   shell: true,
   stdio: 'inherit',
   env: {
@@ -80,5 +88,21 @@ const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emula
 
 emulators.on('close', (code) => {
   console.log(`\n🛑 Emulators stopped with code ${code}`);
+
+  // Copy exit export into emulator-data (copy+delete avoids Windows rename-over-directory EPERM)
+  if (fs.existsSync(EXIT_DATA)) {
+    try {
+      console.log('💾 Saving emulator data...');
+      if (fs.existsSync(MAIN_DATA)) {
+        fs.rmSync(MAIN_DATA, { recursive: true, force: true });
+      }
+      fs.cpSync(EXIT_DATA, MAIN_DATA, { recursive: true });
+      fs.rmSync(EXIT_DATA, { recursive: true, force: true });
+      console.log('✅ Emulator data saved successfully.');
+    } catch (e) {
+      console.warn('⚠️ Could not save emulator data:', e.message);
+    }
+  }
+
   process.exit(code);
 });

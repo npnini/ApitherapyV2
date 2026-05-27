@@ -1,0 +1,20 @@
+{
+  "name": "Points/jcNwQSWDWdWj8WhzBiFa/1775991459725_BL13 - Feishu.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097017,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "2f9712b5-5f58-4b15-9970-88e68767ba65"
+  ],
+  "etag": "hebmUunB+YptnyaoWYMEi5KtPoE",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775991461675069"
+  },
+  "timeCreated": "2026-05-26T20:08:17.018Z",
+  "updated": "2026-05-26T20:08:17.018Z",
+  "size": 307407,
+  "md5Hash": "wKMGmf6prg/ys6jhySiTPg==",
+  "crc32c": "2657802822"
+}

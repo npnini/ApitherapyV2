@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1775378796437_GB21 - Jianjing.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097359,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "567922f2-01a1-4644-bf1c-efff52a0d48c"
+  ],
+  "etag": "25gIBptblV+PyW5D3i9Yl5FddQY",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775378797873173"
+  },
+  "timeCreated": "2026-05-26T20:08:17.359Z",
+  "updated": "2026-05-26T20:08:17.359Z",
+  "size": 239006,
+  "md5Hash": "fAIdKl3c5lfR8WEIldKFUA==",
+  "crc32c": "2250055208"
+}

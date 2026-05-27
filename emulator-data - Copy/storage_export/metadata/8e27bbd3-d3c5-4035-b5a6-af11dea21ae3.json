@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1776255212018_GB 13 - Benshen.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097671,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "4d140299-252e-4057-b1ad-b1e404efbbf1"
+  ],
+  "etag": "Irimp9xQUm1FcI76MTx4x/dQyY4",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776255213905929"
+  },
+  "timeCreated": "2026-05-26T20:08:17.671Z",
+  "updated": "2026-05-26T20:08:17.671Z",
+  "size": 182194,
+  "md5Hash": "GRmfrv6axE7lUQUuzNRHiQ==",
+  "crc32c": "2787206224"
+}

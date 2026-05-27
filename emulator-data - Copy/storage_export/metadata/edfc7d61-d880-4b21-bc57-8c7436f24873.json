@@ -1,0 +1,20 @@
+{
+  "name": "Points/woyfCxsxTANDpc5poOLl/1777316364876_TW5 - Waiguan.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826098412,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "18149d19-0ee9-4314-a74e-41fc4e9389c1"
+  ],
+  "etag": "Bhif0UqOeAlX8f/YJadqj25s+QU",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777316365967428"
+  },
+  "timeCreated": "2026-05-26T20:08:18.412Z",
+  "updated": "2026-05-26T20:08:18.412Z",
+  "size": 165671,
+  "md5Hash": "FZLajI65/NhSnO6QBDgahA==",
+  "crc32c": "2384248997"
+}

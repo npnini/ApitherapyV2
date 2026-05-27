@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1775999297509_BL20 - Pishu.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097501,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "cfbff750-4e97-4b45-b90e-d4e462576111"
+  ],
+  "etag": "QrBkpmaXDvv2kq9ZyzKML/nlRnQ",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1775999299223633"
+  },
+  "timeCreated": "2026-05-26T20:08:17.512Z",
+  "updated": "2026-05-26T20:08:17.512Z",
+  "size": 293584,
+  "md5Hash": "9JZGPhWb47UBQZmAxHrLkg==",
+  "crc32c": "3239617621"
+}

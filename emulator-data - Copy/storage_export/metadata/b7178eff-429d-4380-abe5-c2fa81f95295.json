@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1777489207805_טיפול לחרדה (Anxiety).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099128,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "2772d6d2-0e6a-4747-99b8-3667d48fafe7"
+  ],
+  "etag": "E2zBBsqfkQXGl6F2KtfbRDYi43k",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777489209398945"
+  },
+  "timeCreated": "2026-05-26T20:08:19.128Z",
+  "updated": "2026-05-26T20:08:19.128Z",
+  "size": 91905,
+  "md5Hash": "nP8qroD1Ydn3X88J05o9CA==",
+  "crc32c": "3576842496"
+}

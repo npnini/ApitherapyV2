@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getTreatmentCount } from '../../firebase/patient';
-import { db, storage } from '../../firebase';
-import { ref, uploadBytes } from 'firebase/storage';
-import { resolveStoragePath } from '../../utils/storageUtils';
+import { db } from '../../firebase';
 import { JoinedPatientData, PatientProblem } from '../../types/patient';
 import { Problem } from '../../types/problem';
 import { Protocol } from '../../types/protocol';
 import { VitalSigns } from '../../types/treatmentSession';
 import VitalsInputGroup from '../VitalsInputGroup';
 import { T, useT, useTranslationContext } from '../T';
-import { Loader, Camera, Plus, X, ArrowRight } from 'lucide-react';
+import { Loader, Plus, X, UploadCloud, FileText } from 'lucide-react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
+import { uploadFile } from '../../services/storageService';
 import styles from './SessionOpening.module.css';
 
 export interface SessionOpeningData {
     patientReport: string;
     preTreatmentVitals: Partial<VitalSigns>;
-    preTreatmentImage?: string; // URL of the uploaded image
+    preTreatmentImage?: string; // kept for backward compatibility with existing saved treatments
     generatedTreatmentId?: string; // Pre-generated ID to link measured_values
     problems: PatientProblem[]; // Updated problems list
     treatmentNumber?: number;
@@ -47,11 +46,8 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     const tPatientReport = useT('Patient Report');
     const tPatientReportPlaceholder = useT('How is the patient feeling? Any side effects?');
     const tPreSessionVitals = useT('Pre-Session Vitals');
-    const tAddPhoto = useT('Add Photo');
-    const tCaption = useT('Caption (optional)');
-    const tRemove = useT('Remove Photo');
-    const tUploading = useT('Uploading...');
-    const tProceed = useT('Proceed to Selection');
+    const tAddDocument = useT('Add Document');
+    const tDocDescription = useT('Document description');
     const tBack = useT('Back');
     const tExit = useT('Exit');
     const tProblems = useT('Problems');
@@ -63,17 +59,10 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     const [patientReport, setPatientReport] = useState(initialData?.patientReport || '');
     const [preTreatmentVitals, setPreTreatmentVitals] = useState<Partial<VitalSigns>>(initialData?.preTreatmentVitals || {});
 
-    // Photo handling
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [uploadPreview, setUploadPreview] = useState<string | null>(null);
-    useEffect(() => {
-        if (initialData?.preTreatmentImage) {
-            resolveStoragePath(initialData.preTreatmentImage).then(url => {
-                if (url) setUploadPreview(url);
-            });
-        }
-    }, [initialData?.preTreatmentImage]);
-    const [imageCaption, setImageCaption] = useState('');
+    // Document upload handling
+    const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const [documentDescription, setDocumentDescription] = useState('');
+    const [documentType, setDocumentType] = useState<'Document' | 'Image'>('Document');
     const [isUploading, setIsUploading] = useState(false);
 
     // Problems Handling
@@ -156,72 +145,39 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
         }
     };
 
-    const processImageWithCaption = async (file: File, caption: string): Promise<Blob> => {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return reject('Failed to get 2d context');
-
-                ctx.drawImage(img, 0, 0);
-
-                if (caption.trim()) {
-                    const fontSize = Math.max(16, Math.floor(canvas.height * 0.04));
-                    ctx.font = `${fontSize}px Arial`;
-
-                    const barHeight = fontSize * 2;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
-
-                    ctx.fillStyle = 'white';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(caption, canvas.width / 2, canvas.height - (barHeight / 2) + (fontSize / 3));
+    /**
+     * If the user filled in a document file + description, upload it to the
+     * patient_medical_data/{patientId}/documents subcollection (same as DocumentsTab).
+     */
+    const uploadDocumentIfPresent = async (): Promise<void> => {
+        if (!documentFile || !documentDescription.trim() || !patient.id) return;
+        setIsUploading(true);
+        try {
+            const fullPath = await uploadFile(documentFile, `Patients/${patient.id}`);
+            await addDoc(
+                collection(db, 'patient_medical_data', patient.id, 'documents'),
+                {
+                    url: fullPath,
+                    description: documentDescription.trim(),
+                    type: documentType,
+                    createdAt: serverTimestamp(),
                 }
-
-                canvas.toBlob(blob => {
-                    if (blob) resolve(blob);
-                    else reject(new Error('Canvas toBlob failed'));
-                }, 'image/jpeg', 0.85);
-            };
-            img.onerror = reject;
-            img.src = URL.createObjectURL(file);
-        });
-    };
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setImageFile(file);
-            setUploadPreview(URL.createObjectURL(file));
+            );
+        } catch (err) {
+            console.error('SessionOpening: Failed to upload document:', err);
+        } finally {
+            setIsUploading(false);
         }
     };
 
     const handleSubmit = async () => {
         if (!patientReport.trim()) return;
 
-        let preTreatmentImage = '';
-        if (imageFile) {
-            setIsUploading(true);
-            try {
-                const processedBlob = await processImageWithCaption(imageFile, imageCaption);
-                const storageRef = ref(storage, `Patients/${patient.id}/pre_treatment_${Date.now()}.jpg`);
-                await uploadBytes(storageRef, processedBlob);
-                preTreatmentImage = storageRef.fullPath;
-                setIsUploading(false);
-            } catch (err) {
-                console.error('Error processing/uploading image:', err);
-                setIsUploading(false);
-                return;
-            }
-        }
+        await uploadDocumentIfPresent();
 
         onComplete({
             patientReport: patientReport.trim(),
             preTreatmentVitals,
-            preTreatmentImage,
             problems,
             generatedTreatmentId: initialData?.generatedTreatmentId,
             treatmentNumber: initialData?.treatmentNumber || (treatmentCount + 1)
@@ -229,26 +185,12 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
     };
 
     const handleExitClick = async () => {
-        let preTreatmentImage = '';
-        if (imageFile) {
-            setIsUploading(true);
-            try {
-                const processedBlob = await processImageWithCaption(imageFile, imageCaption);
-                const storageRef = ref(storage, `Patients/${patient.id}/pre_treatment_${Date.now()}.jpg`);
-                await uploadBytes(storageRef, processedBlob);
-                preTreatmentImage = storageRef.fullPath;
-                setIsUploading(false);
-            } catch (err) {
-                console.error('Error processing/uploading image during exit:', err);
-                setIsUploading(false);
-            }
-        }
+        await uploadDocumentIfPresent();
 
         if (onExit) {
             onExit({
                 patientReport: patientReport.trim(),
                 preTreatmentVitals,
-                preTreatmentImage,
                 problems,
                 generatedTreatmentId: initialData?.generatedTreatmentId,
                 treatmentNumber: initialData?.treatmentNumber || (treatmentCount + 1)
@@ -368,49 +310,60 @@ const SessionOpening: React.FC<SessionOpeningProps> = ({ patient, initialData, o
                     />
                 </section>
 
-                {/* 3. Pre-Treatment Photo */}
+                {/* 3. Add Document (optional) */}
                 <section className={styles.section}>
-                    <h3 className={styles.sectionTitle}>{tAddPhoto}</h3>
-                    <div className={styles.photoContainer}>
-                        {!uploadPreview ? (
-                            <div className={styles.uploadButtonWrapper}>
+                    <h3 className={styles.sectionTitle}>{tAddDocument}</h3>
+                    <div className={styles.documentUploadGroup}>
+                        <input
+                            type="text"
+                            className={styles.captionInput}
+                            placeholder={tDocDescription}
+                            value={documentDescription}
+                            onChange={e => setDocumentDescription(e.target.value)}
+                        />
+                        <div className={styles.docTypeRow}>
+                            <label className={styles.radioLabel}>
                                 <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    id="pre-treatment-upload"
-                                    className={styles.fileInput}
-                                    capture="environment"
+                                    type="radio"
+                                    value="Document"
+                                    checked={documentType === 'Document'}
+                                    onChange={() => setDocumentType('Document')}
                                 />
-                                <label htmlFor="pre-treatment-upload" className={styles.btnUpload}>
-                                    <Camera size={16} />
-                                    <T>Upload Photo</T>
-                                </label>
-                            </div>
-                        ) : (
-                            <div className={styles.previewContainer}>
-                                <img src={uploadPreview} alt="Preview" className={styles.previewImage} />
-                                <div className={styles.captionInputGroup}>
-                                    <input
-                                        type="text"
-                                        className={styles.captionInput}
-                                        placeholder={tCaption}
-                                        value={imageCaption}
-                                        onChange={e => setImageCaption(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className={styles.btnRemove}
-                                        onClick={() => {
-                                            setImageFile(null);
-                                            setUploadPreview(null);
-                                            setImageCaption('');
-                                        }}
-                                    >
-                                        {tRemove}
-                                    </button>
-                                </div>
-                            </div>
+                                <FileText size={14} />
+                                <T>Document</T>
+                            </label>
+                            <label className={styles.radioLabel}>
+                                <input
+                                    type="radio"
+                                    value="Image"
+                                    checked={documentType === 'Image'}
+                                    onChange={() => setDocumentType('Image')}
+                                />
+                                <UploadCloud size={14} />
+                                <T>Image</T>
+                            </label>
+                        </div>
+                        <div className={styles.uploadButtonWrapper}>
+                            <input
+                                type="file"
+                                accept={documentType === 'Image' ? 'image/*' : undefined}
+                                onChange={e => setDocumentFile(e.target.files?.[0] ?? null)}
+                                id="session-doc-upload"
+                                className={styles.fileInput}
+                            />
+                            <label htmlFor="session-doc-upload" className={styles.btnUpload}>
+                                <UploadCloud size={16} />
+                                {documentFile ? documentFile.name : <T>Choose File</T>}
+                            </label>
+                        </div>
+                        {documentFile && (
+                            <button
+                                type="button"
+                                className={styles.btnRemove}
+                                onClick={() => { setDocumentFile(null); setDocumentDescription(''); }}
+                            >
+                                <X size={14} /> <T>Clear</T>
+                            </button>
                         )}
                     </div>
                 </section>

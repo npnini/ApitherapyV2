@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1777315941444_SI11 - Tianzong V3 (Hebrew).pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097983,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "c7263c13-4a8c-46ec-8d8f-bad5d842adc0"
+  ],
+  "etag": "yzjxG33t6MBoWZubxX6eJwsaLYs",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1777315942723580"
+  },
+  "timeCreated": "2026-05-26T20:08:17.983Z",
+  "updated": "2026-05-26T20:08:17.983Z",
+  "size": 208689,
+  "md5Hash": "y53xBX2iOjVy8062+jlFFg==",
+  "crc32c": "4114576747"
+}

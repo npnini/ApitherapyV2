@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/xIV9HJ2ga8PWIcohvqhS/1772351754209_דוגמת מסמך פרוטוקול בעברית.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099236,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "7e32f6f7-69f2-45b4-8666-be999314c34e"
+  ],
+  "etag": "5WNBAMS+s5J1AUIOW0EAmH9iLbw",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1772351756591094"
+  },
+  "timeCreated": "2026-05-26T20:08:19.236Z",
+  "updated": "2026-05-26T20:08:19.236Z",
+  "size": 30858,
+  "md5Hash": "DCPxfNTg+cZlUNtciJuhFQ==",
+  "crc32c": "2407692700"
+}

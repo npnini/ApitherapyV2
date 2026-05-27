@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/new/1778520259004__פריצת דיסק.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099151,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "60263ac8-19dd-40c6-96e7-341fa826c447"
+  ],
+  "etag": "CpMvIQhjLSLYDCBf+cUCvdMuY8o",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1778520260618641"
+  },
+  "timeCreated": "2026-05-26T20:08:19.151Z",
+  "updated": "2026-05-26T20:08:19.151Z",
+  "size": 72427,
+  "md5Hash": "7maP2+vFQYMHYJhZgKURCQ==",
+  "crc32c": "192605834"
+}

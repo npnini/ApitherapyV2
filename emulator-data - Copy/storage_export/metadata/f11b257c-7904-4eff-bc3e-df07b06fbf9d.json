@@ -1,0 +1,20 @@
+{
+  "name": "Points/BL23/photo_5886266337624001945_y.jpg",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096313,
+  "contentType": "image/jpeg",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "f0dc9c66-2114-47b6-9ba0-e8e5ca8a4093"
+  ],
+  "etag": "MaBQRdOpeaHm/JvNFMsLeHMsAvY",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1773643798428894"
+  },
+  "timeCreated": "2026-05-26T20:08:16.313Z",
+  "updated": "2026-05-26T20:08:16.313Z",
+  "size": 255351,
+  "md5Hash": "sUxaEsh7wZsNL3+0M1+k7Q==",
+  "crc32c": "1175340724"
+}

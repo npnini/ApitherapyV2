@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1776534495915_BL31 - Shangliao.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097801,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "f7183009-f79e-4e44-bfdc-95a9e25961e9"
+  ],
+  "etag": "A55T0hHsmYOcCPr1lgUrXJxNfC0",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776534497585676"
+  },
+  "timeCreated": "2026-05-26T20:08:17.801Z",
+  "updated": "2026-05-26T20:08:17.801Z",
+  "size": 231500,
+  "md5Hash": "0S5ZJ4NB28fWGbAOIFGl8A==",
+  "crc32c": "3531617899"
+}

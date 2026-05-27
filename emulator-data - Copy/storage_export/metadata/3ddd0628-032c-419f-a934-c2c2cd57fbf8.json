@@ -1,0 +1,20 @@
+{
+  "name": "Points/new/1776797582140_SJ14 - Jianliao.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826097965,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "d526b75c-70d1-4728-adc8-f149be8982b2"
+  ],
+  "etag": "v3N8M9+8snU6l0drzFZWF8yTuOg",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1776797583971993"
+  },
+  "timeCreated": "2026-05-26T20:08:17.965Z",
+  "updated": "2026-05-26T20:08:17.965Z",
+  "size": 223749,
+  "md5Hash": "EdvaSUVUcpHIDlN1BZCIHg==",
+  "crc32c": "1981841877"
+}

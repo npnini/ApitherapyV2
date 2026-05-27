@@ -1,0 +1,20 @@
+{
+  "name": "Points/BL23/1771688991240_English point document.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826096296,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "f1dfce3f-9dbc-4ddb-ac31-f664c2646932"
+  ],
+  "etag": "LXNg1aBF7bZHoRPQFp/eOTSxvMs",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1771689006043857"
+  },
+  "timeCreated": "2026-05-26T20:08:16.296Z",
+  "updated": "2026-05-26T20:08:16.296Z",
+  "size": 17012,
+  "md5Hash": "PksI/V3wU/8/N9BTlNZk3g==",
+  "crc32c": "3151900771"
+}

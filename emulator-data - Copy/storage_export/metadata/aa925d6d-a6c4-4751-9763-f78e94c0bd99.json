@@ -1,0 +1,20 @@
+{
+  "name": "App_config/1772355472876_English_APITherapy_consent_template.txt",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826095427,
+  "contentType": "text/plain; charset=utf-8",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "70ef4036-3fef-4bee-b7dc-8525e60065f1"
+  ],
+  "etag": "7Ne2q/SFbsML428CqcK8LNDNj9I",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1772355475372660"
+  },
+  "timeCreated": "2026-05-26T20:08:15.428Z",
+  "updated": "2026-05-26T20:08:15.428Z",
+  "size": 3157,
+  "md5Hash": "hzZztteMLq/q67AS+gjyjA==",
+  "crc32c": "3736246989"
+}

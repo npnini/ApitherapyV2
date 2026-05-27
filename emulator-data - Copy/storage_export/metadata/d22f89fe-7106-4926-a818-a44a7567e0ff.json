@@ -1,0 +1,20 @@
+{
+  "name": "Protocols/vYNT2P0MUODckTKRLEnA/1774530438372_פרוטוקול בדיקת אלרגיה.pdf",
+  "bucket": "apitherapyv2-staging-storage",
+  "metageneration": 1,
+  "generation": 1779826099200,
+  "contentType": "application/pdf",
+  "storageClass": "STANDARD",
+  "downloadTokens": [
+    "d1ad2cfe-5941-4975-b5a6-5cceb2ee17fe"
+  ],
+  "etag": "XBLcnaiuZdly/bHeXKEszMoYGVo",
+  "customMetadata": {
+    "x-goog-reserved-source-generation": "1774530439535840"
+  },
+  "timeCreated": "2026-05-26T20:08:19.200Z",
+  "updated": "2026-05-26T20:08:19.200Z",
+  "size": 45952,
+  "md5Hash": "XwcT7vJXyQxFilM1VJtMvA==",
+  "crc32c": "1409000355"
+}

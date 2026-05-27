@@ -1,0 +1,346 @@
+/* DocumentsTab.module.css */
+
+.container {
+    padding: var(--space-md, 1rem);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md, 1rem);
+    height: 100%;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm, 0.5rem);
+    flex-shrink: 0;
+}
+
+.searchWrapper {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-secondary, #6b7280);
+    pointer-events: none;
+}
+
+:global([dir="rtl"]) .searchIcon {
+    left: auto;
+    right: 0.625rem;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--border-radius-sm, 0.375rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    background-color: var(--color-background-input, #fff);
+    color: var(--color-text-primary, #111827);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+:global([dir="rtl"]) .searchInput {
+    padding-left: 0.75rem;
+    padding-right: 2rem;
+}
+
+.searchInput:focus {
+    border-color: var(--color-primary, #4f46e5);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.btnNew {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-primary, #4f46e5);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius-sm, 0.375rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+}
+
+.btnNew:hover {
+    background-color: var(--color-primary-dark, #4338ca);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.emptyState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 200px;
+    color: var(--color-text-secondary, #6b7280);
+    font-size: var(--font-size-sm, 0.875rem);
+    background-color: var(--color-background-muted, #f9fafb);
+    border: 1px solid var(--color-border-light, #e5e7eb);
+    border-radius: var(--border-radius-md, 0.5rem);
+}
+
+/* ── Document list ────────────────────────────────────────────────── */
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--color-border-light, #e5e7eb);
+    border-radius: var(--border-radius-md, 0.5rem);
+    overflow: hidden;
+    background-color: var(--color-background-card, #fff);
+}
+
+.listRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.12s;
+    border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+    outline: none;
+}
+
+.listRow:last-child {
+    border-bottom: none;
+}
+
+.listRow:hover {
+    background-color: var(--color-background-hover, #f3f4f6);
+}
+
+.listRow:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--color-primary, #4f46e5);
+}
+
+.rowIcon {
+    flex-shrink: 0;
+    color: var(--color-primary, #4f46e5);
+    display: flex;
+    align-items: center;
+}
+
+.rowDescription {
+    flex: 1;
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-primary, #111827);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rowType {
+    flex-shrink: 0;
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--color-text-secondary, #6b7280);
+    width: 5rem;
+    text-align: center;
+}
+
+.rowDate {
+    flex-shrink: 0;
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--color-text-secondary, #6b7280);
+    width: 6rem;
+    text-align: end;
+}
+
+.rowActions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btnRowAction {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: var(--border-radius-sm, 0.375rem);
+    background: transparent;
+    color: var(--color-text-secondary, #6b7280);
+    cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+}
+
+.btnRowAction:hover {
+    background-color: var(--color-background-hover, #f3f4f6);
+    color: var(--color-primary, #4f46e5);
+}
+
+.btnDelete:hover {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* ── New Document modal form ──────────────────────────────────────── */
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-bottom: 1rem;
+}
+
+.label {
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 500;
+    color: var(--color-text-primary, #111827);
+}
+
+.input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--border-radius-sm, 0.375rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    background-color: var(--color-background-input, #fff);
+    color: var(--color-text-primary, #111827);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.input:focus {
+    border-color: var(--color-primary, #4f46e5);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.radioGroup {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.radioLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-primary, #111827);
+    cursor: pointer;
+}
+
+.fileInput {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-primary, #111827);
+}
+
+.fileInputHidden {
+    display: none;
+}
+
+.fileInputWrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fileButton {
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-background-input, #fff);
+    color: var(--color-text-primary, #111827);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--border-radius-sm, 0.375rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.fileButton:hover {
+    background-color: var(--color-background-hover, #f3f4f6);
+    border-color: var(--color-primary, #4f46e5);
+}
+
+.fileLabel {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-secondary, #6b7280);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.uploadProgress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-secondary, #6b7280);
+    margin-bottom: 0.75rem;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.btnPrimary {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1.25rem;
+    background-color: var(--color-primary, #4f46e5);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius-sm, 0.375rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+    background-color: var(--color-primary-dark, #4338ca);
+}
+
+.btnPrimary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btnSecondary {
+    padding: 0.5rem 1.25rem;
+    background-color: transparent;
+    color: var(--color-text-secondary, #6b7280);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--border-radius-sm, 0.375rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.btnSecondary:hover:not(:disabled) {
+    background-color: var(--color-background-hover, #f3f4f6);
+}
+
+.btnSecondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

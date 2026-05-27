@@ -19,6 +19,7 @@ const COLLECTIONS = [
   "cfg_protocols",
   "cfg_questionnaires",
   "cfg_translations",
+  "cfg_secrets",
   "measured_values",
   "patient_medical_data",
   "patients",
