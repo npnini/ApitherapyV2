@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Loader, CheckCircle, AlertTriangle, Activity, Info } from 'lucide-react';
+import { Loader, CheckCircle, AlertTriangle, Activity, Info, Calendar } from 'lucide-react';
 import styles from './FeedbackStandaloneView.module.css';
 import TreatmentSummary from './TreatmentSummary';
 import { TreatmentSession } from '../../types/treatmentSession';

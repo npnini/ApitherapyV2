@@ -29,11 +29,52 @@ const BQ_DATASET = process.env.FUNCTIONS_EMULATOR
     : "apitherapy_clinical_analytics_stage");
 
 /**
+ * Returns the UTC instant corresponding to local midnight in `timeZone`,
+ * `daysAgo` days before today. Used to compute "yesterday"/"today" boundaries
+ * that match a specific region's calendar day rather than the UTC calendar day.
+ *
+ * TODO: once treatments carry a caretaker address, derive `timeZone` per-caretaker
+ * (country + city) instead of hardcoding "Asia/Jerusalem" at the call site.
+ */
+function getStartOfDayUtc(timeZone: string, daysAgo = 0): Date {
+  // Fixed locale so parts are always Gregorian/Latin-digit, regardless of the
+  // runtime's default locale; picked by `type` below so its formatting is irrelevant.
+  const locale = "en-US";
+  const probe = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+  const dateParts = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(probe);
+  const dateMap = Object.fromEntries(dateParts.map((p) => [p.type, p.value]));
+
+  const offsetParts = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    timeZoneName: "longOffset",
+  }).formatToParts(probe);
+  const offsetLabel = offsetParts.find((p) => p.type === "timeZoneName")?.value || "GMT+00:00";
+  const offsetMatch = offsetLabel.match(/GMT([+-])(\d{2}):?(\d{2})?/);
+  const offsetSign = offsetMatch?.[1] === "-" ? -1 : 1;
+  const offsetMinutes = offsetMatch
+    ? offsetSign * (Number(offsetMatch[2]) * 60 + Number(offsetMatch[3] || "0"))
+    : 0;
+
+  const utcMidnightSameCalendarDay = Date.UTC(
+    Number(dateMap.year),
+    Number(dateMap.month) - 1,
+    Number(dateMap.day)
+  );
+  return new Date(utcMidnightSameCalendarDay - offsetMinutes * 60 * 1000);
+}
+
+/**
  * 1. Scheduled Sweeper
  * Runs daily at 5:00 AM to sweep yesterday's treatments, clean up old sessions,
  * and dispatch emails via SendGrid.
  */
-export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *" }, async () => {
+export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", timeZone: "Asia/Jerusalem", timeoutSeconds: 300 }, async () => {
   const now = admin.firestore.Timestamp.now();
 
   // A. Cleanup expired sessions
@@ -45,13 +86,9 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *" }, async 
     logger.info(`Cleaned up ${expiredQuery.size} expired feedback sessions.`);
   }
 
-  // B. Sweeping treatments from yesterday
-  const yesterdayStart = new Date();
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  yesterdayStart.setHours(0, 0, 0, 0);
-
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // B. Sweeping treatments from yesterday (Israel calendar day, not UTC)
+  const yesterdayStart = getStartOfDayUtc("Asia/Jerusalem", 1);
+  const todayStart = getStartOfDayUtc("Asia/Jerusalem", 0);
 
   const tsStart = admin.firestore.Timestamp.fromDate(yesterdayStart);
   const tsEnd = admin.firestore.Timestamp.fromDate(todayStart);
@@ -81,141 +118,145 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *" }, async 
 
   const resend = new Resend(apiKey);
 
-  const newBatch = db.batch();
   const emailPromises: Promise<unknown>[] = [];
   let processedCount = 0;
 
   for (const doc of treatmentsSnapshot.docs) {
-    const treatment = doc.data();
+    try {
+      const treatment = doc.data();
 
-    // Skip if feedback was already provided
-    if (treatment.patientFeedbackMeasureReadingId) continue;
+      // Skip if feedback was already provided
+      if (treatment.patientFeedbackMeasureReadingId) continue;
 
-    // Skip if a session already exists to avoid duplicates
-    const existingSession = await db.collection("feedback_sessions")
-      .where("treatmentId", "==", doc.id)
-      .get();
+      // Skip if a session already exists to avoid duplicates
+      const existingSession = await db.collection("feedback_sessions")
+        .where("treatmentId", "==", doc.id)
+        .get();
 
-    if (!existingSession.empty) continue;
+      if (!existingSession.empty) continue;
 
-    const patientId = treatment.patientId;
-    const patientDoc = await db.collection("patients").doc(patientId).get();
-    const patient = patientDoc.data();
+      const patientId = treatment.patientId;
+      const patientDoc = await db.collection("patients").doc(patientId).get();
+      const patient = patientDoc.data();
 
-    if (!patient || !patient.email) {
-      logger.warn(`Patient ${patientId} has no email. Skipping feedback email.`);
-      continue;
-    }
-
-    // Determine the caretaker's preferred language
-    let preferredLang = defaultLang;
-    if (patient.caretakerId) {
-      const caretakerDoc = await db.collection("users").doc(patient.caretakerId).get();
-      if (caretakerDoc.exists) {
-        preferredLang = caretakerDoc.data()?.preferredLanguage || defaultLang;
+      if (!patient || !patient.email) {
+        logger.warn(`Patient ${patientId} has no email. Skipping feedback email.`);
+        continue;
       }
-    }
 
-    // Select the template ID based on language
-    const templateId = (feedbackTemplates[preferredLang] || feedbackTemplates[defaultLang] || Object.values(feedbackTemplates)[0] || "").trim();
-
-    if (!templateId) {
-      logger.warn(`No email template found for language ${preferredLang}. Skipping email.`);
-      continue;
-    }
-
-    const sessionId = randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + Number(retentionDays));
-
-    // Collect unique measure IDs from the problems linked to this treatment
-    let measureIds: string[] = [];
-    const problemIds = treatment.problemIds || [];
-
-    for (const pId of problemIds) {
-      const pDoc = await db.collection("cfg_problems").doc(pId).get();
-      if (pDoc.exists) {
-        const data = pDoc.data() || {};
-        if (data.measureIds && Array.isArray(data.measureIds)) {
-          measureIds.push(...data.measureIds);
+      // Determine the caretaker's preferred language
+      let preferredLang = defaultLang;
+      if (patient.caretakerId) {
+        const caretakerDoc = await db.collection("users").doc(patient.caretakerId).get();
+        if (caretakerDoc.exists) {
+          preferredLang = caretakerDoc.data()?.preferredLanguage || defaultLang;
         }
       }
-    }
 
-    measureIds = [...new Set(measureIds)];
+      // Select the template ID based on language
+      const templateId = (feedbackTemplates[preferredLang] || feedbackTemplates[defaultLang] || Object.values(feedbackTemplates)[0] || "").trim();
 
-    // Fetch the full measure definitions because unauthenticated users
-    // cannot read from cfg_measures collection.
-    const measuresData: Record<string, unknown>[] = [];
-    for (const mId of measureIds) {
-      const mDoc = await db.collection("cfg_measures").doc(mId).get();
-      if (mDoc.exists) {
-        const data = mDoc.data() || {};
-        measuresData.push({
-          id: mDoc.id,
-          name: data.name || {},
-          description: data.description || {},
-          type: data.type,
-          scale: data.scale || null,
-          categories: data.categories || null,
-        });
+      if (!templateId) {
+        logger.warn(`No email template found for language ${preferredLang}. Skipping email.`);
+        continue;
       }
-    }
 
-    // Fetch protocol names for the summary
-    const protocolNames: string[] = [];
-    const protocolIds = treatment.protocolIds || [];
-    for (const pId of protocolIds) {
-      const pDoc = await db.collection("cfg_protocols").doc(pId).get();
-      if (pDoc.exists) {
-        const data = pDoc.data() || {};
-        protocolNames.push(data.name?.[preferredLang] || data.name?.en || "Unknown Protocol");
-      }
-    }
+      const sessionId = randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + Number(retentionDays));
 
-    const sessionRef = db.collection("feedback_sessions").doc(sessionId);
-    newBatch.set(sessionRef, {
-      treatmentId: doc.id,
-      patientId: patientId,
-      measures: measuresData, // Embedded array of objects
-      status: "pending",
-      language: preferredLang, // Store the caretaker's preference
-      treatmentDate: treatment.createdTimestamp || admin.firestore.FieldValue.serverTimestamp(),
-      treatmentSummary: protocolNames.join(", "),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
-    });
+      // Collect unique measure IDs from the problems linked to this treatment
+      let measureIds: string[] = [];
+      const problemIds = treatment.problemIds || [];
 
-    const frontendDomain = (notificationSettings.frontendDomain || "beelive.biz").trim();
-    const link = `https://${frontendDomain}/feedback/${sessionId}`;
-
-    // Send Email
-    const firstName = (patient.fullName || "").split(" ")[0] || "Patient";
-    const fullName = patient.fullName || "Patient";
-
-    emailPromises.push(
-      resend.emails.send({
-        to: patient.email,
-        from: senderEmail,
-        template: {
-          id: templateId,
-          variables: {
-            patientName: firstName, // Maintain backward compatibility if user uses this
-            firstName: firstName, // More explicit
-            fullName: fullName, // Full name as requested
-            sessionId: sessionId,
-            feedbackLink: link,
-          },
+      for (const pId of problemIds) {
+        const pDoc = await db.collection("cfg_problems").doc(pId).get();
+        if (pDoc.exists) {
+          const data = pDoc.data() || {};
+          if (data.measureIds && Array.isArray(data.measureIds)) {
+            measureIds.push(...data.measureIds);
+          }
         }
-      } as any).catch((err) => {
-        logger.error(`Resend error for patient ${patientId}`, err);
-      })
-    );
-    processedCount++;
+      }
+
+      measureIds = [...new Set(measureIds)];
+
+      // Fetch the full measure definitions because unauthenticated users
+      // cannot read from cfg_measures collection.
+      const measuresData: Record<string, unknown>[] = [];
+      for (const mId of measureIds) {
+        const mDoc = await db.collection("cfg_measures").doc(mId).get();
+        if (mDoc.exists) {
+          const data = mDoc.data() || {};
+          measuresData.push({
+            id: mDoc.id,
+            name: data.name || {},
+            description: data.description || {},
+            type: data.type,
+            scale: data.scale || null,
+            categories: data.categories || null,
+          });
+        }
+      }
+
+      // Fetch protocol names for the summary
+      const protocolNames: string[] = [];
+      const protocolIds = treatment.protocolIds || [];
+      for (const pId of protocolIds) {
+        const pDoc = await db.collection("cfg_protocols").doc(pId).get();
+        if (pDoc.exists) {
+          const data = pDoc.data() || {};
+          protocolNames.push(data.name?.[preferredLang] || data.name?.en || "Unknown Protocol");
+        }
+      }
+
+      // Persist the session and wait for the write to land before sending the
+      // email, so the link is never mailed out ahead of the doc it points to.
+      const sessionRef = db.collection("feedback_sessions").doc(sessionId);
+      await sessionRef.set({
+        treatmentId: doc.id,
+        patientId: patientId,
+        measures: measuresData, // Embedded array of objects
+        status: "pending",
+        language: preferredLang, // Store the caretaker's preference
+        treatmentDate: treatment.createdTimestamp || admin.firestore.FieldValue.serverTimestamp(),
+        treatmentSummary: protocolNames.join(", "),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      });
+
+      const frontendDomain = (notificationSettings.frontendDomain || "beelive.biz").trim();
+      const link = `https://${frontendDomain}/feedback/${sessionId}`;
+
+      // Send Email
+      const firstName = (patient.fullName || "").split(" ")[0] || "Patient";
+      const fullName = patient.fullName || "Patient";
+
+      emailPromises.push(
+        resend.emails.send({
+          to: patient.email,
+          from: senderEmail,
+          template: {
+            id: templateId,
+            variables: {
+              patientName: firstName, // Maintain backward compatibility if user uses this
+              firstName: firstName, // More explicit
+              fullName: fullName, // Full name as requested
+              sessionId: sessionId,
+              feedbackLink: link,
+            },
+          }
+        } as any).catch((err) => {
+          logger.error(`Resend error for patient ${patientId}`, err);
+        })
+      );
+      processedCount++;
+    } catch (err) {
+      logger.error(`Failed to process feedback sweep for treatment ${doc.id}`, err);
+    }
   }
 
-  if (processedCount > 0) {
-    await newBatch.commit();
+  if (emailPromises.length > 0) {
     await Promise.all(emailPromises);
   }
 
