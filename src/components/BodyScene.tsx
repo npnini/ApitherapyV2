@@ -18,6 +18,7 @@ interface BodySceneProps {
   points?: StingPoint[];
   onPointSelect: (point: StingPoint) => void;
   activePointId: string | null;
+  highlightedPointIds?: Set<string>;
   isRolling: boolean;
   selectedModel: 'xbot' | 'corpo';
   resetTrigger?: number;
@@ -82,9 +83,10 @@ const LoadingOverlay = () => (
 const BodyScene: React.FC<BodySceneProps> = ({ 
   protocol, 
   points = [], 
-  onPointSelect, 
-  activePointId, 
-  isRolling, 
+  onPointSelect,
+  activePointId,
+  highlightedPointIds,
+  isRolling,
   selectedModel, 
   resetTrigger, 
   sensitivityColorMap, 
@@ -207,7 +209,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
                   point={point}
                   onClick={onPointSelect}
                   onDoubleClick={handleDoubleClick}
-                  isHighlighted={activePointId === point.id}
+                  isHighlighted={activePointId === point.id || !!highlightedPointIds?.has(point.id)}
                   isHovered={hoveredPointId === point.id}
                   onPointerOver={() => setHoveredPointId(point.id)}
                   onPointerOut={() => setHoveredPointId(null)}
@@ -225,7 +227,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
                   point={point}
                   onClick={onPointSelect}
                   onDoubleClick={handleDoubleClick}
-                  isHighlighted={activePointId === point.id}
+                  isHighlighted={activePointId === point.id || !!highlightedPointIds?.has(point.id)}
                   isHovered={hoveredPointId === point.id}
                   onPointerOver={() => setHoveredPointId(point.id)}
                   onPointerOut={() => setHoveredPointId(null)}

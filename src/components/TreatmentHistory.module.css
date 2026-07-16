@@ -561,6 +561,57 @@
     color: var(--color-white);
 }
 
+.toggleButton:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.toggleButton:disabled:hover {
+    background-color: transparent;
+    color: var(--color-text-secondary);
+}
+
+/* ── Selection Checkboxes ─────────────────────────────────────────────────── */
+
+.checkboxCell {
+    width: 2.5rem;
+    text-align: center;
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 30 !important;
+}
+
+:global([dir="rtl"]) .checkboxCell {
+    left: auto !important;
+    right: 0 !important;
+}
+
+.treatmentTable th.checkboxCell {
+    background-color: var(--color-primary) !important;
+}
+
+.treatmentTable tbody tr:nth-child(odd) .checkboxCell {
+    background-color: var(--color-background-page);
+}
+
+.treatmentTable tbody tr:nth-child(even) .checkboxCell {
+    background-color: var(--color-background-card);
+}
+
+.checkboxCell input,
+.cardCheckbox {
+    width: 1.05rem;
+    height: 1.05rem;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+.cardCheckbox {
+    flex-shrink: 0;
+    margin-inline-end: 0.75rem;
+    margin-top: 0.25rem;
+}
+
 /* ── Tabular View ─────────────────────────────────────────────────────────── */
 
 .tableWrapper {
@@ -598,13 +649,13 @@
 
 .stickyHeader {
     position: sticky !important;
-    left: 0 !important;
+    left: 2.5rem !important;
     z-index: 30 !important;
 }
 
 :global([dir="rtl"]) .stickyHeader {
     left: auto !important;
-    right: 0 !important;
+    right: 2.5rem !important;
 }
 
 .treatmentTable th.stickyHeader {
@@ -614,7 +665,7 @@
 
 :global([dir="rtl"]) .treatmentTable th.stickyHeader {
     left: auto !important;
-    right: 0 !important;
+    right: 2.5rem !important;
 }
 
 .treatmentTable td {
@@ -649,7 +700,7 @@
 
 .dateCell {
     position: sticky !important;
-    left: 0 !important;
+    left: 2.5rem !important;
     z-index: 10 !important;
     white-space: nowrap;
     font-family: 'Courier New', Courier, monospace;
@@ -659,7 +710,7 @@
 
 :global([dir="rtl"]) .dateCell {
     left: auto !important;
-    right: 0 !important;
+    right: 2.5rem !important;
 }
 
 .treatmentTable tbody tr:nth-child(odd) .dateCell {

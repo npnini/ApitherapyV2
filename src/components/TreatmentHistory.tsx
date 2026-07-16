@@ -4,9 +4,11 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
-import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { StorageImage } from './shared/StorageComponents';
+import Modal from './common/Modal';
+import PointsModelViewer from './PointsModelViewer';
 import styles from './TreatmentHistory.module.css';
 
 const getMLValue = (value: any, lang: string): string => {
@@ -104,6 +106,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const tInvalidDate = useT('Invalid date');
     const tNotProvided = useT('Not provided');
     const tNoNotes = useT('No notes');
+    const tModelViewerTitle = useT('Sting Points — 3D Model');
     const [treatments, setTreatments] = useState<HydratedTreatment[]>([]);
     const [caretakerNames, setCaretakerNames] = useState<Map<string, string>>(new Map());
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -114,6 +117,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [problemsNamesMap, setProblemsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const [freeProtoId, setFreeProtoId] = useState<string | null>(null);
     const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(null);
+    const [selectedTreatmentIds, setSelectedTreatmentIds] = useState<Set<string>>(new Set());
+    const [isModelModalOpen, setIsModelModalOpen] = useState<boolean>(false);
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
     const treatmentRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
@@ -327,6 +332,24 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         }
     };
 
+    const toggleTreatmentSelection = (id: string) => {
+        setSelectedTreatmentIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        setSelectedTreatmentIds(prev =>
+            prev.size === treatments.length ? new Set() : new Set(treatments.map(t => t.id))
+        );
+    };
+
     if (isLoading) {
         return (
             <div className={styles.loadingContainer}>
@@ -349,6 +372,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
     const direction = language === 'he' ? 'rtl' : 'ltr';
     const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
+
+    const aggregatedPoints: StingPoint[] = Array.from(
+        new Map(
+            treatments
+                .filter(t => selectedTreatmentIds.has(t.id))
+                .flatMap(t => t.stungPoints)
+                .map(p => [p.id, p])
+        ).values()
+    );
 
     return (
         <div className={styles.container} dir={direction}>
@@ -379,6 +411,14 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     <Table size={18} />
                     <T>Tabular View</T>
                 </button>
+                <button
+                    onClick={() => setIsModelModalOpen(true)}
+                    disabled={selectedTreatmentIds.size === 0}
+                    className={styles.toggleButton}
+                >
+                    <PersonStanding size={18} />
+                    <T>Show Model</T>
+                </button>
             </div>
 
             {treatments.length === 0 ? (
@@ -392,6 +432,13 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     <table className={styles.treatmentTable} dir={direction}>
                         <thead>
                             <tr>
+                                <th className={styles.checkboxCell}>
+                                    <input
+                                        type="checkbox"
+                                        checked={treatments.length > 0 && selectedTreatmentIds.size === treatments.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
                                 <th className={styles.stickyHeader}><T>Date and time</T></th>
                                 <th><T>Patient Report</T></th>
                                 <th><T>Status</T></th>
@@ -434,6 +481,13 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         setSelectedTreatmentId(t.id);
                                         setViewMode('list');
                                     }}>
+                                        <td className={styles.checkboxCell} onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedTreatmentIds.has(t.id)}
+                                                onChange={() => toggleTreatmentSelection(t.id)}
+                                            />
+                                        </td>
                                         <td className={`${styles.dateCell} ${styles.stickyHeader}`}>{formatDate(t)}</td>
                                         <td className={styles.reportCell} title={t.patientReport || undefined}>{t.patientReport || '-'}</td>
                                         <td className={styles.statusCell}>
@@ -511,6 +565,12 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                             ref={el => treatmentRefs.current.set(treatment.id, el)}
                         >
                             <div className={styles.cardHeader} dir={direction}>
+                                <input
+                                    type="checkbox"
+                                    className={styles.cardCheckbox}
+                                    checked={selectedTreatmentIds.has(treatment.id)}
+                                    onChange={() => toggleTreatmentSelection(treatment.id)}
+                                />
                                 <div className={styles.metaInfo}>
                                     <h2 className={styles.protocolName}>
                                         <T>Treatment</T> - {treatment.treatmentNumber || '-'}
@@ -720,6 +780,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     ))}
                 </div>
             )}
+
+            <Modal
+                isOpen={isModelModalOpen}
+                onClose={() => setIsModelModalOpen(false)}
+                title={tModelViewerTitle}
+                isFlex={true}
+                bodyStyle={{ height: '80vh' }}
+            >
+                <PointsModelViewer points={aggregatedPoints} />
+            </Modal>
         </div>
     );
 };
