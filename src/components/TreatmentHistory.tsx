@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
+import { PointSide, formatPointCode } from '../utils/pointSide';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { StorageImage } from './shared/StorageComponents';
@@ -76,6 +77,7 @@ interface StoredTreatmentDoc {
     problemId?: string;
     problemIds?: string[];
     stungPointIds?: string[];
+    stungPointSides?: Record<string, PointSide>;
     status?: 'Incomplete' | 'Completed';
     postStingingVitals?: Partial<VitalSigns>;
     finalVitals?: Partial<VitalSigns>;
@@ -473,7 +475,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     : '-';
 
                                 const stingCodes = t.stungPoints.length > 0
-                                    ? t.stungPoints.map(p => p.code).join(', ')
+                                    ? t.stungPoints.map(p => formatPointCode(p.code, t.stungPointSides?.[p.id], direction)).join(', ')
                                     : '-';
 
                                 return (
@@ -661,8 +663,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                             <div className={styles.pointDetails}>
                                                                 <MapPin size={14} className={styles.pointIcon} />
                                                                 <span className={styles.pointTextWrapper}>
-                                                                    <span className={styles.pointCode}>{point.code}</span>
-                                                                    {' - '}
+                                                                    <span className={styles.pointCode}>{formatPointCode(point.code, treatment.stungPointSides?.[point.id], direction)}</span>
+                                                                    {' '}
                                                                     <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
                                                                 </span>
                                                             </div>

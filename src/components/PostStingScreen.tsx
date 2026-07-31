@@ -5,6 +5,7 @@ import { T, useTranslationContext, useT } from './T';
 import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import { Protocol } from '../types/protocol';
+import { PointSide, formatPointCode } from '../utils/pointSide';
 import VitalsInputGroup from './VitalsInputGroup';
 import { CheckCircle, ChevronLeft, ChevronRight, Loader, List, ClipboardList } from 'lucide-react';
 import styles from './PostStingScreen.module.css';
@@ -18,6 +19,7 @@ interface PostStingData {
 
 interface PostStingScreenProps {
     stungPointIds: string[];
+    stungPointSides?: Record<string, PointSide>;
     protocolIds: string[];
     preTreatmentVitals?: Partial<VitalSigns>;
     onFinish: (data: PostStingData) => void;
@@ -57,6 +59,7 @@ const getMLValue = (value: any, lang: string): string => {
 
 const PostStingScreen: React.FC<PostStingScreenProps> = ({
     stungPointIds,
+    stungPointSides,
     protocolIds,
     preTreatmentVitals,
     onFinish,
@@ -164,7 +167,7 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
                         <div className={styles.list}>
                             {points.map(p => (
                                 <div key={p.id} className={styles.listItem}>
-                                    <span className={styles.pointCode}>{p.code}</span>
+                                    <span className={styles.pointCode}>{formatPointCode(p.code, stungPointSides?.[p.id], direction)}</span>
                                     <span className={styles.pointLabel}>{getMLValue(p.label, language)}</span>
                                 </div>
                             ))}

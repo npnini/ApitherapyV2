@@ -8,6 +8,7 @@ import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import { getCachedPoints, setCachedPoints } from '../utils/pointsCache';
 import { findNearestPoints } from '../utils/findNearestPoints';
+import { PointSide, getSideLabel } from '../utils/pointSide';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
 import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, ChevronRight, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
@@ -31,8 +32,8 @@ interface TreatmentExecutionProps {
     displayTitle?: string;
     isSensitivityTest: boolean;
     accumulatedStungPointIds: string[];
-    onRoundComplete: (stungPointIds: string[]) => void;
-    onNext: (stungPointIds: string[]) => void;
+    onRoundComplete: (stungPointIds: string[], stungPointSides: Record<string, PointSide>) => void;
+    onNext: (stungPointIds: string[], stungPointSides: Record<string, PointSide>) => void;
     onBack: () => void;
     onExit?: () => void;
     preferredModel?: 'xbot' | 'corpo';
@@ -79,6 +80,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [isMaximized, setIsMaximized] = useState(false);
 
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
+    const [stungPointSides, setStungPointSides] = useState<Record<string, PointSide>>({});
     const [activePointId, setActivePointId] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState<'xbot' | 'corpo'>(preferredModel);
     const [isRolling, setIsRolling] = useState(true);
@@ -127,6 +129,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     // Reset current-protocol stung points when protocol changes, and hydrate accumulated IDs
     useEffect(() => {
         setStungPoints([]);
+        setStungPointSides({});
         setActivePointId(null);
 
         if (!accumulatedStungPointIds || accumulatedStungPointIds.length === 0) {
@@ -207,7 +210,15 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const handleRemoveStungPoint = (id: string) => {
         setStungPoints(prev => prev.filter(p => p.id !== id));
+        setStungPointSides(prev => {
+            const { [id]: _removed, ...rest } = prev;
+            return rest;
+        });
         if (activePointId === id) setActivePointId(null);
+    };
+
+    const handleSetPointSide = (id: string, side: PointSide) => {
+        setStungPointSides(prev => ({ ...prev, [id]: side }));
     };
 
     // Lock to Corpo model in Free Selection (Proximity Tap uses Corpo coords only)
@@ -252,11 +263,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     }, []);
 
     const handleAnotherProtocol = () => {
-        onRoundComplete(stungPoints.map(p => p.id));
+        onRoundComplete(stungPoints.map(p => p.id), stungPointSides);
     };
 
     const handleNext = () => {
-        onNext(stungPoints.map(p => p.id));
+        onNext(stungPoints.map(p => p.id), stungPointSides);
     };
 
     // Normalization helper for sensitivity keys
@@ -591,18 +602,41 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         <div className={styles.stungList}>
                             {stungPoints.length === 0 ? (
                                 <p className={styles.emptyStung}>{tNoPointsStung}</p>
-                            ) : stungPoints.map(p => (
-                                <div
-                                    key={p.id}
-                                    className={`${styles.stungItem} ${activePointId === p.id ? styles.stungItemActive : ''}`}
-                                    onClick={() => setActivePointId(p.id)}
-                                >
-                                    <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
-                                    <button onClick={e => { e.stopPropagation(); handleRemoveStungPoint(p.id); }} className={styles.removeBtn}>
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            ))}
+                            ) : stungPoints.map(p => {
+                                const side = stungPointSides[p.id];
+                                return (
+                                    <div
+                                        key={p.id}
+                                        className={`${styles.stungItem} ${activePointId === p.id ? styles.stungItemActive : ''}`}
+                                        onClick={() => setActivePointId(p.id)}
+                                    >
+                                        <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
+                                        <div className={styles.stungItemControls}>
+                                            <div className={styles.sideSelector} onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    className={`${styles.sideBtn} ${side === 'L' ? styles.sideBtnActive : ''}`}
+                                                    onClick={() => handleSetPointSide(p.id, 'L')}
+                                                    title={getTranslation('Left')}
+                                                >
+                                                    {getSideLabel('L', direction)}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`${styles.sideBtn} ${side === 'R' ? styles.sideBtnActive : ''}`}
+                                                    onClick={() => handleSetPointSide(p.id, 'R')}
+                                                    title={getTranslation('Right')}
+                                                >
+                                                    {getSideLabel('R', direction)}
+                                                </button>
+                                            </div>
+                                            <button onClick={e => { e.stopPropagation(); handleRemoveStungPoint(p.id); }} className={styles.removeBtn}>
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 

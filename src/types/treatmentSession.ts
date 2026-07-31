@@ -1,3 +1,4 @@
+import { PointSide } from '../utils/pointSide';
 
 export interface VitalSigns {
   systolic: number;
@@ -32,6 +33,7 @@ export interface TreatmentSession {
   protocolIds: string[];        // Replaces singular protocolId
   problemIds: string[];         // Replaces singular problemId
   stungPointIds: string[];      // List of stung points in this session
+  stungPointSides?: Record<string, PointSide>; // pointId → 'L' | 'R' side registered as stung
 
   // Post-session data
   postStingingVitals?: Partial<VitalSigns>; // BP + HR measured after all stings, before removal

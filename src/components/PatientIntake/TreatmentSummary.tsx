@@ -5,6 +5,7 @@ import { TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
 import { Protocol } from '../../types/protocol';
 import { Measure } from '../../types/measure';
+import { formatPointCode } from '../../utils/pointSide';
 import { T, useT } from '../T';
 import { Loader, Calendar, FileText, Activity, Syringe, Info } from 'lucide-react';
 import styles from './TreatmentSummary.module.css';
@@ -135,7 +136,7 @@ const TreatmentSummary: React.FC<TreatmentSummaryProps> = ({ treatment, language
                         <p className={styles.emptyText}>{tNoPoints}</p>
                     ) : points.map(p => (
                         <span key={p.id} className={styles.pointBadge}>
-                            <span className={styles.pointCode}>{p.code}</span> {getMLValue(p.label, language)}
+                            <span className={styles.pointCode}>{formatPointCode(p.code, treatment.stungPointSides?.[p.id], direction)}</span> {getMLValue(p.label, language)}
                         </span>
                     ))}
                 </div>

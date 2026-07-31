@@ -90,7 +90,8 @@
 .pointCode {
     font-weight: var(--font-weight-bold);
     color: var(--color-primary);
-    width: 40px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .pointLabel {

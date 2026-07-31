@@ -26,6 +26,7 @@ import PostStingScreen from '../PostStingScreen';
 import { Protocol } from '../../types/protocol';
 import { VitalSigns, TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
+import { PointSide } from '../../utils/pointSide';
 import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
 import { logAction } from '../../services/auditLogService';
@@ -114,6 +115,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
     const [isSensitivitySession, setIsSensitivitySession] = useState(false);
     const [accumulatedStungPointIds, setAccumulatedStungPointIds] = useState<string[]>([]);
+    const [accumulatedStungPointSides, setAccumulatedStungPointSides] = useState<Record<string, PointSide>>({});
     const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
     const [freeProtocolUsed, setFreeProtocolUsed] = useState(false);
     const [selectedAdhocProtocol, setSelectedAdhocProtocol] = useState<Protocol | null>(null);
@@ -590,6 +592,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setUsedProblemIds([]);
         setUsedProtocolIds([]);
         setAccumulatedStungPointIds([]);
+        setAccumulatedStungPointSides({});
         setIsLoading(false);
         setViewState('sessionOpening');
     };
@@ -744,6 +747,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         protocolIds: Array.from(new Set([...usedProtocolIds, ...protocolIds])),
                         problemIds: Array.from(new Set([...usedProblemIds, ...problemIds])),
                         stungPointIds: accumulatedStungPointIds,
+                        stungPointSides: accumulatedStungPointSides,
                     }, sessionOpeningData.generatedTreatmentId);
                 }
 
@@ -799,13 +803,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setViewState('freeSelection');
     };
 
-    const handleRoundComplete = async (roundStungPointIds: string[]) => {
+    const handleRoundComplete = async (roundStungPointIds: string[], roundStungPointSides: Record<string, PointSide>) => {
         // Called when user clicks "Another Protocol"
         if (!patient.id || !sessionOpeningData) return;
 
         try {
             // Buffer the points from this round
             setAccumulatedStungPointIds(prev => [...new Set([...prev, ...roundStungPointIds])]);
+            setAccumulatedStungPointSides(prev => ({ ...prev, ...roundStungPointSides }));
 
             // Track protocols used
             if (selectedProtocol) {
@@ -825,9 +830,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         }
     };
 
-    const handleNextFromStinging = (roundStungPointIds: string[]) => {
+    const handleNextFromStinging = (roundStungPointIds: string[], roundStungPointSides: Record<string, PointSide>) => {
         // Called when user clicks "Next Step" in TreatmentExecution
         setAccumulatedStungPointIds(prev => [...new Set([...prev, ...roundStungPointIds])]);
+        setAccumulatedStungPointSides(prev => ({ ...prev, ...roundStungPointSides }));
 
         if (selectedProtocol) {
             setUsedProtocolIds(prev => [...new Set([...prev, selectedProtocol.id])]);
@@ -859,6 +865,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 protocolIds: usedProtocolIds,
                 problemIds: usedProblemIds,
                 stungPointIds: accumulatedStungPointIds,
+                stungPointSides: accumulatedStungPointSides,
                 postStingingVitals: data.postTreatmentVitals,
                 finalVitals: data.finalVitals,
                 finalNotes: data.finalNotes,
@@ -869,6 +876,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setIsDirty(false);
             setSessionOpeningData(null);
             setAccumulatedStungPointIds([]);
+            setAccumulatedStungPointSides({});
             setUsedProtocolIds([]);
             setUsedProblemIds([]);
             setLastSavedAt(null);
@@ -882,6 +890,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 protocolIds: usedProtocolIds,
                 problemIds: usedProblemIds,
                 stungPointIds: accumulatedStungPointIds,
+                stungPointSides: accumulatedStungPointSides,
                 createdTimestamp: Date.now(),
                 patientReport: sessionOpeningData.patientReport,
                 finalNotes: data.finalNotes,
@@ -958,6 +967,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setUsedProblemIds([]);
             setUsedProtocolIds([]);
             setAccumulatedStungPointIds([]);
+            setAccumulatedStungPointSides({});
             setFreeProtocolUsed(false);
             setViewState('tabs');
             return;
@@ -982,6 +992,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     protocolIds: usedProtocolIds,
                     problemIds: usedProblemIds,
                     stungPointIds: accumulatedStungPointIds,
+                    stungPointSides: accumulatedStungPointSides,
                     freeProtocolUsed: freeProtocolUsed,
                 }, sessionOpeningData.generatedTreatmentId);
             } catch (err) {
@@ -1000,6 +1011,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setUsedProblemIds([]);
         setUsedProtocolIds([]);
         setAccumulatedStungPointIds([]);
+        setAccumulatedStungPointSides({});
         setFreeProtocolUsed(false);
         setViewState('tabs');
     };
@@ -1044,6 +1056,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setUsedProtocolIds(treatment.protocolIds || (treatment.protocolId ? [treatment.protocolId] : []));
         setUsedProblemIds(treatment.problemIds || (treatment.problemId ? [treatment.problemId] : []));
         setAccumulatedStungPointIds(treatment.stungPointIds || []);
+        setAccumulatedStungPointSides(treatment.stungPointSides || {});
         setIsSensitivitySession(treatment.isSensitivityTest || false);
         setFreeProtocolUsed(treatment.freeProtocolUsed || false);
         setIsLoading(false);
@@ -1336,6 +1349,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             {viewState === 'postSting' && (
                                 <PostStingScreen
                                     stungPointIds={accumulatedStungPointIds}
+                                    stungPointSides={accumulatedStungPointSides}
                                     protocolIds={usedProtocolIds}
                                     preTreatmentVitals={sessionOpeningData?.preTreatmentVitals}
                                     onBack={() => setViewState('treatmentExecution')}
@@ -1354,6 +1368,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                         createdTimestamp: Date.now(),
                                         status: 'Completed',
                                         stungPointIds: accumulatedStungPointIds,
+                                        stungPointSides: accumulatedStungPointSides,
                                         protocolIds: usedProtocolIds,
                                         problemIds: usedProblemIds,
                                     } as any)}
