@@ -501,6 +501,10 @@
     font-size: 0.875rem;
 }
 
+html[dir="rtl"] .stepItem:not(:last-child)::after {
+    content: '←';
+}
+
 .stepActive {
     background-color: var(--color-primary);
     color: #fff;

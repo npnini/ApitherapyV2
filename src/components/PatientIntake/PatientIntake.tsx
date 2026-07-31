@@ -101,10 +101,12 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
     const [sessionOpeningData, setSessionOpeningData] = useState<SessionOpeningData | null>(null);
 
-    // Active problems from patient record for this session
-    const activeProblems = useMemo(() => 
-        (patient.medicalRecord?.problems || []).filter((p: any) => p.problemStatus === 'Active'),
-        [patient.medicalRecord?.problems]
+    // Active problems from patient record for this session.
+    // Prefer sessionOpeningData.problems once Session Opening has been completed, since
+    // it reflects any problem the caretaker quick-added there (not yet saved to patient.medicalRecord).
+    const activeProblems = useMemo(() =>
+        (sessionOpeningData?.problems || patient.medicalRecord?.problems || []).filter((p: any) => p.problemStatus === 'Active'),
+        [sessionOpeningData?.problems, patient.medicalRecord?.problems]
     );
 
     const [freeProtocolPoints, setFreeProtocolPoints] = useState<StingPoint[]>([]);
@@ -1335,6 +1337,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 <PostStingScreen
                                     stungPointIds={accumulatedStungPointIds}
                                     protocolIds={usedProtocolIds}
+                                    preTreatmentVitals={sessionOpeningData?.preTreatmentVitals}
                                     onBack={() => setViewState('treatmentExecution')}
                                     onFinish={handlePostStingFinish}
                                     onExit={handleExitIncomplete}

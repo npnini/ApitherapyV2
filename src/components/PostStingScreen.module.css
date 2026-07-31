@@ -12,21 +12,24 @@
     margin-bottom: var(--spacing-md);
 }
 
-.backButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: var(--spacing-xs);
-    display: flex;
+.btnBack {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    transition: background-color 0.2s ease;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    background: var(--color-secondary-button-background);
     color: var(--color-text-secondary);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    transition: background-color 0.08s ease, color 0.08s ease;
 }
 
-.backButton:hover {
-    background-color: var(--color-background-input-hover);
+.btnBack:hover {
+    background: var(--color-secondary-button-hover);
+    color: var(--color-text-primary);
 }
 
 .headerTitle {
@@ -164,4 +167,10 @@
 .btnPrimary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.displayValue {
+    background-color: var(--color-background-page);
+    color: var(--color-text-secondary);
+    cursor: default;
 }

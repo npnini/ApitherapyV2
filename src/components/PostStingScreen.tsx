@@ -6,8 +6,9 @@ import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import { Protocol } from '../types/protocol';
 import VitalsInputGroup from './VitalsInputGroup';
-import { CheckCircle, ChevronLeft, Loader, List, ClipboardList } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, Loader, List, ClipboardList } from 'lucide-react';
 import styles from './PostStingScreen.module.css';
+import vitalsStyles from './VitalsInputGroup.module.css';
 
 interface PostStingData {
     postTreatmentVitals: Partial<VitalSigns>;
@@ -18,10 +19,35 @@ interface PostStingData {
 interface PostStingScreenProps {
     stungPointIds: string[];
     protocolIds: string[];
+    preTreatmentVitals?: Partial<VitalSigns>;
     onFinish: (data: PostStingData) => void;
     onBack: () => void;
     onExit?: () => void;
 }
+
+const VitalsDisplayGroup: React.FC<{ title: string; vitals?: Partial<VitalSigns> }> = ({ title, vitals }) => {
+    const tHeartRate = useT('Heart Rate');
+    const tSystolic = useT('Systolic');
+    const tDiastolic = useT('Diastolic');
+
+    const renderValue = (value: number | undefined, label: string) => (
+        <div className={vitalsStyles.fieldWrapper}>
+            <div className={`${vitalsStyles.input} ${styles.displayValue}`}>{value ?? '—'}</div>
+            <label className={vitalsStyles.label}>{label}</label>
+        </div>
+    );
+
+    return (
+        <div className={vitalsStyles.container}>
+            <h3 className={vitalsStyles.title}><T>{title}</T></h3>
+            <div className={vitalsStyles.grid}>
+                {renderValue(vitals?.systolic, tSystolic)}
+                {renderValue(vitals?.diastolic, tDiastolic)}
+                {renderValue(vitals?.heartRate, tHeartRate)}
+            </div>
+        </div>
+    );
+};
 
 const getMLValue = (value: any, lang: string): string => {
     if (typeof value === 'string') return value;
@@ -32,11 +58,13 @@ const getMLValue = (value: any, lang: string): string => {
 const PostStingScreen: React.FC<PostStingScreenProps> = ({
     stungPointIds,
     protocolIds,
+    preTreatmentVitals,
     onFinish,
     onBack,
     onExit
 }) => {
     const { language, direction } = useTranslationContext();
+    const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
     const tFinishTreatment = useT('Finish Treatment');
     const tPostStingTitle = useT('Post-Treatment Summary');
     const tNotesPlaceholder = useT('Add any final observations or notes here...');
@@ -101,10 +129,11 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
     return (
         <div className={styles.container} dir={direction}>
             <div className={styles.header}>
-                <button onClick={onBack} className={styles.backButton}>
-                    <ChevronLeft size={24} />
-                </button>
                 <h2 className={styles.headerTitle}>{tPostStingTitle}</h2>
+                <button onClick={onBack} className={styles.btnBack}>
+                    <BackIcon size={16} />
+                    <T>Back</T>
+                </button>
             </div>
 
             <div className={styles.grid}>
@@ -145,6 +174,11 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
 
                 <div className={styles.rightCol}>
                     <div className={styles.section}>
+                        <VitalsDisplayGroup
+                            title="Pre-Stinging Measures"
+                            vitals={preTreatmentVitals}
+                        />
+
                         <VitalsInputGroup
                             title="Post-Stinging Measures (Optional)"
                             vitals={postTreatmentVitals}

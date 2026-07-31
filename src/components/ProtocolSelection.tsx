@@ -5,7 +5,7 @@ import { PatientProblem } from '../types/patient';
 import { Problem } from '../types/problem';
 import { Protocol } from '../types/protocol';
 import { Measure } from '../types/measure';
-import { Check, Loader, Plus, X, ArrowRight } from 'lucide-react';
+import { Check, Loader, Plus, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import styles from './ProtocolSelection.module.css';
 import { T, useT, useTranslationContext } from './T';
 import ConfirmationModal from './ConfirmationModal';
@@ -44,6 +44,7 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
     isSensitivityTestCompleted,
 }) => {
     const { language, direction } = useTranslationContext();
+    const StartIcon = direction === 'rtl' ? ArrowLeft : ArrowRight;
     const tLoading = useT('Loading...');
     const tExit = useT('Exit');
     const tBack = useT('Back');
@@ -390,8 +391,9 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
                         disabled={!isStartEnabled}
                         onClick={handleStartTreatment}
                     >
-                        {isSubmitting ? <Loader size={16} className={styles.spinner} /> : <ArrowRight size={18} />}
-                        {tStartTreatment}
+                        {direction === 'rtl' && tStartTreatment}
+                        {isSubmitting ? <Loader size={16} className={styles.spinner} /> : <StartIcon size={18} />}
+                        {direction !== 'rtl' && tStartTreatment}
                     </button>
                 </div>
             </div>

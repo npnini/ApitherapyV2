@@ -10,7 +10,7 @@ import { getCachedPoints, setCachedPoints } from '../utils/pointsCache';
 import { findNearestPoints } from '../utils/findNearestPoints';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
-import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, ChevronRight, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 import { useStorageUrl } from "../hooks/useStorageUrl";
 import { resolveStoragePath, getFieldContent, getGDriveFallbackUrls } from '../utils/storageUtils';
@@ -56,17 +56,18 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 }) => {
     const { language, direction, getTranslation } = useTranslationContext();
     const { url: protocolDocUrl } = useStorageUrl(protocol?.documentUrl, language, 'doc');
+    const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
 
     const tFailedToLoadModel = useT('Failed to load 3D model data.');
     const tNotesPlaceholder = useT('Add any final observations or notes here...');
     const tAnotherProtocol = useT('Another Protocol');
     const tEndTreatment = useT('End Treatment');
-    const tNextStep = useT('Next Step');
+    const tNextStep = useT('Finish Treatment');
     const tSensitivityBanner = useT('This session uses the sensitivity test protocol.');
     const tNoPointsStung = useT('No points have been marked as stung yet.');
     const tStungPoints = useT('Stung Points');
     const tFinalNotes = useT('Final Notes');
-    const tSensDirectiveFallback = useT('Wait 10 minutes. If there is an allergic reaction, press Next Step. If there is no allergic reaction, press Another Protocol');
+    const tSensDirectiveFallback = useT('Wait 10 minutes. If there is an allergic reaction, press Finish Treatment. If there is no allergic reaction, press Another Protocol');
     const tStdDirectiveFallback = useT('Wait 15 minutes before removing the stingers, then measure the final vitals');
     const tSensitivityLevel = useT('Sensitivity Level');
     const tNoAdditionalDetails = useT('No additional details available in this language.');
@@ -338,9 +339,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         <div className={styles.container} dir={direction}>
             {/* Header */}
             <div className={styles.header}>
-                <button onClick={onBack} className={styles.backButton}>
-                    <ChevronLeft size={20} />
-                </button>
                 <h2 className={styles.headerTitle}>
                     {displayTitle || (protocol ? getFieldContent(protocol.name, language) : <T>Free Selection</T>)}
                     {/* Document icon if protocol has a document URL */}
@@ -356,6 +354,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         </a>
                     )}
                 </h2>
+                <button onClick={onBack} className={styles.btnBack}>
+                    <BackIcon size={16} />
+                    <T>Back</T>
+                </button>
             </div>
 
 
