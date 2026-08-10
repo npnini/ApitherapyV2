@@ -38,12 +38,11 @@ This document tracks all tasks required to safely move the Apitherapy applicatio
     - [x] `firebase auth:export users.json --project apitherapyv2`
     - [x] `firebase auth:import users.json --project prod`
 - [x] **Data Migration (Isolated)**:
-    - [x] **One-time Setup** — Grant Prod Firestore SA access to the existing prod storage bucket (reads from `.env.production`):
-        `.\scripts\setup-migration-permissions.ps1`
-    - [x] **Run Migration** — Exports Staging, downloads locally, uploads & imports to Prod:
-        `.\scripts\migrate-stage-to-prod.ps1`
+    - [x] **Historical one-time migration completed** — Staging data was transferred to Production during the initial production setup.
+    - [x] The temporary migration workflow and its scripts were retired after Staging and Production became permanent, independent environments.
+    - [x] Future deployments must not copy Staging data into Production; use the environment-specific deployment scripts instead.
     > Firestore backup lands in `gs://apitherapy-c94a6.firebasestorage.app/backups/`. App files sync to root of same bucket.
-    > *Note: Used `gs://apitherapyv2-israel-temp` for staging export due to region requirements.*
+    > *Historical note: The initial migration used the temporary `gs://apitherapyv2-israel-temp` bucket to satisfy Firestore region requirements. That bucket and workflow are no longer active.*
 
 - [x] **BigQuery Backfill**:
     - [x] Deploy extensions: `firebase deploy --only extensions --project prod`
