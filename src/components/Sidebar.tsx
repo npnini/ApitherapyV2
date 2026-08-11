@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
@@ -13,6 +13,7 @@ interface SidebarProps {
     onPatientsClick: () => void;
     onDataAnalysisClick: () => void;
     onPointsAdminClick: () => void;
+    onBodyModelAdminClick: () => void;
     onMeasuresAdminClick: () => void;
     onProblemsAdminClick: () => void;
     onQuestionnaireAdminClick: () => void;
@@ -31,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onPatientsClick,
     onDataAnalysisClick,
     onPointsAdminClick,
+    onBodyModelAdminClick,
     onMeasuresAdminClick,
     onProblemsAdminClick,
     onQuestionnaireAdminClick,
@@ -157,6 +159,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <button onClick={onAppSettingsClick} className={styles.configButton}>
                                     <Settings size={16} className={styles.iconSecondary} />
                                     <span><T>Application Settings</T></span>
+                                </button>
+                                <button onClick={onBodyModelAdminClick} className={styles.configButton}>
+                                    <Sun size={16} className={styles.iconSecondary} />
+                                    <span><T>3D Body Model Lighting</T></span>
                                 </button>
                                 <button onClick={onPointsAdminClick} className={styles.configButton}>
                                     <MapPin size={16} className={styles.iconSecondary} />

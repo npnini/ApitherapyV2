@@ -1,0 +1,272 @@
+.container {
+    padding: var(--spacing-xl);
+    background-color: var(--color-background-page);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+.errorBox {
+    background-color: var(--color-error-background);
+    color: var(--color-error);
+    border: 1px solid #fecaca;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: var(--spacing-lg);
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.previewPanel {
+    background-color: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    height: 75vh;
+    position: relative;
+}
+
+.canvasWrapper {
+    width: 100%;
+    height: 100%;
+}
+
+.crashBox {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    background-color: var(--color-error-background);
+}
+
+.crashCard {
+    max-width: 28rem;
+    padding: var(--spacing-md);
+    background-color: var(--color-background-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+}
+
+.crashTitle {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-error);
+    margin-bottom: var(--spacing-sm);
+}
+
+.crashMessage {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    white-space: pre-wrap;
+}
+
+.controlPanel {
+    background-color: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: var(--spacing-lg);
+    max-height: 75vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.sectionTitle {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.fieldHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.fieldLabel {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+}
+
+.fieldValue {
+    font-variant-numeric: tabular-nums;
+}
+
+.rangeInput {
+    width: 100%;
+    accent-color: var(--color-primary);
+}
+
+.fieldHint {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+}
+
+.radioGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.radioOption {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.toggleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Toggle switch, mirrors ApplicationSettings.module.css */
+.toggleSwitch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.toggleSwitch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-secondary-button-background);
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--color-success);
+}
+
+input:focus + .slider {
+    box-shadow: var(--shadow-input-focus);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+.actions {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.button {
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.secondaryButton {
+    background-color: var(--color-secondary-button-background);
+    color: var(--color-text-primary);
+    flex: 1;
+}
+
+.secondaryButton:hover:not(:disabled) {
+    background-color: var(--color-secondary-button-hover);
+}
+
+.primaryButton {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    width: 100%;
+}
+
+.primaryButton:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.statusRow {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.successMessage {
+    color: var(--color-success);
+    font-size: var(--font-size-sm);
+}

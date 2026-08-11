@@ -1,9 +1,9 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { useLoader } from '@react-three/fiber';
+import { useLoader, useThree } from '@react-three/fiber';
 
 interface ModelProps {
   url: string;
@@ -66,31 +66,114 @@ export const HumanModel: React.FC<ModelProps> = ({ url, children, onPointerDown,
   );
 };
 
-interface CorpoModelProps extends ModelProps {
-  textureUrl: string;
+export interface CorpoMaterialConfig {
+  mode: 'flat' | 'triplanar';
+  roughness: number;
 }
 
-export const CorpoModel: React.FC<CorpoModelProps> = ({ url, textureUrl, children, onPointerDown, onClick }) => {
+interface CorpoModelProps extends ModelProps {
+  materialConfig: CorpoMaterialConfig;
+}
+
+const FLAT_SKIN_COLOR = '#e3b28f';
+
+// Triplanar: procedural skin-like shading projected from world position/normal,
+// independent of corpo.obj's (unreliable — effectively absent) UV unwrap. Uses
+// onBeforeCompile to inject a small value-noise blend into the standard PBR
+// pipeline so it still responds correctly to the scene's real lights.
+function buildMaterial(mode: 'flat' | 'triplanar', roughness: number): THREE.Material {
+  if (mode === 'flat') {
+    return new THREE.MeshStandardMaterial({
+      color: FLAT_SKIN_COLOR,
+      roughness,
+      metalness: 0.0,
+    });
+  }
+
+  const material = new THREE.MeshStandardMaterial({
+    color: FLAT_SKIN_COLOR,
+    roughness,
+    metalness: 0.0,
+  });
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uNoiseScale = { value: 6.0 };
+
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWorldPos;')
+      .replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;'
+      );
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        varying vec3 vWorldPos;
+        uniform float uNoiseScale;
+        float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+        float valueNoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }`
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec3 blendWeights = abs(normalize(vNormal));
+          blendWeights /= (blendWeights.x + blendWeights.y + blendWeights.z + 1e-5);
+          float nX = valueNoise(vWorldPos.yz * uNoiseScale);
+          float nY = valueNoise(vWorldPos.xz * uNoiseScale);
+          float nZ = valueNoise(vWorldPos.xy * uNoiseScale);
+          float n = nX * blendWeights.x + nY * blendWeights.y + nZ * blendWeights.z;
+          diffuseColor.rgb *= mix(0.88, 1.12, n);
+        }`
+      );
+  };
+
+  return material;
+}
+
+export const CorpoModel: React.FC<CorpoModelProps> = ({ url, materialConfig, children, onPointerDown, onClick }) => {
   const obj = useLoader(OBJLoader, url);
-  const texture = useLoader(THREE.TextureLoader, textureUrl);
   const groupRef = useRef<THREE.Group>(null);
   const [modelScale, setModelScale] = React.useState(1);
 
   React.useLayoutEffect(() => {
     if (!groupRef.current) return;
 
+    // Work around a malformed corpo.obj: a single stray `l` (line) command at
+    // the very end of the file flips OBJLoader's classification of the entire
+    // ~180k-vertex body object to "Line", so it gets built as a LineSegments
+    // (drawing every triangle edge as a wireframe line) instead of a Mesh —
+    // even though the underlying position/normal buffer is valid triangulated
+    // face data. Rebuild it as a real Mesh from the same geometry. Idempotent:
+    // on later re-runs there's nothing left to fix.
+    const misclassified: THREE.LineSegments[] = [];
+    obj.traverse((child: any) => {
+      if (child.isLineSegments) misclassified.push(child);
+    });
+    misclassified.forEach((line) => {
+      const mesh = new THREE.Mesh(line.geometry, line.material);
+      mesh.name = line.name;
+      line.parent?.add(mesh);
+      line.parent?.remove(line);
+    });
+
     obj.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        mesh.material = new THREE.MeshStandardMaterial({
-          map: texture,
-          color: '#ffffff',
-          roughness: 0.7,
-          metalness: 0.0,
-          flatShading: false
-        });
+        mesh.material = buildMaterial(materialConfig.mode, materialConfig.roughness);
       }
     });
 
@@ -105,10 +188,10 @@ export const CorpoModel: React.FC<CorpoModelProps> = ({ url, textureUrl, childre
     groupRef.current.position.x = -center.x * scale;
     groupRef.current.position.y = -box.min.y * scale;
     groupRef.current.position.z = -center.z * scale;
-  }, [obj, texture]);
+  }, [obj, materialConfig.mode, materialConfig.roughness]);
 
   return (
-    <group 
+    <group
       ref={groupRef}
       onPointerDown={onPointerDown}
       onClick={onClick}
@@ -122,4 +205,15 @@ export const CorpoModel: React.FC<CorpoModelProps> = ({ url, textureUrl, childre
       })}
     </group>
   );
+};
+
+// Sets the renderer's tone-mapping exposure directly — this is the one lever
+// guaranteed to visibly move the final image regardless of how the ambient/
+// directional/environment lights interact or clip against each other.
+export const ExposureController: React.FC<{ exposure: number }> = ({ exposure }) => {
+  const { gl } = useThree();
+  useLayoutEffect(() => {
+    gl.toneMappingExposure = exposure;
+  }, [gl, exposure]);
+  return null;
 };

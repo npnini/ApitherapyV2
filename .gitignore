@@ -37,6 +37,7 @@ firebase-export-*/
 # Service account keys - More specific so we don't ignore firebase.json
 *-service-account.json
 service-account.json
+*service*account*.*
 credentials.json
 
 # IDEs

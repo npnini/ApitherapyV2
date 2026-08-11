@@ -2,11 +2,12 @@
 import React, { Suspense, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, PerspectiveCamera, Html } from '@react-three/drei';
-import { HumanModel, CorpoModel } from './shared/ModelComponents';
-import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL, CORPO_TEXTURE_URL } from '../constants';
+import { HumanModel, CorpoModel, ExposureController } from './shared/ModelComponents';
+import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL } from '../constants';
 import { T } from './T';
 import styles from './PointsAdmin.module.css';
 import { getTransformedPosition } from '../utils/pointMapping';
+import { useBodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig';
 
 interface PointPlacementSceneProps {
   selectedModel: 'xbot' | 'corpo';
@@ -68,6 +69,7 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
   onPositionChange,
   isLocked
 }) => {
+  const { config } = useBodyModelLightingConfig();
   // We'll wrap the models to capture the scale provided by useLayoutEffect
   const SceneContent = () => {
     const [derivedScale, setDerivedScale] = useState(1);
@@ -109,7 +111,7 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
             <ActiveMarker position={position} selectedModel={selectedModel} />
           </HumanModel>
         ) : (
-          <CorpoModel url={CORPO_MODEL_URL} textureUrl={CORPO_TEXTURE_URL} onClick={onModelClick}>
+          <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelClick}>
             <ScaleCapturer />
             <ActiveMarker position={position} selectedModel={selectedModel} />
           </CorpoModel>
@@ -122,22 +124,25 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
     <div className={styles.viewportContainer}>
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={[0, 1.2, 3]} fov={40} />
-        <OrbitControls 
-          enablePan={true} 
-          enableRotate={true} 
+        <ExposureController exposure={config.exposure} />
+        <OrbitControls
+          enablePan={true}
+          enableRotate={true}
           enableZoom={true}
           autoRotate={!isLocked}
           autoRotateSpeed={2.0}
           target={[0, 1, 0]}
         />
-        
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow />
-        <directionalLight position={[-10, 5, 5]} intensity={0.8} />
-        
+
+        <ambientLight intensity={config.ambientIntensity} />
+        <directionalLight position={[config.keyLightX, config.keyLightY, 4]} intensity={config.keyLightIntensity} castShadow />
+        <directionalLight position={[config.fillLightX, config.fillLightY, -4]} intensity={config.fillLightIntensity} />
+
         <SceneContent />
-        
-        <Environment preset="city" />
+
+        {config.environmentEnabled && (
+          <Environment preset="city" environmentIntensity={config.environmentIntensity} />
+        )}
         <ContactShadows opacity={0.3} scale={15} blur={3} far={10} color="#000000" />
         <gridHelper args={[20, 50, 0xe2e8f0, 0xf1f5f9]} position={[0, -0.01, 0]} />
       </Canvas>

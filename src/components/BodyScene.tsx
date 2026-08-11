@@ -7,11 +7,12 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { useLoader } from '@react-three/fiber';
 import { Protocol } from '../types/protocol';
 import { StingPoint } from '../types/apipuncture';
-import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL, CORPO_TEXTURE_URL } from '../constants';
+import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL } from '../constants';
 import { T } from './T';
 import StingPointMarker from './StingPointMarker';
-import { HumanModel, CorpoModel } from './shared/ModelComponents';
+import { HumanModel, CorpoModel, ExposureController } from './shared/ModelComponents';
 import { getTransformedPosition } from '../utils/pointMapping';
+import { useBodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig';
 
 interface BodySceneProps {
   protocol: Protocol | null;
@@ -95,6 +96,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
   onZoomChange 
 }) => {
   const effectivePoints = points.length > 0 ? points : (protocol?.points || []);
+  const { config } = useBodyModelLightingConfig();
   const groupRef = useRef<THREE.Group>(null);
   const controlsRef = useRef<any>(null);
   const lastReportedScale = useRef(1);
@@ -185,6 +187,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 0.9, 5.2]} fov={38} />
+      <ExposureController exposure={config.exposure} />
       <OrbitControls
         ref={controlsRef}
         enablePan={true}
@@ -194,9 +197,9 @@ const BodyScene: React.FC<BodySceneProps> = ({
         makeDefault
       />
 
-      <ambientLight intensity={1.5} />
-      <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow />
-      <directionalLight position={[-10, 5, 5]} intensity={0.8} />
+      <ambientLight intensity={config.ambientIntensity} />
+      <directionalLight position={[config.keyLightX, config.keyLightY, 4]} intensity={config.keyLightIntensity} castShadow />
+      <directionalLight position={[config.fillLightX, config.fillLightY, -4]} intensity={config.fillLightIntensity} />
 
       <Suspense fallback={<LoadingOverlay />}>
         <group ref={groupRef}>
@@ -219,7 +222,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
               ))}
             </HumanModel>
           ) : (
-            <CorpoModel url={CORPO_MODEL_URL} textureUrl={CORPO_TEXTURE_URL} onClick={onModelTap ? handleModelBodyClick : undefined}>
+            <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelTap ? handleModelBodyClick : undefined}>
               <ScaleCapturer />
               {effectivePoints.map((point: StingPoint) => (
                 <StingPointMarker
@@ -241,7 +244,9 @@ const BodyScene: React.FC<BodySceneProps> = ({
         </group>
 
 
-        <Environment preset="city" />
+        {config.environmentEnabled && (
+          <Environment preset="city" environmentIntensity={config.environmentIntensity} />
+        )}
 
         <ContactShadows
           position={[0, 0, 0]}

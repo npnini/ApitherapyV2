@@ -18,6 +18,7 @@ import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
+import BodyModelTuner from './components/BodyModelTuner';
 import UserManagement from './components/UserManagement';
 import ActivityLog from './components/ActivityLog';
 import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
@@ -33,7 +34,7 @@ import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandalon
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_body_model' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -230,6 +231,7 @@ const AppInner: React.FC = () => {
     const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
+    const handleBodyModelAdminClick = () => { setCurrentView('admin_body_model'); };
     const handleMeasuresAdminClick = () => { setCurrentView('admin_measures'); };
     const handleProblemsAdminClick = () => { setCurrentView('admin_problems'); };
     const handleQuestionnaireAdminClick = () => { setCurrentView('admin_questionnaires'); };
@@ -511,6 +513,7 @@ const AppInner: React.FC = () => {
                     onLogout={handleLogout}
                     onAdminClick={handleAdminClick}
                     onPointsAdminClick={handlePointsAdminClick}
+                    onBodyModelAdminClick={handleBodyModelAdminClick}
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard}
                     onDataAnalysisClick={handleDataAnalysisClick}
@@ -538,6 +541,8 @@ const AppInner: React.FC = () => {
                                         <ProtocolAdmin />
                                         : currentView === 'admin_points' ?
                                             <PointsAdmin />
+                                            : currentView === 'admin_body_model' ?
+                                                <BodyModelTuner />
                                             : currentView === 'admin_measures' ?
                                                 <MeasureAdmin />
                                                 : currentView === 'admin_problems' ?
