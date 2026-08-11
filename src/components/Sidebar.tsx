@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
@@ -14,6 +14,7 @@ interface SidebarProps {
     onDataAnalysisClick: () => void;
     onPointsAdminClick: () => void;
     onBodyModelAdminClick: () => void;
+    onPointSideAnalysisClick: () => void;
     onMeasuresAdminClick: () => void;
     onProblemsAdminClick: () => void;
     onQuestionnaireAdminClick: () => void;
@@ -33,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onDataAnalysisClick,
     onPointsAdminClick,
     onBodyModelAdminClick,
+    onPointSideAnalysisClick,
     onMeasuresAdminClick,
     onProblemsAdminClick,
     onQuestionnaireAdminClick,
@@ -167,6 +169,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <button onClick={onPointsAdminClick} className={styles.configButton}>
                                     <MapPin size={16} className={styles.iconSecondary} />
                                     <span><T>Points Configuration</T></span>
+                                </button>
+                                <button onClick={onPointSideAnalysisClick} className={styles.configButton}>
+                                    <ClipboardCheck size={16} className={styles.iconSecondary} />
+                                    <span><T>Point Side &amp; Pairing Verification</T></span>
                                 </button>
                                 <button onClick={onAdminClick} className={styles.configButton}>
                                     <FileText size={16} className={styles.iconSecondary} />

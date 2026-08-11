@@ -19,6 +19,7 @@ import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import ApplicationSettings from './components/ApplicationSettings';
 import BodyModelTuner from './components/BodyModelTuner';
+import PointSideAnalysis from './components/PointSideAnalysis';
 import UserManagement from './components/UserManagement';
 import ActivityLog from './components/ActivityLog';
 import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
@@ -34,7 +35,7 @@ import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandalon
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_body_model' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -232,6 +233,7 @@ const AppInner: React.FC = () => {
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handleBodyModelAdminClick = () => { setCurrentView('admin_body_model'); };
+    const handlePointSideAnalysisClick = () => { setCurrentView('point_side_analysis'); };
     const handleMeasuresAdminClick = () => { setCurrentView('admin_measures'); };
     const handleProblemsAdminClick = () => { setCurrentView('admin_problems'); };
     const handleQuestionnaireAdminClick = () => { setCurrentView('admin_questionnaires'); };
@@ -514,6 +516,7 @@ const AppInner: React.FC = () => {
                     onAdminClick={handleAdminClick}
                     onPointsAdminClick={handlePointsAdminClick}
                     onBodyModelAdminClick={handleBodyModelAdminClick}
+                    onPointSideAnalysisClick={handlePointSideAnalysisClick}
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard}
                     onDataAnalysisClick={handleDataAnalysisClick}
@@ -543,6 +546,8 @@ const AppInner: React.FC = () => {
                                             <PointsAdmin />
                                             : currentView === 'admin_body_model' ?
                                                 <BodyModelTuner />
+                                            : currentView === 'point_side_analysis' ?
+                                                <PointSideAnalysis />
                                             : currentView === 'admin_measures' ?
                                                 <MeasureAdmin />
                                                 : currentView === 'admin_problems' ?
