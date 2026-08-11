@@ -19,5 +19,4 @@ export interface AppUser {
   address?: string;
   city?: string;
   country?: string;
-  preferredModel?: 'xbot' | 'corpo';
 }

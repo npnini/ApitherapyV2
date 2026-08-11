@@ -43,7 +43,7 @@ export function findSurfaceOffsetDirection(
   return guess;
 }
 
-/** Naive radial-from-vertical-axis fallback, used when there's no mesh to raycast against (e.g. xbot). */
+/** Naive radial-from-vertical-axis fallback, used when there's no mesh available to raycast against. */
 export function naiveRadialOffsetDirection(worldX: number, worldZ: number): THREE.Vector3 {
   const radial = Math.hypot(worldX, worldZ);
   return new THREE.Vector3(

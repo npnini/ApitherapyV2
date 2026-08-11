@@ -1333,7 +1333,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     onRoundComplete={handleRoundComplete}
                                     onNext={handleNextFromStinging}
                                     onBack={() => setViewState(isSensitivitySession ? 'sessionOpening' : 'problemSelection')}
-                                    preferredModel={user.preferredModel}
                                     customPoints={freeProtocolPoints}
                                     canGoToAnother={true}
                                     onExit={handleExitIncomplete}

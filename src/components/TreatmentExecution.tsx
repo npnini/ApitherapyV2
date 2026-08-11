@@ -36,7 +36,6 @@ interface TreatmentExecutionProps {
     onNext: (stungPointIds: string[], stungPointSides: Record<string, PointSide>) => void;
     onBack: () => void;
     onExit?: () => void;
-    preferredModel?: 'xbot' | 'corpo';
     customPoints?: StingPoint[];
     canGoToAnother: boolean;
 }
@@ -51,7 +50,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     onRoundComplete,
     onNext,
     onBack,
-    preferredModel = 'xbot',
     customPoints,
     canGoToAnother,
 }) => {
@@ -82,7 +80,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
     const [stungPointSides, setStungPointSides] = useState<Record<string, PointSide>>({});
     const [activePointId, setActivePointId] = useState<string | null>(null);
-    const [selectedModel, setSelectedModel] = useState<'xbot' | 'corpo'>(preferredModel);
     const [isRolling, setIsRolling] = useState(true);
     const [selectedSensitivity, setSelectedSensitivity] = useState<'all' | 'Low' | 'Medium' | 'High'>('all');
     const [pointDetailToShow, setPointDetailToShow] = useState<{ point: StingPoint; type: 'doc' | 'image' | 'text' } | null>(null);
@@ -220,13 +217,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const handleSetPointSide = (id: string, side: PointSide) => {
         setStungPointSides(prev => ({ ...prev, [id]: side }));
     };
-
-    // Lock to Corpo model in Free Selection (Proximity Tap uses Corpo coords only)
-    useEffect(() => {
-        if (!protocol && (!customPoints || customPoints.length === 0)) {
-            setSelectedModel('corpo');
-        }
-    }, [protocol, customPoints]);
 
     const handleModelTap = useCallback(async (pos: { x: number; y: number; z: number }) => {
         if (protocol) return; // only active in Free Selection
@@ -410,23 +400,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     </div>
 
 
-                    {/* Model Switcher */}
-                    {!!protocol && (
-                        <div className={styles.modelSwitcher}>
-                            <button
-                                className={`${styles.modelTab} ${selectedModel === 'xbot' ? styles.modelTabActive : ''}`}
-                                onClick={() => setSelectedModel('xbot')}
-                            >
-                                <T>Xbot</T>
-                            </button>
-                            <button
-                                className={`${styles.modelTab} ${selectedModel === 'corpo' ? styles.modelTabActive : ''}`}
-                                onClick={() => setSelectedModel('corpo')}
-                            >
-                                <T>Corpo</T>
-                            </button>
-                        </div>
-                    )}
 
                     {!protocol && displayedPoints.length === 0 && proxTapMode === 'idle' && (
                         <div className={styles.proxTapCTA}>
@@ -556,7 +529,6 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                     onPointSelect={handlePointSelect}
                                     activePointId={activePointId}
                                     isRolling={isRolling}
-                                    selectedModel={selectedModel}
                                     resetTrigger={resetTrigger}
                                     onZoomChange={setCanvasScale}
                                     sensitivityColorMap={sensitivityColorMap}

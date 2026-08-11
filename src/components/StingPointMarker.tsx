@@ -14,7 +14,6 @@ interface StingPointMarkerProps {
   onPointerOut?: () => void;
   isHighlighted: boolean;
   isHovered?: boolean;
-  selectedModel: 'xbot' | 'corpo';
   parentScale?: number;
   sensitivityColor?: string; // blue shade based on sensitivity level
   corpoObj?: THREE.Object3D | null;
@@ -31,7 +30,6 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   onPointerOut,
   isHighlighted,
   isHovered = false,
-  selectedModel,
   parentScale = 1,
   sensitivityColor,
   corpoObj,
@@ -53,7 +51,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
     }
   });
 
-  const transformedPosition = getTransformedPosition(point, selectedModel);
+  const transformedPosition = getTransformedPosition(point);
   const position = {
     x: transformedPosition.x * parentScale,
     y: transformedPosition.y * parentScale,
@@ -64,12 +62,12 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   // against the actual body mesh) so it sits attached to the skin instead of
   // drifting above it, and is correctly occluded when on the far side of the model.
   const offsetDir = useMemo(() => {
-    if (selectedModel === 'corpo' && corpoObj) {
+    if (corpoObj) {
       return findSurfaceOffsetDirection(position.x, position.y, position.z, corpoObj);
     }
     return naiveRadialOffsetDirection(position.x, position.z);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [position.x, position.y, position.z, selectedModel, corpoObj]);
+  }, [position.x, position.y, position.z, corpoObj]);
 
   const attachedPosition = {
     x: position.x + offsetDir.x * MARKER_OUTWARD_OFFSET,
@@ -78,7 +76,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   };
 
   // Safety check for display
-  if (!point.positions?.[selectedModel] && selectedModel !== 'xbot') return null;
+  if (!point.positions?.corpo) return null;
 
   // Dynamic label position logic
   // Base gutter is 0.8 world units. LineScale shortens it.

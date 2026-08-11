@@ -7,10 +7,10 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { useLoader } from '@react-three/fiber';
 import { Protocol } from '../types/protocol';
 import { StingPoint } from '../types/apipuncture';
-import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL } from '../constants';
+import { CORPO_MODEL_URL } from '../constants';
 import { T } from './T';
 import StingPointMarker from './StingPointMarker';
-import { HumanModel, CorpoModel, ExposureController } from './shared/ModelComponents';
+import { CorpoModel, ExposureController } from './shared/ModelComponents';
 import { getTransformedPosition } from '../utils/pointMapping';
 import { useBodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig';
 import { MARKER_OUTWARD_OFFSET, findSurfaceOffsetDirection, naiveRadialOffsetDirection } from '../utils/markerSurfaceOffset';
@@ -22,7 +22,6 @@ interface BodySceneProps {
   activePointId: string | null;
   highlightedPointIds?: Set<string>;
   isRolling: boolean;
-  selectedModel: 'xbot' | 'corpo';
   resetTrigger?: number;
   sensitivityColorMap?: Record<string, string>; // Map of sensitivity level to color
   onModelTap?: (normalizedPos: { x: number; y: number; z: number }) => void;
@@ -38,8 +37,7 @@ interface BodySceneProps {
  */
 const HitMarker: React.FC<{ position: { x: number; y: number; z: number }; parentScale?: number; corpoObj?: THREE.Object3D | null }> = ({ position, parentScale = 1, corpoObj }) => {
   const world = getTransformedPosition(
-    { code: 'TAP', positions: { corpo: position } } as any,
-    'corpo'
+    { code: 'TAP', positions: { corpo: position } } as any
   );
   const worldX = world.x * parentScale;
   const worldY = world.y * parentScale;
@@ -107,8 +105,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
   activePointId,
   highlightedPointIds,
   isRolling,
-  selectedModel, 
-  resetTrigger, 
+  resetTrigger,
   sensitivityColorMap, 
   onModelTap, 
   tapPosition, 
@@ -223,45 +220,24 @@ const BodyScene: React.FC<BodySceneProps> = ({
 
       <Suspense fallback={<LoadingOverlay />}>
         <group ref={groupRef}>
-          {selectedModel === 'xbot' ? (
-            <HumanModel url={DEMO_HUMAN_MODEL_URL} onClick={onModelTap ? handleModelBodyClick : undefined}>
-              <ScaleCapturer />
-              {effectivePoints.map((point: StingPoint) => (
-                <StingPointMarker
-                  key={point.id}
-                  point={point}
-                  onClick={onPointSelect}
-                  onDoubleClick={handleDoubleClick}
-                  isHighlighted={activePointId === point.id || !!highlightedPointIds?.has(point.id)}
-                  isHovered={hoveredPointId === point.id}
-                  onPointerOver={() => setHoveredPointId(point.id)}
-                  onPointerOut={() => setHoveredPointId(null)}
-                  selectedModel={selectedModel}
-                  sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
-                />
-              ))}
-            </HumanModel>
-          ) : (
-            <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelTap ? handleModelBodyClick : undefined} onModelLoad={setCorpoObj}>
-              <ScaleCapturer />
-              {effectivePoints.map((point: StingPoint) => (
-                <StingPointMarker
-                  key={point.id}
-                  point={point}
-                  onClick={onPointSelect}
-                  onDoubleClick={handleDoubleClick}
-                  isHighlighted={activePointId === point.id || !!highlightedPointIds?.has(point.id)}
-                  isHovered={hoveredPointId === point.id}
-                  onPointerOver={() => setHoveredPointId(point.id)}
-                  onPointerOut={() => setHoveredPointId(null)}
-                  selectedModel={selectedModel}
-                  sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
-                  corpoObj={corpoObj}
-                />
-              ))}
-              {tapPosition && <HitMarker position={tapPosition} corpoObj={corpoObj} />}
-            </CorpoModel>
-          )}
+          <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelTap ? handleModelBodyClick : undefined} onModelLoad={setCorpoObj}>
+            <ScaleCapturer />
+            {effectivePoints.map((point: StingPoint) => (
+              <StingPointMarker
+                key={point.id}
+                point={point}
+                onClick={onPointSelect}
+                onDoubleClick={handleDoubleClick}
+                isHighlighted={activePointId === point.id || !!highlightedPointIds?.has(point.id)}
+                isHovered={hoveredPointId === point.id}
+                onPointerOver={() => setHoveredPointId(point.id)}
+                onPointerOut={() => setHoveredPointId(null)}
+                sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
+                corpoObj={corpoObj}
+              />
+            ))}
+            {tapPosition && <HitMarker position={tapPosition} corpoObj={corpoObj} />}
+          </CorpoModel>
         </group>
 
 

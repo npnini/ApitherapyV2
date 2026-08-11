@@ -21,7 +21,6 @@ interface PointsModelViewerProps {
 const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points }) => {
     const { language } = useTranslationContext();
     const [isRolling, setIsRolling] = useState(true);
-    const [selectedModel, setSelectedModel] = useState<'xbot' | 'corpo'>('xbot');
     const [highlightedPointIds, setHighlightedPointIds] = useState<Set<string>>(new Set());
 
     const togglePoint = (id: string) => {
@@ -70,20 +69,6 @@ const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points }) => {
                         {isRolling ? <Pause size={16} /> : <Play size={16} />}
                         <T>{isRolling ? 'Pause rotation' : 'Resume rotation'}</T>
                     </button>
-                    <div className={styles.modelToggle}>
-                        <button
-                            className={`${styles.modelToggleButton} ${selectedModel === 'xbot' ? styles.modelToggleActive : ''}`}
-                            onClick={() => setSelectedModel('xbot')}
-                        >
-                            <T>Xbot</T>
-                        </button>
-                        <button
-                            className={`${styles.modelToggleButton} ${selectedModel === 'corpo' ? styles.modelToggleActive : ''}`}
-                            onClick={() => setSelectedModel('corpo')}
-                        >
-                            <T>Corpo</T>
-                        </button>
-                    </div>
                 </div>
                 <Canvas className={styles.canvas}>
                     <BodyScene
@@ -93,7 +78,6 @@ const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points }) => {
                         activePointId={null}
                         highlightedPointIds={highlightedPointIds}
                         isRolling={isRolling}
-                        selectedModel={selectedModel}
                     />
                 </Canvas>
             </div>

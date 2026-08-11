@@ -3,8 +3,8 @@ import React, { Suspense, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, PerspectiveCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { HumanModel, CorpoModel, ExposureController } from './shared/ModelComponents';
-import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL } from '../constants';
+import { CorpoModel, ExposureController } from './shared/ModelComponents';
+import { CORPO_MODEL_URL } from '../constants';
 import { T } from './T';
 import styles from './PointsAdmin.module.css';
 import { getTransformedPosition } from '../utils/pointMapping';
@@ -12,23 +12,21 @@ import { useBodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig'
 import { MARKER_OUTWARD_OFFSET, findSurfaceOffsetDirection, naiveRadialOffsetDirection } from '../utils/markerSurfaceOffset';
 
 interface PointPlacementSceneProps {
-  selectedModel: 'xbot' | 'corpo';
   position: { x: number; y: number; z: number; isManual?: boolean } | null;
   onPositionChange: (pos: { x: number; y: number; z: number; isManual?: boolean }) => void;
   isLocked: boolean;
 }
 
-const ActiveMarker = ({ position, selectedModel, parentScale = 1, corpoObj }: {
+const ActiveMarker = ({ position, parentScale = 1, corpoObj }: {
   position: { x: number; y: number; z: number; isManual?: boolean } | null;
-  selectedModel: 'xbot' | 'corpo';
   parentScale?: number;
   corpoObj?: THREE.Object3D | null;
 }) => {
   // Use the same consistent transformation logic
   const transformedPosition = position ? getTransformedPosition({
     code: 'NEW',
-    positions: { [selectedModel]: position }
-  }, selectedModel) : null;
+    positions: { corpo: position }
+  }) : null;
 
   const worldX = transformedPosition ? transformedPosition.x * parentScale : 0;
   const worldY = transformedPosition ? transformedPosition.y * parentScale : 0;
@@ -36,12 +34,12 @@ const ActiveMarker = ({ position, selectedModel, parentScale = 1, corpoObj }: {
 
   const offsetDir = useMemo(() => {
     if (!transformedPosition) return new THREE.Vector3(0, 0, 1);
-    if (selectedModel === 'corpo' && corpoObj) {
+    if (corpoObj) {
       return findSurfaceOffsetDirection(worldX, worldY, worldZ, corpoObj);
     }
     return naiveRadialOffsetDirection(worldX, worldZ);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [worldX, worldY, worldZ, selectedModel, corpoObj]);
+  }, [worldX, worldY, worldZ, corpoObj]);
 
   if (!position || !transformedPosition) return null;
 
@@ -100,9 +98,8 @@ const LoadingOverlay = () => (
   </Html>
 );
 
-const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({ 
-  selectedModel, 
-  position, 
+const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
+  position,
   onPositionChange,
   isLocked
 }) => {
@@ -121,15 +118,10 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
       const rawX = point.x / derivedScale;
       let rawY = point.y / derivedScale;
       const rawZ = point.z / derivedScale;
-      
-      // If we are clicking on the corpo model, we need to reverse the legacy 95-unit Y offset
-      // so that it matches how getTransformedPosition re-applies it.
-      if (selectedModel === 'corpo') {
-        rawY -= 95;
-      }
-      
-      // We set isManual: true so that xbot points stay exactly where we clicked them
-      // (bypassing the automatic arm alignment heuristics).
+
+      // Reverse the legacy 95-unit Y offset so it matches how getTransformedPosition re-applies it.
+      rawY -= 95;
+
       onPositionChange({ x: rawX, y: rawY, z: rawZ, isManual: true });
     };
 
@@ -143,17 +135,10 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
 
     return (
       <Suspense fallback={<LoadingOverlay />}>
-        {selectedModel === 'xbot' ? (
-          <HumanModel url={DEMO_HUMAN_MODEL_URL} onClick={onModelClick}>
-            <ScaleCapturer />
-            <ActiveMarker position={position} selectedModel={selectedModel} />
-          </HumanModel>
-        ) : (
-          <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelClick} onModelLoad={setCorpoObj}>
-            <ScaleCapturer />
-            <ActiveMarker position={position} selectedModel={selectedModel} corpoObj={corpoObj} />
-          </CorpoModel>
-        )}
+        <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelClick} onModelLoad={setCorpoObj}>
+          <ScaleCapturer />
+          <ActiveMarker position={position} corpoObj={corpoObj} />
+        </CorpoModel>
       </Suspense>
     );
   };

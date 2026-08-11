@@ -15,7 +15,6 @@ export interface StingPoint {
   sensitivity?: 'Low' | 'Medium' | 'High';
   imageURL?: string;
   positions: {
-    xbot?: Vector3Pos;
     corpo?: Vector3Pos;
   };
   documentUrl?: { [key: string]: string } | string;

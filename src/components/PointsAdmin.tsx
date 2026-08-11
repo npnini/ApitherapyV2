@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, RefreshCw, Lock, Unlock } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, Lock, Unlock } from 'lucide-react';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import { T, useT, useTranslationContext } from '../components/T';
@@ -141,11 +141,10 @@ const PointsAdmin: React.FC = () => {
         // Normalize legacy fields and handle migration to 'positions'
         const pointToEdit = { ...point };
 
-        // Ensure both position formats exist and migration from legacy 'position'
+        // Ensure position format exists and migration from legacy 'position'
         const positions = point.positions || {};
         pointToEdit.positions = {
-            xbot: positions.xbot || (point as any).position || { x: 0, y: 0, z: 0 },
-            corpo: positions.corpo || { x: 0, y: 0, z: 0 }
+            corpo: positions.corpo || (point as any).position || { x: 0, y: 0, z: 0 }
         };
 
         if (typeof pointToEdit.label === 'string') {
@@ -163,7 +162,6 @@ const PointsAdmin: React.FC = () => {
 
         setEditingPoint(pointToEdit);
         setOriginalPoint(pointToEdit);
-        setSelectedPreviewModel('corpo');
     };
 
     const handleAddNew = () => {
@@ -174,7 +172,6 @@ const PointsAdmin: React.FC = () => {
             label: {},
             description: {},
             positions: {
-                xbot: { x: 0, y: 0, z: 0 },
                 corpo: { x: 0, y: 0, z: 0 }
             },
             documentUrl: {},
@@ -245,7 +242,6 @@ const PointsAdmin: React.FC = () => {
                 sensitivity: pointToSave.sensitivity || 'Medium',
                 imageURL: pointToSave.imageURL || '',
                 positions: {
-                    xbot: pointToSave.positions?.xbot || { x: 0, y: 0, z: 0 },
                     corpo: pointToSave.positions?.corpo || { x: 0, y: 0, z: 0 }
                 },
                 documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
@@ -507,7 +503,6 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         .filter(l => SUPPORTED_LANGS.includes(l)), [currentLang, SUPPORTED_LANGS]);
     const [isDirty, setIsDirty] = useState(initialIsDirty);
 
-    const [selectedPreviewModel, setSelectedPreviewModel] = useState<'corpo' | 'xbot'>('corpo');
     const [isRolling, setIsRolling] = useState(true);
 
     const stringsToRegister = useMemo(() => [
@@ -533,10 +528,6 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         "URL to image",
         "3D Coordinates",
         "Anatomical",
-        "Mannequin",
-        "Sync from Corpo",
-        "Corpo (Anatomy)",
-        "Xbot (Mannequin)",
         "Auto-Rotate"
     ], []);
 
@@ -562,40 +553,18 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         setIsDirty(true);
     };
 
-    const handlePosChange = (modelId: 'xbot' | 'corpo', field: 'x' | 'y' | 'z', value: string) => {
+    const handlePosChange = (field: 'x' | 'y' | 'z', value: string) => {
         const val = parseFloat(value) || 0;
-        const currentPositions = formData.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } };
-        const currentModelPos = currentPositions[modelId] || { x: 0, y: 0, z: 0 };
-
-        handlePositionChange({
-            ...currentModelPos,
-            [field]: val
-        });
+        const currentPos = formData.positions?.corpo || { x: 0, y: 0, z: 0 };
+        handlePositionChange({ ...currentPos, [field]: val });
     };
 
     const handlePositionChange = (newPos: { x: number, y: number, z: number }) => {
         setFormData(prev => ({
             ...prev,
-            positions: {
-                ...(prev.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } }),
-                [selectedPreviewModel]: newPos
-            }
+            positions: { ...(prev.positions || {}), corpo: newPos }
         }));
         setIsDirty(true);
-    };
-
-    const handleSyncXbot = () => {
-        if (formData.positions?.corpo) {
-            setFormData(prev => ({
-                ...prev,
-                positions: {
-                    ...(prev.positions || { xbot: { x: 0, y: 0, z: 0 }, corpo: { x: 0, y: 0, z: 0 } }),
-                    xbot: { ...prev.positions!.corpo!, isManual: false }
-                }
-            }));
-            setSelectedPreviewModel('xbot');
-            setIsDirty(true);
-        }
     };
 
     const handleFileChange = (newFile: File | null) => {
@@ -795,45 +764,34 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
 
                             <div className={styles.coordinateSection}>
                                 <div className={styles.coordinateHeader}>
-                                    <label className={styles.label}><T>3D Coordinates</T> - <T>{selectedPreviewModel === 'corpo' ? 'Anatomical' : 'Mannequin'}</T></label>
-                                    {selectedPreviewModel === 'xbot' && (
-                                        <button 
-                                            type="button" 
-                                            onClick={handleSyncXbot}
-                                            className={styles.syncButton}
-                                            title="Sync from Anatomical (Corpo)"
-                                        >
-                                            <RefreshCw size={14} />
-                                            <T>Sync from Corpo</T>
-                                        </button>
-                                    )}
+                                    <label className={styles.label}><T>3D Coordinates</T> - <T>Anatomical</T></label>
                                 </div>
                                 <div className={styles.coordinateGrid}>
                                     <div className={styles.coordInput}>
                                         <span>X</span>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             step="0.001"
-                                            value={formData.positions?.[selectedPreviewModel]?.x || 0}
-                                            onChange={(e) => handlePosChange(selectedPreviewModel, 'x', e.target.value)}
+                                            value={formData.positions?.corpo?.x || 0}
+                                            onChange={(e) => handlePosChange('x', e.target.value)}
                                         />
                                     </div>
                                     <div className={styles.coordInput}>
                                         <span>Y</span>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             step="0.001"
-                                            value={formData.positions?.[selectedPreviewModel]?.y || 0}
-                                            onChange={(e) => handlePosChange(selectedPreviewModel, 'y', e.target.value)}
+                                            value={formData.positions?.corpo?.y || 0}
+                                            onChange={(e) => handlePosChange('y', e.target.value)}
                                         />
                                     </div>
                                     <div className={styles.coordInput}>
                                         <span>Z</span>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             step="0.001"
-                                            value={formData.positions?.[selectedPreviewModel]?.z || 0}
-                                            onChange={(e) => handlePosChange(selectedPreviewModel, 'z', e.target.value)}
+                                            value={formData.positions?.corpo?.z || 0}
+                                            onChange={(e) => handlePosChange('z', e.target.value)}
                                         />
                                     </div>
                                 </div>
@@ -859,21 +817,6 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                     {/* Right Panel: 3D Viewport */}
                     <div className={styles.rightPanel}>
                         <div className={styles.viewportControls}>
-                            <div className={styles.controlGroup}>
-                                <button 
-                                    className={`${styles.controlButton} ${selectedPreviewModel === 'corpo' ? styles.controlButtonActive : ''}`}
-                                    onClick={() => setSelectedPreviewModel('corpo')}
-                                >
-                                    <T>Corpo (Anatomy)</T>
-                                </button>
-                                <button 
-                                    className={`${styles.controlButton} ${selectedPreviewModel === 'xbot' ? styles.controlButtonActive : ''}`}
-                                    onClick={() => setSelectedPreviewModel('xbot')}
-                                >
-                                    <T>Xbot (Mannequin)</T>
-                                </button>
-                            </div>
-
                             <label className={styles.toggleLabel}>
                                 <span><T>Auto-Rotate</T></span>
                                 <div className={styles.toggle} onClick={() => setIsRolling(r => !r)}>
@@ -885,9 +828,8 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
 
                         <div className={styles.canvasScrollWrapper}>
                             <div className={styles.canvasSizer}>
-                                <PointPlacementScene 
-                                    selectedModel={selectedPreviewModel}
-                                    position={formData.positions?.[selectedPreviewModel] || null}
+                                <PointPlacementScene
+                                    position={formData.positions?.corpo || null}
                                     onPositionChange={handlePositionChange}
                                     isLocked={!isRolling}
                                 />
@@ -895,7 +837,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                         </div>
 
                         <div className={styles.modelLabel}>
-                            {selectedPreviewModel === 'corpo' ? 'ANATOMICAL SOURCE' : 'MANNEQUIN TARGET'}
+                            ANATOMICAL SOURCE
                         </div>
                     </div>
                 </div>
