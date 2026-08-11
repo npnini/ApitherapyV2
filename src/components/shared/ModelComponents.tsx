@@ -73,6 +73,7 @@ export interface CorpoMaterialConfig {
 
 interface CorpoModelProps extends ModelProps {
   materialConfig: CorpoMaterialConfig;
+  onModelLoad?: (obj: THREE.Object3D) => void;
 }
 
 const FLAT_SKIN_COLOR = '#e3b28f';
@@ -142,21 +143,23 @@ function buildMaterial(mode: 'flat' | 'triplanar', roughness: number): THREE.Mat
   return material;
 }
 
-export const CorpoModel: React.FC<CorpoModelProps> = ({ url, materialConfig, children, onPointerDown, onClick }) => {
+export const CorpoModel: React.FC<CorpoModelProps> = ({ url, materialConfig, onModelLoad, children, onPointerDown, onClick }) => {
   const obj = useLoader(OBJLoader, url);
   const groupRef = useRef<THREE.Group>(null);
   const [modelScale, setModelScale] = React.useState(1);
 
-  React.useLayoutEffect(() => {
-    if (!groupRef.current) return;
+  React.useEffect(() => {
+    onModelLoad?.(obj);
+  }, [obj]);
 
-    // Work around a malformed corpo.obj: a single stray `l` (line) command at
-    // the very end of the file flips OBJLoader's classification of the entire
-    // ~180k-vertex body object to "Line", so it gets built as a LineSegments
-    // (drawing every triangle edge as a wireframe line) instead of a Mesh —
-    // even though the underlying position/normal buffer is valid triangulated
-    // face data. Rebuild it as a real Mesh from the same geometry. Idempotent:
-    // on later re-runs there's nothing left to fix.
+  // Work around a malformed corpo.obj: a single stray `l` (line) command at
+  // the very end of the file flips OBJLoader's classification of the entire
+  // ~180k-vertex body object to "Line", so it gets built as a LineSegments
+  // (drawing every triangle edge as a wireframe line) instead of a Mesh —
+  // even though the underlying position/normal buffer is valid triangulated
+  // face data. Rebuild it as a real Mesh from the same geometry. Depends only
+  // on obj (not materialConfig) so it runs once per loaded model.
+  React.useLayoutEffect(() => {
     const misclassified: THREE.LineSegments[] = [];
     obj.traverse((child: any) => {
       if (child.isLineSegments) misclassified.push(child);
@@ -167,15 +170,15 @@ export const CorpoModel: React.FC<CorpoModelProps> = ({ url, materialConfig, chi
       line.parent?.add(mesh);
       line.parent?.remove(line);
     });
+  }, [obj]);
 
-    obj.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.material = buildMaterial(materialConfig.mode, materialConfig.roughness);
-      }
-    });
+  // Center/scale the model. Deliberately independent of materialConfig: the
+  // <primitive scale={modelScale}> below mutates obj.scale directly, so if
+  // this effect re-ran after that mutation (e.g. on every material/roughness
+  // change) it would measure the already-scaled object and compound the
+  // transform, making the model balloon to ~100x size every other change.
+  React.useLayoutEffect(() => {
+    if (!groupRef.current) return;
 
     const box = new THREE.Box3().setFromObject(obj);
     const size = box.getSize(new THREE.Vector3());
@@ -188,6 +191,19 @@ export const CorpoModel: React.FC<CorpoModelProps> = ({ url, materialConfig, chi
     groupRef.current.position.x = -center.x * scale;
     groupRef.current.position.y = -box.min.y * scale;
     groupRef.current.position.z = -center.z * scale;
+  }, [obj]);
+
+  // Material assignment is safe to re-run on every materialConfig change —
+  // it only swaps each mesh's .material, never touches scale/position.
+  React.useLayoutEffect(() => {
+    obj.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.material = buildMaterial(materialConfig.mode, materialConfig.roughness);
+      }
+    });
   }, [obj, materialConfig.mode, materialConfig.roughness]);
 
   return (

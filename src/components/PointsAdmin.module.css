@@ -947,13 +947,11 @@ input:checked+.slider:before {
     background: var(--color-border-hover);
 }
 
-/* 
-   R3F fills this div. The sizer overflows the scroll wrapper 
-   to produce scrollbars in both axes, allowing zoomed-in navigation.
-*/
+/* R3F fills this div, sized to the visible scroll wrapper so the model is
+   framed correctly by default (OrbitControls zoom/pan handle navigation). */
 .canvasSizer {
-    width: 1200px;
-    height: 1800px;
+    width: 100%;
+    height: 100%;
     position: relative;
     background: radial-gradient(circle at center, #f8fafc 0%, #f1f5f9 100%);
     margin: 0 auto;
@@ -964,6 +962,7 @@ input:checked+.slider:before {
     height: 100%;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .canvas {

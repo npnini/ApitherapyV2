@@ -13,6 +13,7 @@ import StingPointMarker from './StingPointMarker';
 import { HumanModel, CorpoModel, ExposureController } from './shared/ModelComponents';
 import { getTransformedPosition } from '../utils/pointMapping';
 import { useBodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig';
+import { MARKER_OUTWARD_OFFSET, findSurfaceOffsetDirection, naiveRadialOffsetDirection } from '../utils/markerSurfaceOffset';
 
 interface BodySceneProps {
   protocol: Protocol | null;
@@ -35,13 +36,32 @@ interface BodySceneProps {
  * `position` is in normalized/stored coordinate space (positions.corpo format).
  * getTransformedPosition converts it back to Three.js world coords.
  */
-const HitMarker: React.FC<{ position: { x: number; y: number; z: number }; parentScale?: number }> = ({ position, parentScale = 1 }) => {
+const HitMarker: React.FC<{ position: { x: number; y: number; z: number }; parentScale?: number; corpoObj?: THREE.Object3D | null }> = ({ position, parentScale = 1, corpoObj }) => {
   const world = getTransformedPosition(
     { code: 'TAP', positions: { corpo: position } } as any,
     'corpo'
   );
+  const worldX = world.x * parentScale;
+  const worldY = world.y * parentScale;
+  const worldZ = world.z * parentScale;
+
+  // Nudges the marker outward along the true local surface normal (via raycast
+  // against the actual body mesh) so it stays attached to the tapped skin
+  // location instead of floating above it when the model is rotated.
+  const offsetDir = useMemo(() => {
+    if (corpoObj) return findSurfaceOffsetDirection(worldX, worldY, worldZ, corpoObj);
+    return naiveRadialOffsetDirection(worldX, worldZ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldX, worldY, worldZ, corpoObj]);
+
   return (
-    <mesh position={[world.x * parentScale, world.y * parentScale, world.z * parentScale]}>
+    <mesh
+      position={[
+        worldX + offsetDir.x * MARKER_OUTWARD_OFFSET,
+        worldY + offsetDir.y * MARKER_OUTWARD_OFFSET,
+        worldZ + offsetDir.z * MARKER_OUTWARD_OFFSET,
+      ]}
+    >
       <sphereGeometry args={[0.018, 16, 16]} />
       <meshStandardMaterial
         color="#f97316"
@@ -49,7 +69,6 @@ const HitMarker: React.FC<{ position: { x: number; y: number; z: number }; paren
         emissiveIntensity={1.2}
         transparent
         opacity={0.9}
-        depthTest={false}
       />
     </mesh>
   );
@@ -105,6 +124,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
   const [hoveredPointId, setHoveredPointId] = React.useState<string | null>(null);
 
   const [derivedScale, setDerivedScale] = React.useState(1);
+  const [corpoObj, setCorpoObj] = React.useState<THREE.Object3D | null>(null);
 
   const ScaleCapturer = ({ parentScale = 1 }: { parentScale?: number }) => {
     React.useEffect(() => { setDerivedScale(parentScale); }, [parentScale]);
@@ -222,7 +242,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
               ))}
             </HumanModel>
           ) : (
-            <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelTap ? handleModelBodyClick : undefined}>
+            <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelTap ? handleModelBodyClick : undefined} onModelLoad={setCorpoObj}>
               <ScaleCapturer />
               {effectivePoints.map((point: StingPoint) => (
                 <StingPointMarker
@@ -236,9 +256,10 @@ const BodyScene: React.FC<BodySceneProps> = ({
                   onPointerOut={() => setHoveredPointId(null)}
                   selectedModel={selectedModel}
                   sensitivityColor={sensitivityColorMap?.[point.sensitivity || '']}
+                  corpoObj={corpoObj}
                 />
               ))}
-              {tapPosition && <HitMarker position={tapPosition} />}
+              {tapPosition && <HitMarker position={tapPosition} corpoObj={corpoObj} />}
             </CorpoModel>
           )}
         </group>

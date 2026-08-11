@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { Html, Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { StingPoint } from '../types/apipuncture';
 import { getTransformedPosition } from '../utils/pointMapping';
+import { MARKER_OUTWARD_OFFSET, findSurfaceOffsetDirection, naiveRadialOffsetDirection } from '../utils/markerSurfaceOffset';
 
 interface StingPointMarkerProps {
   point: StingPoint;
@@ -16,6 +17,7 @@ interface StingPointMarkerProps {
   selectedModel: 'xbot' | 'corpo';
   parentScale?: number;
   sensitivityColor?: string; // blue shade based on sensitivity level
+  corpoObj?: THREE.Object3D | null;
 }
 
 /**
@@ -32,6 +34,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   selectedModel,
   parentScale = 1,
   sensitivityColor,
+  corpoObj,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [lineScale, setLineScale] = useState(1);
@@ -57,6 +60,23 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
     z: transformedPosition.z * parentScale
   };
 
+  // Nudges the marker outward along the true local surface normal (via raycast
+  // against the actual body mesh) so it sits attached to the skin instead of
+  // drifting above it, and is correctly occluded when on the far side of the model.
+  const offsetDir = useMemo(() => {
+    if (selectedModel === 'corpo' && corpoObj) {
+      return findSurfaceOffsetDirection(position.x, position.y, position.z, corpoObj);
+    }
+    return naiveRadialOffsetDirection(position.x, position.z);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position.x, position.y, position.z, selectedModel, corpoObj]);
+
+  const attachedPosition = {
+    x: position.x + offsetDir.x * MARKER_OUTWARD_OFFSET,
+    y: position.y + offsetDir.y * MARKER_OUTWARD_OFFSET,
+    z: position.z + offsetDir.z * MARKER_OUTWARD_OFFSET,
+  };
+
   // Safety check for display
   if (!point.positions?.[selectedModel] && selectedModel !== 'xbot') return null;
 
@@ -75,7 +95,7 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
   const activeColor = isHighlighted ? highlightColor : hoverColor;
 
   return (
-    <group ref={groupRef} position={[position.x, position.y, position.z]} renderOrder={999}>
+    <group ref={groupRef} position={[attachedPosition.x, attachedPosition.y, attachedPosition.z]} renderOrder={999}>
       <mesh
         onClick={(e) => {
           e.stopPropagation();
@@ -102,8 +122,6 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
           emissiveIntensity={isVisible ? 2.5 : 0.8}
           transparent={!isVisible}
           opacity={isVisible ? 1 : 0.6}
-          depthTest={false}
-          depthWrite={false}
         />
       </mesh>
 
@@ -114,8 +132,6 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
           color={isVisible ? activeColor : "#94a3b8"}
           transparent
           opacity={isVisible ? 0.8 : 0.3}
-          depthTest={false}
-          depthWrite={false}
         />
       </mesh>
 

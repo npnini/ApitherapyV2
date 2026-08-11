@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, PerspectiveCamera } from '@react-three/drei';
+import * as THREE from 'three';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -92,6 +93,23 @@ const BodyModelTuner: React.FC = () => {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  // Lets the admin scroll the camera target up/down (feet → head) at whatever
+  // zoom level they're currently at, since OrbitControls' default target is
+  // fixed and mouse drag-panning alone isn't obvious when zoomed in close.
+  const controlsRef = useRef<any>(null);
+  const [targetY, setTargetY] = useState(0.9);
+
+  const setTargetHeight = useCallback((newY: number) => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const camera = controls.object as THREE.PerspectiveCamera;
+    const delta = newY - controls.target.y;
+    controls.target.y = newY;
+    camera.position.y += delta;
+    controls.update();
+    setTargetY(newY);
+  }, []);
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
@@ -139,6 +157,7 @@ const BodyModelTuner: React.FC = () => {
                 <PerspectiveCamera makeDefault position={[0, 0.9, 5.2]} fov={38} />
                 <ExposureController exposure={draft.exposure} />
                 <OrbitControls
+                  ref={controlsRef}
                   enablePan
                   minDistance={0.2}
                   maxDistance={7}
@@ -165,6 +184,19 @@ const BodyModelTuner: React.FC = () => {
         </div>
 
         <div className={styles.controlPanel}>
+          <div className={styles.section}>
+            <p className={styles.sectionTitle}><T>View</T></p>
+            <SliderField
+              label={<T>Scroll up/down (feet → head)</T>}
+              value={targetY}
+              min={0}
+              max={1.9}
+              step={0.01}
+              onChange={setTargetHeight}
+              hint={<T>Moves the camera target while keeping your current zoom and rotation.</T>}
+            />
+          </div>
+
           <div className={styles.section}>
             <p className={styles.sectionTitle}><T>Lighting</T></p>
 
@@ -194,24 +226,6 @@ const BodyModelTuner: React.FC = () => {
               max={3}
               step={0.05}
               onChange={(v) => setField('keyLightIntensity', v)}
-            />
-
-            <SliderField
-              label={<T>Key light side offset</T>}
-              value={draft.keyLightX}
-              min={-12}
-              max={12}
-              step={0.5}
-              onChange={(v) => setField('keyLightX', v)}
-            />
-
-            <SliderField
-              label={<T>Key light height</T>}
-              value={draft.keyLightY}
-              min={0.3}
-              max={12}
-              step={0.1}
-              onChange={(v) => setField('keyLightY', v)}
             />
 
             <SliderField
@@ -273,30 +287,6 @@ const BodyModelTuner: React.FC = () => {
                 onChange={(v) => setField('environmentIntensity', v)}
               />
             )}
-          </div>
-
-          <div className={styles.section}>
-            <p className={styles.sectionTitle}><T>Material</T></p>
-            <div className={styles.radioGroup}>
-              <label className={styles.radioOption}>
-                <input
-                  type="radio"
-                  name="materialMode"
-                  checked={draft.materialMode === 'flat'}
-                  onChange={() => setField('materialMode', 'flat')}
-                />
-                <T>Flat skin tone</T>
-              </label>
-              <label className={styles.radioOption}>
-                <input
-                  type="radio"
-                  name="materialMode"
-                  checked={draft.materialMode === 'triplanar'}
-                  onChange={() => setField('materialMode', 'triplanar')}
-                />
-                <T>Triplanar procedural skin</T>
-              </label>
-            </div>
           </div>
 
           <div className={styles.actions}>

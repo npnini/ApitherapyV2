@@ -1,13 +1,15 @@
 
-import React, { Suspense, useRef, useState } from 'react';
+import React, { Suspense, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, PerspectiveCamera, Html } from '@react-three/drei';
+import * as THREE from 'three';
 import { HumanModel, CorpoModel, ExposureController } from './shared/ModelComponents';
 import { DEMO_HUMAN_MODEL_URL, CORPO_MODEL_URL } from '../constants';
 import { T } from './T';
 import styles from './PointsAdmin.module.css';
 import { getTransformedPosition } from '../utils/pointMapping';
 import { useBodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig';
+import { MARKER_OUTWARD_OFFSET, findSurfaceOffsetDirection, naiveRadialOffsetDirection } from '../utils/markerSurfaceOffset';
 
 interface PointPlacementSceneProps {
   selectedModel: 'xbot' | 'corpo';
@@ -16,41 +18,76 @@ interface PointPlacementSceneProps {
   isLocked: boolean;
 }
 
-const ActiveMarker = ({ position, selectedModel, parentScale = 1 }: { 
+const ActiveMarker = ({ position, selectedModel, parentScale = 1, corpoObj }: {
   position: { x: number; y: number; z: number; isManual?: boolean } | null;
   selectedModel: 'xbot' | 'corpo';
   parentScale?: number;
+  corpoObj?: THREE.Object3D | null;
 }) => {
-  if (!position) return null;
-
   // Use the same consistent transformation logic
-  const transformedPosition = getTransformedPosition({ 
-    code: 'NEW', 
-    positions: { [selectedModel]: position } 
-  }, selectedModel);
-  
+  const transformedPosition = position ? getTransformedPosition({
+    code: 'NEW',
+    positions: { [selectedModel]: position }
+  }, selectedModel) : null;
+
+  const worldX = transformedPosition ? transformedPosition.x * parentScale : 0;
+  const worldY = transformedPosition ? transformedPosition.y * parentScale : 0;
+  const worldZ = transformedPosition ? transformedPosition.z * parentScale : 0;
+
+  const offsetDir = useMemo(() => {
+    if (!transformedPosition) return new THREE.Vector3(0, 0, 1);
+    if (selectedModel === 'corpo' && corpoObj) {
+      return findSurfaceOffsetDirection(worldX, worldY, worldZ, corpoObj);
+    }
+    return naiveRadialOffsetDirection(worldX, worldZ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldX, worldY, worldZ, selectedModel, corpoObj]);
+
+  if (!position || !transformedPosition) return null;
+
   return (
-    <mesh position={[transformedPosition.x * parentScale, transformedPosition.y * parentScale, transformedPosition.z * parentScale]}>
+    <mesh
+      position={[
+        worldX + offsetDir.x * MARKER_OUTWARD_OFFSET,
+        worldY + offsetDir.y * MARKER_OUTWARD_OFFSET,
+        worldZ + offsetDir.z * MARKER_OUTWARD_OFFSET,
+      ]}
+    >
       <sphereGeometry args={[0.015, 16, 16]} />
-      <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.5} />
-      <Html distanceFactor={2}>
-        <div style={{
-          padding: '2px 6px',
-          background: '#ef4444',
-          color: 'white',
-          borderRadius: '4px',
-          fontSize: '10px',
-          fontWeight: 'bold',
-          transform: 'translateY(-20px)',
-          pointerEvents: 'none',
-          whiteSpace: 'nowrap'
-        }}>
-          NEW POSITION
-        </div>
-      </Html>
+      <meshStandardMaterial
+        color="#ef4444"
+        emissive="#ef4444"
+        emissiveIntensity={0.5}
+      />
     </mesh>
   );
 };
+
+// A fixed, screen-space instruction banner instead of a 3D-anchored "NEW POSITION"
+// label: the 3D-anchored label had to be re-projected to screen space every frame,
+// which made it drift off from the marker, oversize itself, and sometimes render
+// far from the actual point depending on camera angle/distance. Static text has
+// none of those failure modes.
+const PlacementHint = () => (
+  <div style={{
+    position: 'absolute',
+    top: '0.75rem',
+    left: '0.75rem',
+    padding: '0.4rem 0.85rem',
+    background: '#dbeafe',
+    color: '#0f172a',
+    borderRadius: '0.5rem',
+    border: '1px solid #bfdbfe',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+    zIndex: 5,
+  }}>
+    <T>Click on model to indicate new position</T>
+  </div>
+);
 
 const LoadingOverlay = () => (
   <Html center>
@@ -73,6 +110,7 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
   // We'll wrap the models to capture the scale provided by useLayoutEffect
   const SceneContent = () => {
     const [derivedScale, setDerivedScale] = useState(1);
+    const [corpoObj, setCorpoObj] = useState<THREE.Object3D | null>(null);
 
     const onModelClick = (e: any) => {
       e.stopPropagation();
@@ -111,9 +149,9 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
             <ActiveMarker position={position} selectedModel={selectedModel} />
           </HumanModel>
         ) : (
-          <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelClick}>
+          <CorpoModel url={CORPO_MODEL_URL} materialConfig={{ mode: config.materialMode, roughness: config.roughness }} onClick={onModelClick} onModelLoad={setCorpoObj}>
             <ScaleCapturer />
-            <ActiveMarker position={position} selectedModel={selectedModel} />
+            <ActiveMarker position={position} selectedModel={selectedModel} corpoObj={corpoObj} />
           </CorpoModel>
         )}
       </Suspense>
@@ -122,6 +160,7 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
 
   return (
     <div className={styles.viewportContainer}>
+      <PlacementHint />
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={[0, 1.2, 3]} fov={40} />
         <ExposureController exposure={config.exposure} />
