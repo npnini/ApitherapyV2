@@ -1,7 +1,11 @@
 const admin = require('firebase-admin');
 const fs = require('fs');
 
-const serviceAccount = JSON.parse(fs.readFileSync('service-account.json', 'utf8'));
+const isProd = process.argv.includes('--prod');
+const serviceAccountPath = isProd ? 'service-account-prod.json' : 'service-account.json';
+console.log(`Target: ${isProd ? 'PRODUCTION (apitherapy-c94a6)' : 'STAGING (apitherapyv2)'} — using ${serviceAccountPath}`);
+
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
