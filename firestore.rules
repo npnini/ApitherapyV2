@@ -75,6 +75,11 @@ service cloud.firestore {
         allow write: if isAdmin();
     }
 
+    match /cfg_point_groups/{groupId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+    }
+
     match /cfg_questionnaires/{questionnaireId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();

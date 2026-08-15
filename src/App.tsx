@@ -11,6 +11,7 @@ import Sidebar from './components/Sidebar';
 import ProtocolAdmin from './components/ProtocolAdmin';
 import PointsAdmin from './components/PointsAdmin';
 import MeasureAdmin from './components/MeasureAdmin/MeasureAdmin';
+import PointGroupAdmin from './components/PointGroupAdmin/PointGroupAdmin';
 import ProblemAdmin from './components/ProblemAdmin/ProblemAdmin';
 import QuestionnaireAdmin from './components/QuestionnaireAdmin/QuestionnaireAdmin';
 import ProtocolSelection from './components/ProtocolSelection';
@@ -35,7 +36,7 @@ import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandalon
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -232,6 +233,7 @@ const AppInner: React.FC = () => {
     const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
+    const handlePointGroupsAdminClick = () => { setCurrentView('admin_point_groups'); };
     const handleBodyModelAdminClick = () => { setCurrentView('admin_body_model'); };
     const handlePointSideAnalysisClick = () => { setCurrentView('point_side_analysis'); };
     const handleMeasuresAdminClick = () => { setCurrentView('admin_measures'); };
@@ -515,6 +517,7 @@ const AppInner: React.FC = () => {
                     onLogout={handleLogout}
                     onAdminClick={handleAdminClick}
                     onPointsAdminClick={handlePointsAdminClick}
+                    onPointGroupsAdminClick={handlePointGroupsAdminClick}
                     onBodyModelAdminClick={handleBodyModelAdminClick}
                     onPointSideAnalysisClick={handlePointSideAnalysisClick}
                     onUserDetailsClick={handleUserDetailsClick}
@@ -544,6 +547,8 @@ const AppInner: React.FC = () => {
                                         <ProtocolAdmin />
                                         : currentView === 'admin_points' ?
                                             <PointsAdmin />
+                                            : currentView === 'admin_point_groups' ?
+                                                <PointGroupAdmin />
                                             : currentView === 'admin_body_model' ?
                                                 <BodyModelTuner />
                                             : currentView === 'point_side_analysis' ?

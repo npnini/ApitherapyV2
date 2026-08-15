@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
@@ -13,6 +13,7 @@ interface SidebarProps {
     onPatientsClick: () => void;
     onDataAnalysisClick: () => void;
     onPointsAdminClick: () => void;
+    onPointGroupsAdminClick: () => void;
     onBodyModelAdminClick: () => void;
     onPointSideAnalysisClick: () => void;
     onMeasuresAdminClick: () => void;
@@ -33,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onPatientsClick,
     onDataAnalysisClick,
     onPointsAdminClick,
+    onPointGroupsAdminClick,
     onBodyModelAdminClick,
     onPointSideAnalysisClick,
     onMeasuresAdminClick,
@@ -165,6 +167,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <button onClick={onBodyModelAdminClick} className={styles.configButton}>
                                     <Sun size={16} className={styles.iconSecondary} />
                                     <span><T>3D Body Model Lighting</T></span>
+                                </button>
+                                <button onClick={onPointGroupsAdminClick} className={styles.configButton}>
+                                    <Layers size={16} className={styles.iconSecondary} />
+                                    <span><T>Point Grouping</T></span>
                                 </button>
                                 <button onClick={onPointsAdminClick} className={styles.configButton}>
                                     <MapPin size={16} className={styles.iconSecondary} />

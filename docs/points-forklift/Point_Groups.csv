@@ -1,0 +1,20 @@
+﻿Code,Name,description,type,laterality,comment
+SI,Small Intestine,"One of the 12 primary bilateral meridians; runs from the hand, up the arm, across the shoulder blade, to the face and ear.",meridian,Paired,
+LIV,Liver,"One of the 12 primary bilateral meridians; runs from the foot, up the inner leg, through the abdomen, to below the ribs.",meridian,Paired,
+BL,Bladder,"One of the 12 primary bilateral meridians (Urinary Bladder); the longest channel, running from the eye, over the head, down the back (in two parallel lines), to the little toe.",meridian,Paired,
+LI,Large Intestine,"One of the 12 primary bilateral meridians; runs from the index finger, up the arm, across the shoulder, to the side of the nose.",meridian,Paired,
+GB,Gallbladder,"One of the 12 primary bilateral meridians; runs from the outer eye, in a zigzag over the side of the head, down the side of the body and leg, to the fourth toe.",meridian,Paired,
+ST,Stomach,"One of the 12 primary bilateral meridians; runs from below the eye, down the face, through the torso, and down the front of the leg to the second toe.",meridian,Paired,
+HN-paired,Head-Neck Extra Points (Paired),"Grouping for bilateral (left/right) Ex-points located in the head-neck region, outside the 14 primary/extraordinary meridians.",ex-point,Paired,"for HN1-paired, HN5, HN14, HN15"
+HN-midline-back,Head-Neck Extra Points (Midline-Posterior),Grouping for head-neck Ex-points located on the posterior (back) midline of the scalp.,ex-point,Midline-back,for HN1-back
+HN-midline-front,Head-Neck Extra Points (Midline-Anterior),Grouping for head-neck Ex-points located on the anterior (front) midline of the forehead/scalp.,ex-point,Midline-front,"for HN1-front, HN3"
+CV,Conception Vessel,"One of the 2 extraordinary meridians; runs along the anterior (front) midline of the body, from the perineum to the lower lip.",meridian,Midline-front,
+LU,Lung,"One of the 12 primary bilateral meridians; runs from the chest, along the inner arm, to the thumb.",meridian,Paired,
+SJ,San Jiao (Triple Warmer),"One of the 12 primary bilateral meridians; runs from the ring finger, up the back of the arm, over the shoulder, to the eyebrow.",meridian,Paired,
+KI,Kidney,"One of the 12 primary bilateral meridians; runs from the sole of the foot, up the inner leg and trunk, to the collarbone.",meridian,Paired,
+HT,Heart,"One of the 12 primary bilateral meridians; runs from the armpit, down the inner arm, to the little finger.",meridian,Paired,
+SP,Spleen,"One of the 12 primary bilateral meridians; runs from the big toe, up the inner leg, through the abdomen, to the chest.",meridian,Paired,
+GV,Governing Vessel,"One of the 2 extraordinary meridians; runs along the posterior (back) midline of the body, from the tailbone, up the spine and over the head, to the upper lip.",meridian,Midline-back,
+LE,Leg Extra Points,"Grouping for Ex-points located in the leg region, outside the 14 primary/extraordinary meridians; includes points with unilateral (single-side) placement.",ex-point,Unilateral,
+PC,Pericardium,"One of the 12 primary bilateral meridians; runs from the chest, along the inner arm, to the middle finger.",meridian,Paired,
+CA,Abdomen Extra Points,"Grouping for bilateral Ex-points located in the abdominal region, outside the 14 primary/extraordinary meridians.",ex-point,Paired,

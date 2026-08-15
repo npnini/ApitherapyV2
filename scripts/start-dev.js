@@ -89,18 +89,48 @@ const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emula
 emulators.on('close', (code) => {
   console.log(`\n🛑 Emulators stopped with code ${code}`);
 
-  // Copy exit export into emulator-data (copy+delete avoids Windows rename-over-directory EPERM)
-  if (fs.existsSync(EXIT_DATA)) {
+  // Normal path: export-on-exit succeeded and wrote EXIT_DATA.
+  let sourceDir = fs.existsSync(EXIT_DATA) ? EXIT_DATA : null;
+
+  // Fallback: firebase-tools' own export-swap logic does
+  // rmSync(exportPath) immediately followed by moveSync(tmpDir, exportPath).
+  // On Windows that delete-then-recreate-at-the-same-path sequence can EPERM
+  // (most often Windows Defender briefly holding a handle on the just-deleted
+  // path), which means EXIT_DATA never gets written — but the fully-exported
+  // temp folder (firebase-export-<timestamp><random>) is left orphaned in the
+  // project root. Recover from it instead of silently losing the session's data.
+  if (!sourceDir) {
+    const orphans = fs.readdirSync('.')
+      .filter(name => /^firebase-export-\d+/.test(name) && fs.statSync(name).isDirectory())
+      .filter(name => fs.existsSync(path.join(name, 'firebase-export-metadata.json')))
+      .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    if (orphans.length > 0) {
+      console.warn(`⚠️ export-on-exit failed to write ${EXIT_DATA} (known Windows/firebase-tools EPERM race). Recovering from orphaned export folder: ${orphans[0]}`);
+      sourceDir = orphans[0];
+    }
+  }
+
+  // Copy source export into emulator-data (copy+delete avoids Windows rename-over-directory EPERM)
+  if (sourceDir) {
     try {
       console.log('💾 Saving emulator data...');
       if (fs.existsSync(MAIN_DATA)) {
         fs.rmSync(MAIN_DATA, { recursive: true, force: true });
       }
-      fs.cpSync(EXIT_DATA, MAIN_DATA, { recursive: true });
-      fs.rmSync(EXIT_DATA, { recursive: true, force: true });
+      fs.cpSync(sourceDir, MAIN_DATA, { recursive: true });
+      fs.rmSync(sourceDir, { recursive: true, force: true });
       console.log('✅ Emulator data saved successfully.');
     } catch (e) {
       console.warn('⚠️ Could not save emulator data:', e.message);
+    }
+  } else {
+    console.warn('⚠️ No export data found (neither export-on-exit nor an orphaned export folder) — emulator-data left unchanged.');
+  }
+
+  // Clean up any other stray export folders left behind by earlier failed runs.
+  for (const name of fs.readdirSync('.')) {
+    if (/^firebase-export-\d+/.test(name) && fs.statSync(name).isDirectory()) {
+      fs.rmSync(name, { recursive: true, force: true });
     }
   }
 
