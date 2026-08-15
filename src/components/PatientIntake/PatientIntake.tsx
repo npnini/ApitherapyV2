@@ -26,7 +26,7 @@ import PostStingScreen from '../PostStingScreen';
 import { Protocol } from '../../types/protocol';
 import { VitalSigns, TreatmentSession } from '../../types/treatmentSession';
 import { StingPoint } from '../../types/apipuncture';
-import { PointSide } from '../../utils/pointSide';
+import { StungPointCounts } from '../../utils/pointSide';
 import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
 import { logAction } from '../../services/auditLogService';
@@ -57,6 +57,24 @@ const TAB_ORDER: TabKey[] = [
 
 // The first 5 tabs must all be saved before "Start New Treatment" is enabled (UX-1)
 const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'instructions', 'consent', 'problems'];
+
+// Sums counters per point across rounds, rather than overwriting, so a point stung again
+// in a later protocol round doesn't lose the counts recorded in an earlier round.
+const mergeStungPointCounts = (
+    prev: Record<string, StungPointCounts>,
+    round: Record<string, StungPointCounts>
+): Record<string, StungPointCounts> => {
+    const merged = { ...prev };
+    for (const [id, counts] of Object.entries(round)) {
+        const existing = merged[id] ?? { left: 0, right: 0, single: 0 };
+        merged[id] = {
+            left: existing.left + counts.left,
+            right: existing.right + counts.right,
+            single: existing.single + counts.single,
+        };
+    }
+    return merged;
+};
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface PatientIntakeProps {
@@ -114,8 +132,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [usedProtocolIds, setUsedProtocolIds] = useState<string[]>([]);
     const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
     const [isSensitivitySession, setIsSensitivitySession] = useState(false);
-    const [accumulatedStungPointIds, setAccumulatedStungPointIds] = useState<string[]>([]);
-    const [accumulatedStungPointSides, setAccumulatedStungPointSides] = useState<Record<string, PointSide>>({});
+    const [accumulatedStungPoints, setAccumulatedStungPoints] = useState<Record<string, StungPointCounts>>({});
+    const accumulatedStungPointIds = useMemo(() => Object.keys(accumulatedStungPoints), [accumulatedStungPoints]);
     const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
     const [freeProtocolUsed, setFreeProtocolUsed] = useState(false);
     const [selectedAdhocProtocol, setSelectedAdhocProtocol] = useState<Protocol | null>(null);
@@ -591,8 +609,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setLastSavedAt(null);
         setUsedProblemIds([]);
         setUsedProtocolIds([]);
-        setAccumulatedStungPointIds([]);
-        setAccumulatedStungPointSides({});
+        setAccumulatedStungPoints({});
         setIsLoading(false);
         setViewState('sessionOpening');
     };
@@ -636,7 +653,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 treatmentNumber: treatmentNumber,
                 protocolIds: [],
                 problemIds: [],
-                stungPointIds: [],
+                stungPoints: {},
             }, generatedTreatmentId);
             setLastSavedAt(new Date());
             logAction(user, {
@@ -746,8 +763,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         treatmentNumber: sessionOpeningData.treatmentNumber,
                         protocolIds: Array.from(new Set([...usedProtocolIds, ...protocolIds])),
                         problemIds: Array.from(new Set([...usedProblemIds, ...problemIds])),
-                        stungPointIds: accumulatedStungPointIds,
-                        stungPointSides: accumulatedStungPointSides,
+                        stungPoints: accumulatedStungPoints,
                     }, sessionOpeningData.generatedTreatmentId);
                 }
 
@@ -803,14 +819,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setViewState('freeSelection');
     };
 
-    const handleRoundComplete = async (roundStungPointIds: string[], roundStungPointSides: Record<string, PointSide>) => {
+    const handleRoundComplete = async (_roundStungPointIds: string[], roundStungPointCounts: Record<string, StungPointCounts>) => {
         // Called when user clicks "Another Protocol"
         if (!patient.id || !sessionOpeningData) return;
 
         try {
             // Buffer the points from this round
-            setAccumulatedStungPointIds(prev => [...new Set([...prev, ...roundStungPointIds])]);
-            setAccumulatedStungPointSides(prev => ({ ...prev, ...roundStungPointSides }));
+            setAccumulatedStungPoints(prev => mergeStungPointCounts(prev, roundStungPointCounts));
 
             // Track protocols used
             if (selectedProtocol) {
@@ -830,10 +845,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         }
     };
 
-    const handleNextFromStinging = (roundStungPointIds: string[], roundStungPointSides: Record<string, PointSide>) => {
+    const handleNextFromStinging = (_roundStungPointIds: string[], roundStungPointCounts: Record<string, StungPointCounts>) => {
         // Called when user clicks "Next Step" in TreatmentExecution
-        setAccumulatedStungPointIds(prev => [...new Set([...prev, ...roundStungPointIds])]);
-        setAccumulatedStungPointSides(prev => ({ ...prev, ...roundStungPointSides }));
+        setAccumulatedStungPoints(prev => mergeStungPointCounts(prev, roundStungPointCounts));
 
         if (selectedProtocol) {
             setUsedProtocolIds(prev => [...new Set([...prev, selectedProtocol.id])]);
@@ -864,8 +878,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 isSensitivityTest: sessionIsSensitivityTest,
                 protocolIds: usedProtocolIds,
                 problemIds: usedProblemIds,
-                stungPointIds: accumulatedStungPointIds,
-                stungPointSides: accumulatedStungPointSides,
+                stungPoints: accumulatedStungPoints,
                 postStingingVitals: data.postTreatmentVitals,
                 finalVitals: data.finalVitals,
                 finalNotes: data.finalNotes,
@@ -875,8 +888,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setTreatmentSaveStatus('success');
             setIsDirty(false);
             setSessionOpeningData(null);
-            setAccumulatedStungPointIds([]);
-            setAccumulatedStungPointSides({});
+            setAccumulatedStungPoints({});
             setUsedProtocolIds([]);
             setUsedProblemIds([]);
             setLastSavedAt(null);
@@ -889,8 +901,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 caretakerId: user.uid,
                 protocolIds: usedProtocolIds,
                 problemIds: usedProblemIds,
-                stungPointIds: accumulatedStungPointIds,
-                stungPointSides: accumulatedStungPointSides,
+                stungPoints: accumulatedStungPoints,
                 createdTimestamp: Date.now(),
                 patientReport: sessionOpeningData.patientReport,
                 finalNotes: data.finalNotes,
@@ -947,7 +958,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     treatmentNumber,
                     protocolIds: [],
                     problemIds: [],
-                    stungPointIds: [],
+                    stungPoints: {},
                     freeProtocolUsed: false, // initial draft
                 }, treatmentId);
             } catch (e) {
@@ -966,8 +977,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             setLastSavedAt(null);
             setUsedProblemIds([]);
             setUsedProtocolIds([]);
-            setAccumulatedStungPointIds([]);
-            setAccumulatedStungPointSides({});
+            setAccumulatedStungPoints({});
             setFreeProtocolUsed(false);
             setViewState('tabs');
             return;
@@ -991,8 +1001,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     isSensitivityTest: sessionIsSensitivityTest,
                     protocolIds: usedProtocolIds,
                     problemIds: usedProblemIds,
-                    stungPointIds: accumulatedStungPointIds,
-                    stungPointSides: accumulatedStungPointSides,
+                    stungPoints: accumulatedStungPoints,
                     freeProtocolUsed: freeProtocolUsed,
                 }, sessionOpeningData.generatedTreatmentId);
             } catch (err) {
@@ -1010,8 +1019,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         setLastSavedAt(null);
         setUsedProblemIds([]);
         setUsedProtocolIds([]);
-        setAccumulatedStungPointIds([]);
-        setAccumulatedStungPointSides({});
+        setAccumulatedStungPoints({});
         setFreeProtocolUsed(false);
         setViewState('tabs');
     };
@@ -1055,8 +1063,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         });
         setUsedProtocolIds(treatment.protocolIds || (treatment.protocolId ? [treatment.protocolId] : []));
         setUsedProblemIds(treatment.problemIds || (treatment.problemId ? [treatment.problemId] : []));
-        setAccumulatedStungPointIds(treatment.stungPointIds || []);
-        setAccumulatedStungPointSides(treatment.stungPointSides || {});
+        setAccumulatedStungPoints(treatment.stungPoints || {});
         setIsSensitivitySession(treatment.isSensitivityTest || false);
         setFreeProtocolUsed(treatment.freeProtocolUsed || false);
         setIsLoading(false);
@@ -1347,8 +1354,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             )}
                             {viewState === 'postSting' && (
                                 <PostStingScreen
-                                    stungPointIds={accumulatedStungPointIds}
-                                    stungPointSides={accumulatedStungPointSides}
+                                    stungPoints={accumulatedStungPoints}
                                     protocolIds={usedProtocolIds}
                                     preTreatmentVitals={sessionOpeningData?.preTreatmentVitals}
                                     onBack={() => setViewState('treatmentExecution')}
@@ -1366,8 +1372,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                         caretakerId: user.uid,
                                         createdTimestamp: Date.now(),
                                         status: 'Completed',
-                                        stungPointIds: accumulatedStungPointIds,
-                                        stungPointSides: accumulatedStungPointSides,
+                                        stungPoints: accumulatedStungPoints,
                                         protocolIds: usedProtocolIds,
                                         problemIds: usedProblemIds,
                                     } as any)}

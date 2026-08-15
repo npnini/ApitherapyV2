@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { T, useTranslationContext, useT } from './T';
 import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import { Protocol } from '../types/protocol';
-import { PointSide, formatPointCode } from '../utils/pointSide';
+import { StungPointCounts, formatPointCode } from '../utils/pointSide';
 import VitalsInputGroup from './VitalsInputGroup';
 import { CheckCircle, ChevronLeft, ChevronRight, Loader, List, ClipboardList } from 'lucide-react';
 import styles from './PostStingScreen.module.css';
@@ -18,8 +18,7 @@ interface PostStingData {
 }
 
 interface PostStingScreenProps {
-    stungPointIds: string[];
-    stungPointSides?: Record<string, PointSide>;
+    stungPoints: Record<string, StungPointCounts>;
     protocolIds: string[];
     preTreatmentVitals?: Partial<VitalSigns>;
     onFinish: (data: PostStingData) => void;
@@ -58,8 +57,7 @@ const getMLValue = (value: any, lang: string): string => {
 };
 
 const PostStingScreen: React.FC<PostStingScreenProps> = ({
-    stungPointIds,
-    stungPointSides,
+    stungPoints,
     protocolIds,
     preTreatmentVitals,
     onFinish,
@@ -79,6 +77,8 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
     const [postTreatmentVitals, setPostTreatmentVitals] = useState<Partial<VitalSigns>>({});
     const [finalVitals, setFinalVitals] = useState<Partial<VitalSigns>>({});
     const [finalNotes, setFinalNotes] = useState('');
+
+    const stungPointIds = useMemo(() => Object.keys(stungPoints), [stungPoints]);
 
     useEffect(() => {
         const hydrateData = async () => {
@@ -167,7 +167,7 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
                         <div className={styles.list}>
                             {points.map(p => (
                                 <div key={p.id} className={styles.listItem}>
-                                    <span className={styles.pointCode}>{formatPointCode(p.code, stungPointSides?.[p.id], direction)}</span>
+                                    <span className={styles.pointCode}>{formatPointCode(p.code, stungPoints[p.id])}</span>
                                     <span className={styles.pointLabel}>{getMLValue(p.label, language)}</span>
                                 </div>
                             ))}

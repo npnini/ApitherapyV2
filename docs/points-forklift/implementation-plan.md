@@ -10,9 +10,9 @@ This document is self-contained: each phase below has everything needed to imple
 
 Check off each phase once its `finish-feature.ps1` merge step is done (i.e. all 3 environments verified and merged to `main`). See each phase's own section for step-level checkboxes.
 
-- [ ] **Phase 1** — `cfg_point_groups` collection + admin screen
+- [x] **Phase 1** — `cfg_point_groups` collection + admin screen
 - [x] **Phase 2** — Point Configuration screen changes (selector, marking rules, camera-lock)
-- [ ] **Phase 3** — `cfg_acupuncture_points` migration script (M2)
+- [x] **Phase 3** — `cfg_acupuncture_points` migration script (M2)
 - [ ] **Phase 4** — L/R/S counter frontend changes
 - [ ] **Phase 5** — `treatments` migration script (M3)
 - [ ] **Phase 6** — `PointSideAnalysis` diagnostic tool update
@@ -23,19 +23,19 @@ Check off each phase once its `finish-feature.ps1` merge step is done (i.e. all 
 
 Goal: create the new Firestore collection, a CRUD admin screen for it, and load the 19 seed group definitions. No dependency on anything else — foundational.
 
-- [ ] 1. `new-branch.ps1` to create the phase branch.
-- [ ] 2. Implement:
+- [x] 1. `new-branch.ps1` to create the phase branch.
+- [x] 2. Implement:
   - New Firestore collection **`cfg_point_groups`**. Document fields: `code` (string, e.g. `"SI"`, `"GV"`, `"HN-paired"` — unique, matches the spreadsheet's group codes), `name` (plain string, e.g. `"Small Intestine"` — not an i18n map), `description` (plain string), `type` (string enum: `"meridian"` | `"ex-point"`), `laterality` (string enum: `"Paired"` | `"Midline-front"` | `"Midline-back"` | `"Unilateral"` — these exact values/casing, matching the real spreadsheet data), `comment` (optional string), plus standard fields `status` (`'active'`|`'inactive'`), `reference_count` (number, starts `0`), `createdAt`/`updatedAt` via `serverTimestamp()`.
   - New admin CRUD screen, following the `MeasureAdmin.tsx` + `measureService.ts` pattern: list view + modal add/edit form, `addDoc`/`updateDoc` with `serverTimestamp()`, `logAction()` audit entry on create/update/delete, Delete button disabled (tooltip "Cannot delete: referenced by points") while `reference_count > 0`.
   - New `Sidebar.tsx` entry labeled "Point Grouping" in the Configuration section, positioned immediately **before** the existing "Points Configuration" button.
   - New `App.tsx` wiring: add `'admin_point_groups'` to the `View` union type, a `handlePointGroupingAdminClick` handler (`setCurrentView('admin_point_groups')`), pass it to `Sidebar` as a new prop, add a conditional render branch for the new screen — same pattern as the existing `admin_measures`/`admin_problems` branches.
   - New migration script under `/scripts` (M1): dry-run capable — defaults to dry-run, requires an explicit `--apply` flag to write for real, `--project=dev|staging|prod` selector (`clean-translations-pii.js`-style). Reads the 19 rows from `docs/points-forklift/production_point_side_analysis_2026-08-13.xlsx`'s `Point_Groups` sheet (columns: Code, Name, description, type, laterality, comment) and creates one `cfg_point_groups` document per row.
-- [ ] 3. Test locally: `npm run dev:all`, manually exercise the new admin screen (create/edit/delete a test group), confirm the Sidebar entry's position and role-gating match the other Configuration items.
-- [ ] 4. Run M1 against **dev**: dry-run and review its output → run for real (`--apply`) → verify: open the admin screen, confirm all 19 groups display with correct code/name/type/laterality.
-- [ ] 5. `deploy-staging.ps1` (deploys this branch's currently-checked-out code — not `main`) → run M1 against **staging**: dry-run → review → real run (`--apply`) → verify in the deployed staging admin screen.
-- [ ] 6. `deploy-prod.ps1` → run M1 against **production**: dry-run → review → real run (`--apply`) → verify in production.
-- [ ] 7. Confirm all 3 environments show the same 19 groups correctly.
-- [ ] 8. `finish-feature.ps1` — commit, sync, merge the branch to `main`. Only now, after all 3 environments are independently verified. Then move to Phase 2.
+- [x] 3. Test locally: `npm run dev:all`, manually exercise the new admin screen (create/edit/delete a test group), confirm the Sidebar entry's position and role-gating match the other Configuration items.
+- [x] 4. Run M1 against **dev**: dry-run and review its output → run for real (`--apply`) → verify: open the admin screen, confirm all 19 groups display with correct code/name/type/laterality.
+- [x] 5. `deploy-staging.ps1` (deploys this branch's currently-checked-out code — not `main`) → run M1 against **staging**: dry-run → review → real run (`--apply`) → verify in the deployed staging admin screen.
+- [x] 6. `deploy-prod.ps1` → run M1 against **production**: dry-run → review → real run (`--apply`) → verify in production.
+- [x] 7. Confirm all 3 environments show the same 19 groups correctly.
+- [x] 8. `finish-feature.ps1` — commit, sync, merge the branch to `main`. Only now, after all 3 environments are independently verified. Then move to Phase 2.
 
 ---
 
@@ -78,7 +78,7 @@ Goal: backfill every existing point's `Point_Grouping` and correct `positions.co
 - [x] 4. **Staging**: back up first (`gcloud firestore export gs://apitherapyv2-staging-backups/ManualBackup/cfg_acupuncture_points-<timestamp> --collection-ids=cfg_acupuncture_points --project=apitherapyv2`, without `--async`) → dry-run → review → real run (`--apply`) → verify.
 - [x] 5. **Production**: back up first (`gcloud firestore export gs://apitherapy-prod-backups/ManualBackup/cfg_acupuncture_points-<timestamp> --collection-ids=cfg_acupuncture_points --project=apitherapy-c94a6`, without `--async`) → dry-run → review → real run (`--apply`) → verify.
 - [ ] 6. Restore, if ever needed: `gcloud firestore import gs://<bucket>/ManualBackup/cfg_acupuncture_points-<timestamp> --project=<id>`.
-- [ ] 7. `finish-feature.ps1` — commit, sync, merge the script into `main`. Only now, after all 3 environments verified. No app deploy anywhere in this phase — it's a script run directly against each environment's Firestore, no frontend/functions changes ship. Then move to Phase 4.
+- [x] 7. `finish-feature.ps1` — commit, sync, merge the script into `main`. Only now, after all 3 environments verified. No app deploy anywhere in this phase — it's a script run directly against each environment's Firestore, no frontend/functions changes ship. Then move to Phase 4.
 
 ---
 

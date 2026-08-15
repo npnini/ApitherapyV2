@@ -28,6 +28,12 @@
     margin: 0 0 0.75rem 0;
 }
 
+.totalStingsText {
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+    margin: -0.5rem 0 0.75rem 0;
+}
+
 .pointsList {
     display: flex;
     flex-direction: column;

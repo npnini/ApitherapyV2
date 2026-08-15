@@ -8,7 +8,8 @@ import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import { getCachedPoints, setCachedPoints } from '../utils/pointsCache';
 import { findNearestPoints } from '../utils/findNearestPoints';
-import { PointSide, getSideLabel } from '../utils/pointSide';
+import { StungPointCounts } from '../utils/pointSide';
+import { PointGroup, PointGroupLaterality } from '../types/pointGroup';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
 import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, ChevronRight, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
@@ -32,8 +33,8 @@ interface TreatmentExecutionProps {
     displayTitle?: string;
     isSensitivityTest: boolean;
     accumulatedStungPointIds: string[];
-    onRoundComplete: (stungPointIds: string[], stungPointSides: Record<string, PointSide>) => void;
-    onNext: (stungPointIds: string[], stungPointSides: Record<string, PointSide>) => void;
+    onRoundComplete: (stungPointIds: string[], stungPointCounts: Record<string, StungPointCounts>) => void;
+    onNext: (stungPointIds: string[], stungPointCounts: Record<string, StungPointCounts>) => void;
     onBack: () => void;
     onExit?: () => void;
     customPoints?: StingPoint[];
@@ -78,7 +79,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [isMaximized, setIsMaximized] = useState(false);
 
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
-    const [stungPointSides, setStungPointSides] = useState<Record<string, PointSide>>({});
+    const [stungPointCounts, setStungPointCounts] = useState<Record<string, StungPointCounts>>({});
+    const [pointGroups, setPointGroups] = useState<PointGroup[]>([]);
     const [activePointId, setActivePointId] = useState<string | null>(null);
     const [isRolling, setIsRolling] = useState(true);
     const [selectedSensitivity, setSelectedSensitivity] = useState<'all' | 'Low' | 'Medium' | 'High'>('all');
@@ -123,10 +125,27 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         fetchConfig();
     }, []);
 
+    useEffect(() => {
+        const fetchPointGroups = async () => {
+            try {
+                const snap = await getDocs(collection(db, 'cfg_point_groups'));
+                setPointGroups(snap.docs.map(d => ({ ...d.data(), id: d.id } as PointGroup)));
+            } catch (err) {
+                console.error('Error fetching point groups:', err);
+            }
+        };
+        fetchPointGroups();
+    }, []);
+
+    const getLaterality = useCallback((p: StingPoint): PointGroupLaterality | null => {
+        const group = pointGroups.find(g => g.id === p.Point_Grouping);
+        return group?.laterality ?? null;
+    }, [pointGroups]);
+
     // Reset current-protocol stung points when protocol changes, and hydrate accumulated IDs
     useEffect(() => {
         setStungPoints([]);
-        setStungPointSides({});
+        setStungPointCounts({});
         setActivePointId(null);
 
         if (!accumulatedStungPointIds || accumulatedStungPointIds.length === 0) {
@@ -202,20 +221,25 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const handlePointSelect = useCallback((pointToAdd: StingPoint) => {
         setStungPoints(prev => prev.some(p => p.id === pointToAdd.id) ? prev : [...prev, pointToAdd]);
+        setStungPointCounts(prev => prev[pointToAdd.id] ? prev : { ...prev, [pointToAdd.id]: { left: 0, right: 0, single: 0 } });
         setActivePointId(pointToAdd.id);
     }, []);
 
     const handleRemoveStungPoint = (id: string) => {
         setStungPoints(prev => prev.filter(p => p.id !== id));
-        setStungPointSides(prev => {
+        setStungPointCounts(prev => {
             const { [id]: _removed, ...rest } = prev;
             return rest;
         });
         if (activePointId === id) setActivePointId(null);
     };
 
-    const handleSetPointSide = (id: string, side: PointSide) => {
-        setStungPointSides(prev => ({ ...prev, [id]: side }));
+    const handleSetPointCount = (id: string, field: keyof StungPointCounts, rawValue: string) => {
+        const n = Math.max(0, parseInt(rawValue, 10) || 0);
+        setStungPointCounts(prev => {
+            const existing = prev[id] ?? { left: 0, right: 0, single: 0 };
+            return { ...prev, [id]: { ...existing, [field]: n } };
+        });
     };
 
     const handleModelTap = useCallback(async (pos: { x: number; y: number; z: number }) => {
@@ -253,11 +277,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     }, []);
 
     const handleAnotherProtocol = () => {
-        onRoundComplete(stungPoints.map(p => p.id), stungPointSides);
+        onRoundComplete(stungPoints.map(p => p.id), stungPointCounts);
     };
 
     const handleNext = () => {
-        onNext(stungPoints.map(p => p.id), stungPointSides);
+        onNext(stungPoints.map(p => p.id), stungPointCounts);
     };
 
     // Normalization helper for sensitivity keys
@@ -575,7 +599,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             {stungPoints.length === 0 ? (
                                 <p className={styles.emptyStung}>{tNoPointsStung}</p>
                             ) : stungPoints.map(p => {
-                                const side = stungPointSides[p.id];
+                                const counts = stungPointCounts[p.id] ?? { left: 0, right: 0, single: 0 };
+                                const isPaired = getLaterality(p) === 'Paired';
                                 return (
                                     <div
                                         key={p.id}
@@ -584,23 +609,42 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                     >
                                         <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
                                         <div className={styles.stungItemControls}>
-                                            <div className={styles.sideSelector} onClick={e => e.stopPropagation()}>
-                                                <button
-                                                    type="button"
-                                                    className={`${styles.sideBtn} ${side === 'L' ? styles.sideBtnActive : ''}`}
-                                                    onClick={() => handleSetPointSide(p.id, 'L')}
-                                                    title={getTranslation('Left')}
-                                                >
-                                                    {getSideLabel('L', direction)}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={`${styles.sideBtn} ${side === 'R' ? styles.sideBtnActive : ''}`}
-                                                    onClick={() => handleSetPointSide(p.id, 'R')}
-                                                    title={getTranslation('Right')}
-                                                >
-                                                    {getSideLabel('R', direction)}
-                                                </button>
+                                            <div className={styles.counterGroup} onClick={e => e.stopPropagation()}>
+                                                {isPaired ? (
+                                                    <>
+                                                        <div className={styles.counterBox} title={getTranslation('Left')}>
+                                                            <span className={styles.counterLabel}>L</span>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                className={styles.counterInput}
+                                                                value={counts.left}
+                                                                onChange={e => handleSetPointCount(p.id, 'left', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className={styles.counterBox} title={getTranslation('Right')}>
+                                                            <span className={styles.counterLabel}>R</span>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                className={styles.counterInput}
+                                                                value={counts.right}
+                                                                onChange={e => handleSetPointCount(p.id, 'right', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className={styles.counterBox} title={getTranslation('Midline-Unilateral')}>
+                                                        <span className={styles.counterLabel}>S</span>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            className={styles.counterInput}
+                                                            value={counts.single}
+                                                            onChange={e => handleSetPointCount(p.id, 'single', e.target.value)}
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                             <button onClick={e => { e.stopPropagation(); handleRemoveStungPoint(p.id); }} className={styles.removeBtn}>
                                                 <Trash2 size={14} />

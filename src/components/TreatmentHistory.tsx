@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebase/firestore';
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
-import { PointSide, formatPointCode } from '../utils/pointSide';
+import { StungPointCounts, formatPointCode } from '../utils/pointSide';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { StorageImage } from './shared/StorageComponents';
@@ -76,8 +76,7 @@ interface StoredTreatmentDoc {
     protocolIds?: string[];
     problemId?: string;
     problemIds?: string[];
-    stungPointIds?: string[];
-    stungPointSides?: Record<string, PointSide>;
+    stungPoints?: Record<string, StungPointCounts>;
     status?: 'Incomplete' | 'Completed';
     postStingingVitals?: Partial<VitalSigns>;
     finalVitals?: Partial<VitalSigns>;
@@ -89,7 +88,7 @@ interface StoredTreatmentDoc {
 
 /** Hydrated form — adds resolved point objects and fetched measure readings */
 interface HydratedTreatment extends StoredTreatmentDoc {
-    stungPoints: StingPoint[];
+    resolvedStungPoints: StingPoint[];
     measuredValues?: Array<{ measureId: string; label: string; value: string | number }>;
     feedbackMeasuredValues?: Array<{ label: string; value: string | number }>;
 }
@@ -109,6 +108,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const tNotProvided = useT('Not provided');
     const tNoNotes = useT('No notes');
     const tModelViewerTitle = useT('Sting Points — 3D Model');
+    const tShowModelTooltip = useT('mark a treatment then click');
     const [treatments, setTreatments] = useState<HydratedTreatment[]>([]);
     const [caretakerNames, setCaretakerNames] = useState<Map<string, string>>(new Map());
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -226,8 +226,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
             // Hydrate each treatment
             const hydratedTreatments = await Promise.all(rawTreatments.map(async (treatment): Promise<HydratedTreatment> => {
-                // Resolve stungPointIds → StingPoint objects
-                const stungPoints: StingPoint[] = (treatment.stungPointIds ?? [])
+                // Resolve stungPoints map keys → StingPoint objects
+                const resolvedStungPoints: StingPoint[] = Object.keys(treatment.stungPoints ?? {})
                     .map(id => pointsMap.get(id))
                     .filter((p): p is StingPoint => p !== undefined);
 
@@ -263,7 +263,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
                 return {
                     ...treatment,
-                    stungPoints,
+                    resolvedStungPoints,
                     measuredValues: measuredValues.length > 0 ? measuredValues : undefined,
                     feedbackMeasuredValues: feedbackMeasuredValues.length > 0 ? feedbackMeasuredValues : undefined
                 };
@@ -379,10 +379,16 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         new Map(
             treatments
                 .filter(t => selectedTreatmentIds.has(t.id))
-                .flatMap(t => t.stungPoints)
+                .flatMap(t => t.resolvedStungPoints)
                 .map(p => [p.id, p])
         ).values()
     );
+
+    // "Total stings" only ever reflects a single specific treatment, never the broader
+    // multi-treatment aggregate scope this modal can otherwise show.
+    const singleSelectedTreatment = selectedTreatmentIds.size === 1
+        ? treatments.find(t => selectedTreatmentIds.has(t.id))
+        : undefined;
 
     return (
         <div className={styles.container} dir={direction}>
@@ -417,6 +423,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     onClick={() => setIsModelModalOpen(true)}
                     disabled={selectedTreatmentIds.size === 0}
                     className={styles.toggleButton}
+                    title={tShowModelTooltip}
                 >
                     <PersonStanding size={18} />
                     <T>Show Model</T>
@@ -474,8 +481,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     ? `${postV.systolic ?? '-'}-${postV.diastolic ?? '-'}-${postV.heartRate ?? '-'}`
                                     : '-';
 
-                                const stingCodes = t.stungPoints.length > 0
-                                    ? t.stungPoints.map(p => formatPointCode(p.code, t.stungPointSides?.[p.id], direction)).join(', ')
+                                const stingCodes = t.resolvedStungPoints.length > 0
+                                    ? t.resolvedStungPoints.map(p => formatPointCode(p.code, t.stungPoints?.[p.id])).join(', ')
                                     : '-';
 
                                 return (
@@ -656,20 +663,23 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                     <div className={`${styles.phase} ${styles.sidePhase}`}>
                                         <h3 className={styles.phaseTitle}><T>2. Stung Points</T></h3>
                                         <div className={styles.pointsContainer}>
-                                            {treatment.stungPoints.length > 0 ? (
+                                            {treatment.resolvedStungPoints.length > 0 ? (
                                                 <ul className={styles.pointsList}>
-                                                    {treatment.stungPoints.map((point) => (
-                                                        <li key={point.id} className={styles.pointItem} dir={direction}>
-                                                            <div className={styles.pointDetails}>
-                                                                <MapPin size={14} className={styles.pointIcon} />
-                                                                <span className={styles.pointTextWrapper}>
-                                                                    <span className={styles.pointCode}>{formatPointCode(point.code, treatment.stungPointSides?.[point.id], direction)}</span>
-                                                                    {' '}
-                                                                    <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
-                                                                </span>
-                                                            </div>
-                                                        </li>
-                                                    ))}
+                                                    {treatment.resolvedStungPoints.map((point) => {
+                                                        const counts = treatment.stungPoints?.[point.id] ?? { left: 0, right: 0, single: 0 };
+                                                        return (
+                                                            <li key={point.id} className={styles.pointItem} dir={direction}>
+                                                                <div className={styles.pointDetails}>
+                                                                    <MapPin size={14} className={styles.pointIcon} />
+                                                                    <span className={styles.pointTextWrapper}>
+                                                                        <span className={styles.pointCode}>{point.code}</span>,{' '}
+                                                                        <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>,{' '}
+                                                                        <span className={styles.pointCounters}>L={counts.left}, R={counts.right}, S={counts.single}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
                                             ) : (
                                                 <p className={styles.emptyText}><T>No points stung</T></p>
@@ -790,7 +800,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 isFlex={true}
                 bodyStyle={{ height: '80vh' }}
             >
-                <PointsModelViewer points={aggregatedPoints} />
+                <PointsModelViewer points={aggregatedPoints} stungPointCounts={singleSelectedTreatment?.stungPoints} />
             </Modal>
         </div>
     );

@@ -355,6 +355,11 @@
     color: var(--color-text-primary);
 }
 
+.pointCounters {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+}
+
 .notesContainer {
     margin-top: 1.5rem;
 }

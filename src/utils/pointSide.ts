@@ -1,14 +1,15 @@
-export type PointSide = 'L' | 'R';
+export interface StungPointCounts {
+    left: number;
+    right: number;
+    single: number;
+}
 
-/** Localized side label: 'L'/'R' in LTR, 'ש'/'י' in RTL (ש = שמאל/Left, י = ימין/Right) */
-export const getSideLabel = (side: PointSide | undefined, direction: 'ltr' | 'rtl'): string => {
-    if (!side) return '';
-    if (direction === 'rtl') return side === 'R' ? 'י' : 'ש';
-    return side;
-};
-
-/** Formats a point code with its side suffix, e.g. "BL23-R" / "BL23-ש", or just the code if no side is set */
-export const formatPointCode = (code: string, side: PointSide | undefined, direction: 'ltr' | 'rtl'): string => {
-    const label = getSideLabel(side, direction);
-    return label ? `${code}-${label}` : code;
+/** Formats a point code with its R/L/S suffix built from nonzero counters, e.g. "BL23-RL", "CV4-S", or just the code if all counters are 0 */
+export const formatPointCode = (code: string, counts: StungPointCounts | undefined): string => {
+    if (!counts) return code;
+    let suffix = '';
+    if (counts.right > 0) suffix += 'R';
+    if (counts.left > 0) suffix += 'L';
+    if (counts.single > 0) suffix += 'S';
+    return suffix ? `${code}-${suffix}` : code;
 };

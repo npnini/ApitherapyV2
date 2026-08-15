@@ -60,7 +60,8 @@ const TreatmentSummary: React.FC<TreatmentSummaryProps> = ({ treatment, language
 
             // 4. Hydrate Points
             const allPoints = pointsSnap.docs.map(d => ({ ...d.data(), id: d.id } as StingPoint));
-            setPoints(allPoints.filter(p => (treatment.stungPointIds || []).includes(p.id)));
+            const stungPointIds = Object.keys(treatment.stungPoints || {});
+            setPoints(allPoints.filter(p => stungPointIds.includes(p.id)));
 
             // 5. Hydrate Measures based on protocols used in treatment
             const allMeasures = measuresSnap.docs.map(d => ({ ...d.data(), id: d.id } as Measure));
@@ -136,7 +137,7 @@ const TreatmentSummary: React.FC<TreatmentSummaryProps> = ({ treatment, language
                         <p className={styles.emptyText}>{tNoPoints}</p>
                     ) : points.map(p => (
                         <span key={p.id} className={styles.pointBadge}>
-                            <span className={styles.pointCode}>{formatPointCode(p.code, treatment.stungPointSides?.[p.id], direction)}</span> {getMLValue(p.label, language)}
+                            <span className={styles.pointCode}>{formatPointCode(p.code, treatment.stungPoints?.[p.id])}</span> {getMLValue(p.label, language)}
                         </span>
                     ))}
                 </div>
