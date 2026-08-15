@@ -11,7 +11,7 @@ This document is self-contained: each phase below has everything needed to imple
 Check off each phase once its `finish-feature.ps1` merge step is done (i.e. all 3 environments verified and merged to `main`). See each phase's own section for step-level checkboxes.
 
 - [ ] **Phase 1** — `cfg_point_groups` collection + admin screen
-- [ ] **Phase 2** — Point Configuration screen changes (selector, marking rules, camera-lock)
+- [x] **Phase 2** — Point Configuration screen changes (selector, marking rules, camera-lock)
 - [ ] **Phase 3** — `cfg_acupuncture_points` migration script (M2)
 - [ ] **Phase 4** — L/R/S counter frontend changes
 - [ ] **Phase 5** — `treatments` migration script (M3)
@@ -59,7 +59,7 @@ Goal: let an admin assign a `Point_Grouping` to a point, and enforce marking rul
 - [x] 3. Test locally against **dev** (already has Phase 1's 19 seed groups): create/tag one test point per laterality type (Paired, Midline-front, Midline-back, Unilateral) and verify each rule above — Paired always saves negative `corpo_x` regardless of click side; Midline off-center triggers the correction prompt and snaps to `x=0` on confirm; Unilateral saves exactly as clicked; camera locks to the correct pose for both midline groups with pan/zoom still working. Use this now-working screen to hand-correct any legacy points still flagged as needing fixes (re-check current data first — most known issues were already resolved during planning).
 - [x] 4. `deploy-staging.ps1` → repeat the same manual verification on staging.
 - [x] 5. `deploy-prod.ps1` → repeat the same manual verification on production.
-- [ ] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 3.
+- [x] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 3.
 
 ---
 
@@ -67,16 +67,16 @@ Goal: let an admin assign a `Point_Grouping` to a point, and enforce marking rul
 
 Goal: backfill every existing point's `Point_Grouping` and correct `positions.corpo.x` on ~226 existing points, from the finalized spreadsheet. Depends on Phase 1; benefits from Phase 2 existing first (manual fixes go through the validated screen).
 
-- [ ] 1. `new-branch.ps1`.
-- [ ] 2. Implement a new migration script under `/scripts` (dry-run capable, defaults to dry-run, requires `--apply` to write for real, `--project=dev|staging|prod` selector), which for every row in `docs/points-forklift/production_point_side_analysis_2026-08-13.xlsx`'s per-point sheet (`production_point_side_analysis_`):
+- [x] 1. `new-branch.ps1`.
+- [x] 2. Implement a new migration script under `/scripts` (dry-run capable, defaults to dry-run, requires `--apply` to write for real, `--project=dev|staging|prod` selector), which for every row in `docs/points-forklift/production_point_side_analysis_2026-08-13.xlsx`'s per-point sheet (`production_point_side_analysis_`):
   - Looks up the row's `Point_Group` code (e.g. `"SI"`, `"GV"`, `"HN-paired"`) against `cfg_point_groups` (Phase 1) to resolve it to that group's **document ID**, and writes that ID into the point's `Point_Grouping` field (not the code string).
   - Writes the spreadsheet's `corpo_y`/`corpo_z` as-is into `positions.corpo.y/z`.
   - **`corpo_x` is computed by the script, not copied as-is from the spreadsheet** — based on the resolved group's `laterality`: `"Paired"` → if the spreadsheet's `corpo_x` is positive, flip it negative (Right); if already negative, leave it; `"Midline-front"`/`"Midline-back"` → force `0` regardless of the spreadsheet's value; `"Unilateral"` → use the spreadsheet's `corpo_x` exactly as given, no computation. (This removes any dependency on the spreadsheet's `corpo_x` already being hand-corrected for every Paired point — the script enforces the convention itself. Confirmed via a fresh check: 65 of 196 Paired points in the current spreadsheet still have the old positive/Left sign; this logic handles all of them correctly without requiring manual spreadsheet edits first.)
   - Applies the `code`/label corrections already identified: `NH5`→`HN5`, `DU20`→`GV20`, `SI18` label "Qimai"→"Quanliao" (plus any others present in the finalized spreadsheet).
   - Any row the script can't confidently resolve or apply (ambiguous group code, missing point, conflicting data) is **not** auto-corrected — write it to a punch-list output for the admin to fix by hand in Point Configuration (Phase 2's screen); skip that row rather than guessing.
-- [ ] 3. **Dev**: back up first (`firebase emulators:export <path>`) → dry-run and review → run for real (`--apply`) → manually verify — spot-check several points in Point Configuration and cross-check against the `PointSideAnalysis` diagnostic tool.
-- [ ] 4. **Staging**: back up first (`gcloud firestore export gs://apitherapyv2-staging-backups/ManualBackup/cfg_acupuncture_points-<timestamp> --collection-ids=cfg_acupuncture_points --project=apitherapyv2`, without `--async`) → dry-run → review → real run (`--apply`) → verify.
-- [ ] 5. **Production**: back up first (`gcloud firestore export gs://apitherapy-prod-backups/ManualBackup/cfg_acupuncture_points-<timestamp> --collection-ids=cfg_acupuncture_points --project=apitherapy-c94a6`, without `--async`) → dry-run → review → real run (`--apply`) → verify.
+- [x] 3. **Dev**: back up first (`firebase emulators:export <path>`) → dry-run and review → run for real (`--apply`) → manually verify — spot-check several points in Point Configuration and cross-check against the `PointSideAnalysis` diagnostic tool.
+- [x] 4. **Staging**: back up first (`gcloud firestore export gs://apitherapyv2-staging-backups/ManualBackup/cfg_acupuncture_points-<timestamp> --collection-ids=cfg_acupuncture_points --project=apitherapyv2`, without `--async`) → dry-run → review → real run (`--apply`) → verify.
+- [x] 5. **Production**: back up first (`gcloud firestore export gs://apitherapy-prod-backups/ManualBackup/cfg_acupuncture_points-<timestamp> --collection-ids=cfg_acupuncture_points --project=apitherapy-c94a6`, without `--async`) → dry-run → review → real run (`--apply`) → verify.
 - [ ] 6. Restore, if ever needed: `gcloud firestore import gs://<bucket>/ManualBackup/cfg_acupuncture_points-<timestamp> --project=<id>`.
 - [ ] 7. `finish-feature.ps1` — commit, sync, merge the script into `main`. Only now, after all 3 environments verified. No app deploy anywhere in this phase — it's a script run directly against each environment's Firestore, no frontend/functions changes ship. Then move to Phase 4.
 
