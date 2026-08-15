@@ -20,6 +20,7 @@ export interface StingPoint {
   documentUrl?: { [key: string]: string } | string;
   status: 'active' | 'inactive';
   reference_count: number;
+  Point_Grouping?: string;
 }
 
 export interface Protocol {

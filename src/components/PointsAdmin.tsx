@@ -3,13 +3,15 @@ import { logger } from '../utils/logger';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { StingPoint } from '../types/apipuncture';
+import { StingPoint, Vector3Pos } from '../types/apipuncture';
+import { PointGroup } from '../types/pointGroup';
 import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, Lock, Unlock } from 'lucide-react';
 import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import { T, useT, useTranslationContext } from '../components/T';
 import { logAction } from '../services/auditLogService';
 import Tooltip from './common/Tooltip';
+import ConfirmationModal from './ConfirmationModal';
 import { StorageLink } from './shared/StorageComponents';
 import PointPlacementScene from './PointPlacementScene';
 import DocumentManagement from './shared/DocumentManagement';
@@ -19,6 +21,7 @@ const PointsAdmin: React.FC = () => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [user, setUser] = useState<User | null>(null);
     const [points, setPoints] = useState<StingPoint[]>([]);
+    const [pointGroups, setPointGroups] = useState<PointGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [editingPoint, setEditingPoint] = useState<Partial<StingPoint> | null>(null);
     const [originalPoint, setOriginalPoint] = useState<Partial<StingPoint> | null>(null);
@@ -29,12 +32,20 @@ const PointsAdmin: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
+    const [midlineConfirm, setMidlineConfirm] = useState<{ pointToSave: Partial<StingPoint>; corpo: Vector3Pos } | null>(null);
 
     const pointsCollectionRef = useMemo(() => collection(db, 'cfg_acupuncture_points'), []);
+    const pointGroupsCollectionRef = useMemo(() => collection(db, 'cfg_point_groups'), []);
 
     const stringsToRegister = useMemo(() => [
         'Failed to fetch points',
         'Point code and label (in at least one language) are required',
+        'Point Grouping is required',
+        'Selected point group could not be found',
+        'Off-center marking',
+        "This point isn't marked exactly on the midline. Snap it to the exact midline?",
+        'Snap to Midline',
+        'Keep As Marked',
         'Failed to save the point',
         'Close',
         'Failed to delete the point',
@@ -105,6 +116,25 @@ const PointsAdmin: React.FC = () => {
     useEffect(() => {
         if (user) fetchPoints();
     }, [user, fetchPoints]);
+
+    const fetchPointGroups = useCallback(async () => {
+        if (!user) {
+            setPointGroups([]);
+            return;
+        }
+        try {
+            const data = await getDocs(pointGroupsCollectionRef);
+            const fetchedGroups = data.docs.map(d => ({ ...(d.data() as Omit<PointGroup, 'id'>), id: d.id }));
+            fetchedGroups.sort((a, b) => a.code.localeCompare(b.code));
+            setPointGroups(fetchedGroups);
+        } catch (err) {
+            logger.error('Failed to fetch point groups', err);
+        }
+    }, [user, pointGroupsCollectionRef]);
+
+    useEffect(() => {
+        if (user) fetchPointGroups();
+    }, [user, fetchPointGroups]);
 
     const filteredPoints = useMemo(() => {
         if (!searchTerm.trim()) return points;
@@ -210,14 +240,8 @@ const PointsAdmin: React.FC = () => {
         }
     };
 
-    const handleSave = async (pointToSave: Partial<StingPoint>) => {
+    const performSave = async (pointToSave: Partial<StingPoint>, corpo: Vector3Pos) => {
         const isNewPoint = !pointToSave.id;
-
-        const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
-        if (!pointToSave.code || labelValues.length === 0) {
-            setFormError(getTranslation('Point code and label (in at least one language) are required'));
-            return;
-        }
 
         setIsSubmitting(true);
         try {
@@ -241,9 +265,8 @@ const PointsAdmin: React.FC = () => {
                 longText: pointToSave.longText,
                 sensitivity: pointToSave.sensitivity || 'Medium',
                 imageURL: pointToSave.imageURL || '',
-                positions: {
-                    corpo: pointToSave.positions?.corpo || { x: 0, y: 0, z: 0 }
-                },
+                positions: { corpo },
+                Point_Grouping: pointToSave.Point_Grouping,
                 documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
                 status: pointToSave.status || 'active',
                 reference_count: pointToSave.reference_count || 0,
@@ -282,6 +305,59 @@ const PointsAdmin: React.FC = () => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSave = async (pointToSave: Partial<StingPoint>) => {
+        const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
+        if (!pointToSave.code || labelValues.length === 0) {
+            setFormError(getTranslation('Point code and label (in at least one language) are required'));
+            return;
+        }
+
+        if (!pointToSave.Point_Grouping) {
+            setFormError(getTranslation('Point Grouping is required'));
+            return;
+        }
+
+        const group = pointGroups.find(g => g.id === pointToSave.Point_Grouping);
+        if (!group) {
+            setFormError(getTranslation('Selected point group could not be found'));
+            return;
+        }
+
+        setFormError(null);
+        let corpo: Vector3Pos = pointToSave.positions?.corpo || { x: 0, y: 0, z: 0 };
+
+        if (group.laterality === 'Paired') {
+            // Always normalize to the character's Right side (negative x),
+            // regardless of which side was actually clicked.
+            if (corpo.x > 0) corpo = { ...corpo, x: -corpo.x };
+            await performSave(pointToSave, corpo);
+        } else if (group.laterality === 'Midline-front' || group.laterality === 'Midline-back') {
+            if (corpo.x !== 0) {
+                // Don't hard-error — ask whether to snap to the exact midline.
+                setMidlineConfirm({ pointToSave, corpo });
+            } else {
+                await performSave(pointToSave, corpo);
+            }
+        } else {
+            // Unilateral: no restriction, save exactly as clicked.
+            await performSave(pointToSave, corpo);
+        }
+    };
+
+    const handleConfirmMidlineSnap = async () => {
+        if (!midlineConfirm) return;
+        const { pointToSave, corpo } = midlineConfirm;
+        setMidlineConfirm(null);
+        await performSave(pointToSave, { ...corpo, x: 0 });
+    };
+
+    const handleDeclineMidlineSnap = async () => {
+        if (!midlineConfirm) return;
+        const { pointToSave, corpo } = midlineConfirm;
+        setMidlineConfirm(null);
+        await performSave(pointToSave, corpo);
     };
 
     const confirmDelete = async () => {
@@ -366,6 +442,7 @@ const PointsAdmin: React.FC = () => {
                 <EditPointForm
                     key={editingPoint.id || 'new'}
                     point={editingPoint}
+                    pointGroups={pointGroups}
                     onSave={(data) => handleSave(data)}
                     onUpdate={(data, file, lang) => handleUpdate(data, file, lang)}
                     onCancel={handleCancelEdit}
@@ -375,6 +452,16 @@ const PointsAdmin: React.FC = () => {
                     appConfig={appConfig}
                 />
             )}
+
+            <ConfirmationModal
+                isOpen={!!midlineConfirm}
+                title={getTranslation('Off-center marking')}
+                message={getTranslation("This point isn't marked exactly on the midline. Snap it to the exact midline?")}
+                confirmLabel={getTranslation('Snap to Midline')}
+                cancelLabel={getTranslation('Keep As Marked')}
+                onConfirm={handleConfirmMidlineSnap}
+                onCancel={handleDeclineMidlineSnap}
+            />
 
             {deletingPoint && (
                 <div className={styles.modalOverlay}>
@@ -485,6 +572,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
 
 interface EditPointFormProps {
     point: Partial<StingPoint>;
+    pointGroups: PointGroup[];
     onSave: (point: Partial<StingPoint>) => void;
     onUpdate: (point: Partial<StingPoint>, file?: File, lang?: string) => void;
     onCancel: () => void;
@@ -494,7 +582,7 @@ interface EditPointFormProps {
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, onCancel, error, isSubmitting, isDirty: initialIsDirty, appConfig }) => {
+const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSave, onUpdate, onCancel, error, isSubmitting, isDirty: initialIsDirty, appConfig }) => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [formData, setFormData] = useState<Partial<StingPoint>>(point);
     const [activeLang, setActiveLang] = useState<string>(currentLang);
@@ -528,8 +616,12 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
         "URL to image",
         "3D Coordinates",
         "Anatomical",
-        "Auto-Rotate"
+        "Auto-Rotate",
+        "Point Grouping",
+        "Select a point group"
     ], []);
+
+    const selectedGroup = useMemo(() => pointGroups.find(g => g.id === formData.Point_Grouping), [pointGroups, formData.Point_Grouping]);
 
     useEffect(() => {
         stringsToRegister.forEach(s => registerString(s));
@@ -678,6 +770,25 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                             </div>
 
                             <div>
+                                <label htmlFor="Point_Grouping" className={styles.label}>
+                                    <T>Point Grouping</T><span className={styles.requiredAsterisk}>*</span>
+                                </label>
+                                <select
+                                    id="Point_Grouping"
+                                    name="Point_Grouping"
+                                    value={formData.Point_Grouping || ''}
+                                    onChange={handleChange}
+                                    className={styles.input}
+                                    required
+                                >
+                                    <option value="" disabled>{getTranslation('Select a point group')}</option>
+                                    {pointGroups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.code} — {g.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
                                 <div className={styles.labelWrapper}>
                                     <label htmlFor="description" className={styles.label}><T>Description</T></label>
                                     <div className={styles.indicatorContainer}>
@@ -816,15 +927,17 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
 
                     {/* Right Panel: 3D Viewport */}
                     <div className={styles.rightPanel}>
-                        <div className={styles.viewportControls}>
-                            <label className={styles.toggleLabel}>
-                                <span><T>Auto-Rotate</T></span>
-                                <div className={styles.toggle} onClick={() => setIsRolling(r => !r)}>
-                                    <div className={`${styles.toggleTrack} ${isRolling ? styles.toggleOn : ''}`} />
-                                    <div className={`${styles.toggleThumb} ${isRolling ? styles.toggleThumbOn : ''}`} />
-                                </div>
-                            </label>
-                        </div>
+                        {selectedGroup?.laterality !== 'Midline-front' && selectedGroup?.laterality !== 'Midline-back' && (
+                            <div className={styles.viewportControls}>
+                                <label className={styles.toggleLabel}>
+                                    <span><T>Auto-Rotate</T></span>
+                                    <div className={styles.toggle} onClick={() => setIsRolling(r => !r)}>
+                                        <div className={`${styles.toggleTrack} ${isRolling ? styles.toggleOn : ''}`} />
+                                        <div className={`${styles.toggleThumb} ${isRolling ? styles.toggleThumbOn : ''}`} />
+                                    </div>
+                                </label>
+                            </div>
+                        )}
 
                         <div className={styles.canvasScrollWrapper}>
                             <div className={styles.canvasSizer}>
@@ -832,6 +945,7 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, onSave, onUpdate, 
                                     position={formData.positions?.corpo || null}
                                     onPositionChange={handlePositionChange}
                                     isLocked={!isRolling}
+                                    laterality={selectedGroup?.laterality || null}
                                 />
                             </div>
                         </div>

@@ -43,8 +43,8 @@ Goal: create the new Firestore collection, a CRUD admin screen for it, and load 
 
 Goal: let an admin assign a `Point_Grouping` to a point, and enforce marking rules (left/right normalization, midline centering, camera-lock) when placing it on the 3D model. Depends on Phase 1 (needs real `Point_Grouping` options to select from). **Must precede Phase 3's real (non-dry-run) execution**: legacy points needing manual fixes must be corrected through this screen before the bulk migration runs.
 
-- [ ] 1. `new-branch.ps1`.
-- [ ] 2. Implement, in `src/components/PointsAdmin.tsx` (point edit form) and `src/components/PointPlacementScene.tsx` (3D placement viewport):
+- [x] 1. `new-branch.ps1`.
+- [x] 2. Implement, in `src/components/PointsAdmin.tsx` (point edit form) and `src/components/PointPlacementScene.tsx` (3D placement viewport):
   - **`Point_Grouping` selector**: required dropdown in the point edit form, populated from `cfg_point_groups` (Phase 1), storing the selected group's **document ID** (not its code string) on the point's new `Point_Grouping` field. Mandatory — the form can't be saved without a value.
   - **Marking-rule validation on save**, based on the selected group's `laterality`:
     - `"Paired"`: admin can click anywhere; on save, always normalize and store as the character's **Right** side (**negative** `positions.corpo.x`) — if the raw click produced positive `x`, flip its sign before saving (`y`/`z` unchanged), regardless of which side was actually clicked.
@@ -56,9 +56,9 @@ Goal: let an admin assign a `Point_Grouping` to a point, and enforce marking rul
     - Canonical front pose: camera `position=[0, 1.2, 3]`, `target=[0, 1, 0]` (already `PointPlacementScene`'s current default). Canonical back pose: `position=[0, 1.2, -3]`, `target=[0, 1, 0]` (Z-negated mirror, 180° azimuth flip around the same target).
     - Lock/snap triggers the moment laterality is known: immediately on modal open when editing a point that already has a `Point_Grouping`; the instant a `Midline-front`/`Midline-back` group is selected when creating/re-grouping a point (re-snap if the selection changes again).
   - **Error/UX message updates**: any existing bilateral-center error message referencing "mark on the left side" must be reworded to say **right** side, matching the reversed convention. No new error message is needed for the front/back rule — the camera-lock makes the wrong side physically unclickable; optionally keep a short explanatory tooltip near the locked viewport.
-- [ ] 3. Test locally against **dev** (already has Phase 1's 19 seed groups): create/tag one test point per laterality type (Paired, Midline-front, Midline-back, Unilateral) and verify each rule above — Paired always saves negative `corpo_x` regardless of click side; Midline off-center triggers the correction prompt and snaps to `x=0` on confirm; Unilateral saves exactly as clicked; camera locks to the correct pose for both midline groups with pan/zoom still working. Use this now-working screen to hand-correct any legacy points still flagged as needing fixes (re-check current data first — most known issues were already resolved during planning).
-- [ ] 4. `deploy-staging.ps1` → repeat the same manual verification on staging.
-- [ ] 5. `deploy-prod.ps1` → repeat the same manual verification on production.
+- [x] 3. Test locally against **dev** (already has Phase 1's 19 seed groups): create/tag one test point per laterality type (Paired, Midline-front, Midline-back, Unilateral) and verify each rule above — Paired always saves negative `corpo_x` regardless of click side; Midline off-center triggers the correction prompt and snaps to `x=0` on confirm; Unilateral saves exactly as clicked; camera locks to the correct pose for both midline groups with pan/zoom still working. Use this now-working screen to hand-correct any legacy points still flagged as needing fixes (re-check current data first — most known issues were already resolved during planning).
+- [x] 4. `deploy-staging.ps1` → repeat the same manual verification on staging.
+- [x] 5. `deploy-prod.ps1` → repeat the same manual verification on production.
 - [ ] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 3.
 
 ---
