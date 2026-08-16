@@ -192,13 +192,17 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
 
     const onModelClick = (e: any) => {
       e.stopPropagation();
-      
-      const point = e.point; // World point
-      
-      // Calculate normalized coordinates by reversing the derived scale
-      const rawX = point.x / derivedScale;
-      let rawY = point.y / derivedScale;
-      const rawZ = point.z / derivedScale;
+
+      // The CorpoModel geometry has scale and translation applied internally to
+      // center it. e.eventObject is the group inside CorpoModel where markers
+      // are placed, so converting into its local space removes that centering
+      // translation before we reverse the scale — matching BodyScene.tsx's
+      // handleModelBodyClick, which does the same for its own tap-to-find flow.
+      const localPoint = e.eventObject.worldToLocal(e.point.clone());
+
+      const rawX = localPoint.x / derivedScale;
+      let rawY = localPoint.y / derivedScale;
+      const rawZ = localPoint.z / derivedScale;
 
       // Reverse the legacy 95-unit Y offset so it matches how getTransformedPosition re-applies it.
       rawY -= 95;

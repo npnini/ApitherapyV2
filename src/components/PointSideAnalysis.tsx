@@ -4,6 +4,7 @@ import { RefreshCw, Download, AlertTriangle } from 'lucide-react';
 import { db } from '../firebase';
 import { logger } from '../utils/logger';
 import { StingPoint } from '../types/apipuncture';
+import { PointGroup } from '../types/pointGroup';
 import { analyzePoints, buildAnalysisCsv, PointAnalysisResult } from '../utils/pointSideAnalysis';
 import { T } from './T';
 import styles from './PointSideAnalysis.module.css';
@@ -19,9 +20,13 @@ const PointSideAnalysis: React.FC = () => {
     setError(null);
     setShowOnlyFlagged(false);
     try {
-      const snapshot = await getDocs(collection(db, 'cfg_acupuncture_points'));
-      const points = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as StingPoint));
-      setResult(analyzePoints(points));
+      const [pointsSnapshot, groupsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'cfg_acupuncture_points')),
+        getDocs(collection(db, 'cfg_point_groups')),
+      ]);
+      const points = pointsSnapshot.docs.map((d) => ({ id: d.id, ...d.data() } as StingPoint));
+      const pointGroups = groupsSnapshot.docs.map((d) => ({ id: d.id, ...d.data() } as PointGroup));
+      setResult(analyzePoints(points, pointGroups));
     } catch (err) {
       logger.error('Failed to run point side analysis:', err);
       setError('Failed to load point data. You must be an administrator to run this check.');
@@ -74,7 +79,7 @@ const PointSideAnalysis: React.FC = () => {
       </div>
 
       <p className={styles.description}>
-        <T>Checks every point's stored corpo position against its expected Left, Right or Midline classification based on its meridian, and flags anything that looks inconsistent for manual review.</T>
+        <T>Checks every point's stored corpo position against its expected Left, Right or Midline classification based on its Point Grouping, and flags anything that looks inconsistent for manual review.</T>
       </p>
 
       {error && <p className={styles.errorBox}>{error}</p>}

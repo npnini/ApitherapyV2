@@ -14,7 +14,7 @@ Check off each phase once its `finish-feature.ps1` merge step is done (i.e. all 
 - [x] **Phase 2** — Point Configuration screen changes (selector, marking rules, camera-lock)
 - [x] **Phase 3** — `cfg_acupuncture_points` migration script (M2)
 - [x] **Phase 4** — L/R/S counter frontend changes
-- [ ] **Phase 5** — `treatments` migration script (M3)
+- [x] **Phase 5** — `treatments` migration script (M3)
 - [ ] **Phase 6** — `PointSideAnalysis` diagnostic tool update
 - [ ] **Phase 7** — Cleanup (scope TBD)
 
@@ -112,17 +112,18 @@ Goal: replace the treatment execution R/L checkboxes and the old `stungPointIds`
 
 Goal: convert every existing treatment document from `stungPointIds`/`stungPointSides` into the new `stungPoints: {left, right, single}` map, then remove the old fields. Highest-risk phase — full backup/verify/delete procedure required, per environment. Hard dependency on Phase 3 (needs every point's `Point_Grouping` resolved) and Phase 4 (frontend must already understand the new structure before old fields are deleted).
 
-- [ ] 1. `new-branch.ps1`.
-- [ ] 2. Implement a new migration script under `/scripts` (dry-run capable, defaults to dry-run, requires `--apply` to write for real, `--project=dev|staging|prod` selector), which for every document in `treatments`:
+- [x] 1. `new-branch.ps1`.
+- [x] 2. Implement a new migration script under `/scripts` (dry-run capable, defaults to dry-run, requires `--apply` to write for real, `--project=dev|staging|prod` selector), which for every document in `treatments`:
   - For each `pointId` in that document's `stungPointIds` array: if `stungPointSides[pointId]` exists (`'L'` or `'R'`), set that point's `left` or `right` counter to `1` respectively (the old model had no concept of counts, so any recorded side becomes a count of exactly 1); `single` stays `0`.
   - If `stungPointSides[pointId]` does **not** exist for that pointId: look up the point's `Point_Grouping` laterality (via `cfg_point_groups` — requires Phase 3 to have already backfilled every point's `Point_Grouping`). If `laterality = "Paired"`, default `left = 1` (`right`/`single` stay `0`). If `laterality` is `Midline-front`/`Midline-back`/`Unilateral`, default `single = 1` (`left`/`right` stay `0`).
   - Writes the resulting `stungPoints` map onto the treatment document — **without** removing `stungPointIds`/`stungPointSides` yet (separate step below, only after manual verification).
   - A separate script mode/flag (`--delete-old-fields`) removes `stungPointIds`/`stungPointSides` from already-migrated documents — run only after verification passes.
-- [ ] 3. **Dev**: back up first (`firebase emulators:export <path>`) → dry-run → review → run for real **without** `--delete-old-fields` (`--apply` only) → manually verify — check Treatment History's Tabular View, List View, and "Show Model" 3D view for several migrated treatments, confirm "Total stings" sums correctly → only once verification passes, re-run with `--delete-old-fields` to remove the old fields.
-- [ ] 4. **Staging**: back up first (`gcloud firestore export gs://apitherapyv2-staging-backups/ManualBackup/treatments-<timestamp> --collection-ids=treatments --project=apitherapyv2`, without `--async`) → same convert-without-deleting → verify → delete-old-fields sequence as dev.
-- [ ] 5. **Production**: back up first (`gcloud firestore export gs://apitherapy-prod-backups/ManualBackup/treatments-<timestamp> --collection-ids=treatments --project=apitherapy-c94a6`, without `--async`) → same sequence.
+  - Also implemented as script/product refinements: `scripts/migrate-treatments-sting-counters.js`'s `--delete-old-fields` pass only cleans documents that were **fully** resolved (skips partial ones, tracked via a `docs/points-forklift/punch-list-M3-<project>.json` file, so no data is lost). Two follow-up product changes made after initial dev testing: (a) "Show Model"'s **"Total stings"** now sums across **all** selected treatments (`TreatmentHistory.tsx`/`PointsModelViewer.tsx`), not just a single selected one as originally scoped; (b) `TreatmentExecution.tsx` now **validates** that every stung point has a nonzero count (L and/or R for Paired, S otherwise) before "Another Protocol"/"Finish Treatment" can proceed, showing an inline error listing the offending point codes if not.
+- [x] 3. **Dev**: back up first (`firebase emulators:export <path>`) → dry-run → review → run for real **without** `--delete-old-fields` (`--apply` only) → manually verify — check Treatment History's Tabular View, List View, and "Show Model" 3D view for several migrated treatments, confirm "Total stings" sums correctly → only once verification passes, re-run with `--delete-old-fields` to remove the old fields.
+- [x] 4. **Staging**: back up first (`gcloud firestore export gs://apitherapyv2-staging-backups/ManualBackup/treatments-<timestamp> --collection-ids=treatments --project=apitherapyv2`, without `--async`) → same convert-without-deleting → verify → delete-old-fields sequence as dev.
+- [x] 5. **Production**: back up first (`gcloud firestore export gs://apitherapy-prod-backups/ManualBackup/treatments-<timestamp> --collection-ids=treatments --project=apitherapy-c94a6`, without `--async`) → same sequence.
 - [ ] 6. Restore, if ever needed: `gcloud firestore import gs://<bucket>/ManualBackup/treatments-<timestamp> --project=<id>`.
-- [ ] 7. `finish-feature.ps1` — commit, sync, merge the script into `main`. Only now, after all 3 environments are fully verified **including** the deletion step. No app deploy needed in this phase — Phase 4 already shipped and merged the reading code, live in all 3 environments, before this phase started.
+- [x] 7. `finish-feature.ps1` — commit, sync, merge the script into `main`. Only now, after all 3 environments are fully verified **including** the deletion step. (Originally scoped as no-app-deploy, since Phase 4 already shipped the reading code — but the two follow-up product changes above did require `deploy-staging.ps1`/`deploy-prod.ps1` reruns during this phase.)
 
 ---
 
