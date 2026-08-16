@@ -13,9 +13,10 @@ Check off each phase once its `finish-feature.ps1` merge step is done (i.e. all 
 - [x] **Phase 1** — `cfg_point_groups` collection + admin screen
 - [x] **Phase 2** — Point Configuration screen changes (selector, marking rules, camera-lock)
 - [x] **Phase 3** — `cfg_acupuncture_points` migration script (M2)
-- [ ] **Phase 4** — L/R/S counter frontend changes
+- [x] **Phase 4** — L/R/S counter frontend changes
 - [ ] **Phase 5** — `treatments` migration script (M3)
 - [ ] **Phase 6** — `PointSideAnalysis` diagnostic tool update
+- [ ] **Phase 7** — Cleanup (scope TBD)
 
 ---
 
@@ -86,8 +87,8 @@ Goal: backfill every existing point's `Point_Grouping` and correct `positions.co
 
 Goal: replace the treatment execution R/L checkboxes and the old `stungPointIds`/`stungPointSides` model with Left/Right/Single numeric counters, and update every screen that displays stung points. Depends on Phase 1+3 (needs `Point_Grouping` resolvable to decide which counters to show). Deliberately placed before Phase 5: no dependency on the treatments migration having run, and the live app needs to already read/write the new structure before any historical data is converted.
 
-- [ ] 1. `new-branch.ps1`.
-- [ ] 2. Implement:
+- [x] 1. `new-branch.ps1`.
+- [x] 2. Implement:
   - **New treatment data model**: replace `stungPointIds: string[]` + `stungPointSides?: Record<pointId,'L'|'R'>` (in `src/types/treatmentSession.ts`) with a single map `stungPoints: Record<pointId, { left: number; right: number; single: number }>` — every present pointId always has all three counters (defaulting to `0`); no separate ID array needed since the map's keys are the stung point IDs. Update `patient.ts`'s save path to write this structure.
   - **`TreatmentExecution.tsx`** — when a point is added to the stung-points rectangle, look up its `Point_Grouping`'s `laterality` (resolved via `cfg_point_groups`, same lookup as Phase 2):
     - `"Paired"`: show exactly **two** numeric counter boxes, labeled **L** and **R**, each a spinner-style numeric input (up/down arrows, and typeable directly). The **label sits to the left of its input box**. Leave **significant visual spacing** between the L box and the R box so they read as two clearly separate groups, not one control. Default `0` for both. Tooltip: "Left" / "Right".
@@ -98,11 +99,12 @@ Goal: replace the treatment execution R/L checkboxes and the old `stungPointIds`
   - **`TreatmentHistory.tsx` List View** — stung points section: each point shown as `"code, label, L=x, R=y, S=z"` using that point's actual counter values, shown **uniformly for every point regardless of laterality** (unlike the input UI, which only shows the applicable subset — this is a read-only summary, so all three values including zeros keep the report format consistent).
   - **`PointsModelViewer.tsx`**: alongside the existing stung-points count, add "Total stings" = sum of Single+Left+Right across every stung point **in the specific treatment currently being displayed** (not the broader multi-treatment aggregate scope "Show Model" can otherwise show).
   - **`pointSide.ts`** (`formatPointCode`/`getSideLabel`): rework to read the new `{left, right, single}` shape instead of the old single `'L'|'R'` flag, producing the `"CODE-Y"` format above.
-- [ ] 3. Test locally on **dev**: create a **new** treatment end-to-end — add a Paired point with different L/R counts, add a Midline point with an S count — confirm only the relevant boxes appear with the described layout, confirm the Tabular View suffix and List View line render correctly for both, confirm "Total stings" sums correctly, confirm the "Show Model" tooltip appears on hover.
-- [ ] 4. `deploy-staging.ps1` → repeat the same manual test (create a real test treatment) on staging.
-- [ ] 5. `deploy-prod.ps1` → repeat the same manual test on production.
-- [ ] 6. Confirm the app is live with full new-structure read/write support in all 3 environments — this must be true before Phase 5 runs, since Phase 5 converts historical data into this same structure and the app needs to already display it correctly everywhere.
-- [ ] 7. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 5.
+  - Also updated (not named above, but required to keep the app compiling/consistent once the data model and `pointSide.ts` signature changed): `PatientIntake.tsx` (the actual save path — accumulates and merges `stungPoints` counts across protocol rounds), `PostStingScreen.tsx` and `TreatmentSummary.tsx` (both render `formatPointCode` badges, using the compact `"CODE-Y"` format). Also deleted `scripts/generate_mock_data.cjs` (unused, wrote the old field shape).
+- [x] 3. Test locally on **dev**: create a **new** treatment end-to-end — add a Paired point with different L/R counts, add a Midline point with an S count — confirm only the relevant boxes appear with the described layout, confirm the Tabular View suffix and List View line render correctly for both, confirm "Total stings" sums correctly, confirm the "Show Model" tooltip appears on hover.
+- [x] 4. `deploy-staging.ps1` → repeat the same manual test (create a real test treatment) on staging.
+- [x] 5. `deploy-prod.ps1` → repeat the same manual test on production.
+- [x] 6. Confirm the app is live with full new-structure read/write support in all 3 environments — this must be true before Phase 5 runs, since Phase 5 converts historical data into this same structure and the app needs to already display it correctly everywhere.
+- [x] 7. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 5.
 
 ---
 
@@ -137,4 +139,10 @@ Goal: simplify the audit tool now that `Point_Grouping` is the authoritative, al
 - [ ] 3. Test locally on **dev**: run the tool, confirm `expected_pairing` now matches each point's actual `Point_Grouping` laterality, confirm `corpo_side`/`consistency_flag`/`reference_note` behave identically to before (same flags raised for the same rows).
 - [ ] 4. `deploy-staging.ps1` → spot-check the same on staging.
 - [ ] 5. `deploy-prod.ps1` → spot-check the same on production. No data migration involved — pure diagnostic-tool code change.
-- [ ] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. This is the final phase.
+- [ ] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 7.
+
+---
+
+## Phase 7 — Cleanup
+
+Scope not yet defined — to be discussed and filled in later, once Phases 1–6 are complete and it's clear what's left to tidy up (e.g. leftover punch-list items, migration scripts/backups, anything deferred along the way). Placeholder for now.

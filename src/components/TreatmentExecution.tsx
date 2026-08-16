@@ -71,6 +71,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const tStdDirectiveFallback = useT('Wait 15 minutes before removing the stingers, then measure the final vitals');
     const tSensitivityLevel = useT('Sensitivity Level');
     const tNoAdditionalDetails = useT('No additional details available in this language.');
+    const tMissingCountsError = useT('Enter a sting count before continuing for:');
 
     const [hydratedProtocol, setHydratedProtocol] = useState<HydratedProtocol | null>(null);
     const [isHydrating, setIsHydrating] = useState(true);
@@ -81,6 +82,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [stungPoints, setStungPoints] = useState<StingPoint[]>([]);
     const [stungPointCounts, setStungPointCounts] = useState<Record<string, StungPointCounts>>({});
     const [pointGroups, setPointGroups] = useState<PointGroup[]>([]);
+    const [validationError, setValidationError] = useState<string | null>(null);
     const [activePointId, setActivePointId] = useState<string | null>(null);
     const [isRolling, setIsRolling] = useState(true);
     const [selectedSensitivity, setSelectedSensitivity] = useState<'all' | 'Low' | 'Medium' | 'High'>('all');
@@ -147,6 +149,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         setStungPoints([]);
         setStungPointCounts({});
         setActivePointId(null);
+        setValidationError(null);
 
         if (!accumulatedStungPointIds || accumulatedStungPointIds.length === 0) {
             setResolvedPrevPoints([]);
@@ -232,6 +235,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
             return rest;
         });
         if (activePointId === id) setActivePointId(null);
+        setValidationError(null);
     };
 
     const handleSetPointCount = (id: string, field: keyof StungPointCounts, rawValue: string) => {
@@ -240,6 +244,20 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
             const existing = prev[id] ?? { left: 0, right: 0, single: 0 };
             return { ...prev, [id]: { ...existing, [field]: n } };
         });
+        setValidationError(null);
+    };
+
+    // Every stung point must have a nonzero count before the round can be completed:
+    // Paired points need L and/or R > 0, everything else needs S > 0.
+    const validateStungPointCounts = (): string[] => {
+        return stungPoints
+            .filter(p => {
+                const counts = stungPointCounts[p.id] ?? { left: 0, right: 0, single: 0 };
+                return getLaterality(p) === 'Paired'
+                    ? counts.left === 0 && counts.right === 0
+                    : counts.single === 0;
+            })
+            .map(p => p.code);
     };
 
     const handleModelTap = useCallback(async (pos: { x: number; y: number; z: number }) => {
@@ -277,10 +295,22 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     }, []);
 
     const handleAnotherProtocol = () => {
+        const missing = validateStungPointCounts();
+        if (missing.length > 0) {
+            setValidationError(`${tMissingCountsError} ${missing.join(', ')}`);
+            return;
+        }
+        setValidationError(null);
         onRoundComplete(stungPoints.map(p => p.id), stungPointCounts);
     };
 
     const handleNext = () => {
+        const missing = validateStungPointCounts();
+        if (missing.length > 0) {
+            setValidationError(`${tMissingCountsError} ${missing.join(', ')}`);
+            return;
+        }
+        setValidationError(null);
         onNext(stungPoints.map(p => p.id), stungPointCounts);
     };
 
@@ -663,6 +693,13 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             <span>
                                 {getFieldContent(appConfig?.treatmentSettings?.sensitivityWaitDirective, language) || tSensDirectiveFallback}
                             </span>
+                        </div>
+                    )}
+
+                    {validationError && (
+                        <div className={styles.validationErrorBox}>
+                            <AlertTriangle size={16} />
+                            <span>{validationError}</span>
                         </div>
                     )}
 

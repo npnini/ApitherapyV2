@@ -722,6 +722,20 @@
     padding: var(--spacing-lg) 0;
 }
 
+/* ── Validation errors ────────────────────────────────────── */
+.validationErrorBox {
+    background: var(--color-error-background);
+    border: 2px solid var(--color-error);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    color: var(--color-error);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 /* ── Directives ───────────────────────────────────────────── */
 .directiveBox {
     background: var(--color-warning-background);

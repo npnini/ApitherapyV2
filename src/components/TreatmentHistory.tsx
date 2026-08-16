@@ -384,11 +384,15 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         ).values()
     );
 
-    // "Total stings" only ever reflects a single specific treatment, never the broader
-    // multi-treatment aggregate scope this modal can otherwise show.
-    const singleSelectedTreatment = selectedTreatmentIds.size === 1
-        ? treatments.find(t => selectedTreatmentIds.has(t.id))
-        : undefined;
+    // Sum of Single+Left+Right across every stung point in every selected treatment
+    // (not deduplicated by point — a point stung again in another selected treatment
+    // counts again, since this reflects total physical stings administered).
+    const totalStings = treatments
+        .filter(t => selectedTreatmentIds.has(t.id))
+        .reduce((sum, t) => {
+            const counts = Object.values(t.stungPoints ?? {});
+            return sum + counts.reduce((s, c) => s + c.left + c.right + c.single, 0);
+        }, 0);
 
     return (
         <div className={styles.container} dir={direction}>
@@ -800,7 +804,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                 isFlex={true}
                 bodyStyle={{ height: '80vh' }}
             >
-                <PointsModelViewer points={aggregatedPoints} stungPointCounts={singleSelectedTreatment?.stungPoints} />
+                <PointsModelViewer points={aggregatedPoints} totalStings={totalStings} />
             </Modal>
         </div>
     );

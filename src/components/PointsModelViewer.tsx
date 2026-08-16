@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { StingPoint } from '../types/apipuncture';
-import { StungPointCounts } from '../utils/pointSide';
 import { Pause, Play, MapPin } from 'lucide-react';
 import { T, useTranslationContext } from './T';
 import BodyScene from './BodyScene';
@@ -17,18 +16,12 @@ const getMLValue = (value: any, lang: string): string => {
 
 interface PointsModelViewerProps {
     points: StingPoint[];
-    /** Present only when displaying a single specific treatment — never the broader multi-treatment aggregate scope */
-    stungPointCounts?: Record<string, StungPointCounts>;
+    /** Sum of Single+Left+Right across every stung point in every selected treatment */
+    totalStings?: number;
 }
 
-const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points, stungPointCounts }) => {
+const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points, totalStings }) => {
     const { language } = useTranslationContext();
-    const totalStings = stungPointCounts
-        ? points.reduce((sum, p) => {
-            const c = stungPointCounts[p.id];
-            return sum + (c ? c.left + c.right + c.single : 0);
-        }, 0)
-        : null;
     const [isRolling, setIsRolling] = useState(true);
     const [highlightedPointIds, setHighlightedPointIds] = useState<Set<string>>(new Set());
 
@@ -51,7 +44,7 @@ const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points, stungPoin
                     <MapPin size={14} />
                     <T>Sting Points</T> ({points.length})
                 </h4>
-                {totalStings !== null && (
+                {totalStings !== undefined && (
                     <p className={styles.totalStingsText}>
                         <T>Total stings</T>: {totalStings}
                     </p>
