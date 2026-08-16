@@ -15,7 +15,7 @@ Check off each phase once its `finish-feature.ps1` merge step is done (i.e. all 
 - [x] **Phase 3** — `cfg_acupuncture_points` migration script (M2)
 - [x] **Phase 4** — L/R/S counter frontend changes
 - [x] **Phase 5** — `treatments` migration script (M3)
-- [ ] **Phase 6** — `PointSideAnalysis` diagnostic tool update
+- [x] **Phase 6** — `PointSideAnalysis` diagnostic tool update
 - [ ] **Phase 7** — Cleanup (scope TBD)
 
 ---
@@ -131,16 +131,18 @@ Goal: convert every existing treatment document from `stungPointIds`/`stungPoint
 
 Goal: simplify the audit tool now that `Point_Grouping` is the authoritative, always-populated source of truth, retiring the guesswork it stood in for. Deliberately last: this phase only technically depends on Phase 1 (`cfg_point_groups` existing) and Phase 3 (`Point_Grouping` backfilled everywhere), not on Phases 2/4/5 — but it's sequenced last anyway so the diagnostic/audit tool stays in its trusted current form throughout the riskiest phases (3 and 5), only simplified once the migration it helps audit is fully complete.
 
-- [ ] 1. `new-branch.ps1`.
-- [ ] 2. Implement, in `src/utils/pointSideAnalysis.ts` + `src/components/PointSideAnalysis.tsx`:
+- [x] 1. `new-branch.ps1`.
+- [x] 2. Implement, in `src/utils/pointSideAnalysis.ts` + `src/components/PointSideAnalysis.tsx`:
   - **Drop `meridian_prefix` entirely** (the regex-derived guess from `code`) — no longer needed now that every point has a mandatory, backfilled `Point_Grouping`.
   - **`corpo_side` column: unchanged** — still resolved from the sign of `positions.corpo.x` (`EPS_CORPO = 0.15` threshold, `+X = Left`), exactly as today.
   - **`expected_pairing` column**: resolve from the point's actual `Point_Grouping` → look up that group's `laterality` in `cfg_point_groups` (Paired/Midline-front/Midline-back/Unilateral), instead of guessing from the `PREFIX_PAIRING` table keyed by `meridian_prefix`. Retire `PREFIX_PAIRING` entirely; verify case-by-case during implementation whether the `CODE_OVERRIDES` table is still needed for any special-case points, rather than assuming it can also be dropped.
   - **`consistency_flag` and `reference_note` logic: unchanged** — keep exactly as today (still comparing `expected_pairing` against `corpo_side`, same flag text).
-- [ ] 3. Test locally on **dev**: run the tool, confirm `expected_pairing` now matches each point's actual `Point_Grouping` laterality, confirm `corpo_side`/`consistency_flag`/`reference_note` behave identically to before (same flags raised for the same rows).
-- [ ] 4. `deploy-staging.ps1` → spot-check the same on staging.
-- [ ] 5. `deploy-prod.ps1` → spot-check the same on production. No data migration involved — pure diagnostic-tool code change.
-- [ ] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 7.
+  - **Implementation notes**: `CODE_OVERRIDES` kept, but trimmed to just its `.note` text — its old `.pairing` guesses are gone since pairing is never guessed anymore (comes straight from `Point_Grouping`). The old "expected Right-only but geometrically X" flag was dropped rather than translated 1:1: `Unilateral` points are legitimately unrestricted (no forced side, per the Phase 2/3 design decision), so keeping a fixed-side check would have produced false-positive flags on valid data. An "Unknown"/unresolved-`Point_Grouping` flag remains as a safety net.
+  - **Unplanned addition, same branch**: fixed an unrelated point-marking bug found while testing — `PointPlacementScene.tsx`'s click handler stored raw world-space coordinates without removing `CorpoModel`'s internal centering translation first, so every newly-marked point landed a constant world-space distance from the actual click (barely visible near the body's centerline, much more obvious on thin extremities like fingertips). Fixed to match `BodyScene.tsx`'s already-correct pattern (`e.eventObject.worldToLocal(e.point.clone())` before dividing by scale). No data migration needed — only affects new clicks going forward.
+- [x] 3. Test locally on **dev**: run the tool, confirm `expected_pairing` now matches each point's actual `Point_Grouping` laterality, confirm `corpo_side`/`consistency_flag`/`reference_note` behave identically to before (same flags raised for the same rows).
+- [x] 4. `deploy-staging.ps1` → spot-check the same on staging.
+- [x] 5. `deploy-prod.ps1` → spot-check the same on production. No data migration involved — pure diagnostic-tool code change.
+- [x] 6. `finish-feature.ps1` — commit, sync, merge to `main`. Only now, after all 3 environments verified. Then move to Phase 7.
 
 ---
 
