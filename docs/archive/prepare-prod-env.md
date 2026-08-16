@@ -1,0 +1,89 @@
+> **Status: completed / archived** (2026-08-16). Nearly all items below are done; the handful of items left open (`[ ]`/`[-]`) were extracted into `docs/operations/production-launch-followups.md` for active tracking. Note: this doc refers to the production project as `apitherapy-prod` — the actual alias is `apitherapy-c94a6` (see `docs/operations/environments.md`).
+
+# Production Environment Preparation Checklist
+
+This document tracks all tasks required to safely move the Apitherapy application from Staging (`apitherapyv2`) to Production (`apitherapy-prod`).
+
+## 1. Core Infrastructure & Security (Console Tasks)
+*Establish the cloud foundation.*
+
+- [x] **Firestore Database**: Initialized in `me-west1`.
+- [x] **Firestore Security Rules**: Deployed.
+- [x] **Firestore Indexes**: Deployed.
+- [x] **Storage Bucket**: Initialized in `me-west1`.
+- [x] **Storage Security Rules**: Deployed.
+- [x] **BigQuery Dataset**: Created `apitherapy_clinical_analytics_prod` in `me-west1`.
+- [x] **Web App Registration**: Register `Apitherapy-Prod-Web` in Firebase Console and save the `firebaseConfig`.
+- [x] **OAuth Client ID**: Create a new production-specific OAuth 2.0 Client ID in Google Cloud Console.
+    - Authorized origins: `https://apitherapy.beelive.biz`
+    - Redirect URIs: `https://apitherapy.beelive.biz/__/auth/handler`
+- [x] **Authorized Domains**: Add `apitherapy.beelive.biz` to Firebase Auth settings.
+- [x] **Hosting Domain**: Connect `apitherapy.beelive.biz` in Firebase Hosting and update DNS records (A/CNAME).
+- [x] **App Check**: Register web app with reCAPTCHA v3 (Set to 'Monitor' mode initially).
+- [x] **Budget Alerts**: Set up budget in Billing Console with alerts at 50%, 90%, 100%.
+
+## 2. Environment Configuration (Code Tasks)
+*Prepare the codebase for the production environment.*
+
+- [x] **Extension Configs**: Created `.env.prod` files for all 8 BigQuery extensions.
+- [x] **Deployment Script**: Created automated `deploy-prod.ps1` with BQ sync and extension logic.
+- [x] **BigQuery Sync Script**: Refactored `sync-bq-views.js` to handle Stage -> Prod pipeline.
+- [x] **2.4. BigQuery Dataset Logic**: Update `functions/src/index.ts` to dynamically switch between `stage` and `prod` datasets based on `GCLOUD_PROJECT`.
+- [x] **Frontend Config**: Create `.env.production` at project root with production `firebaseConfig` (VITE_ prefixed).
+- [x] **Hosting Config**: Add security headers and SPA rewrite rules to `firebase.json`.
+- [x] **Code Cleanup**: Remove `console.log` and `debugger` or gate them behind `import.meta.env.DEV`.
+
+## 3. Data Migration (Staging -> Prod)
+*Move essential data before the software goes live.*
+
+- [x] **Auth Migration**: 
+    - [x] `firebase auth:export users.json --project apitherapyv2`
+    - [x] `firebase auth:import users.json --project prod`
+- [x] **Data Migration (Isolated)**:
+    - [x] **Historical one-time migration completed** — Staging data was transferred to Production during the initial production setup.
+    - [x] The temporary migration workflow and its scripts were retired after Staging and Production became permanent, independent environments.
+    - [x] Future deployments must not copy Staging data into Production; use the environment-specific deployment scripts instead.
+    > Firestore backup lands in `gs://apitherapy-c94a6.firebasestorage.app/backups/`. App files sync to root of same bucket.
+    > *Historical note: The initial migration used the temporary `gs://apitherapyv2-israel-temp` bucket to satisfy Firestore region requirements. That bucket and workflow are no longer active.*
+
+- [x] **BigQuery Backfill**:
+    - [x] Deploy extensions: `firebase deploy --only extensions --project prod`
+    - [x] Run backfill for all collections using `npx @firebaseextensions/fs-bq-import-collection`.
+    - [x] Sync views: `node scripts/sync-bq-views.js --deploy --stage_prod`
+
+## 4. Third-Party Services & Final Configuration
+*Update external keys and environment-specific settings AFTER data migration.*
+
+- [ ] **Resend (Email)**:
+    - [x] Create production API Key.
+    - [-] Add and verify production domain via DNS (SPF, DKIM).
+    - [-] Update webhook URLs to point to production Cloud Functions. [Optional]
+    - [x] Create environment-specific email addresses:
++        - [x] `apitherapy@beelive.biz` (Production)
++        - [x] `staging-apitherapy@beelive.biz` (Staging)
++        - [x] `dev-apitherapy@beelive.biz` (Local/Dev)
+- [x] **App Configuration Update**: 
+    - [x] Update `cfg_app_config/main` -> `notificationSettings.emailApiKey` with Production Resend Key.
+    - [x] Update `cfg_app_config/main` -> `notificationSettings.frontendDomain` to `apitherapy.beelive.biz`.
+- [x] **Error Monitoring**: Initialized log-based alerts in Google Cloud for Cloud Function errors (Severity >= ERROR).
+
+## 5. Launch & Monitoring
+*Manual deployment and post-deployment checks.*
+
+- [x] **Extension Service Account**: Grant `BigQuery Data Editor` role to the extension service account on the prod project (Required for BQ Sync).
+- [x] **Initial Extensions Deploy**: Run `firebase deploy --only extensions --project prod`.
+- [x] **Full Production Deploy**: Run `.\deploy-prod.ps1`.
+- [ ] **Smoke Test**: Verify login and core clinical workflows on the live domain.
+- [ ] **App Check Enforcement**: Switch App Check to 'Enforce' mode.
+- [x] **Daily Backups**: Implement 3-tier strategy:
+    *   **Tier 1**: Firestore Daily Full Snapshots to `apitherapy-prod-backups` bucket (dated folders).
+    *   **Tier 2**: Storage Object Versioning enabled on live bucket (protects against single-file errors).
+    *   **Tier 3**: Storage Disaster Recovery via Daily Copy to `apitherapy-prod-backups`.
+    *   **Retention**: 30-day auto-purge enabled on backup bucket.
+
+## 6. CI/CD Automation (Post-Launch)
+*Automate the delivery pipeline for long-term maintenance.*
+
+- [ ] **GitHub Secrets**: Add `FIREBASE_TOKEN_PROD`, `VITE_` vars, and `RESEND_API_KEY_PROD` to GitHub Actions.
+- [ ] **Workflow File**: Create `.github/workflows/deploy-prod.yml` (Trigger: push to main).
+- [ ] **Branch Protection**: Require PR reviews and passing CI checks for the `main` branch.

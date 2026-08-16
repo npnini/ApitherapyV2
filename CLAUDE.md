@@ -19,10 +19,11 @@ Its purpose is to give clinical information, document measures about treatments,
 
 * Install dependencies: npm install
 * Start dev server: npm run dev for local dev, npm run dev:all for starting Firebase Emulators
-* Build: script deploy\_staging.ps1 for deploy to cloud staging project, script deploy\_prod.ps1 for deploying to cloud production project
+* Build: script scripts/deploy/deploy-staging.ps1 for deploy to cloud staging project, script scripts/deploy/deploy-prod.ps1 for deploying to cloud production project
 * Run tests: n/a yet
-* new-branch.ps1 - used to create a git branch
-* finish-feature.ps1 - used to commit, sync and merge branch to main
+* scripts/deploy/new-branch.ps1 - used to create a git branch
+* scripts/deploy/finish-feature.ps1 - used to commit, sync and merge branch to main
+* All scripts under scripts/deploy/ (including the two above) must be run from the repo root, e.g. `.\scripts\deploy\new-branch.ps1 -BranchName "..."`
 * Main branch is: main
 
 
@@ -58,7 +59,8 @@ Its purpose is to give clinical information, document measures about treatments,
 # Project Structure
 
 * /functions - contains all functions deployed in Google Cloud Platform
-* /scripts - contain multiple scripts created through the project lifetime
+* /scripts - maintenance scripts, categorized into dev/ (local dev helpers), deploy/ (deployment & git workflow scripts), migrations/ (data migrations, write access), diagnostics/ (read-only inspection), fixtures/ (mock/seed data). See docs/operations/script-catalog.md.
+* /docs - functional/operations/architecture documentation plus docs/archive/ for historical material. See docs/operations/ for maintainer runbooks.
 * /src/components — reusable UI components
 * /src/services — API and data fetching
 * /src/utils — helper functions

@@ -9,9 +9,9 @@
     "preview": "vite preview",
     "emulators": "firebase emulators:start --import=./emulator-data",
 
-    "emulators:autosave": "node scripts/auto-save-emulator.js",
-    "dev:all": "node scripts/start-dev.js",
-    "sync-data": "node scripts/sync-firestore.js"
+    "emulators:autosave": "node scripts/dev/auto-save-emulator.js",
+    "dev:all": "node scripts/dev/start-dev.js",
+    "sync-data": "node scripts/dev/sync-firestore.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.0.8",

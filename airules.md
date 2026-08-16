@@ -34,6 +34,6 @@
     3.  The exact "next step" (file and function/line) for the next agent.
 *   **Startup:** At the start of every new session, the agent MUST read these documents **in order**:
     1.  `airules.md` — Project-specific constraints and handover duties.
-    2.  `STYLING_GUIDE.md` — Coding and CSS conventions.
+    2.  `Claude Style-Guide.md` — Coding and CSS conventions.
     3.  The latest `handover.md` in the agent's brain directory — Current status and next steps.
     4.  The `implementation_plan.md` linked from `handover.md` — The active technical blueprint. This document defines WHAT to build and HOW. No implementation work may begin without reading it.
