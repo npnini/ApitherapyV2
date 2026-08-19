@@ -1335,7 +1335,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 <TreatmentExecution
                                     protocol={selectedProtocol!}
                                     displayTitle={selectedAdhocProtocol ? (typeof selectedAdhocProtocol.name === 'string' ? selectedAdhocProtocol.name : (selectedAdhocProtocol.name as any)?.[user.preferredLanguage ?? 'en'] || (selectedAdhocProtocol.name as any)?.en) : undefined}
-                                    isSensitivityTest={sessionIsSensitivityTest}
+                                    isSensitivityTest={selectedProtocol?.type === 'sensitivity'}
                                     accumulatedStungPointIds={accumulatedStungPointIds}
                                     onRoundComplete={handleRoundComplete}
                                     onNext={handleNextFromStinging}
