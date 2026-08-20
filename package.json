@@ -10,6 +10,7 @@
     "emulators": "firebase emulators:start --import=./emulator-data",
 
     "emulators:autosave": "node scripts/dev/auto-save-emulator.js",
+    "save-emulator-data": "node scripts/dev/save-emulator-data.js",
     "dev:all": "node scripts/dev/start-dev.js",
     "sync-data": "node scripts/dev/sync-firestore.js"
   },

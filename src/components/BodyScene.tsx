@@ -215,7 +215,7 @@ const BodyScene: React.FC<BodySceneProps> = ({
       />
 
       <ambientLight intensity={config.ambientIntensity} />
-      <directionalLight position={[config.keyLightX, config.keyLightY, 4]} intensity={config.keyLightIntensity} castShadow />
+      <directionalLight position={[config.keyLightX, config.keyLightY, 4]} intensity={config.keyLightIntensity} castShadow={config.keyLightCastShadow} />
       <directionalLight position={[config.fillLightX, config.fillLightY, -4]} intensity={config.fillLightIntensity} />
 
       <Suspense fallback={<LoadingOverlay />}>
@@ -245,15 +245,17 @@ const BodyScene: React.FC<BodySceneProps> = ({
           <Environment preset="city" environmentIntensity={config.environmentIntensity} />
         )}
 
-        <ContactShadows
-          position={[0, 0, 0]}
-          opacity={0.3}
-          scale={15}
-          blur={3}
-          far={10}
-          resolution={512}
-          color="#000000"
-        />
+        {config.contactShadowsEnabled && (
+          <ContactShadows
+            position={[0, 0, 0]}
+            opacity={0.3}
+            scale={15}
+            blur={3}
+            far={10}
+            resolution={512}
+            color="#000000"
+          />
+        )}
       </Suspense>
 
       <gridHelper args={[20, 50, 0xe2e8f0, 0xf1f5f9]} position={[0, -0.01, 0]} />

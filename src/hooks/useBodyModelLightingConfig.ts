@@ -15,6 +15,8 @@ export interface BodyModelLightingConfig {
   exposure: number;
   roughness: number;
   materialMode: 'flat' | 'triplanar';
+  keyLightCastShadow: boolean;
+  contactShadowsEnabled: boolean;
 }
 
 export const DEFAULT_BODY_MODEL_LIGHTING: BodyModelLightingConfig = {
@@ -30,6 +32,8 @@ export const DEFAULT_BODY_MODEL_LIGHTING: BodyModelLightingConfig = {
   exposure: 0.80,
   roughness: 0.50,
   materialMode: 'flat',
+  keyLightCastShadow: true,
+  contactShadowsEnabled: true,
 };
 
 /**
@@ -48,7 +52,7 @@ export function useBodyModelLightingConfig() {
       .then((snap) => {
         if (cancelled) return;
         if (snap.exists()) {
-          setConfig(snap.data() as BodyModelLightingConfig);
+          setConfig({ ...DEFAULT_BODY_MODEL_LIGHTING, ...(snap.data() as Partial<BodyModelLightingConfig>) });
         }
         setLoading(false);
       })

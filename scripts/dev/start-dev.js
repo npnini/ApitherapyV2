@@ -86,6 +86,18 @@ const emulators = spawn('npx', ['firebase', 'emulators:start', '--import=./emula
   }
 });
 
+// Without a SIGINT listener, Node's default behavior is to terminate this
+// parent process immediately on Ctrl+C — on Windows, CTRL_C_EVENT reaches
+// the whole console process group at once, so the parent could die before
+// the child `emulators` process finishes its own graceful shutdown and
+// emits 'close' below, silently skipping the save/recovery logic entirely.
+// Registering a handler (even one that does nothing) suppresses that
+// default so the parent stays alive until 'close' fires and calls
+// process.exit() itself.
+process.on('SIGINT', () => {
+  console.log('\n⏳ Ctrl+C received — waiting for the emulators to finish shutting down and exporting before this process exits...');
+});
+
 emulators.on('close', (code) => {
   console.log(`\n🛑 Emulators stopped with code ${code}`);
 

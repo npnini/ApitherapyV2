@@ -166,7 +166,7 @@ const BodyModelTuner: React.FC = () => {
                 />
 
                 <ambientLight intensity={draft.ambientIntensity} />
-                <directionalLight position={[draft.keyLightX, draft.keyLightY, 4]} intensity={draft.keyLightIntensity} castShadow />
+                <directionalLight position={[draft.keyLightX, draft.keyLightY, 4]} intensity={draft.keyLightIntensity} castShadow={draft.keyLightCastShadow} />
                 <directionalLight position={[draft.fillLightX, draft.fillLightY, -4]} intensity={draft.fillLightIntensity} />
 
                 <React.Suspense fallback={null}>
@@ -174,7 +174,9 @@ const BodyModelTuner: React.FC = () => {
                   {draft.environmentEnabled && (
                     <Environment preset="city" environmentIntensity={draft.environmentIntensity} />
                   )}
-                  <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={15} blur={3} far={10} resolution={512} color="#000000" />
+                  {draft.contactShadowsEnabled && (
+                    <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={15} blur={3} far={10} resolution={512} color="#000000" />
+                  )}
                 </React.Suspense>
 
                 <gridHelper args={[20, 50, 0xe2e8f0, 0xf1f5f9]} position={[0, -0.01, 0]} />
@@ -264,6 +266,30 @@ const BodyModelTuner: React.FC = () => {
               step={0.05}
               onChange={(v) => setField('roughness', v)}
             />
+
+            <div className={styles.toggleRow}>
+              <span className={styles.fieldLabel}><T>Body self-shadows (key light)</T></span>
+              <label className={styles.toggleSwitch}>
+                <input
+                  type="checkbox"
+                  checked={draft.keyLightCastShadow}
+                  onChange={(e) => setField('keyLightCastShadow', e.target.checked)}
+                />
+                <span className={styles.slider}></span>
+              </label>
+            </div>
+
+            <div className={styles.toggleRow}>
+              <span className={styles.fieldLabel}><T>Ground contact shadow</T></span>
+              <label className={styles.toggleSwitch}>
+                <input
+                  type="checkbox"
+                  checked={draft.contactShadowsEnabled}
+                  onChange={(e) => setField('contactShadowsEnabled', e.target.checked)}
+                />
+                <span className={styles.slider}></span>
+              </label>
+            </div>
 
             <div className={styles.toggleRow}>
               <span className={styles.fieldLabel}><T>Environment (city HDRI)</T></span>

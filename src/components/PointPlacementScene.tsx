@@ -253,7 +253,7 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
         />
 
         <ambientLight intensity={config.ambientIntensity} />
-        <directionalLight position={[config.keyLightX, config.keyLightY, 4]} intensity={config.keyLightIntensity} castShadow />
+        <directionalLight position={[config.keyLightX, config.keyLightY, 4]} intensity={config.keyLightIntensity} castShadow={config.keyLightCastShadow} />
         <directionalLight position={[config.fillLightX, config.fillLightY, -4]} intensity={config.fillLightIntensity} />
 
         <SceneContent />
@@ -261,7 +261,9 @@ const PointPlacementScene: React.FC<PointPlacementSceneProps> = ({
         {config.environmentEnabled && (
           <Environment preset="city" environmentIntensity={config.environmentIntensity} />
         )}
-        <ContactShadows opacity={0.3} scale={15} blur={3} far={10} color="#000000" />
+        {config.contactShadowsEnabled && (
+          <ContactShadows opacity={0.3} scale={15} blur={3} far={10} color="#000000" />
+        )}
         <gridHelper args={[20, 50, 0xe2e8f0, 0xf1f5f9]} position={[0, -0.01, 0]} />
       </Canvas>
     </div>
