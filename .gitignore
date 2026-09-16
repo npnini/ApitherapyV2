@@ -56,3 +56,6 @@ scratch/
 temp_migration/
 migration_*/
 .last_prod_deploy
+
+# Security check local state
+.security-state.json

@@ -1,34 +1,109 @@
 # deploy-staging.ps1
-# Exit immediately if a command fails
 $ErrorActionPreference = "Stop"
 
-# 1. SYNC BIGQUERY VIEWS (STAGING)
-Write-Host "Syncing BigQuery views to Staging..." -ForegroundColor Cyan
-node scripts/deploy/sync-bq-views.js --deploy --dev_stage
+$results = @()
 
-# 2. DELETE THE CACHE & OLD BUILDS
-Write-Host "Clearing old builds and cache..." -ForegroundColor Cyan
+function Invoke-Step {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][scriptblock]$Action,
+        [string]$RecommendedAction = "Re-run this step manually and check the error output above."
+    )
+    Write-Host "`n-> $Name..." -ForegroundColor Yellow
+    $global:LASTEXITCODE = 0
+    try {
+        & $Action
+        if ($LASTEXITCODE -ne 0) {
+            throw "Command exited with code $LASTEXITCODE"
+        }
+        $script:results += [PSCustomObject]@{ Step = $Name; Status = "Success"; Detail = ""; Action = "" }
+        return $true
+    }
+    catch {
+        Write-Host "[FAILED] $Name : $($_.Exception.Message)" -ForegroundColor Red
+        $script:results += [PSCustomObject]@{ Step = $Name; Status = "FAILED"; Detail = $_.Exception.Message; Action = $RecommendedAction }
+        return $false
+    }
+}
+
+function Add-SkippedStep {
+    param([string]$Name, [string]$Reason, [string]$RecommendedAction)
+    Write-Host "`n-> $Name... SKIPPED ($Reason)" -ForegroundColor Yellow
+    $script:results += [PSCustomObject]@{ Step = $Name; Status = "SKIPPED"; Detail = $Reason; Action = $RecommendedAction }
+}
+
+Write-Host "--- STARTING STAGING DEPLOYMENT ---" -ForegroundColor Cyan
+
+# 1. SYNC BIGQUERY VIEWS (STAGING)
+Invoke-Step -Name "Sync BigQuery views" `
+    -Action { node scripts/deploy/sync-bq-views.js --deploy --dev_stage } `
+    -RecommendedAction "Re-run: node scripts/deploy/sync-bq-views.js --deploy --dev_stage"
+
+# 2. CLEAR CACHE & OLD BUILDS (best-effort, never blocks)
+Write-Host "`n-> Clearing old builds and cache..." -ForegroundColor Yellow
 Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force .firebase -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force functions/lib -ErrorAction SilentlyContinue
 
-# 2. BUILD FRONTEND
-Write-Host "Building the frontend application..." -ForegroundColor Cyan
-npx vite build --mode staging
+# 3. BUILD FRONTEND
+$frontendBuildOk = Invoke-Step -Name "Build frontend" `
+    -Action { npx vite build --mode staging } `
+    -RecommendedAction "Re-run: npx vite build --mode staging, fix errors, then re-run this deploy script."
 
-# 3. BUILD FUNCTIONS
-Write-Host "Building Cloud Functions..." -ForegroundColor Cyan
-Push-Location functions
-npm run build
-Pop-Location
+# 4. BUILD FUNCTIONS
+$functionsBuildOk = Invoke-Step -Name "Build Cloud Functions" `
+    -Action { Push-Location functions; npm run build; Pop-Location } `
+    -RecommendedAction "Re-run: cd functions; npm run build"
 
-# 4. DEPLOY
-Write-Host "Deploying to Firebase (Hosting, Functions, Storage, Firestore)..." -ForegroundColor Cyan
-# Using --project to ensure it targets the correct Firebase project
-firebase deploy --only "hosting,functions,storage,firestore" --project apitherapyv2
+# 5. DEPLOY FIRESTORE & STORAGE (no build dependency)
+Invoke-Step -Name "Deploy Firestore rules/indexes" `
+    -Action { firebase deploy --only firestore --project apitherapyv2 } `
+    -RecommendedAction "Re-run: firebase deploy --only firestore --project apitherapyv2"
 
-# 5. APPLY CORS
-Write-Host "Applying CORS configuration to Staging Storage Bucket..." -ForegroundColor Cyan
-gcloud storage buckets update gs://apitherapyv2-staging-storage --cors-file=cors-staging.json
+Invoke-Step -Name "Deploy Storage rules" `
+    -Action { firebase deploy --only storage --project apitherapyv2 } `
+    -RecommendedAction "Re-run: firebase deploy --only storage --project apitherapyv2"
 
-Write-Host "Deployment successful!" -ForegroundColor Green
+# 6. APPLY CORS
+Invoke-Step -Name "Apply CORS to Staging Storage Bucket" `
+    -Action { gcloud storage buckets update gs://apitherapyv2-staging-storage --cors-file=cors-staging.json } `
+    -RecommendedAction "Re-run: gcloud storage buckets update gs://apitherapyv2-staging-storage --cors-file=cors-staging.json"
+
+# 7. DEPLOY FUNCTIONS (depends on functions build)
+if ($functionsBuildOk) {
+    Invoke-Step -Name "Deploy Cloud Functions" `
+        -Action { firebase deploy --only functions --project apitherapyv2 } `
+        -RecommendedAction "Re-run: firebase deploy --only functions --project apitherapyv2"
+}
+else {
+    Add-SkippedStep -Name "Deploy Cloud Functions" -Reason "Functions build failed" `
+        -RecommendedAction "Fix the build errors, then run: firebase deploy --only functions --project apitherapyv2"
+}
+
+# 8. DEPLOY HOSTING (depends on frontend build)
+if ($frontendBuildOk) {
+    Invoke-Step -Name "Deploy Hosting" `
+        -Action { firebase deploy --only hosting --project apitherapyv2 } `
+        -RecommendedAction "Re-run: firebase deploy --only hosting --project apitherapyv2"
+}
+else {
+    Add-SkippedStep -Name "Deploy Hosting" -Reason "Frontend build failed" `
+        -RecommendedAction "Fix the build errors, then run: firebase deploy --only hosting --project apitherapyv2"
+}
+
+# ==================== SUMMARY ====================
+Write-Host "`n`n=== STAGING DEPLOYMENT SUMMARY ===" -ForegroundColor Cyan
+$results | Format-Table Step, Status, Detail -AutoSize | Out-String | Write-Host
+
+$failed = $results | Where-Object { $_.Status -ne "Success" }
+if ($failed.Count -gt 0) {
+    Write-Host "$($failed.Count) step(s) need attention:" -ForegroundColor Red
+    foreach ($f in $failed) {
+        Write-Host "- $($f.Step) [$($f.Status)]: $($f.Detail)" -ForegroundColor Red
+        Write-Host "  Recommended: $($f.Action)" -ForegroundColor Yellow
+    }
+    exit 1
+}
+else {
+    Write-Host "All steps completed successfully." -ForegroundColor Green
+}

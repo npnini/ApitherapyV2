@@ -1,10 +1,23 @@
 # Usage: .\finish-feature.ps1 -Message "feat: your descriptive commit message"
+#
+# Fully automated pipeline (see docs / the security-check design discussion for
+# the full rationale):
+#
+#   1. security-check.ps1   (secrets + npm audit, BLOCKING)   - before any git action
+#   2. git add / commit / push feature branch / checkout main / pull / merge / push main
+#   3. sast-trigger-check.ps1  (reads .security-state.json, decides if SAST is due)
+#   4. sast-check.ps1        (only if step 3 says needed - synchronous, waited on)
+#   5. deploy-prod.ps1       (runs automatically once every applicable check is clean)
+#
+# There is no separate "yes, ship it" confirmation at the end - staging verification
+# (done before this script is ever run) plus the security/SAST gates ARE the checkpoint.
+# A blocking finding at any stage halts the pipeline before the next stage runs.
+
 param (
     [Parameter(Mandatory = $true)]
     [string]$Message
 )
 
-# Stop on errors for PowerShell commands
 $ErrorActionPreference = "Stop"
 
 try {
@@ -17,25 +30,33 @@ try {
 
     Write-Host ("Finishing feature on branch: " + $currentBranch)
 
-    # 2. Stage and commit
+    # ==================== STAGE 1: SECURITY CHECK (blocking, pre-git) ====================
+    Write-Host "`n=== STAGE 1/5: Security check (secrets + dependency audit) ===" -ForegroundColor Cyan
+    & .\scripts\deploy\security-check.ps1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`nHALTED: security-check.ps1 found a blocking issue (see above)." -ForegroundColor Red
+        Write-Host "No git action was taken - nothing was committed or pushed. Fix the issue(s) above and re-run." -ForegroundColor Yellow
+        return
+    }
+
+    # ==================== STAGE 2: COMMIT, PUSH, MERGE TO MAIN ====================
+    Write-Host "`n=== STAGE 2/5: Commit, push, merge to main ===" -ForegroundColor Cyan
+
     Write-Host "1. Staging and committing changes..."
     git add .
     if ($LASTEXITCODE -ne 0) { throw "git add failed" }
-    
+
     git commit -m "$Message" --allow-empty
     if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
-    
-    # 3. Push feature branch
+
     Write-Host ("2. Pushing " + $currentBranch + " to origin...")
     git push origin $currentBranch
     if ($LASTEXITCODE -ne 0) { throw "git push feature branch failed" }
 
-    # 4. Switch to main
     Write-Host "3. Switching to main and pulling latest..."
     git checkout main
     if ($LASTEXITCODE -ne 0) { throw "git checkout main failed" }
-    
-    # Double check we are actually on main
+
     $targetBranch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($targetBranch -ne "main") {
         throw ("Failed to switch to main branch. Currently on: " + $targetBranch)
@@ -44,21 +65,56 @@ try {
     git pull origin main
     if ($LASTEXITCODE -ne 0) { throw "git pull main failed" }
 
-    # 5. Merge feature branch
     Write-Host ("4. Merging " + $currentBranch + " into main...")
     git merge $currentBranch
     if ($LASTEXITCODE -ne 0) { throw "git merge failed" }
 
-    # 6. Push main
     Write-Host "5. Pushing main to origin..."
     git push origin main
     if ($LASTEXITCODE -ne 0) { throw "git push main failed" }
 
-    # 7. Cleanup local branch
     Write-Host ("6. Deleting local feature branch " + $currentBranch + "...")
     git branch -d $currentBranch
 
-    Write-Host "Feature successfully merged and pushed!" -ForegroundColor Green
+    Write-Host "`nFeature successfully merged and pushed to main!" -ForegroundColor Green
+
+    # ==================== STAGE 3: SAST TRIGGER CHECK ====================
+    Write-Host "`n=== STAGE 3/5: SAST trigger check ===" -ForegroundColor Cyan
+    & .\scripts\deploy\sast-trigger-check.ps1
+    $sastTriggerExit = $LASTEXITCODE
+
+    $sastClean = $true
+    if ($sastTriggerExit -eq 0) {
+        Write-Host "`nSAST not needed right now - skipping to production deploy." -ForegroundColor Green
+    }
+    else {
+        # exit 2 (needed) or exit 1 (trigger-check itself errored - fail safe, treat as needed)
+        Write-Host "`n=== STAGE 4/5: SAST check (triggered) ===" -ForegroundColor Cyan
+        & .\scripts\deploy\sast-check.ps1
+        $sastCheckExit = $LASTEXITCODE
+        if ($sastCheckExit -ne 0) {
+            $sastClean = $false
+        }
+    }
+
+    if (-not $sastClean) {
+        Write-Host "`nHALTED: sast-check.ps1 reported findings (see above)." -ForegroundColor Red
+        Write-Host "main was already updated with this merge, but production was NOT deployed." -ForegroundColor Yellow
+        Write-Host "Review the findings, fix or justify them, then run: .\scripts\deploy\sast-check.ps1" -ForegroundColor Yellow
+        Write-Host "Once it reports clean, run: .\scripts\deploy\deploy-prod.ps1" -ForegroundColor Yellow
+        return
+    }
+
+    # ==================== STAGE 5: DEPLOY TO PRODUCTION ====================
+    Write-Host "`n=== STAGE 5/5: Deploy to production ===" -ForegroundColor Cyan
+    & .\scripts\deploy\deploy-prod.ps1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`ndeploy-prod.ps1 reported issues - see its summary above." -ForegroundColor Red
+        Write-Host "main was already updated with this merge; re-run: .\scripts\deploy\deploy-prod.ps1  once resolved." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "`nPipeline complete: merged to main and deployed to production." -ForegroundColor Green
     Write-Host "You are now on branch: main"
 }
 catch {

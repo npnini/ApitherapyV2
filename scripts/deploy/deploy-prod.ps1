@@ -1,18 +1,47 @@
 # deploy-prod.ps1
-# Exit immediately if a command fails
 $ErrorActionPreference = "Stop"
 
 $LAST_DEPLOY_FILE = ".last_prod_deploy"
 $NEEDS_EXT_DEPLOY = $false
+$results = @()
+
+function Invoke-Step {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][scriptblock]$Action,
+        [string]$RecommendedAction = "Re-run this step manually and check the error output above."
+    )
+    Write-Host "`n-> $Name..." -ForegroundColor Yellow
+    $global:LASTEXITCODE = 0
+    try {
+        & $Action
+        if ($LASTEXITCODE -ne 0) {
+            throw "Command exited with code $LASTEXITCODE"
+        }
+        $script:results += [PSCustomObject]@{ Step = $Name; Status = "Success"; Detail = ""; Action = "" }
+        return $true
+    }
+    catch {
+        Write-Host "[FAILED] $Name : $($_.Exception.Message)" -ForegroundColor Red
+        $script:results += [PSCustomObject]@{ Step = $Name; Status = "FAILED"; Detail = $_.Exception.Message; Action = $RecommendedAction }
+        return $false
+    }
+}
+
+function Add-SkippedStep {
+    param([string]$Name, [string]$Reason, [string]$RecommendedAction)
+    Write-Host "`n-> $Name... SKIPPED ($Reason)" -ForegroundColor Yellow
+    $script:results += [PSCustomObject]@{ Step = $Name; Status = "SKIPPED"; Detail = $Reason; Action = $RecommendedAction }
+}
 
 Write-Host "--- STARTING PRODUCTION DEPLOYMENT ---" -ForegroundColor Cyan
 
 # 1. CHECK FOR EXTENSION CHANGES
-Write-Host "[1/6] Checking for extension configuration changes..." -ForegroundColor Yellow
+Write-Host "`n-> Checking for extension configuration changes..." -ForegroundColor Yellow
 if (Test-Path $LAST_DEPLOY_FILE) {
     $lastDeployDate = (Get-Item $LAST_DEPLOY_FILE).LastWriteTime
     $envProdFiles = Get-ChildItem "extensions/*.env.prod"
-    
+
     foreach ($file in $envProdFiles) {
         if ($file.LastWriteTime -gt $lastDeployDate) {
             $NEEDS_EXT_DEPLOY = $true
@@ -27,67 +56,87 @@ else {
 }
 
 # 2. SYNC BIGQUERY VIEWS (PRODUCTION)
-Write-Host "[2/6] Syncing BigQuery views to PRODUCTION..." -ForegroundColor Cyan
-node scripts/deploy/sync-bq-views.js --deploy --stage_prod
+Invoke-Step -Name "Sync BigQuery views" `
+    -Action { node scripts/deploy/sync-bq-views.js --deploy --stage_prod } `
+    -RecommendedAction "Re-run: node scripts/deploy/sync-bq-views.js --deploy --stage_prod"
 
-# 3. DELETE THE CACHE & OLD BUILDS
-Write-Host "[3/6] Clearing old builds and cache..." -ForegroundColor Cyan
+# 3. CLEAR CACHE & OLD BUILDS (best-effort, never blocks)
+Write-Host "`n-> Clearing old builds and cache..." -ForegroundColor Yellow
 Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force .firebase -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force functions/lib -ErrorAction SilentlyContinue
 
 # 4. BUILD FRONTEND
-Write-Host "[4/6] Building the frontend application..." -ForegroundColor Cyan
-npm run build
+$frontendBuildOk = Invoke-Step -Name "Build frontend" `
+    -Action { npm run build } `
+    -RecommendedAction "Re-run: npm run build, fix errors, then re-run this deploy script."
 
 # 5. BUILD FUNCTIONS
-Write-Host "[5/6] Building Cloud Functions..." -ForegroundColor Cyan
-Push-Location functions
-npm run build
-Pop-Location
+$functionsBuildOk = Invoke-Step -Name "Build Cloud Functions" `
+    -Action { Push-Location functions; npm run build; Pop-Location } `
+    -RecommendedAction "Re-run: cd functions; npm run build"
 
 # ====================================================================
-# 6. DEPLOY SERVICES (Phased Sequence to Prevent Race Conditions)
+# 6. DEPLOY SERVICES (independent steps run regardless of one another)
 # ====================================================================
+
+# Phase A: Database Configurations & Security Rules
+Invoke-Step -Name "Deploy Firestore & Storage configurations" `
+    -Action { firebase deploy --only firestore, storage --project prod } `
+    -RecommendedAction "Re-run: firebase deploy --only firestore,storage --project prod"
+
+# Phase A.5: CORS
+Invoke-Step -Name "Apply CORS to Production Storage Bucket" `
+    -Action { gcloud storage buckets update gs://apitherapy-c94a6.firebasestorage.app --cors-file=cors-production.json } `
+    -RecommendedAction "Re-run: gcloud storage buckets update gs://apitherapy-c94a6.firebasestorage.app --cors-file=cors-production.json"
+
+# Phase B: Extensions (only if changes were detected)
 if ($NEEDS_EXT_DEPLOY) {
-    Write-Host "[6/6] Deploying Core Services + Extensions to PRODUCTION (Phased Sequence)..." -ForegroundColor Cyan
+    Invoke-Step -Name "Deploy Firebase Extensions" `
+        -Action { firebase deploy --only extensions --project prod } `
+        -RecommendedAction "Re-run: firebase deploy --only extensions --project prod"
 }
 else {
-    Write-Host "[6/6] Deploying Core Services to PRODUCTION (Phased Sequence)..." -ForegroundColor Cyan
+    Add-SkippedStep -Name "Deploy Firebase Extensions" -Reason "No extension config changes detected" -RecommendedAction ""
 }
 
-try {
-    # Phase A: Database Configurations & Security Rules First
-    Write-Host "`n -> Phase A: Deploying Firestore & Storage configurations..." -ForegroundColor Yellow
-    firebase deploy --only firestore, storage --project prod
+# Phase C: Cloud Functions (depends on functions build)
+if ($functionsBuildOk) {
+    Invoke-Step -Name "Deploy Cloud Functions" `
+        -Action { firebase deploy --only functions --project prod } `
+        -RecommendedAction "Re-run: firebase deploy --only functions --project prod"
+}
+else {
+    Add-SkippedStep -Name "Deploy Cloud Functions" -Reason "Functions build failed" `
+        -RecommendedAction "Fix the build errors, then run: firebase deploy --only functions --project prod"
+}
 
-    Write-Host "`n -> Phase A.5: Applying CORS to Production Storage Bucket..." -ForegroundColor Yellow
-    gcloud storage buckets update gs://apitherapy-c94a6.firebasestorage.app --cors-file=cors-production.json
+# Phase D: Hosting (depends on frontend build)
+if ($frontendBuildOk) {
+    Invoke-Step -Name "Deploy Hosting" `
+        -Action { firebase deploy --only hosting --project prod } `
+        -RecommendedAction "Re-run: firebase deploy --only hosting --project prod"
+}
+else {
+    Add-SkippedStep -Name "Deploy Hosting" -Reason "Frontend build failed" `
+        -RecommendedAction "Fix the build errors, then run: firebase deploy --only hosting --project prod"
+}
 
-    # Phase B: Extensions (Only deployed if changes were detected)
-    if ($NEEDS_EXT_DEPLOY) {
-        Write-Host "`n -> Phase B: Deploying Firebase Extensions..." -ForegroundColor Yellow
-        firebase deploy --only extensions --project prod
+Get-Date | Out-File $LAST_DEPLOY_FILE
+
+# ==================== SUMMARY ====================
+Write-Host "`n`n=== PRODUCTION DEPLOYMENT SUMMARY ===" -ForegroundColor Cyan
+$results | Format-Table Step, Status, Detail -AutoSize | Out-String | Write-Host
+
+$failed = $results | Where-Object { $_.Status -eq "FAILED" -or $_.Status -eq "SKIPPED" -and $_.Action -ne "" }
+if ($failed.Count -gt 0) {
+    Write-Host "$($failed.Count) step(s) need attention:" -ForegroundColor Red
+    foreach ($f in $failed) {
+        Write-Host "- $($f.Step) [$($f.Status)]: $($f.Detail)" -ForegroundColor Red
+        Write-Host "  Recommended: $($f.Action)" -ForegroundColor Yellow
     }
-
-    # Phase C: Backend Infrastructure (Cloud Functions)
-    Write-Host "`n -> Phase C: Deploying Cloud Functions (Container compilation)..." -ForegroundColor Yellow
-    firebase deploy --only functions --project prod
-
-    # Phase D: Frontend Interface (Hosting)
-    # This runs LAST. It will only push live if your backend passes all health checks!
-    Write-Host "`n -> Phase D: Deploying Frontend Application to Web Hosting..." -ForegroundColor Yellow
-    firebase deploy --only hosting --project prod
-
-    # ====================================================================
-    # 7. UPDATE DEPLOYMENT RECORD
-    # ====================================================================
-    Get-Date | Out-File $LAST_DEPLOY_FILE
-    Write-Host "`n--- PRODUCTION DEPLOYMENT COMPLETED SUCCESSFULLY ---" -ForegroundColor Green
-
-}
-catch {
-    Write-Host "`n[!] Deployment Pipeline Halted Due to an Error." -ForegroundColor Red
-    Write-Host "If Functions failed, your live Web App (Hosting) was kept safe and untouched." -ForegroundColor Yellow
     exit 1
+}
+else {
+    Write-Host "All steps completed successfully." -ForegroundColor Green
 }

@@ -1,0 +1,16 @@
+title = "ApitherapyV2 gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''node_modules/''',
+  '''functions/lib/''',
+  '''dist/''',
+  '''emulator-data/''',
+  '''emulator-data-exit/''',
+  '''\.firebase/''',
+  '''package-lock\.json''',
+  '''functions/package-lock\.json''',
+]
