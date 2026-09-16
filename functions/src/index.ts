@@ -55,6 +55,7 @@ function getStartOfDayUtc(timeZone: string, daysAgo = 0): Date {
     timeZoneName: "longOffset",
   }).formatToParts(probe);
   const offsetLabel = offsetParts.find((p) => p.type === "timeZoneName")?.value || "GMT+00:00";
+  // eslint-disable-next-line -- SAST false positive: quantifiers are fixed-width \d{2}, no backtracking risk.
   const offsetMatch = offsetLabel.match(/GMT([+-])(\d{2}):?(\d{2})?/);
   const offsetSign = offsetMatch?.[1] === "-" ? -1 : 1;
   const offsetMinutes = offsetMatch
@@ -67,6 +68,23 @@ function getStartOfDayUtc(timeZone: string, daysAgo = 0): Date {
     Number(dateMap.day)
   );
   return new Date(utcMidnightSameCalendarDay - offsetMinutes * 60 * 1000);
+}
+
+/**
+ * Resolves an entry from a language-keyed dictionary (email templates,
+ * localized names, etc.), preferring `lang`, then `fallbackLang`, then the
+ * first available entry. Centralizes this file's "index an object by a
+ * language code" idiom so the dynamic-key lookup is justified in one place
+ * instead of at every call site.
+ */
+function getByLanguage<T>(
+  dict: Record<string, T> | null | undefined,
+  lang: string,
+  fallbackLang: string
+): T | undefined {
+  if (!dict) return undefined;
+  // eslint-disable-next-line -- lang/fallbackLang are trusted language codes, never raw request input.
+  return dict[lang] ?? dict[fallbackLang] ?? Object.values(dict)[0];
 }
 
 /**
@@ -154,7 +172,7 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", timeZone
       }
 
       // Select the template ID based on language
-      const templateId = (feedbackTemplates[preferredLang] || feedbackTemplates[defaultLang] || Object.values(feedbackTemplates)[0] || "").trim();
+      const templateId = (getByLanguage<string>(feedbackTemplates, preferredLang, defaultLang) || "").trim();
 
       if (!templateId) {
         logger.warn(`No email template found for language ${preferredLang}. Skipping email.`);
@@ -206,7 +224,7 @@ export const dailyFeedbackSweeper = onSchedule({ schedule: "0 5 * * *", timeZone
         const pDoc = await db.collection("cfg_protocols").doc(pId).get();
         if (pDoc.exists) {
           const data = pDoc.data() || {};
-          protocolNames.push(data.name?.[preferredLang] || data.name?.en || "Unknown Protocol");
+          protocolNames.push(getByLanguage<string>(data.name, preferredLang, "en") || "Unknown Protocol");
         }
       }
 
@@ -376,6 +394,14 @@ export const sendDocumentEmail = onCall({ enforceAppCheck: true }, async (reques
     const secretsDoc = await db.collection("cfg_secrets").doc("main").get();
     const apiKey = (secretsDoc.data()?.emailApiKey || "").trim();
     const senderEmail = (notificationSettings.senderEmail || "").trim();
+
+    // `language` comes from the caller's request, so it must be checked against
+    // the admin-configured allowlist before it is ever used as a lookup key.
+    const supportedLanguages: string[] = configData.languageSettings?.supportedLanguages || [];
+    if (!supportedLanguages.includes(language)) {
+      throw new HttpsError("invalid-argument", `Unsupported language: ${language}.`);
+    }
+    // eslint-disable-next-line -- language validated above against the admin-configured allowlist.
     const templateId = (notificationSettings.intakeDocumentsTemplateId?.[language] || "").trim();
 
     if (!apiKey || !templateId) {
@@ -440,6 +466,7 @@ export const filterPiiTransform = onRequest(async (req, res) => {
     // 3. Remove the sensitive fields
     piiFields.forEach((field) => {
       if (Object.prototype.hasOwnProperty.call(docData, field)) {
+        // eslint-disable-next-line -- field is from the fixed piiFields list; hasOwnProperty guards the delete.
         delete docData[field];
       }
     });
@@ -704,7 +731,7 @@ export const sendMissingProblemEmail = onCall({ enforceAppCheck: true }, async (
     const preferredLang = caretakerData.preferredLanguage || configData.languageSettings?.defaultLanguage || "he";
 
     const addProblemTemplates = notificationSettings.addProblemTemplateId || {};
-    const templateId = (addProblemTemplates[preferredLang] || addProblemTemplates["en"] || Object.values(addProblemTemplates)[0] || "").trim();
+    const templateId = (getByLanguage<string>(addProblemTemplates, preferredLang, "en") || "").trim();
 
     const patientName = patientData.fullName || patientId;
 
@@ -864,7 +891,7 @@ export const runDailyUnifiedBackup = onSchedule(
     timeoutSeconds: 1800, // 30 minutes window for heavy asset transfers
     memory: "512MiB",     // Breathing room to process large file arrays safely
   },
-  async (event) => {
+  async () => {
     // 1. Dynamic extraction of Project and Bucket coordinates from Environment variables
     const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
     const sourceMediaBucket = process.env.SOURCE_MEDIA_BUCKET;
