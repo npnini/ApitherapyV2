@@ -113,6 +113,7 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
                         onSelectionChange={setSelectedItems}
                         availableTitle="Available Points"
                         selectedTitle="Selected Points"
+                        fillHeight
                     />
                 </div>
 

@@ -15,6 +15,16 @@
     overflow: hidden;
 }
 
+.shuttleSelector.shuttleSelectorFill {
+    flex: 1;
+    grid-template-rows: 1fr;
+    align-items: stretch;
+}
+
+.box.boxFill {
+    height: 100%;
+}
+
 .header {
     display: flex;
     justify-content: space-between;

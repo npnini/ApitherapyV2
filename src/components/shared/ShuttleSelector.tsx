@@ -17,6 +17,7 @@ interface ShuttleSelectorProps {
   availableTitle?: string;
   selectedTitle?: string;
   placeholder?: string;
+  fillHeight?: boolean;
 }
 
 const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
@@ -25,6 +26,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
   onSelectionChange,
   availableTitle = 'Available',
   selectedTitle = 'Selected',
+  fillHeight = false,
 }) => {
   const { language, registerString, getTranslation } = useTranslationContext();
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,10 +77,15 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
   const SelectArrow = isRtl ? ChevronLeft : ChevronRight;
   const DeselectArrow = isRtl ? ChevronRight : ChevronLeft;
 
+  const shuttleClassName = fillHeight
+    ? `${styles.shuttleSelector} ${styles.shuttleSelectorFill}`
+    : styles.shuttleSelector;
+  const boxClassName = fillHeight ? `${styles.box} ${styles.boxFill}` : styles.box;
+
   return (
-    <div className={styles.shuttleSelector}>
+    <div className={shuttleClassName}>
       {/* Available Items Panel */}
-      <div className={styles.box}>
+      <div className={boxClassName}>
         <div className={styles.header}>
           <span className={styles.title}><T>{availableTitle}</T></span>
           <div className={styles.searchContainer}>
@@ -106,7 +113,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
       </div>
 
       {/* Selected Items Panel */}
-      <div className={styles.box}>
+      <div className={boxClassName}>
         <div className={styles.header}>
           <span className={styles.title}><T>{selectedTitle}</T></span>
           <div className={styles.placeholder}></div>
