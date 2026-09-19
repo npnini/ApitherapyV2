@@ -14,6 +14,7 @@ import { uploadFile, deleteFile } from '../../services/storageService';
 import { resolveStoragePath } from '../../utils/storageUtils';
 import { StorageImage } from '../shared/StorageComponents';
 import { sendDocumentEmail } from '../../services/emailService';
+import { escapeHtml } from '../../utils/htmlUtils';
 
 interface InstructionsTabProps {
     patientData: Partial<JoinedPatientData>;
@@ -113,8 +114,8 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
         if (!text) return '';
 
         const placeholders = {
-            patientName: patientData.fullName || '____________________',
-            identityNumber: patientData.identityNumber || '____________________'
+            patientName: escapeHtml(patientData.fullName || '____________________'),
+            identityNumber: escapeHtml(patientData.identityNumber || '____________________')
         };
 
         let result = text;
@@ -132,9 +133,9 @@ const InstructionsTab = forwardRef<InstructionsTabHandle, InstructionsTabProps>(
         // Note: patientName, idNumber, caretaker are not defined in this scope.
         // Assuming these are meant to be derived from patientData or placeholders.
         // For faithful reproduction, using placeholder values or empty strings if not found.
-        const patientName = patientData.fullName || '____________________';
-        const idNumber = patientData.identityNumber || '____________________';
-        const caretaker = user?.fullName || (user as any)?.name || user?.displayName || '____________________';
+        const patientName = escapeHtml(patientData.fullName || '____________________');
+        const idNumber = escapeHtml(patientData.identityNumber || '____________________');
+        const caretaker = escapeHtml(user?.fullName || (user as any)?.name || user?.displayName || '____________________');
 
         return result
             .replace(/{{patientName}}/g, patientName)

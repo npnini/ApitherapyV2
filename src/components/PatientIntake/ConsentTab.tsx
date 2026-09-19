@@ -14,6 +14,7 @@ import { uploadFile, deleteFile } from '../../services/storageService';
 import { resolveStoragePath } from '../../utils/storageUtils';
 import { StorageImage } from '../shared/StorageComponents';
 import { sendDocumentEmail } from '../../services/emailService';
+import { escapeHtml } from '../../utils/htmlUtils';
 
 interface ConsentTabProps {
     patientData: Partial<JoinedPatientData>;
@@ -117,9 +118,9 @@ const ConsentTab = forwardRef<ConsentTabHandle, ConsentTabProps>(({ patientData,
     const injectData = (text: string) => {
         if (!text) return '';
 
-        const patientName = patientData.fullName || '____________________';
-        const idNumber = patientData.identityNumber || '____________________';
-        const caretaker = user?.fullName || (user as any)?.name || user?.displayName || '____________________';
+        const patientName = escapeHtml(patientData.fullName || '____________________');
+        const idNumber = escapeHtml(patientData.identityNumber || '____________________');
+        const caretaker = escapeHtml(user?.fullName || (user as any)?.name || user?.displayName || '____________________');
 
         // 1. Pre-process text (newlines to breaks)
         let result = text;
