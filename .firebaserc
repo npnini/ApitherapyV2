@@ -4,7 +4,22 @@
     "staging": "apitherapyv2",
     "prod": "apitherapy-c94a6"
   },
-  "targets": {},
+  "targets": {
+    "apitherapyv2": {
+      "storage": {
+        "app-bucket": [
+          "apitherapyv2-staging-storage"
+        ]
+      }
+    },
+    "apitherapy-c94a6": {
+      "storage": {
+        "app-bucket": [
+          "apitherapy-c94a6.firebasestorage.app"
+        ]
+      }
+    }
+  },
   "etags": {
     "apitherapyv2": {
       "extensionInstances": {

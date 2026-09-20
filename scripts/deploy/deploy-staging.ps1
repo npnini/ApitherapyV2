@@ -55,21 +55,34 @@ $functionsBuildOk = Invoke-Step -Name "Build Cloud Functions" `
     -Action { Push-Location functions; npm run build; Pop-Location } `
     -RecommendedAction "Re-run: cd functions; npm run build"
 
-# 5. DEPLOY FIRESTORE & STORAGE (no build dependency)
-Invoke-Step -Name "Deploy Firestore rules/indexes" `
-    -Action { firebase deploy --only firestore --project apitherapyv2 } `
-    -RecommendedAction "Re-run: firebase deploy --only firestore --project apitherapyv2"
+# 5. RULES REGRESSION TEST (blocking gate for the two rule-deploy steps below)
+$rulesTestOk = Invoke-Step -Name "Rules regression test (local emulator)" `
+    -Action { & .\scripts\deploy\rules-test-check.ps1 } `
+    -RecommendedAction "Re-run: .\scripts\deploy\rules-test-check.ps1, fix the failing rule/test, then re-run this deploy script."
 
-Invoke-Step -Name "Deploy Storage rules" `
-    -Action { firebase deploy --only storage --project apitherapyv2 } `
-    -RecommendedAction "Re-run: firebase deploy --only storage --project apitherapyv2"
+# 6. DEPLOY FIRESTORE & STORAGE (gated on the rules regression test passing)
+if ($rulesTestOk) {
+    Invoke-Step -Name "Deploy Firestore rules/indexes" `
+        -Action { firebase deploy --only firestore --project apitherapyv2 } `
+        -RecommendedAction "Re-run: firebase deploy --only firestore --project apitherapyv2"
 
-# 6. APPLY CORS
+    Invoke-Step -Name "Deploy Storage rules" `
+        -Action { firebase deploy --only storage --project apitherapyv2 } `
+        -RecommendedAction "Re-run: firebase deploy --only storage --project apitherapyv2"
+}
+else {
+    Add-SkippedStep -Name "Deploy Firestore rules/indexes" -Reason "Rules regression test failed" `
+        -RecommendedAction "Fix the failing rule/test, then run: firebase deploy --only firestore --project apitherapyv2"
+    Add-SkippedStep -Name "Deploy Storage rules" -Reason "Rules regression test failed" `
+        -RecommendedAction "Fix the failing rule/test, then run: firebase deploy --only storage --project apitherapyv2"
+}
+
+# 7. APPLY CORS
 Invoke-Step -Name "Apply CORS to Staging Storage Bucket" `
     -Action { gcloud storage buckets update gs://apitherapyv2-staging-storage --cors-file=cors-staging.json } `
     -RecommendedAction "Re-run: gcloud storage buckets update gs://apitherapyv2-staging-storage --cors-file=cors-staging.json"
 
-# 7. DEPLOY FUNCTIONS (depends on functions build)
+# 8. DEPLOY FUNCTIONS (depends on functions build)
 if ($functionsBuildOk) {
     Invoke-Step -Name "Deploy Cloud Functions" `
         -Action { firebase deploy --only functions --project apitherapyv2 } `
@@ -80,7 +93,7 @@ else {
         -RecommendedAction "Fix the build errors, then run: firebase deploy --only functions --project apitherapyv2"
 }
 
-# 8. DEPLOY HOSTING (depends on frontend build)
+# 9. DEPLOY HOSTING (depends on frontend build)
 if ($frontendBuildOk) {
     Invoke-Step -Name "Deploy Hosting" `
         -Action { firebase deploy --only hosting --project apitherapyv2 } `

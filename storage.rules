@@ -1,30 +1,51 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow any authenticated user to read and write to the Points folder
+
+    function isAdminOrSuperadmin() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+    }
+
+    // Allow any authenticated user to read; only admins/superadmins may write.
     match /Points/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdminOrSuperadmin();
     }
-    // Allow any authenticated user to read and write to the Protocols folder
+    // Allow any authenticated user to read; only admins/superadmins may write.
     match /Protocols/{allPaths=**} {
-        allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdminOrSuperadmin();
     }
-       // Allow any authenticated user to read and write to the Measures folder
+    // Allow any authenticated user to read; only admins/superadmins may write.
     match /Measures/{allPaths=**} {
-        allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdminOrSuperadmin();
     }
-       // Allow any authenticated user to read and write to the Problems folder
+    // Allow any authenticated user to read; only admins/superadmins may write.
     match /Problems/{allPaths=**} {
-        allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdminOrSuperadmin();
     }
-       // Allow any authenticated user to read and write to the Patients folder
-    match /Patients/{allPaths=**} {
-        allow read, write: if request.auth != null;
+    // Patient files: only the owning caretaker (or a superadmin/impersonator for
+    // read) may access a given patient's files. Mirrors Firestore's
+    // isPatientCaretaker()/canReadPatientData() exactly - an admin role alone is
+    // NOT sufficient to write here, they must also be that patient's own
+    // caretaker (matches Firestore's write semantics for patient collections).
+    match /Patients/{patientId}/{fileName=**} {
+      allow read: if request.auth != null && (
+        firestore.get(/databases/(default)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.canImpersonate == true
+      );
+      allow write: if request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['caretaker', 'admin', 'superadmin'] &&
+        firestore.get(/databases/(default)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid;
     }
-           // Allow any authenticated user to read and write to the App_config folder
+    // Allow any authenticated user to read; only admins/superadmins may write.
     match /App_config/{allPaths=**} {
-        allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdminOrSuperadmin();
     }
   }
 }
-     

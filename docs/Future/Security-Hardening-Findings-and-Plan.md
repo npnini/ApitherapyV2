@@ -1,6 +1,6 @@
 # Security Hardening — Findings & Plan
 
-Status: **findings recorded, not yet implemented.** Written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Nothing in this document has been acted on except item 0 below.
+Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented (not yet deployed — see their entries below); everything else still not acted on.
 
 ## 0. Already fixed this session
 
@@ -14,7 +14,7 @@ The existing automated security pipeline (`scripts/deploy/security-check.ps1` + 
 
 ## Findings, in priority order
 
-### 1. CRITICAL — Storage rules allow cross-caretaker access to patient files
+### 1. CRITICAL — Storage rules allow cross-caretaker access to patient files — IMPLEMENTED (not yet deployed)
 
 `storage.rules` (repo root, single file shared by both the staging project `apitherapyv2` and production project `apitherapy-c94a6` — confirmed via `firebase.json`/`.firebaserc`, no per-environment split exists):
 
@@ -30,9 +30,20 @@ By contrast, `config/firestore/firestore.rules` is properly restrictive: it defi
 
 The frontend builds Storage paths as `Patients/{patientId}/{timestamp}_{filename}` — `patientId` is the same Firestore document ID that Firestore's rules protect, but Storage's rules never check it. Any authenticated user who obtains another caretaker's `patientId` (an auto-generated but not-secret Firestore ID, visible in the app's own URLs/network calls) can read or overwrite that patient's files directly via the Storage SDK, completely bypassing the Firestore-level ownership check. This is a genuine IDOR affecting real patient documents (consent forms, treatment images).
 
-Non-`Patients/` paths (`Points/`, `Protocols/`, `Measures/`, `Problems/`, `App_config/`) being open to any authenticated user is fine — it mirrors Firestore's intentionally-open `cfg_*` collections for shared reference data. Only the `Patients/{allPaths=**}` block needs tightening.
+**Correction to the original finding (caught during planning):** the "fine, intentional" characterization below of the other five folders was imprecise. Firestore's `cfg_*` collections actually *split* their permissions (`allow read: if isAuthenticated(); allow write: if isAdmin();`) — but Storage's equivalent folders (`Points/`, `Protocols/`, `Measures/`, `Problems/`, `App_config/`) granted `allow read, write: if request.auth != null`, meaning **any authenticated user could write to all five**, not just read. That's now fixed alongside `Patients/` (below), not left open.
 
-**Proposed fix:** replace the blanket rule with a path-capturing rule that mirrors `isPatientCaretaker`/`canReadPatientData` via Storage Rules' cross-service `firestore.get()`, e.g.:
+**Implemented fix** (`storage.rules`, 2026-09-20) — a shared helper plus six updated match blocks:
+
+```
+function isAdminOrSuperadmin() {
+  return request.auth != null &&
+    firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+}
+```
+
+`Points/`, `Protocols/`, `Measures/`, `Problems/`, `App_config/` (×5, identical): `allow read: if request.auth != null; allow write: if isAdminOrSuperadmin();`
+
+`Patients/{allPaths=**}` → path-capturing `Patients/{patientId}/{fileName=**}`, transcribing Firestore's `canReadPatientData`/`isPatientCaretaker` exactly — **not** the blanket admin helper above, since Firestore's own `isPatientCaretaker()` requires an admin to *also* be that specific patient's caretaker to write, not just hold the admin role:
 
 ```
 match /Patients/{patientId}/{fileName=**} {
@@ -47,7 +58,7 @@ match /Patients/{patientId}/{fileName=**} {
 }
 ```
 
-This must transcribe the existing Firestore helper semantics exactly, not invent new rules. Should not be deployed without a regression test in place first (see Finding 8) — write the test against the local emulator, confirm cross-service `firestore.get()` behaves as expected there, then deploy to staging and manually verify cross-caretaker access now fails, before merging to main / deploying to prod.
+Regression tests for all six blocks were written first, against the pre-fix rules (see Finding 8) — the `Patients/` cross-caretaker case and each folder's non-admin-write case failed as expected before the fix, and pass after it. **Not yet deployed** — needs a staging verification pass, then `finish-feature.ps1`, per standing no-deploy-without-explicit-instruction rule.
 
 ### 2. HIGH — `filterPiiTransform` has no app-level auth check
 
@@ -105,15 +116,20 @@ match /app_audit_log/{docId} {
 ```
 Any authenticated user can write arbitrary audit-log documents (log-forging/spam risk). Update/delete are correctly always denied (immutable log), and read is superadmin-only — only `create` lacks field constraints. Proposed fix: add a `request.resource.data.keys().hasOnly([...])` constraint matching whatever fields the actual audit-logging call site writes.
 
-### 8. GAP — No automated testing exists for Firestore or Storage rules
+### 8. GAP — No automated testing exists for Firestore or Storage rules — PARTIALLY IMPLEMENTED
 
-No `@firebase/rules-unit-testing` dependency anywhere in the repo, no rules test files. Every rules change today (including the Finding 1 fix above) ships with zero regression coverage — a future edit could silently reopen the exact IDOR being fixed here, and nothing would catch it.
+**Storage rules now covered; Firestore rules still untested.** `@firebase/rules-unit-testing` (v5) added as a root devDependency; `tests/security-rules/storage.rules.test.js` written, covering exactly what Finding 1's fix changes: the `Patients/` ownership guard (unauthenticated deny, wrong-caretaker deny, owner allow, admin-who-isn't-the-owner deny, superadmin allow) and, for each of the five reference-data folders, non-admin-write-denied / admin-write-allowed. `firestore.rules.test.js` was **not** created in this pass — Finding 1 didn't touch `firestore.rules`, so per the "test only what's being changed" scoping decision, Firestore rule tests remain a gap for whenever Findings 3 or 7 (which do touch `firestore.rules`) are picked up.
 
-**Proposed fix:** add `@firebase/rules-unit-testing` as a root devDependency; new `tests/security-rules/` directory with `firestore.rules.test.js` and `storage.rules.test.js`, run via the emulator suite already declared in `firebase.json` (`firestore`/`storage`/`auth`, with `singleProjectMode: true` already set, which cross-service rules like the Finding 1 fix require). No new JS test framework is needed — Node's built-in `node --test` is sufficient and avoids pulling in Jest/Vitest just for this. Suggested command: `firebase emulators:exec --only firestore,storage,auth "node --test tests/security-rules"`, wired as a new root `package.json` script (`"test:rules"`).
+Root `package.json` gained the `@firebase/rules-unit-testing` devDependency (`^3.0.4` — v5 requires `firebase@^12`, this project is pinned to `firebase@^10.7.1`; upgrading that is out of scope here) and a `"test:rules"` script (`firebase emulators:exec --only firestore,storage,auth "node --test tests/security-rules/*.test.js"` — a bare directory path was tried first but hit a Node 22 module-resolution quirk on this setup; the glob form works and is Node-expanded, not shell-expanded, so it's portable) for manual/ad-hoc runs.
 
-Minimum test cases to seed: caretaker A cannot read/write caretaker B's `patients`/`patient_medical_data`/Storage docs; the owning caretaker can; an admin/superadmin can; an unauthenticated caller cannot; `feedback_sessions` unauthenticated `get` still succeeds pre-expiry and fails post-expiry once Finding 3 is fixed.
+**Now wired into the deploy pipeline automatically** — see the new `scripts/deploy/rules-test-check.ps1` (same `Invoke-Step` style as `security-check.ps1`/`sast-check.ps1`), called from:
+- `scripts/deploy/deploy-staging.ps1`, before the "Deploy Firestore rules/indexes" / "Deploy Storage rules" steps — gates them (soft-skip pattern, matching how functions/hosting deploys are already gated on their build-success flags).
+- `scripts/deploy/finish-feature.ps1`, as new Stage 3/6 (after merge-to-main, before the SAST stages and the final prod deploy) — hard-stops the pipeline on failure, same as `security-check.ps1`. This exists specifically as defense in depth for the case where `deploy-staging.ps1` was bypassed.
+- Deliberately **not** wired into `deploy-prod.ps1` directly — production is only protected transitively via `finish-feature.ps1`'s gate before it calls `deploy-prod.ps1`.
 
-This should be built **before** the Finding 1 storage.rules fix, so that fix ships with a test, not after.
+Runs unconditionally on every invocation of both scripts (no trigger-gating like SAST's day/vuln-delta/change-volume conditions) — it's fast (local emulator only) and directly correctness-critical.
+
+A second tier — live verification against the *actual deployed* rules in the real staging project post-deploy (not just the emulator) — was discussed and deliberately **not built**: it needs different infrastructure entirely (`@firebase/rules-unit-testing` is emulator-only; live verification would need dedicated test accounts in staging Auth, token-minting via the Admin SDK, and fixture cleanup against real staging data). Left as a possible future addition, not part of this pass.
 
 ### 9. GAP — Frontend has no automated SAST coverage
 
@@ -123,22 +139,22 @@ This should be built **before** the Finding 1 storage.rules fix, so that fix shi
 
 CodeQL was researched and explicitly **not** recommended for now: it's free only for public repositories; this repo is private and would require the paid GitHub Advanced Security add-on (~$30–49 per active committer/month). Noted here as a future paid option, not part of this plan.
 
-### 10. GAP — `deploy-staging.ps1` has no security gating at all
+### 10. GAP — `deploy-staging.ps1` has no security gating at all — PARTIALLY RESOLVED
 
-Unlike `finish-feature.ps1` (which runs `security-check.ps1` before any git action, and SAST before the prod deploy), `scripts/deploy/deploy-staging.ps1` is a pure build+deploy script — no secret scan, no dependency audit, no SAST, no rules tests — despite deploying the same `storage.rules`/`firestore.rules` files that protect production-equivalent data structures (staging is synced from a production-like source).
+Unlike `finish-feature.ps1` (which runs `security-check.ps1` before any git action, and SAST before the prod deploy), `scripts/deploy/deploy-staging.ps1` was a pure build+deploy script — no secret scan, no dependency audit, no SAST, no rules tests.
 
-**Proposed action (open question, no strong recommendation forced):** at minimum, add the new rules-regression test (Finding 8) to `deploy-staging.ps1` immediately before its "Deploy Firestore rules" / "Deploy Storage rules" steps — it's fast (emulator-based) and would catch a rules regression before it reaches even the staging project. Full gating (secrets/npm audit/SAST) would slow the inner dev loop `deploy-staging.ps1` exists to serve, and is not recommended.
+**Resolved for rules specifically:** `deploy-staging.ps1` now runs `rules-test-check.ps1` before its Firestore/Storage rule-deploy steps (see Finding 8). Secret scanning, dependency audit, and SAST remain exclusive to `finish-feature.ps1`, deliberately — full gating on every staging push would slow the inner dev loop `deploy-staging.ps1` exists to serve.
 
 ## Sequencing recommendation, if/when this work is picked up
 
-1. Build the rules-unit-testing harness (Finding 8) — before touching any rules file.
-2. Fix `storage.rules` (Finding 1) with the new tests passing locally against the emulator, then verify in staging, then merge/deploy via `finish-feature.ps1`.
-3. Everything else (Findings 2, 3, 4, 5, 6, 7, 9, 10) can proceed in any order / in parallel, none block each other.
+1. ~~Build the rules-unit-testing harness (Finding 8)~~ — done, storage-only.
+2. ~~Fix `storage.rules` (Finding 1)~~ — done, implemented against the new tests. **Still needs staging verification and a `finish-feature.ps1` run before it's actually live anywhere.**
+3. Everything else (Findings 2, 3, 4, 5, 6, 7, 9) can proceed in any order / in parallel, none block each other. Note: picking up Finding 3 or 7 should also add `firestore.rules.test.js` (the Firestore half of Finding 8's original scope, not built in this pass).
 
 ## Explicitly deferred / left to the user to decide
 
 - Whether to bundle the `feedback_sessions.expiresAt` fix (Finding 3) with the storage.rules work or defer it.
 - Whether to fold the App Check enforcement flip (Finding 4) into this effort or leave it fully owned by the existing tracked item in `production-launch-followups.md`.
 - Semgrep alone vs. Semgrep + ESLint plugins for frontend SAST (Finding 9).
-- Whether `deploy-staging.ps1` should gain the lightweight rules-test gate (Finding 10).
+- Whether to build the live post-deploy verification tier discussed under Finding 8 (real requests against the actual deployed staging rules, not just the emulator) — deliberately not built in this pass; needs dedicated test accounts and cleanup logic.
 - Introducing GitHub Actions/CI infrastructure — this repo has none today, and it's already tracked as separate future work in `production-launch-followups.md`; this plan does not propose adding it.

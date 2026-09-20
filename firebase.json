@@ -71,6 +71,7 @@
     ]
   },
   "storage": {
+    "target": "app-bucket",
     "rules": "storage.rules"
   },
   "functions": [

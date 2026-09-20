@@ -3,11 +3,18 @@
 # Fully automated pipeline (see docs / the security-check design discussion for
 # the full rationale):
 #
-#   1. security-check.ps1   (secrets + npm audit, BLOCKING)   - before any git action
+#   1. security-check.ps1     (secrets + npm audit, BLOCKING)   - before any git action
 #   2. git add / commit / push feature branch / checkout main / pull / merge / push main
-#   3. sast-trigger-check.ps1  (reads .security-state.json, decides if SAST is due)
-#   4. sast-check.ps1        (only if step 3 says needed - synchronous, waited on)
-#   5. deploy-prod.ps1       (runs automatically once every applicable check is clean)
+#   3. rules-test-check.ps1   (Firestore/Storage rules regression tests, BLOCKING)
+#   4. sast-trigger-check.ps1 (reads .security-state.json, decides if SAST is due)
+#   5. sast-check.ps1         (only if step 4 says needed - synchronous, waited on)
+#   6. deploy-prod.ps1        (runs automatically once every applicable check is clean)
+#
+# rules-test-check.ps1 runs unconditionally here (not just in deploy-staging.ps1) as
+# defense in depth: it covers the case where deploy-staging.ps1 was bypassed entirely,
+# so this is the last gate before deploy-prod.ps1 would otherwise ship an unverified
+# rules change straight to production. deploy-prod.ps1 itself is never gated directly -
+# production is only protected transitively via this stage.
 #
 # There is no separate "yes, ship it" confirmation at the end - staging verification
 # (done before this script is ever run) plus the security/SAST gates ARE the checkpoint.
@@ -31,7 +38,7 @@ try {
     Write-Host ("Finishing feature on branch: " + $currentBranch)
 
     # ==================== STAGE 1: SECURITY CHECK (blocking, pre-git) ====================
-    Write-Host "`n=== STAGE 1/5: Security check (secrets + dependency audit) ===" -ForegroundColor Cyan
+    Write-Host "`n=== STAGE 1/6: Security check (secrets + dependency audit) ===" -ForegroundColor Cyan
     & .\scripts\deploy\security-check.ps1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "`nHALTED: security-check.ps1 found a blocking issue (see above)." -ForegroundColor Red
@@ -40,7 +47,7 @@ try {
     }
 
     # ==================== STAGE 2: COMMIT, PUSH, MERGE TO MAIN ====================
-    Write-Host "`n=== STAGE 2/5: Commit, push, merge to main ===" -ForegroundColor Cyan
+    Write-Host "`n=== STAGE 2/6: Commit, push, merge to main ===" -ForegroundColor Cyan
 
     Write-Host "1. Staging and committing changes..."
     git add .
@@ -78,8 +85,19 @@ try {
 
     Write-Host "`nFeature successfully merged and pushed to main!" -ForegroundColor Green
 
-    # ==================== STAGE 3: SAST TRIGGER CHECK ====================
-    Write-Host "`n=== STAGE 3/5: SAST trigger check ===" -ForegroundColor Cyan
+    # ==================== STAGE 3: RULES REGRESSION TEST (blocking) ====================
+    Write-Host "`n=== STAGE 3/6: Rules regression test (Firestore + Storage, local emulator) ===" -ForegroundColor Cyan
+    & .\scripts\deploy\rules-test-check.ps1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`nHALTED: rules-test-check.ps1 found a blocking issue (see above)." -ForegroundColor Red
+        Write-Host "main was already updated with this merge, but production was NOT deployed." -ForegroundColor Yellow
+        Write-Host "Review the failing assertion(s), fix the rule or the test, then run: .\scripts\deploy\rules-test-check.ps1" -ForegroundColor Yellow
+        Write-Host "Once it passes, run: .\scripts\deploy\deploy-prod.ps1" -ForegroundColor Yellow
+        return
+    }
+
+    # ==================== STAGE 4: SAST TRIGGER CHECK ====================
+    Write-Host "`n=== STAGE 4/6: SAST trigger check ===" -ForegroundColor Cyan
     & .\scripts\deploy\sast-trigger-check.ps1
     $sastTriggerExit = $LASTEXITCODE
 
@@ -89,7 +107,7 @@ try {
     }
     else {
         # exit 2 (needed) or exit 1 (trigger-check itself errored - fail safe, treat as needed)
-        Write-Host "`n=== STAGE 4/5: SAST check (triggered) ===" -ForegroundColor Cyan
+        Write-Host "`n=== STAGE 5/6: SAST check (triggered) ===" -ForegroundColor Cyan
         & .\scripts\deploy\sast-check.ps1
         $sastCheckExit = $LASTEXITCODE
         if ($sastCheckExit -ne 0) {
@@ -105,8 +123,8 @@ try {
         return
     }
 
-    # ==================== STAGE 5: DEPLOY TO PRODUCTION ====================
-    Write-Host "`n=== STAGE 5/5: Deploy to production ===" -ForegroundColor Cyan
+    # ==================== STAGE 6: DEPLOY TO PRODUCTION ====================
+    Write-Host "`n=== STAGE 6/6: Deploy to production ===" -ForegroundColor Cyan
     & .\scripts\deploy\deploy-prod.ps1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "`ndeploy-prod.ps1 reported issues - see its summary above." -ForegroundColor Red

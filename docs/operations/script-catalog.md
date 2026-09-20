@@ -17,6 +17,7 @@
 |---|---|---|
 | `deploy-staging.ps1` | `scripts/deploy/deploy-staging.ps1` | See `docs/operations/deploy-staging.md`. |
 | `deploy-prod.ps1` | `scripts/deploy/deploy-prod.ps1` | See `docs/operations/deploy-production.md`. |
+| `rules-test-check.ps1` | `scripts/deploy/rules-test-check.ps1` | Runs `tests/security-rules/` (Firestore/Storage rules regression tests) against the local emulator via `@firebase/rules-unit-testing`. Called from `deploy-staging.ps1` (gates the rule-deploy steps) and `finish-feature.ps1` (blocking, before `deploy-prod.ps1`). Never wired into `deploy-prod.ps1` directly. |
 | `sync-bq-views.js` | `scripts/deploy/sync-bq-views.js` | Syncs BigQuery views; invoked by both deploy scripts with `--deploy` + a `--dev_stage`/`--stage_prod` flag. |
 | `backfill-bq-prod.ps1` | `scripts/deploy/backfill-bq-prod.ps1` | BigQuery backfill for production. |
 | `export_emulators.ps1` | `scripts/deploy/export_emulators.ps1` | Exports local emulator state to `emulator-data/`, recovering from the known Windows export-rename failure automatically. Resolves paths from the invoking shell's CWD (must be repo root), not its own script location. |
