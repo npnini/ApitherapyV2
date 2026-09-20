@@ -76,8 +76,40 @@ else {
     $gitleaksArgs = @("protect", "--source", ".", "--staged", "-v", "--redact")
     if (Test-Path ".gitleaks.toml") { $gitleaksArgs += @("--config", ".gitleaks.toml") }
     Invoke-Step -Name "Secret scan (gitleaks)" `
-        -Action { & gitleaks @gitleaksArgs } `
-        -RecommendedAction "Review the file/line reported above, remove the secret, and rotate the credential if it may already have been committed. Re-run this script after fixing." `
+        -Action {
+            # 2>&1 on a native command while $ErrorActionPreference = "Stop" is active
+            # (as it is script-wide here) makes PowerShell 5.1 throw immediately on the
+            # first stderr line, even benign ones - before we can inspect the output.
+            # Same workaround already used above for `git add .`: relax to "Continue"
+            # just for this call.
+            $prevEAPInner = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+            $gitleaksLines = & gitleaks @gitleaksArgs 2>&1
+            $ErrorActionPreference = $prevEAPInner
+            # 2>&1 wraps stderr lines as ErrorRecord objects, not plain strings - print
+            # just the message text so output doesn't show PowerShell's type-wrapper noise.
+            $gitleaksLines | ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                    Write-Host $_.Exception.Message
+                }
+                else {
+                    Write-Host $_
+                }
+            }
+            # gitleaks can hit an internal error (e.g. failing to git-diff a binary file
+            # it can't parse, such as a deleted .docx) and still exit 0, logging
+            # "ERR ... error=stderr is not empty" while silently scanning almost nothing
+            # instead of actually failing - which would otherwise let a broken scan look
+            # like a clean one. Treat that pattern as a real failure.
+            $gitleaksText = ($gitleaksLines | ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ }
+            }) -join "`n"
+            $hadInternalError = $gitleaksText -match 'error="?stderr is not empty"?' -or $gitleaksText -match '\bfatal:'
+            if ($hadInternalError -and $LASTEXITCODE -eq 0) {
+                $global:LASTEXITCODE = 1
+            }
+        } `
+        -RecommendedAction "Review the file/line reported above. If gitleaks found a real secret, remove it and rotate the credential if it may already have been committed. If instead it reported an internal error (e.g. 'unsupported filetype' on a binary file), add that file/extension to .gitleaks.toml's allowlist, then re-run this script." `
         | Out-Null
 }
 

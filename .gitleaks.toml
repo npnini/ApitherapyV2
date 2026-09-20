@@ -13,4 +13,18 @@ paths = [
   '''\.firebase/''',
   '''package-lock\.json''',
   '''functions/package-lock\.json''',
+  # Binary office/document/media formats - gitleaks is a text/regex scanner and can't
+  # meaningfully inspect these anyway. Also works around a gitleaks bug where trying to
+  # diff a binary file (e.g. a deleted .docx) under `protect --staged` fails the internal
+  # git diff call ("unsupported filetype", "unable to read files to diff") and causes
+  # gitleaks to silently fall back to scanning almost nothing while still exiting 0 -
+  # see the stderr-detection fix in security-check.ps1 for the other half of this fix.
+  '''\.docx?$''',
+  '''\.xlsx?$''',
+  '''\.pptx?$''',
+  '''\.pdf$''',
+  '''\.png$''',
+  '''\.jpe?g$''',
+  '''\.gif$''',
+  '''\.zip$''',
 ]
