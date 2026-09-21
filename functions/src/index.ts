@@ -834,7 +834,22 @@ export const translateText = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMU
     );
   }
 
+  const effectiveSource = source || "en";
+
   try {
+    const configDoc = await db.collection("cfg_app_config").doc("main").get();
+    const configData = configDoc.data() || {};
+
+    // `target`/`source` come from the caller's request, so they must be checked
+    // against the admin-configured allowlist before being sent to Google Translate.
+    const supportedLanguages: string[] = configData.languageSettings?.supportedLanguages || [];
+    if (!supportedLanguages.includes(target)) {
+      throw new HttpsError("invalid-argument", `Unsupported target language: ${target}.`);
+    }
+    if (!supportedLanguages.includes(effectiveSource)) {
+      throw new HttpsError("invalid-argument", `Unsupported source language: ${effectiveSource}.`);
+    }
+
     const secretsDoc = await db.collection("cfg_secrets").doc("main").get();
     const apiKey = (secretsDoc.data()?.googleTranslateApiKey || "").trim();
 
@@ -854,7 +869,7 @@ export const translateText = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMU
         body: JSON.stringify({
           q: q,
           target: target,
-          source: source || "en",
+          source: effectiveSource,
           format: "text",
         }),
       }

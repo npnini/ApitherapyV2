@@ -1,6 +1,6 @@
 # Security Hardening — Findings & Plan
 
-Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented, deployed to staging and production, and verified live (see their entries below). Updated 2026-09-21: Finding 4 fixed and verified on both projects; Findings 2, 3, and 7 re-assessed and closed/downgraded (see their entries below) — everything else still not acted on.
+Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented, deployed to staging and production, and verified live (see their entries below). Updated 2026-09-21: Finding 4 fixed and verified on both projects; Findings 2, 3, and 7 re-assessed and closed/downgraded; Finding 5 fixed and verified in dev (staging/prod pending) — everything else still not acted on.
 
 ## 0. Already fixed this session
 
@@ -116,9 +116,17 @@ Console check found: on both projects, Storage was already `Enforced`, but Cloud
 
 **Known residual, not a security issue:** `scripts/migrations/migrate_problems_integrity.js`, `migrate_referential_integrity.js`, and `migrateUrlsToPaths.cjs` use the client Firestore SDK (`firebase/firestore`) directly, with no App Check initialization — they can't produce a valid token from Node.js. If any of these are run against a real project (not the emulator) going forward, they'll now be rejected. Not addressed in this pass; would need switching to `firebase-admin` or a registered App Check debug token before next use against staging/prod.
 
-### 5. LOW — `translateText` has no target-language allowlist
+### 5. LOW — `translateText` has no target-language allowlist — FIXED, VERIFIED IN DEV (STAGING/PROD PENDING)
 
-`functions/src/index.ts:814-828` checks `request.auth` and App Check, but places no allowlist on the `target` (or `source`) parameter. Any authenticated user can invoke Google Translate with arbitrary text/target languages, billed to the project. `sendDocumentEmail` (`functions/src/index.ts:~400`) already validates its `language` parameter against `configData.languageSettings?.supportedLanguages` with an inline comment explaining why — the same pattern should be applied to `translateText`'s `target`. Cost/abuse-control issue, not a data-access vulnerability.
+`functions/src/index.ts:814-828` checks `request.auth` and App Check, but placed no allowlist on the `target` (or `source`) parameter. Any authenticated user could invoke Google Translate with arbitrary text/target languages, billed to the project. `sendDocumentEmail` (`functions/src/index.ts:~400`) already validated its `language` parameter against `configData.languageSettings?.supportedLanguages` with an inline comment explaining why — the same pattern was applied to `translateText`'s `target`. Cost/abuse-control issue, not a data-access vulnerability (the function is otherwise correctly gated by auth + App Check).
+
+**Implemented fix** (`functions/src/index.ts`, branch `fix-translate-target-language-validation`): both `target` and `source` (`source` defaults to `"en"` when omitted) are now checked against `cfg_app_config/main`'s `languageSettings.supportedLanguages` before the request reaches the Translate API, throwing `HttpsError("invalid-argument", ...)` on a miss — identical pattern to `sendDocumentEmail`'s existing check.
+
+**Verified in the local emulator:** the happy path (a real UI translation into a genuinely supported language) still succeeds. A direct call replaying a real authenticated session's request with a tampered `target` (bypassing the UI entirely — the language picker never offers an invalid value, so this has to be tested by hand) returns `400 INVALID_ARGUMENT` — `{"error":{"status":"INVALID_ARGUMENT","message":"Unsupported target language: zz."}}` — confirming the check can't be routed around by skipping the frontend. Staging and production deploy plus re-verification there is still pending.
+
+**Two related bugs found and fixed on separate branches while working on this:**
+- `src/components/UserDetails.tsx`'s language picker was hardcoded to `['en', 'he']` instead of reading `cfg_app_config`'s `languageSettings.supportedLanguages` — a user could never actually select any language an admin added beyond those two. Fixed on `fix-language-selection-allowlist` (merged): the picker now reads the admin-configured list; language display names are resolved via `Intl.DisplayNames` (`src/utils/languageNames.ts`) instead of a hardcoded name map, after the hardcoded map's gap surfaced as a "Spanish" language option displaying as a raw, garbled code once a third language was actually configured.
+- `src/components/ApplicationSettings.tsx` let an admin remove a language from `supportedLanguages` with no check for whether any user still had it as their `preferredLanguage` — doing so would silently break that user's UI translation once this finding's fix shipped (their `preferredLanguage` would fail the new allowlist check). Given the small user base, a live cross-collection query or a new denormalized counter was judged not worth the added complexity (would also need a new Firestore composite index) — fixed on `fix-language-removal-lock` (merged) by disallowing removal of any already-saved supported language from the admin UI entirely; a superadmin can still do so directly via the Firestore console after manually checking for affected users.
 
 ### 6. LOW — Unescaped HTML interpolation in an internal admin email
 
@@ -175,7 +183,8 @@ Unlike `finish-feature.ps1` (which runs `security-check.ps1` before any git acti
 2. ~~Fix `storage.rules` (Finding 1)~~ — done, deployed to staging and production, verified live on both via direct Rules API checks (not just deploy-log trust, per the decoy-bucket lesson) and a real cross-caretaker write attempt correctly rejected.
 3. ~~Fix the storage deploy-target bug~~ — done: explicit `app-bucket` deploy targets configured in `.firebaserc` for both projects, `firebase.json` updated to reference the target.
 4. ~~Flip App Check to Enforce for Firestore and Authentication (Finding 4)~~ — done, verified working on both staging and production.
-5. Everything else (Findings 2, 5, 6, 9) can proceed in any order / in parallel, none block each other.
+5. ~~Add target/source language allowlist to `translateText` (Finding 5)~~ — done, verified in dev; staging/prod deploy and re-verification still pending.
+6. Everything else (Findings 2, 6, 9) can proceed in any order / in parallel, none block each other.
 
 ## Explicitly deferred / left to the user to decide
 
