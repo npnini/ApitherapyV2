@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { AppUser } from '../types/user';
 import styles from './UserDetails.module.css';
 import { T, useT, useTranslationContext } from './T';
+import { getLanguageName } from '../utils/languageNames';
 
 interface UserDetailsProps {
     user: AppUser;
@@ -16,10 +19,25 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
     const [formData, setFormData] = useState<AppUser>(user);
     const [error, setError] = useState<string | null>(null);
 
-    const supportedLanguages = ['en', 'he'];
+    const [supportedLanguages, setSupportedLanguages] = useState<string[]>(['en']);
     const countryToLang: { [key: string]: string } = {
         'israel': 'he',
     };
+
+    useEffect(() => {
+        const fetchSupportedLanguages = async () => {
+            try {
+                const configDoc = await getDoc(doc(db, 'cfg_app_config', 'main'));
+                if (configDoc.exists()) {
+                    const data = configDoc.data();
+                    setSupportedLanguages(data.languageSettings?.supportedLanguages || ['en']);
+                }
+            } catch (err) {
+                console.error('Error fetching supported languages:', err);
+            }
+        };
+        fetchSupportedLanguages();
+    }, []);
 
     useEffect(() => {
         // Set initial language for new and existing users
@@ -30,7 +48,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
         } else {
             setFormData(prev => ({ ...prev, preferredLanguage: 'en' }));
         }
-    }, [user.preferredLanguage, language]);
+    }, [user.preferredLanguage, language, supportedLanguages]);
 
     useEffect(() => {
         // This effect runs when a NEW user types in the country field
@@ -40,7 +58,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                 setFormData(prev => ({ ...prev, preferredLanguage: lang }));
             }
         }
-    }, [formData.country, isOnboarding]);
+    }, [formData.country, isOnboarding, supportedLanguages]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -156,7 +174,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
 };
 
 const LanguageOption: React.FC<{ lang: string }> = ({ lang }) => {
-    return <option value={lang}>{useT(lang === 'en' ? 'English' : 'Hebrew')}</option>;
+    return <option value={lang}>{useT(getLanguageName(lang))}</option>;
 };
 
 export default UserDetails;

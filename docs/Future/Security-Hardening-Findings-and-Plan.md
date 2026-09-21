@@ -1,12 +1,12 @@
 # Security Hardening — Findings & Plan
 
-Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented (not yet deployed — see their entries below); everything else still not acted on.
+Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented, deployed to staging and production, and verified live (see their entries below). Updated 2026-09-21: Finding 4 fixed and verified on both projects; Findings 2, 3, and 7 re-assessed and closed/downgraded (see their entries below) — everything else still not acted on.
 
 ## 0. Already fixed this session
 
 A stored-XSS vulnerability was found and fixed in the Consent and Instructions tabs of Patient Intake: `injectData()` in `src/components/PatientIntake/ConsentTab.tsx` and `src/components/PatientIntake/InstructionsTab.tsx` spliced unescaped `patientData.fullName` / `identityNumber` / caretaker name into an HTML string rendered via `dangerouslySetInnerHTML`. A malicious value in a patient's name or ID field would execute as script in the browser of whoever opened that patient's consent/instructions tab.
 
-Fix: added `src/utils/htmlUtils.ts` (`escapeHtml`) and applied it to all three interpolated values in both files' `injectData()` functions before they're spliced into the HTML string. Done on branch `fix-xss-vulnerabilities` — **not yet merged/deployed**; still needs staging verification and a `finish-feature.ps1` run.
+Fix: added `src/utils/htmlUtils.ts` (`escapeHtml`) and applied it to all three interpolated values in both files' `injectData()` functions before they're spliced into the HTML string. Done on branch `fix-xss-vulnerabilities`, merged and deployed to production.
 
 ## How this review was scoped
 
@@ -14,7 +14,7 @@ The existing automated security pipeline (`scripts/deploy/security-check.ps1` + 
 
 ## Findings, in priority order
 
-### 1. CRITICAL — Storage rules allow cross-caretaker access to patient files — IMPLEMENTED (not yet deployed)
+### 1. CRITICAL — Storage rules allow cross-caretaker access to patient files — FIXED, DEPLOYED, VERIFIED
 
 `storage.rules` (repo root, single file shared by both the staging project `apitherapyv2` and production project `apitherapy-c94a6` — confirmed via `firebase.json`/`.firebaserc`, no per-environment split exists):
 
@@ -58,13 +58,29 @@ match /Patients/{patientId}/{fileName=**} {
 }
 ```
 
-Regression tests for all six blocks were written first, against the pre-fix rules (see Finding 8) — the `Patients/` cross-caretaker case and each folder's non-admin-write case failed as expected before the fix, and pass after it. **Not yet deployed** — needs a staging verification pass, then `finish-feature.ps1`, per standing no-deploy-without-explicit-instruction rule.
+Regression tests for all six blocks were written first, against the pre-fix rules (see Finding 8) — the `Patients/` cross-caretaker case and each folder's non-admin-write case failed as expected before the fix, and pass after it.
 
-### 2. HIGH — `filterPiiTransform` has no app-level auth check
+**Critical deploy problem discovered during staging verification — the fix initially never reached the real bucket.** `firebase.json`'s `storage` config had no explicit bucket target, and `.firebaserc` had an empty `"targets": {}`. Firebase's default behavior for `firebase deploy --only storage` without an explicit target is to deploy to the **project's default bucket** — for `apitherapyv2` that's `apitherapyv2.firebasestorage.app`, which the app does not use. The app actually connects to a custom-named bucket, `apitherapyv2-staging-storage` (set via `VITE_STORAGE_BUCKET`). Every `firebase deploy --only storage` run against staging (including the one that appeared to ship this fix) was silently deploying to the unused default bucket; the real bucket kept running the original, unpatched rules the whole time. This was only caught because a live re-test (attempting the cross-caretaker write as a superadmin account) unexpectedly succeeded — confirmed via the Firebase Rules Management API (`firebaserules.googleapis.com`) that the real bucket's active ruleset was still the pre-fix version, dated 2026-05-22, while the patched ruleset had landed on the decoy default bucket instead.
+
+Production was **not** affected by this specific failure mode — its bucket (`apitherapy-c94a6.firebasestorage.app`) happens to be named per the default-bucket convention, so the same ambiguous deploy command coincidentally hit the right target there. But this was luck, not correctness, and worth remembering: production had simply never been deployed with this fix at all yet at the point this was discovered.
+
+**Remediation, two parts:**
+1. Immediate: pushed the corrected rules directly to the real staging bucket's ruleset via the Rules Management API (`POST .../rulesets` to create, `PATCH .../releases/firebase.storage%2Fapitherapyv2-staging-storage` to point the release at it), closing the live exposure without waiting on a full redeploy cycle.
+2. Root cause: configured explicit Firebase deploy targets — `firebase target:apply storage app-bucket apitherapyv2-staging-storage --project apitherapyv2` and `firebase target:apply storage app-bucket apitherapy-c94a6.firebasestorage.app --project prod` (both recorded in `.firebaserc`), then added `"target": "app-bucket"` to `firebase.json`'s `storage` config. Verified with a real `firebase deploy --only storage --project apitherapyv2` run afterward — confirmed via the Rules API that it now updates the correct bucket's release and leaves the decoy default bucket untouched.
+
+**Side-finding fixed along the way:** `cors-staging.json`/`cors-production.json` were both missing `"Authorization"` in `responseHeader`. This blocked the Storage SDK's `getBytes()`/`getDownloadURL()`-fallback path (used by `useStorageUrl.ts` for inline previews) via a failed CORS preflight — discovered while manually testing this fix's staging deploy, unrelated to the rules content itself. Fixed by adding `"Authorization"` to both files' `responseHeader` arrays and re-applying to both live buckets.
+
+**Deployed and verified live**, 2026-09-20:
+- Staging: `firebase deploy --only storage --project apitherapyv2` (manual verification run) + confirmed via the real app — creating a new patient with consent/instructions documents succeeds normally; attempting to write a file into a *different* caretaker's patient folder (via a captured real authenticated request, retargeted to another patient's path) is correctly rejected with `403`.
+- Production: deployed via `finish-feature.ps1`'s automatic final stage. Independently verified via the Rules Management API that the live ruleset on `apitherapy-c94a6.firebasestorage.app` contains `isAdminOrSuperadmin` and the `caretakerId == request.auth.uid` ownership check — not just trusting the deploy log this time, given what staging's decoy-bucket issue taught about doing so.
+
+### 2. LOW — `filterPiiTransform` has no app-level auth check
 
 `functions/src/index.ts:443` — `filterPiiTransform` is an `onRequest` function (not `onCall`), with no `request.auth` check of any kind. It's intended to be invoked only by the Firestore→BigQuery `fs-bq-export-patients` extension as a transform webhook (confirmed wired only to the `patients` export via `extensions/fs-bq-export-patients.env`), not by end users directly.
 
 Gen2 `onRequest` functions are Cloud Run-backed and can default to publicly invokable. Whether this function is actually restricted to the extension's service account, or is silently reachable by anyone who finds its URL, has not been verified — it depends entirely on the deployed Cloud Run IAM policy, which app code has no visibility into.
+
+**Severity note (revised from an initial HIGH rating):** the function is stateless and never touches Firestore/Storage/BigQuery — it only strips named fields from whatever body the caller supplies and echoes it back. Even if fully publicly invokable, there is no path to exfiltrate real patient data through it; the ceiling of impact is resource/cost abuse (unbounded invocations) or a crash on malformed input (unhandled exception on missing `record.json.data`). Same impact category as Finding 5 (rated LOW), and with a small user base there's nothing an attacker meaningfully gains by abusing it. Rated LOW rather than MEDIUM/HIGH on that basis — the proposed IAM check below is still worth doing as cheap hygiene, not because the exposure is dangerous.
 
 **Proposed action:** one-time check on both projects:
 ```
@@ -73,7 +89,7 @@ gcloud run services get-iam-policy filterPiiTransform --region=<region> --projec
 ```
 If `allUsers`/`allAuthenticatedUsers` holds `roles/run.invoker`, restrict it to the extension's service account only. Document the verified state in a comment above the function.
 
-### 3. MEDIUM — `feedback_sessions` read/update has no expiry check
+### 3. NOT A PROBLEM — `feedback_sessions` read/update has no expiry check
 
 `config/firestore/firestore.rules:162-172`:
 ```
@@ -86,15 +102,19 @@ match /feedback_sessions/{sessionId} {
 ```
 This is an **intentional design tradeoff**, not an oversight: patients complete feedback via an emailed link with no login (`dailyFeedbackSweeper` / `sendMissingProblemEmail` in `functions/src/index.ts`), so the session document must be readable/updatable without authentication. Protection today is only the `sessionId` (`randomUUID()`) being unguessable. `list` is correctly blocked to non-owners (only single-document `get` is open), and bulk enumeration isn't possible.
 
-The gap: an `expiresAt` timestamp field is always set on session creation (`functions/src/index.ts:243`) and `dailyFeedbackSweeper` deletes expired sessions once daily at 5 AM Asia/Jerusalem — but the Firestore rule never checks `expiresAt`, so a session remains readable/writable for however long it takes until the next daily sweep, not just its intended validity window.
+Originally flagged because an `expiresAt` timestamp field is set on session creation (`functions/src/index.ts:243`) but never checked in the rule — `dailyFeedbackSweeper` only deletes expired sessions once daily at 5 AM Asia/Jerusalem, so a session stays readable/writable up to a day past its "intended" validity window. **Downgraded to not a problem:** the extra window works in favor of legitimate use, not against it — a lot of patients don't respond to the feedback link right away, so the slack before the daily sweep is exactly what lets a late-but-genuine response still go through. There's nothing for an attacker to gain from the extension either, since the only protection (an unguessable `sessionId`) is unaffected by how long the window stays open. No fix needed.
 
-**Proposed fix:** `allow get: if resource.data.expiresAt > request.time;` — no null-guard needed since the field is always set on create. Low-risk, cheap to add alongside the rules-testing work either fix requires anyway.
+### 4. MEDIUM — App Check enforcement is inconsistent/unverified per API — FIXED, VERIFIED ON STAGING AND PRODUCTION
 
-### 4. MEDIUM — App Check enforcement is inconsistent/unverified per API
+`docs/operations/production-launch-followups.md:11` already tracked: *"Switch App Check to 'Enforce' mode (currently 'Monitor')"* as an open item — this predates this review. Several `onCall` functions (`getTreatmentEffectiveness`, `translateText`) set `enforceAppCheck: true` in code (`functions/src/index.ts:492`, `:814`), which takes effect independent of the Firebase Console's per-API Monitor/Enforce toggle — but that console-level setting is configured separately per product (Firestore, Storage, Functions each have their own toggle), and which of those were still Monitor-only for direct SDK access (bypassing the Cloud Functions layer entirely) had not been verified for either project.
 
-`docs/operations/production-launch-followups.md:11` already tracks: *"Switch App Check to 'Enforce' mode (currently 'Monitor')"* as an open item — this predates this review. Several `onCall` functions (`getTreatmentEffectiveness`, `translateText`) set `enforceAppCheck: true` in code (`functions/src/index.ts:492`, `:814`), which takes effect independent of the Firebase Console's per-API Monitor/Enforce toggle — but that console-level setting is configured separately per product (Firestore, Storage, Functions each have their own toggle), and which of those are still Monitor-only for direct SDK access (bypassing the Cloud Functions layer entirely) has not been verified for either project.
+Console check found: on both projects, Storage was already `Enforced`, but Cloud Firestore and Authentication were both still `Monitoring` — the App Check request metrics for Firestore showed 100% verified traffic over the prior 7 days (1.7k/1.7k requests, 0 unverified across all three sub-categories) before the flip, confirming no real app traffic would be rejected by enforcing.
 
-**Proposed action:** one-time research task — check Firebase Console → App Check → APIs for both `apitherapyv2` and `apitherapy-c94a6`, record Monitor/Enforce state per product, then decide whether/when to flip to Enforce. Recommend keeping ownership of the actual flip with the existing tracked item in `production-launch-followups.md` rather than duplicating it here.
+**Implemented fix:** Firestore and Authentication both switched from `Monitor` to `Enforce` in the Firebase Console's App Check → APIs screen, on both `apitherapyv2` (staging) and `apitherapy-c94a6` (production). No code change or redeploy required — this is a live console setting. `src/firebase.ts:56-64` already initializes App Check once on the shared `app` instance used by `auth`, `db`, `storage`, and `functions`, so the same token already covers all products.
+
+**Verified:** tested on both staging and production after the flip — normal caretaker sign-in/CRUD flows, the unauthenticated patient-feedback-link flow (`feedback_sessions`), and Storage document upload/view all confirmed working, no App Check-related rejections observed.
+
+**Known residual, not a security issue:** `scripts/migrations/migrate_problems_integrity.js`, `migrate_referential_integrity.js`, and `migrateUrlsToPaths.cjs` use the client Firestore SDK (`firebase/firestore`) directly, with no App Check initialization — they can't produce a valid token from Node.js. If any of these are run against a real project (not the emulator) going forward, they'll now be rejected. Not addressed in this pass; would need switching to `firebase-admin` or a registered App Check debug token before next use against staging/prod.
 
 ### 5. LOW — `translateText` has no target-language allowlist
 
@@ -104,7 +124,7 @@ The gap: an `expiresAt` timestamp field is always set on session creation (`func
 
 `functions/src/index.ts:763-797` (`sendMissingProblemEmail`) interpolates `problemName`, `caretakerName`, `caretakerData.email`, `patientName`, and other values unescaped into an HTML email body. Same bug class as Finding 0 (the already-fixed frontend XSS), but lower severity since this email is only ever viewed by an admin, not rendered in an attacker-influenced browser session. Proposed fix: a small backend equivalent of `src/utils/htmlUtils.ts` (e.g. `functions/src/utils/htmlUtils.ts`, since `functions/` and `src/` don't share a module boundary), applied to each interpolated value.
 
-### 7. LOW — `app_audit_log` create rule has no field validation
+### 7. CLOSED — `app_audit_log` create rule has no field validation
 
 `config/firestore/firestore.rules:156-160`:
 ```
@@ -114,11 +134,13 @@ match /app_audit_log/{docId} {
   allow update, delete: if false;
 }
 ```
-Any authenticated user can write arbitrary audit-log documents (log-forging/spam risk). Update/delete are correctly always denied (immutable log), and read is superadmin-only — only `create` lacks field constraints. Proposed fix: add a `request.resource.data.keys().hasOnly([...])` constraint matching whatever fields the actual audit-logging call site writes.
+Any authenticated user can write arbitrary audit-log documents (log-forging/spam risk). Update/delete are correctly always denied (immutable log), and read is superadmin-only — only `create` lacks field constraints.
 
-### 8. GAP — No automated testing exists for Firestore or Storage rules — PARTIALLY IMPLEMENTED
+**Closed, judged safe enough as-is:** with Firestore App Check now on Enforce (Finding 4), a write to this collection must already come from the real app running in a real browser session with a valid authenticated user — not a script or forged request. What's left unguarded is a legitimate, authenticated user manually writing extra/malformed fields into their own log entries, and there's no real incentive to do that: an internal audit log has no value to exfiltrate or abuse, forging entries in a log only a superadmin ever reads gains an attacker nothing actionable. Not worth the added rule complexity for a risk with no realistic payoff.
 
-**Storage rules now covered; Firestore rules still untested.** `@firebase/rules-unit-testing` (v5) added as a root devDependency; `tests/security-rules/storage.rules.test.js` written, covering exactly what Finding 1's fix changes: the `Patients/` ownership guard (unauthenticated deny, wrong-caretaker deny, owner allow, admin-who-isn't-the-owner deny, superadmin allow) and, for each of the five reference-data folders, non-admin-write-denied / admin-write-allowed. `firestore.rules.test.js` was **not** created in this pass — Finding 1 didn't touch `firestore.rules`, so per the "test only what's being changed" scoping decision, Firestore rule tests remain a gap for whenever Findings 3 or 7 (which do touch `firestore.rules`) are picked up.
+### 8. GAP — No automated testing exists for Firestore or Storage rules — PARTIALLY IMPLEMENTED, VERIFIED WORKING IN PRODUCTION USE
+
+**Storage rules now covered; Firestore rules still untested.** `@firebase/rules-unit-testing` (v5) added as a root devDependency; `tests/security-rules/storage.rules.test.js` written, covering exactly what Finding 1's fix changes: the `Patients/` ownership guard (unauthenticated deny, wrong-caretaker deny, owner allow, admin-who-isn't-the-owner deny, superadmin allow) and, for each of the five reference-data folders, non-admin-write-denied / admin-write-allowed. `firestore.rules.test.js` was **not** created in this pass — Finding 1 didn't touch `firestore.rules`, so per the "test only what's being changed" scoping decision, Firestore rule tests remain a gap for whenever a future change actually touches `firestore.rules` (Findings 3 and 7, the two candidates that would have triggered this, are both now closed without a rules change).
 
 Root `package.json` gained the `@firebase/rules-unit-testing` devDependency (`^3.0.4` — v5 requires `firebase@^12`, this project is pinned to `firebase@^10.7.1`; upgrading that is out of scope here) and a `"test:rules"` script (`firebase emulators:exec --only firestore,storage,auth "node --test tests/security-rules/*.test.js"` — a bare directory path was tried first but hit a Node 22 module-resolution quirk on this setup; the glob form works and is Node-expanded, not shell-expanded, so it's portable) for manual/ad-hoc runs.
 
@@ -129,7 +151,9 @@ Root `package.json` gained the `@firebase/rules-unit-testing` devDependency (`^3
 
 Runs unconditionally on every invocation of both scripts (no trigger-gating like SAST's day/vuln-delta/change-volume conditions) — it's fast (local emulator only) and directly correctness-critical.
 
-A second tier — live verification against the *actual deployed* rules in the real staging project post-deploy (not just the emulator) — was discussed and deliberately **not built**: it needs different infrastructure entirely (`@firebase/rules-unit-testing` is emulator-only; live verification would need dedicated test accounts in staging Auth, token-minting via the Admin SDK, and fixture cleanup against real staging data). Left as a possible future addition, not part of this pass.
+**Confirmed working for real** via `finish-feature.ps1`'s actual production run for this branch: Stage 3/6 started the emulator, ran all 38 assertions, passed, and the pipeline proceeded correctly — not just a manual/isolated test of the script.
+
+**Important blind spot this test suite does *not* cover, learned the hard way (see Finding 1):** `@firebase/rules-unit-testing` validates rule *content* correctness against a local emulator — it has no way to know or verify *which live bucket* a subsequent `firebase deploy` actually targets. The deploy-target bug under Finding 1 (rules silently deploying to an unused default bucket while the real bucket kept running old, unpatched rules) sailed straight past this entire test suite — all 38 local assertions passed throughout, correctly, the whole time, because they were only ever exercising the rules *file*, never the *deployed* state. A second tier — live verification against the actual deployed rules in the real project post-deploy, not just the emulator — was discussed before this was discovered and deliberately not built at the time; the deploy-target incident is a concrete, now-proven example of exactly the failure class that tier would have caught automatically instead of requiring a manual live re-test to surface. Still not built (it needs dedicated test accounts in staging Auth, token-minting via the Admin SDK, and fixture cleanup against real staging data) — left as a stronger-than-before candidate for future work, not part of this pass.
 
 ### 9. GAP — Frontend has no automated SAST coverage
 
@@ -147,14 +171,14 @@ Unlike `finish-feature.ps1` (which runs `security-check.ps1` before any git acti
 
 ## Sequencing recommendation, if/when this work is picked up
 
-1. ~~Build the rules-unit-testing harness (Finding 8)~~ — done, storage-only.
-2. ~~Fix `storage.rules` (Finding 1)~~ — done, implemented against the new tests. **Still needs staging verification and a `finish-feature.ps1` run before it's actually live anywhere.**
-3. Everything else (Findings 2, 3, 4, 5, 6, 7, 9) can proceed in any order / in parallel, none block each other. Note: picking up Finding 3 or 7 should also add `firestore.rules.test.js` (the Firestore half of Finding 8's original scope, not built in this pass).
+1. ~~Build the rules-unit-testing harness (Finding 8)~~ — done, storage-only, confirmed running correctly in the real pipeline.
+2. ~~Fix `storage.rules` (Finding 1)~~ — done, deployed to staging and production, verified live on both via direct Rules API checks (not just deploy-log trust, per the decoy-bucket lesson) and a real cross-caretaker write attempt correctly rejected.
+3. ~~Fix the storage deploy-target bug~~ — done: explicit `app-bucket` deploy targets configured in `.firebaserc` for both projects, `firebase.json` updated to reference the target.
+4. ~~Flip App Check to Enforce for Firestore and Authentication (Finding 4)~~ — done, verified working on both staging and production.
+5. Everything else (Findings 2, 5, 6, 9) can proceed in any order / in parallel, none block each other.
 
 ## Explicitly deferred / left to the user to decide
 
-- Whether to bundle the `feedback_sessions.expiresAt` fix (Finding 3) with the storage.rules work or defer it.
-- Whether to fold the App Check enforcement flip (Finding 4) into this effort or leave it fully owned by the existing tracked item in `production-launch-followups.md`.
 - Semgrep alone vs. Semgrep + ESLint plugins for frontend SAST (Finding 9).
-- Whether to build the live post-deploy verification tier discussed under Finding 8 (real requests against the actual deployed staging rules, not just the emulator) — deliberately not built in this pass; needs dedicated test accounts and cleanup logic.
+- Whether to build the live post-deploy verification tier discussed under Finding 8 (real requests against the actual deployed staging rules, not just the emulator) — deliberately not built in this pass; needs dedicated test accounts and cleanup logic. Worth weighing more seriously now: the storage deploy-target bug (Finding 1) is a concrete case this tier would have caught automatically instead of requiring a manual live re-test to surface.
 - Introducing GitHub Actions/CI infrastructure — this repo has none today, and it's already tracked as separate future work in `production-launch-followups.md`; this plan does not propose adding it.

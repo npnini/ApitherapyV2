@@ -11,6 +11,7 @@ import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import { Question, Questionnaire } from '../types/questionnaire';
 import { T, useT, useTranslationContext } from './T';
 import { logAction } from '../services/auditLogService';
+import { ALL_LANGUAGES } from '../utils/languageNames';
 
 interface ApplicationSettingsProps {
     user: AppUser;
@@ -41,16 +42,7 @@ interface MeasureInfo {
     name: Record<string, string>;
 }
 
-const allLanguages: ShuttleItem[] = [
-    { id: 'en', name: 'English' },
-    { id: 'es', name: 'Spanish' },
-    { id: 'fr', name: 'French' },
-    { id: 'de', name: 'German' },
-    { id: 'he', name: 'Hebrew' },
-    { id: 'ar', name: 'Arabic' },
-    { id: 'zh', name: 'Chinese' },
-    { id: 'ru', name: 'Russian' },
-];
+const allLanguages: ShuttleItem[] = ALL_LANGUAGES;
 
 const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<string, any> => {
     const defaults: Record<string, any> = {};
