@@ -133,6 +133,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             'Cancel',
             'Save Changes',
             'select a problem linked to a protocol that is set with type=ad-hoc',
+            'Cannot remove a supported language once it has been saved. Ask a superadmin to check for users still set to it first',
             ...schemaStrings
         ];
     }, []);
@@ -529,6 +530,10 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             case 'languages':
                 const selectedLanguageCodes = Array.isArray(value) ? value : [];
                 const selectedLanguageItems = allLanguages.filter(lang => selectedLanguageCodes.includes(lang.id));
+                // Once a language has been saved as supported, it may already be a user's
+                // preferredLanguage — removing it here can't check that (no live query, see
+                // Security-Hardening-Findings-and-Plan.md), so removal is disallowed entirely.
+                const savedLanguageCodes: string[] = initialSettings.languageSettings?.supportedLanguages || [];
 
                 control = (
                     <div className={styles.control}>
@@ -537,6 +542,14 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                             selectedItems={selectedLanguageItems}
                             onSelectionChange={(newSelection: ShuttleItem[]) => {
                                 const newLangCodes = newSelection.map(item => item.id);
+                                const removedSavedCodes = savedLanguageCodes.filter(code => !newLangCodes.includes(code));
+                                if (removedSavedCodes.length > 0) {
+                                    const removedNames = removedSavedCodes
+                                        .map(code => allLanguages.find(l => l.id === code)?.name || code)
+                                        .join(', ');
+                                    setError(`${getTranslation('Cannot remove a supported language once it has been saved. Ask a superadmin to check for users still set to it first')}: ${removedNames}`);
+                                    return;
+                                }
                                 handleSettingChange(path, newLangCodes);
                             }}
                             availableTitle="Available Languages"
