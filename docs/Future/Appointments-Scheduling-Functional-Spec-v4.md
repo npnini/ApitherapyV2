@@ -41,7 +41,7 @@ Every appointment has exactly one status. The same names and colours are used on
 **Rules**
 - A meeting is marked "Missed" automatically **only after the day has ended**, never while the caretaker could still record the treatment.
 - The caretaker can **change any past status by hand**, for example Missed → Attended if the treatment was recorded late.
-- **Walk-in treatment:** if a treatment is recorded for a patient with no appointment that day, the app adds an "Attended" appointment at the time of the treatment. The patient's progress therefore stays correct. No invitation is sent for it.
+- **Walk-in treatment:** if a treatment is recorded for a patient with no matching booked appointment, the app adds an "Attended" appointment at the time of the treatment, and **adds 1 to the patient's planned sessions** (if a plan is set), so the walk-in does not use up a planned session. A booked appointment that the treatment did not match **stays as it is** (Booked, then Missed after its day ends) until the caretaker decides what to do with it. No invitation is sent for the walk-in. A treatment **matches** a booked appointment when it is recorded on the **same day**, at any time; a patient should not get more than one treatment per day. If a second treatment is started for the same patient on the same day, the app **warns** ("This patient already had a treatment today. Start another one?") but allows it; the second treatment counts as a walk-in (+1 to planned). (Decided 2026-09-27.)
 
 **Colours (shown in a legend on the Today and Calendar pages)**
 - Booked (upcoming): bold colour.
@@ -173,8 +173,9 @@ These are shown **at the top of the patient's Appointments tab** (see §9).
 
 **Progress (calculated automatically, never typed)**
 - Shown as: **"6 of 10 sessions done · 1 missed · 1 cancelled · 3 remaining · 2 booked"**
-- Done = Attended appointments, including walk-ins.
+- Done = treatments recorded for the patient, **including treatments recorded before the appointments feature existed** (patients already in treatment have treatments but no appointments). From then on every recorded treatment is also an Attended appointment (booked or walk-in), so the two counts agree. (Decided 2026-09-27.)
 - Remaining = Planned − Done.
+- **Planned can never be fewer than Done.** The app rejects a smaller number.
 
 **Reminders**
 - **Send reminders:** on/off. The default comes from app settings.
@@ -185,7 +186,7 @@ These are shown **at the top of the patient's Appointments tab** (see §9).
 
 ## 9. Patient intake: "Appointments" tab
 
-**Position:** after the "Documents" tab and before the "Treatment History" tab. It can be opened at any stage of intake.
+**Position:** after the "Problems" tab and before the "Treatment History" tab (see §8). The "Documents" tab moves to before "Problems". Tab order: Personal Details, Questionnaire, Guidelines, Consent, Documents, Problems, Appointments, Treatments History, Measures History. (Decided 2026-09-27.) It can be opened at any stage of intake.
 
 **Top of the tab:** the treatment plan, the progress and the reminder settings (see §8).
 

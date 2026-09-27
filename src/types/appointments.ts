@@ -17,6 +17,28 @@ export type PatientNameLevel = 'initials' | 'first' | 'full';
 
 export type ReminderChannel = 'email' | 'whatsapp' | 'sms';
 
+/** One slot of a patient's weekly pattern, e.g. Sunday 10:00. */
+export interface WeeklySlot {
+    weekday: WeekdayIndex;
+    /** "HH:mm". */
+    time: string;
+}
+
+/**
+ * A patient's treatment plan and reminder preferences, stored in patients/{id}.appointmentPlan.
+ * Missing on patients created before the feature: read it through getEffectiveAppointmentPlan.
+ */
+export interface AppointmentPlan {
+    /** Null until the caretaker sets it. */
+    plannedSessions: number | null;
+    weeklySlots: WeeklySlot[];
+    remindersOn: boolean;
+    /** Null when no channel is chosen or none is available for this patient. */
+    reminderChannel: ReminderChannel | null;
+    /** Language code for invitations and reminders. */
+    preferredLanguage: string;
+}
+
 /**
  * A caretaker's own appointment preferences, stored in users/{uid}.appointmentPrefs.
  * Missing on users created before the feature: read them through getEffectiveAppointmentPrefs.

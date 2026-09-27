@@ -1,3 +1,5 @@
+import { AppointmentPlan } from './appointments';
+
 export interface PatientDocument {
     id: string;
     url: string;         // Firebase Storage fullPath
@@ -73,6 +75,8 @@ export interface PatientData extends BaseDocument {
     age: number | string;
     height?: string;
     weight?: string;
+    /** Missing on patients created before the appointments feature; read via getEffectiveAppointmentPlan. */
+    appointmentPlan?: AppointmentPlan;
 }
 
 export interface JoinedPatientData extends PatientData {

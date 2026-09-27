@@ -30,6 +30,8 @@ import { StungPointCounts } from '../../utils/pointSide';
 import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
 import { logAction } from '../../services/auditLogService';
+import AppointmentsTab from '../Appointments/AppointmentsTab';
+import { getEffectiveAppointmentPlan, getReminderChannelOptions, validateAppointmentPlan } from '../../utils/appointments/plan';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
 type TabKey =
@@ -39,6 +41,7 @@ type TabKey =
     | 'instructions'
     | 'problems'
     | 'documents'
+    | 'appointments'
     | 'treatments'
     | 'measures';
 
@@ -49,13 +52,15 @@ const TAB_ORDER: TabKey[] = [
     'questionnaire',
     'instructions',
     'consent',
-    'problems',
     'documents',
+    'problems',
+    'appointments',
     'treatments',
     'measures',
 ];
 
-// The first 5 tabs must all be saved before "Start New Treatment" is enabled (UX-1)
+// These 5 tabs must all be saved before "Start New Treatment" is enabled (UX-1).
+// The set is by name, not position: Documents now sits between Consent and Problems.
 const FIRST_FIVE: TabKey[] = ['personal', 'questionnaire', 'instructions', 'consent', 'problems'];
 
 // Sums counters per point across rounds, rather than overwriting, so a point stung again
@@ -105,9 +110,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 }) => {
     // ── State ─────────────────────────────────────────────────────────────────
     const { language: currentLang } = useTranslationContext();
+    // Default language for a patient's invitations and reminders: the caretaker's language (spec §8).
+    const appointmentFallbackLanguage = user.preferredLanguage || currentLang;
     const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'personal');
     const [viewState, setViewState] = useState<ViewState>(initialViewState ?? 'tabs');
     const [savedTabs, setSavedTabs] = useState<Set<TabKey>>(new Set());
+    // Treatments recorded for this patient (null until counted / new patient). Appointments tab:
+    // "sessions done", and planned sessions may not be fewer than this.
+    const [recordedTreatmentCount, setRecordedTreatmentCount] = useState<number | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
     // Guard modal states
@@ -166,6 +176,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tTreatments = useT('Treatments History');
     const tMeasures = useT('Measures History');
     const tDocuments = useT('Documents');
+    const tAppointments = useT('Appointments');
     const tStartNewTreatment = useT('Start New Treatment');
     const tUpdate = useT('Update');
     const tNextStep = useT('Next Step');
@@ -185,6 +196,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         instructions: tInstructions,
         problems: tProblems,
         documents: tDocuments,
+        appointments: tAppointments,
         treatments: tTreatments,
         measures: tMeasures,
     };
@@ -294,9 +306,15 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 updatedSaved.add('problems');
             }
 
+            // 5a. Appointments (plan set)
+            if (typeof data.appointmentPlan?.plannedSessions === 'number') {
+                updatedSaved.add('appointments');
+            }
+
             // 6. Treatments & 7. Measures (Keep current state if not changed by data)
             if (patient.id) {
                 const treatmentCount = await getTreatmentCount(patient.id);
+                setRecordedTreatmentCount(treatmentCount);
                 if (treatmentCount > 0) {
                     updatedSaved.add('treatments');
                 }
@@ -358,7 +376,19 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         if (tab === 'problems') {
             return (patientData.medicalRecord?.problems?.length ?? 0) > 0;
         }
+        if (tab === 'appointments') {
+            const plan = getEffectiveAppointmentPlan(patientData, appConfig, appointmentFallbackLanguage);
+            return Object.keys(validateAppointmentPlan(plan, getReminderChannelOptions(appConfig, patientData), recordedTreatmentCount)).length === 0;
+        }
         return true;
+    };
+
+    // Stores the effective appointment plan on save: always from the Appointments tab (so the
+    // defaults shown are persisted), and on a new patient's first save (spec: new patients get
+    // the reminders default from settings).
+    const withAppointmentPlan = (data: Partial<JoinedPatientData>, fromAppointmentsTab: boolean): Partial<JoinedPatientData> => {
+        if (!fromAppointmentsTab && (data.id || data.appointmentPlan)) return data;
+        return { ...data, appointmentPlan: getEffectiveAppointmentPlan(data, appConfig, appointmentFallbackLanguage) };
     };
 
     const handleUpdate = async (): Promise<boolean> => {
@@ -368,7 +398,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             return false;
         }
 
-        let finalData = { ...patientData };
+        let finalData = withAppointmentPlan({ ...patientData }, activeTab === 'appointments');
 
         if (activeTab === 'consent' && consentTabRef.current) {
             try {
@@ -507,7 +537,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             return;
         }
 
-        let finalData = { ...patientData };
+        let finalData = withAppointmentPlan({ ...patientData }, activeTab === 'appointments');
 
         if (activeTab === 'consent' && consentTabRef.current) {
             const signatureUrl = await consentTabRef.current.onSave();
@@ -1151,6 +1181,25 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 />;
             case 'documents':
                 return <DocumentsTab patientId={patient.id} patientName={patientData.fullName || ''} />;
+            case 'appointments':
+                if (!patient.id) {
+                    return (
+                        <div className={styles.placeholderTab}>
+                            <p><T>Save the patient first to plan appointments.</T></p>
+                        </div>
+                    );
+                }
+                return (
+                    <AppointmentsTab
+                        patientData={patientData}
+                        onDataChange={handleDataChange}
+                        appConfig={appConfig}
+                        user={user}
+                        fallbackLanguage={appointmentFallbackLanguage}
+                        sessionsDone={recordedTreatmentCount}
+                        showErrors={globalAttemptedSubmit || tabsWithAttemptedSubmit.has('appointments')}
+                    />
+                );
             case 'treatments':
                 return (
                     <TreatmentHistory
@@ -1186,8 +1235,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // ── Bottom bar visibility (UX-8) ─────────────────────────────────────────
     const showBottomBar = viewState === 'tabs';
 
-    // UX-4: hide Update on read-only / self-saving tabs
-    const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures' && activeTab !== 'documents';
+    // UX-4: hide Update on read-only / self-saving tabs, and on Appointments until the patient exists
+    const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures' && activeTab !== 'documents'
+        && !(activeTab === 'appointments' && !patient.id);
 
     return (
         <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>

@@ -95,9 +95,10 @@ Check how `filterPiiTransform` (`functions/src/index.ts` ~443, used by the BigQu
 Rules:
 - "Suggested" rows are **never stored**. They are calculated on the client.
 - **No deletes.** Cancelling sets `status: 'cancelled'`.
-- **Session number** is calculated, not stored:
-  - booked or due: number of attended appointments before it + 1
-  - attended: its position among attended appointments
+- **Session number** is calculated, not stored, from **recorded treatments** (spec §8, decided 2026-09-27), so treatments from before the feature count:
+  - booked or due: number of treatments recorded before it + 1
+  - attended: the number of its linked treatment (its position among the patient's treatments)
+- **Planned sessions ≥ treatments recorded** (validated in the Appointments tab, Step 3). A walk-in adds 1 to `plannedSessions` (§1.3).
 
 ### 1.2 Invitations (the ICS file)
 - A **Firestore trigger `onAppointmentWritten`** in functions sends the invitations. The client never sends email.
@@ -120,7 +121,11 @@ Rules:
 ### 1.3 Attendance automation
 - **Trigger `onTreatmentCreated`** (`treatments/{id}`). When a treatment document is first created (at session opening, however the treatment was started):
   - it finds the patient's `booked` appointment on that day (in the caretaker's timezone) and sets `attended`, `treatmentId` and `statusSetBy:auto`;
-  - if there is none, it creates a **walk-in** appointment (`source:walk_in`, status `attended`, length = default).
+  - if there is none, it creates a **walk-in** appointment (`source:walk_in`, status `attended`, length = default) and **increments `patients/{id}.appointmentPlan.plannedSessions` by 1** when a plan is set (spec §2, decided 2026-09-27). A booked appointment it did not match is left untouched; the nightly job marks it Missed and the caretaker decides.
+  - **Matching = same day (user decision, 2026-09-27),** in the caretaker's timezone; no time window. Reason: a patient should not get more than one treatment per day.
+  - **Second treatment for the same patient on the same day (user decision, 2026-09-27):**
+    - The trigger treats it as a **walk-in**: a new Attended appointment and `plannedSessions` +1. The day's booked appointment is already Attended (linked to the first treatment), so it does not match again.
+    - **Start Treatment warns but does not block.** The user needs several treatments per day for testing. Show a confirmation ("This patient already had a treatment today. Start another one?") on every path that opens a treatment: Today page (Step 6), patient list, and the intake's Start New Treatment. Build it in Step 6.
   - All treatment saves are in `PatientIntake.tsx` (saveTreatment callers ~644, 753, 870, 949, 993), and the document is created at session opening (~644). A trigger covers every path without client changes.
 - **Scheduled `markMissedAppointments`**, at `"15 0 * * *"` Asia/Jerusalem:
   - For each `booked` appointment whose end is before today, it checks the patient's treatments that day. If there is one, the appointment becomes `attended`; otherwise `missed` (`statusSetBy:auto`). This also acts as a safety net if the trigger failed.
@@ -182,6 +187,11 @@ Rules:
 
 Each step lists: goal · spec § covered · work · files · staging verification · safe for production?
 
+> **Build order (user decision, 2026-09-27): 1 → 2 → 3 → 4 → 5 → 7 → 6 → 8 → 9 → 10.** Step numbers are kept so references stay valid; Step 7 is built before Step 6. Consequences for Step 7 when built before Step 6:
+> - Step 7 creates the `calendarFocusDate` / `returnTo` state in `App.tsx` (§1.5) for "Open in calendar" / "Back to patient"; Step 6 later extends `returnTo` for the Today page.
+> - Attended / Missed are not automatic yet (Step 6). Past rows are corrected by hand with Change status.
+> - Step 5 does not depend on Step 7: its invitations are tested by booking, moving and cancelling on the Step 4 Calendar page. From Step 7 on, booking in the Appointments tab sends them too.
+
 ### Phase 1
 
 #### Step 1: App settings
@@ -218,8 +228,8 @@ Each step lists: goal · spec § covered · work · files · staging verificatio
 - **Goal:** the caretaker can enter a patient's treatment plan and reminder preferences.
 - **Spec:** §8 (plan and reminder parts; the progress figure shows 0 until Step 7) and §9 (tab position).
 - **Work:**
-  1. Add `'appointments'` to `TabKey` / `TAB_ORDER` in `src/components/PatientIntake/PatientIntake.tsx` (~35–56), between `documents` and `treatments`. It is **not** in `FIRST_FIVE`.
-  2. Add it to the `showUpdateButton` exclusions (~1190). The tab has its own Save button.
+  1. Add `'appointments'` to `TabKey` / `TAB_ORDER` in `src/components/PatientIntake/PatientIntake.tsx` (~35–56), between `problems` and `treatments`, and move `documents` to before `problems` (user decision, 2026-09-27). It is **not** in `FIRST_FIVE`.
+  2. ~~Add it to the `showUpdateButton` exclusions; the tab has its own Save button.~~ Changed during implementation: the tab uses the intake's standard **Update** button (hidden only while the patient is unsaved). Every intake Update writes the whole patient document with a merge, so saving the plan through the same path keeps the intake and App's patient list in sync and cannot be overwritten by a stale copy.
   3. Show "Save the patient first" when the patient is new.
   4. The tab's top part has:
      - planned sessions
@@ -303,6 +313,7 @@ Each step lists: goal · spec § covered · work · files · staging verificatio
   4. The progress line.
   5. "Open in calendar" goes to the Calendar on that week, and "Back to patient" returns to this tab (uses `calendarFocusDate` / `returnTo`).
   6. `PatternChangeDialog` (Move / Keep as is).
+- **Decided 2026-09-27 (from Step 3):** Done = the patient's **treatment count** (`getTreatmentCount`, all treatments including Incomplete; the same count that numbers a new treatment), so treatments from before the feature count. Missed, cancelled and booked counts in the progress line come from appointments. Session numbers follow §1.1.
 - **Verify:**
   - Every rule in §9 on staging data.
   - Book all never books a clashing slot.
@@ -339,8 +350,8 @@ Each step lists: goal · spec § covered · work · files · staging verificatio
   1. Patient deletion (`App.tsx` `handleDeletePatient` ~408): confirm, then cancel upcoming appointments, which sends the cancellation invitations. Note that deletion is already disabled once a patient has treatments.
   2. Check read-only behaviour under "View As".
   3. Tidy the empty and no-email notes.
-  4. Update `docs/operations/app-functional-inventory.md`.
-  5. **Optional, ask the user:** a BigQuery export of `appointments` for adherence analytics. This needs a new extension instance and env files, which are config changes.
+  4. Update `docs/operations/app-functional-inventory.md` (including the new intake tab order from Step 3).
+  5. ~~Optional: BigQuery export of `appointments`~~ Moved to Phase 3 (user decision, 2026-09-27).
 - **Verify:** every §15 item is ticked on staging, with results recorded in §3.
 
 ### Phase 2: Patient reminders (spec §13)
@@ -362,6 +373,14 @@ Each step lists: goal · spec § covered · work · files · staging verificatio
 
 Telegram is postponed (spec §13.7). WhatsApp Confirm / Reschedule buttons are a later improvement.
 
+### Phase 3: Appointments in data analysis (not planned yet)
+
+**User decision, 2026-09-27:** the BigQuery export exists for the treatment-effectiveness analysis. What appointments mean for that analysis (adherence, missed sessions, planned vs. done, and so on) has not been decided. It gets its own phase after it is thought through and planned. No export work is done in Phases 1–2.
+
+Facts to start from:
+- The existing patients export (`fs-bq-export-patients` with `filterPiiTransform`, `functions/src/index.ts` ~443) removes a fixed list of PII fields and passes everything else through. So from Step 3 on, `patients.appointmentPlan` (planned sessions, weekly slots, reminder on/off, channel, language; no names or contact details) already appears in the BigQuery patients raw table's `data` JSON. Nothing breaks; nothing reads it yet.
+- The `appointments` collection is not exported. Exporting it needs a new extension instance and env files (config changes).
+
 ---
 
 ## 3. Progress tracker (update at the end of every step)
@@ -370,11 +389,11 @@ Telegram is postponed (spec §13.7). WhatsApp Confirm / Reschedule buttons are a
 |---|---|---|---|---|---|
 | 1 App settings | Done 2026-09-27 | feature/appt-step1-app-settings | Yes, 2026-09-27 (English and Hebrew) | Not yet | New group `appointmentSettings` in `appConfigSchema.ts`; new setting types `workingWeek`, `time` (15-min select, warning 22:00–07:00), `select` (with `options`) in `ApplicationSettings.tsx`; `reminderChannels` is a nested group of 3 booleans (existing mechanism). Save is blocked if a working day has end ≤ start. Types in `src/types/appointments.ts`. No rules change needed (`cfg_app_config` is admin-write, no field validation). `tsc --noEmit`: no errors in the Step 1 files. Also fixed outside the step, at the user's request: `App.tsx` passed an unused `appConfig` prop to `Sidebar` (type error). 14 older type errors remain in other files (ProblemAdmin, ProtocolSelection, ProtocolAdmin, TreatmentFeedback); not blocking, since `vite build` does not type-check. |
 | 2 Caretaker profile | Done 2026-09-27 | feature/appt-step1-app-settings (branch holds Steps 1–3) | Yes, 2026-09-27 | Not yet | My Profile split into two tabs at the user's request: "Personal Details" and "Appointments" (tabs hidden during onboarding; one Save for both; a failed check switches to the tab with the error). Appointments tab in `UserDetails.tsx`: send invitations to me, invitation email (required when invitations are on, format checked), meeting length (5–480), patient name level, time zone (`Intl` list, Asia/Jerusalem first), working week, tip. Shared `WorkingWeekEditor` + `TimeSelect` in `src/components/Appointments/` (Step 1's settings page still has its own copy; can switch later). Defaults now in one place, `src/config/appointmentDefaults.ts`, used by the Step 1 schema too (same values). Helpers `getAppointmentSettings` / `getEffectiveAppointmentPrefs` in `src/utils/appointments/prefs.ts`; the functions copy is deferred to Step 5, the first step where functions need it. New users get the prefs at creation (`App.tsx` `fetchUserData`, reads the config itself). No rules change needed (users may update their own doc except `role`/`canImpersonate`). `tsc`: no errors in Step 2 files. |
-| 3 Patient plan | Not started | | | | |
+| 3 Patient plan | Done 2026-09-27 | feature/appt-step1-app-settings | Yes, 2026-09-27 | Not yet | Steps 1–2 committed locally first (`f5ad86d`). Intake tab order now Personal, Questionnaire, Guidelines, Consent, **Documents, Problems, Appointments**, Treatments, Measures; `FIRST_FIVE` gate unchanged (by name). New `src/components/Appointments/AppointmentsTab.tsx` (Treatment plan card: planned sessions 1–200 or empty, progress "0 / N", weekly slots with Add/remove; Reminders card: on/off, channel radio list filtered by settings, unavailable channels disabled with hint, language). Saved with the standard Update button (see Step 3 item 2); "Save the patient first" and no Update while the patient is new. Helpers in `src/utils/appointments/plan.ts`. Progress = treatment count / planned (user request); planned may not be fewer than the treatments recorded. New patients get the effective plan (reminders default from settings) on their first save. BigQuery: checked, no change; see Phase 3. `tsc`: no errors in Step 3 files. |
 | 4 Calendar page | Not started | | | | Confirm FullCalendar install |
 | 5 Invitations | Not started | | | | Spike results go here |
-| 6 Today + attendance | Not started | | | | |
-| 7 Appointments tab list | Not started | | | | |
+| 7 Appointments tab list | Not started | | | | Built before Step 6 (build order, §2) |
+| 6 Today + attendance | Not started | | | | Built after Step 7 |
 | 8 Patient list | Not started | | | | |
 | 9 End of treatment | Not started | | | | |
 | 10 Final pass | Not started | | | | |

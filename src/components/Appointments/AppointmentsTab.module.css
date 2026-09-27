@@ -1,0 +1,204 @@
+/* AppointmentsTab.module.css — aligned to Claude Style-Guide */
+
+.container {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.card {
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-border-light);
+}
+
+.sectionHeader {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0 0 var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.field {
+    margin-bottom: var(--spacing-md);
+}
+
+.field:last-child {
+    margin-bottom: 0;
+}
+
+.fieldset {
+    border: none;
+    padding: 0;
+    margin: 0 0 var(--spacing-md);
+}
+
+.label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-xs);
+    padding: 0;
+    line-height: 1.5;
+}
+
+.input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background-color: var(--color-background-input);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-sizing: border-box;
+}
+
+.input:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-border-hover);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--color-border-focus);
+    box-shadow: var(--shadow-input-focus);
+}
+
+.narrowInput {
+    max-width: 240px;
+}
+
+.inputError {
+    border-color: var(--color-error);
+}
+
+.fieldError {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-error);
+}
+
+.progress {
+    margin: var(--spacing-sm) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.slotList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.slotRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.weekdaySelect {
+    width: 160px;
+}
+
+.removeButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    background-color: var(--color-secondary-button-background);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.removeButton:hover {
+    background-color: var(--color-secondary-button-hover);
+    color: var(--color-error);
+}
+
+.addButton {
+    margin-top: var(--spacing-sm);
+    padding: 0.5rem 1rem;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    font-family: inherit;
+    color: var(--color-primary);
+    background-color: var(--color-primary-light);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.addButton:hover {
+    background-color: var(--color-info-background);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.removeButton:focus-visible,
+.addButton:focus-visible,
+.checkboxRow input:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.emptyNote {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.checkboxRow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.checkboxRow input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.radioRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs) var(--spacing-md);
+    padding: var(--spacing-xs) 0;
+}
+
+.unavailable {
+    color: var(--color-text-tertiary);
+    cursor: not-allowed;
+}
+
+.unavailable input {
+    cursor: not-allowed;
+}
+
+.hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.warning {
+    margin: var(--spacing-sm) 0 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-warning);
+    background-color: var(--color-warning-background);
+    border-radius: var(--radius-sm);
+}
