@@ -65,7 +65,8 @@
 }
 
 .setting[data-type="languages"],
-.setting[data-type="mlString"] {
+.setting[data-type="mlString"],
+.setting[data-type="workingWeek"] {
     grid-template-areas:
         "label"
         "desc"
@@ -349,4 +350,65 @@ input:checked+.slider:before {
     width: 100%;
     resize: vertical;
     min-height: 44px;
+}
+
+/* Time (15-minute steps) and Working Week Settings */
+.timeSelect {
+    width: 110px;
+}
+
+.warningMessage {
+    margin-block-start: var(--spacing-xs);
+    max-width: 250px;
+    font-size: var(--font-size-xs);
+    color: var(--color-warning);
+    background-color: var(--color-warning-background);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+.workingWeekList {
+    grid-area: control;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    width: 100%;
+}
+
+.workingDayRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-background-input-hover);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.workingDayToggle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 130px;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+}
+
+.workingDayToggle input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.workingDayToggle input:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.rowError {
+    flex-basis: 100%;
+    font-size: var(--font-size-xs);
+    color: var(--color-error);
 }

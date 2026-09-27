@@ -7,6 +7,8 @@ export interface User {
   updatedAt?: any;
 }
 
+import { AppointmentPrefs } from './appointments';
+
 export interface AppUser {
   uid: string;
   email: string;
@@ -19,4 +21,6 @@ export interface AppUser {
   address?: string;
   city?: string;
   country?: string;
+  /** Missing on users created before the appointments feature; read via getEffectiveAppointmentPrefs. */
+  appointmentPrefs?: AppointmentPrefs;
 }

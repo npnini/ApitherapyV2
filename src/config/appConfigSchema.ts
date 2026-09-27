@@ -1,6 +1,8 @@
 
 // src/config/appConfigSchema.ts
 
+import { DEFAULT_APPOINTMENT_SETTINGS as APPT, PATIENT_NAME_LEVEL_OPTIONS } from './appointmentDefaults';
+
 /**
  * Represents the type definition for a single, atomic setting.
  * Each setting will be rendered as a specific form control in the UI.
@@ -8,8 +10,10 @@
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'password';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'password' | 'workingWeek' | 'time' | 'select';
   defaultValue: string | number | boolean | string[] | Record<string, any>;
+  /** Choices for type 'select'. Labels are English source text (translated in the UI). */
+  options?: { value: string; label: string }[];
 };
 
 /**
@@ -203,6 +207,79 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'Select the question that represents the severity of the patient\'s condition.',
         type: 'question',
         defaultValue: '',
+      },
+    },
+  },
+  appointmentSettings: {
+    label: 'Appointments & Reminders',
+    description: 'Default values for appointments. Changes apply only to caretakers and patients created afterwards; existing profiles keep their values.',
+    children: {
+      workingWeek: {
+        label: 'Working Week',
+        description: 'For each weekday: working or not, start time and end time.',
+        type: 'workingWeek',
+        defaultValue: APPT.workingWeek,
+      },
+      defaultMeetingMinutes: {
+        label: 'Default Meeting Length (Minutes)',
+        description: 'Length of a new appointment.',
+        type: 'number',
+        defaultValue: APPT.defaultMeetingMinutes,
+      },
+      patientRemindersDefault: {
+        label: 'Patient Reminders On by Default',
+        description: 'Used when a new patient is created.',
+        type: 'boolean',
+        defaultValue: APPT.patientRemindersDefault,
+      },
+      reminderSendTime: {
+        label: 'Reminder Sending Time',
+        description: 'Time of day when reminders for the next day are sent.',
+        type: 'time',
+        defaultValue: APPT.reminderSendTime,
+      },
+      reminderChannels: {
+        label: 'Reminder Channels Available',
+        description: 'Channels that caretakers can choose for patient reminders.',
+        children: {
+          whatsapp: {
+            label: 'WhatsApp',
+            description: 'Send reminders by WhatsApp.',
+            type: 'boolean',
+            defaultValue: APPT.reminderChannels.whatsapp,
+          },
+          sms: {
+            label: 'SMS',
+            description: 'Send reminders by SMS.',
+            type: 'boolean',
+            defaultValue: APPT.reminderChannels.sms,
+          },
+          email: {
+            label: 'Email',
+            description: 'Send reminders by email.',
+            type: 'boolean',
+            defaultValue: APPT.reminderChannels.email,
+          },
+        },
+      },
+      appNameInInvites: {
+        label: 'App Name in Invitations',
+        description: 'Name shown in calendar invitation emails.',
+        type: 'string',
+        defaultValue: APPT.appNameInInvites,
+      },
+      patientNameLevel: {
+        label: 'Patient Name in Caretaker Invitations',
+        description: 'How much of the patient name appears in the caretaker\'s calendar invitation.',
+        type: 'select',
+        defaultValue: APPT.patientNameLevel,
+        options: PATIENT_NAME_LEVEL_OPTIONS,
+      },
+      startTreatmentLeadMinutes: {
+        label: '"Start Treatment" Available From (Minutes Before)',
+        description: 'How many minutes before the meeting starts the Start Treatment button becomes available.',
+        type: 'number',
+        defaultValue: APPT.startTreatmentLeadMinutes,
       },
     },
   },

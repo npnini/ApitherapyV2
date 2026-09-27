@@ -27,6 +27,7 @@ import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffective
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
+import { getEffectiveAppointmentPrefs } from './utils/appointments/prefs';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
@@ -91,7 +92,20 @@ const AppInner: React.FC = () => {
         if (userSnap.exists()) {
             return { uid: user.uid, ...userSnap.data() } as AppUser;
         } else {
-            const newUser: AppUser = { uid: user.uid, email: user.email || '', fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker' };
+            // App config is not loaded yet at this point (it waits for appUser), so read it here
+            // to copy the current appointment defaults into the new user.
+            let configData: any = {};
+            try {
+                const configSnap = await getDoc(doc(db, 'cfg_app_config', 'main'));
+                if (configSnap.exists()) configData = configSnap.data();
+            } catch (err) {
+                logger.error("Config fetch for new user defaults failed:", err);
+            }
+            const email = user.email || '';
+            const newUser: AppUser = {
+                uid: user.uid, email, fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker',
+                appointmentPrefs: getEffectiveAppointmentPrefs({ email }, configData),
+            };
             const { uid, ...userDataToSave } = newUser;
             await setDoc(userRef, userDataToSave);
             setCurrentView('onboarding_test');
@@ -531,7 +545,6 @@ const AppInner: React.FC = () => {
                     onActivityLogClick={handleActivityLogClick}
                     viewAsCaretakerId={viewAsCaretakerId}
                     onViewAsCaretakerChange={setViewAsCaretakerId}
-                    appConfig={appConfig}
                 />
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {

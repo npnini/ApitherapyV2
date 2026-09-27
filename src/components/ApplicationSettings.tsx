@@ -44,6 +44,36 @@ interface MeasureInfo {
 
 const allLanguages: ShuttleItem[] = ALL_LANGUAGES;
 
+// Index = weekday (0 = Sunday), matching the workingWeek keys.
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// "HH:mm" values in 15-minute steps, 00:00 … 23:45.
+const TIME_OPTIONS: string[] = Array.from({ length: 96 }, (_, i) =>
+    `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
+);
+
+const QUIET_HOURS_WARNING = 'Reminders sent between 22:00 and 07:00 may disturb patients.';
+const WORKING_DAY_ERROR = 'End time must be after start time.';
+const WORKING_WEEK_SAVE_ERROR = 'Fix the working week: on every working day, the end time must be after the start time.';
+
+const isQuietHours = (time: string) => time >= '22:00' || time < '07:00';
+
+const isWorkingDayInvalid = (day: { on?: boolean; start?: string; end?: string } | undefined) =>
+    !!day?.on && !(typeof day.start === 'string' && typeof day.end === 'string' && day.start < day.end);
+
+// Paths of every 'workingWeek' setting in the schema, used for validation on save.
+const getWorkingWeekPaths = (schema: { [key: string]: ConfigGroup }): string[][] => {
+    const paths: string[][] = [];
+    const walk = (group: ConfigGroup, path: string[]) => {
+        Object.entries(group.children).forEach(([key, item]) => {
+            if ('children' in item) walk(item, [...path, key]);
+            else if (item.type === 'workingWeek') paths.push([...path, key]);
+        });
+    };
+    Object.entries(schema).forEach(([key, group]) => walk(group, [key]));
+    return paths;
+};
+
 const getDefaultsFromSchema = (schema: { [key: string]: ConfigGroup }): Record<string, any> => {
     const defaults: Record<string, any> = {};
     Object.entries(schema).forEach(([groupKey, group]) => {
@@ -114,6 +144,8 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                         schemaStrings.push(grandchild.label);
                         schemaStrings.push(grandchild.description);
                     });
+                } else {
+                    child.options?.forEach(option => schemaStrings.push(option.label));
                 }
             });
         });
@@ -134,6 +166,13 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
             'Save Changes',
             'select a problem linked to a protocol that is set with type=ad-hoc',
             'Cannot remove a supported language once it has been saved. Ask a superadmin to check for users still set to it first',
+            ...WEEKDAY_NAMES,
+            'Working day',
+            'Start time',
+            'End time',
+            QUIET_HOURS_WARNING,
+            WORKING_DAY_ERROR,
+            WORKING_WEEK_SAVE_ERROR,
             ...schemaStrings
         ];
     }, []);
@@ -286,6 +325,17 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
     const handleSave = async () => {
         if (!areSettingsChanged) return;
+
+        const hasInvalidWorkingWeek = getWorkingWeekPaths(appConfigSchema).some(path => {
+            const week = path.reduce<any>((obj, p) => obj?.[p], settings);
+            return WEEKDAY_NAMES.some((_, day) => isWorkingDayInvalid(week?.[day]));
+        });
+        if (hasInvalidWorkingWeek) {
+            setSaveSuccess(false);
+            setError(getTranslation(WORKING_WEEK_SAVE_ERROR));
+            return;
+        }
+
         setIsSaving(true);
         setError(null);
         setSaveSuccess(false);
@@ -514,6 +564,23 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const renderTimeSelect = (id: string, value: string, onChange: (value: string) => void, ariaLabel?: string, disabled?: boolean) => {
+        // Keep an off-grid stored value selectable instead of silently showing a different time.
+        const options = TIME_OPTIONS.includes(value) || !value ? TIME_OPTIONS : [value, ...TIME_OPTIONS];
+        return (
+            <select
+                id={id}
+                className={`${styles.input} ${styles.timeSelect}`}
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                aria-label={ariaLabel}
+                disabled={disabled}
+            >
+                {options.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+        );
     };
 
     const renderSetting = (setting: ConfigSetting, path: string[]) => {
@@ -798,6 +865,82 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     );
                 }
                 break;
+            case 'select':
+                control = (
+                    <select
+                        id={key}
+                        className={styles.input}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={e => handleSettingChange(path, e.target.value)}
+                    >
+                        {(setting.options || []).map(option => (
+                            <option key={option.value} value={option.value}><T>{option.label}</T></option>
+                        ))}
+                    </select>
+                );
+                break;
+            case 'time': {
+                const timeValue = typeof value === 'string' ? value : '';
+                control = (
+                    <div className={styles.control}>
+                        {renderTimeSelect(key, timeValue, v => handleSettingChange(path, v))}
+                        {timeValue && isQuietHours(timeValue) && (
+                            <p className={styles.warningMessage} role="status">
+                                <span aria-hidden="true">⚠ </span><T>{QUIET_HOURS_WARNING}</T>
+                            </p>
+                        )}
+                    </div>
+                );
+                break;
+            }
+            case 'workingWeek': {
+                const week = (value && typeof value === 'object') ? value as Record<string, any> : {};
+                control = (
+                    <div className={styles.workingWeekList} id={key}>
+                        {WEEKDAY_NAMES.map((dayName, dayIndex) => {
+                            const day = week[dayIndex] || { on: false, start: '09:00', end: '17:00' };
+                            const dayLabel = getTranslation(dayName);
+                            const invalid = isWorkingDayInvalid(day);
+                            const updateDay = (patch: Record<string, any>) =>
+                                handleSettingChange([...path, String(dayIndex)], { ...day, ...patch });
+                            return (
+                                <div key={dayIndex} className={styles.workingDayRow}>
+                                    <label className={styles.workingDayToggle}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!day.on}
+                                            onChange={e => updateDay({ on: e.target.checked })}
+                                            aria-label={`${dayLabel}: ${getTranslation('Working day')}`}
+                                        />
+                                        <span><T>{dayName}</T></span>
+                                    </label>
+                                    {renderTimeSelect(
+                                        `${key}-${dayIndex}-start`,
+                                        day.start || '',
+                                        v => updateDay({ start: v }),
+                                        `${dayLabel}: ${getTranslation('Start time')}`,
+                                        !day.on
+                                    )}
+                                    <span aria-hidden="true">–</span>
+                                    {renderTimeSelect(
+                                        `${key}-${dayIndex}-end`,
+                                        day.end || '',
+                                        v => updateDay({ end: v }),
+                                        `${dayLabel}: ${getTranslation('End time')}`,
+                                        !day.on
+                                    )}
+                                    {invalid && (
+                                        <p className={styles.rowError} role="alert">
+                                            <span aria-hidden="true">⚠ </span><T>{WORKING_DAY_ERROR}</T>
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+                break;
+            }
             default:
         }
 
