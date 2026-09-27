@@ -10,6 +10,14 @@ Target environment: staging (`apitherapyv2`), never production. Confirm the exac
 2. **Passive scanning needs no separate step.** It runs automatically and continuously on any traffic that flows through ZAP's proxy — nothing to start or configure.
 3. **Manual pass (do this first — it's what actually gets coverage on a login-gated SPA)**:
    - Click **Manual Explore** in the ZAP toolbar, enter the staging URL, and launch. This opens a ZAP-proxied browser with no manual proxy configuration needed.
+
+Point a normal Chrome window at ZAP's proxy: Windows Settings → Network & Internet → Proxy → Manual proxy setup → address 127.0.0.1, port 8080 (ZAP's default). 
+
+Open a regular (non-Selenium) Chrome window — just double-click the normal Chrome icon, not anything ZAP launches — and browse to the staging URL. Log in with Google normally; since this is a real, unflagged browser, the popup should work fine now.
+Browse through the app as planned — ZAP passively captures everything flowing through the proxy regardless of how the browser got pointed at it, so Manual Explore's coverage goal is unaffected.
+
+When you're done with the session, revert the Windows/Chrome proxy setting back to none/automatic so normal browsing isn't stuck routing through ZAP.
+
    - Log in with a staging caretaker account and deliberately click through **every** screen, tab, and modal at least once:
      - All Patient Intake tabs: Session Opening, Consent, Instructions, Documents.
      - Treatment Execution.

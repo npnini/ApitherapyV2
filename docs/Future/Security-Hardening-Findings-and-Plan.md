@@ -1,6 +1,6 @@
 # Security Hardening — Findings & Plan
 
-Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented, deployed to staging and production, and verified live (see their entries below). Updated 2026-09-21: Finding 4 fixed and verified on both projects; Findings 2, 3, and 7 re-assessed and closed/downgraded; Finding 5 fixed and verified in dev (staging/prod pending) — everything else still not acted on.
+Status: written 2026-09-19 following an ad-hoc security review triggered by a stored-XSS fix in Patient Intake. Updated 2026-09-20: Findings 1 and 8 implemented, deployed to staging and production, and verified live (see their entries below). Updated 2026-09-21: Finding 4 fixed and verified on both projects; Findings 2, 3, and 7 re-assessed and closed/downgraded; Finding 5 fixed and verified in dev (staging/prod pending). Updated 2026-09-24: Finding 11 added from ZAP Active Scan coverage-review (accepted risk, not fixed) — everything else still not acted on.
 
 ## 0. Already fixed this session
 
@@ -176,6 +176,26 @@ CodeQL was researched and explicitly **not** recommended for now: it's free only
 Unlike `finish-feature.ps1` (which runs `security-check.ps1` before any git action, and SAST before the prod deploy), `scripts/deploy/deploy-staging.ps1` was a pure build+deploy script — no secret scan, no dependency audit, no SAST, no rules tests.
 
 **Resolved for rules specifically:** `deploy-staging.ps1` now runs `rules-test-check.ps1` before its Firestore/Storage rule-deploy steps (see Finding 8). Secret scanning, dependency audit, and SAST remain exclusive to `finish-feature.ps1`, deliberately — full gating on every staging push would slow the inner dev loop `deploy-staging.ps1` exists to serve.
+
+### 11. LOW — Tailwind Play CDN script has no SRI and requires relaxed CSP — ACCEPTED RISK, NOT FIXED
+
+Found via ZAP Active Scan against `staging.apitherapy.beelive.biz` (see `docs/operations/zap-coverage-review.md`), not the original manual review.
+
+`index.html:8` loads Tailwind via the **Play CDN** (`<script src="https://cdn.tailwindcss.com"></script>`) — a browser-only build that does live, in-DOM JIT compilation of utility classes at runtime, rather than the normal build-time-generated static CSS. Tailwind's own docs describe the Play CDN as intended for prototyping only, not production. Confirmed via `package.json`/repo search: there is no `tailwindcss` build dependency, no `tailwind.config.js`/`postcss.config.js` — this CDN script is the *only* Tailwind setup in the app, not a leftover alongside a real build.
+
+Two concrete gaps from this:
+- **No Subresource Integrity (SRI)** on the script tag — the app executes whatever `cdn.tailwindcss.com` serves with no verification the content hasn't changed.
+- **CSP must allow `'unsafe-eval'`/`'wasm-unsafe-eval'`** in `script-src` for the Play CDN's in-browser JIT compiler to function, weakening CSP's ability to contain any future XSS elsewhere in the app.
+
+Confirmed via grep: `eval(`/`new Function(` do not appear anywhere in this repo's own code (`src/` or `functions/src/`) — the only eval-style execution in the whole system is inside this one third-party script, not anything the app authors itself.
+
+**Risk, precisely scoped:** not "Tailwind's global CDN gets hacked" (a mass, high-visibility event affecting every site using it, not targeted at this app specifically). The realistic scenarios are narrower: (a) a specific caretaker's network/device is compromised (malicious DNS/Wi-Fi) and only their traffic to `cdn.tailwindcss.com` gets redirected to attacker-controlled content, or (b) this app's own Firebase Hosting deployment is compromised, letting an attacker swap the script tag's URL entirely — SRI would catch either case, since a tampered/substituted script wouldn't match the pinned hash. If either ever happens, the payload runs with full trust in that caretaker's session (session theft, silent data exfiltration, acting as that caretaker) — but getting there requires one of those two narrower compromises first, not just "Tailwind is popular."
+
+**Two possible fixes considered, not implemented:**
+1. Self-host a fixed copy of the same Play CDN script (own domain, real SRI hash pinnable since it's no longer an auto-updating "latest" version) — closes the SRI/third-party-trust gap with near-zero regression risk, but does **not** remove the `unsafe-eval` CSP requirement (same JIT mechanism, just relocated) and adds a manual-update burden (no longer auto-patched by Tailwind).
+2. Migrate to a real build-time Tailwind pipeline (PostCSS/Vite plugin) — the only option that actually removes `unsafe-eval` from the CSP, but carries real regression risk: dynamically-constructed Tailwind class names (e.g. template-string patterns) can be silently dropped by the build's static class-scanner with no build error, and the app's 3D visualization stack (`@react-three/fiber`, WASM) hasn't been checked for its own independent `wasm-unsafe-eval` needs. Would need a full visual QA pass across every screen.
+
+**Decision: accepted as-is, no fix for now**, given the narrow realistic threat scenarios above weighed against the real engineering/regression risk of either fix. Revisit if the threat model changes (e.g., hosting/deployment access controls loosen) or if the app ever needs a real Tailwind build for other reasons anyway.
 
 ## Sequencing recommendation, if/when this work is picked up
 
