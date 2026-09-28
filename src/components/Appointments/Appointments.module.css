@@ -1,0 +1,584 @@
+/* Appointments.module.css — Calendar page, appointment editor and status legend.
+   Aligned to Claude Style-Guide. */
+
+/* ── Status colours (spec §2: booked bold, attended light, missed muted) ──
+   Used by the legend swatches and, through FullCalendar's CSS variables, by events. */
+.status_booked {
+    --fc-event-bg-color: var(--color-primary);
+    --fc-event-border-color: var(--color-primary-hover);
+    --fc-event-text-color: var(--color-white);
+}
+
+.status_attended {
+    --fc-event-bg-color: #dcfce7;
+    --fc-event-border-color: var(--color-success);
+    --fc-event-text-color: #14532d;
+}
+
+.status_missed {
+    --fc-event-bg-color: var(--color-background-input-disabled);
+    --fc-event-border-color: var(--color-border-hover);
+    --fc-event-text-color: var(--color-text-secondary);
+}
+
+.status_cancelled {
+    --fc-event-bg-color: var(--color-background-card);
+    --fc-event-border-color: var(--color-border);
+    --fc-event-text-color: var(--color-text-tertiary);
+}
+
+/* ── Page ─────────────────────────────────────────────────── */
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    height: 100%;
+}
+
+.pageHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm) var(--spacing-lg);
+}
+
+.pageTitle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--spacing-xs) var(--spacing-md);
+    margin: 0;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.weekTitle {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+}
+
+/* Fills the rest of the page (the page is a flex column of the main area's full height),
+   so only the calendar's own time grid scrolls, ending at 24:00. */
+.calendarCard {
+    flex: 1;
+    min-height: 420px;
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-border-light);
+    padding: var(--spacing-md);
+    /* Selection while dragging: a clearly visible blue fill. */
+    --fc-highlight-color: rgba(37, 99, 235, 0.18);
+}
+
+/* Drag preview of a new appointment: dashed primary outline. */
+.calendarCard :global(.fc-event-mirror) {
+    background-color: var(--color-primary-light);
+    border: 2px dashed var(--color-primary);
+    color: var(--color-primary-hover);
+}
+
+/* FullCalendar buttons: keep a visible focus ring. */
+.calendarCard :global(.fc .fc-button:focus-visible) {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+/* ── Legend ───────────────────────────────────────────────── */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+.legendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.legendSwatch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    border-radius: var(--radius-sm);
+    background-color: var(--fc-event-bg-color);
+    border: 1px solid var(--fc-event-border-color);
+    color: var(--fc-event-text-color);
+}
+
+/* ── Events ───────────────────────────────────────────────── */
+.event {
+    cursor: pointer;
+}
+
+.eventInner {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 1px 2px;
+    overflow: hidden;
+    font-size: var(--font-size-xs);
+    line-height: 1.3;
+}
+
+/* Regular events: one flowing line of "HH:mm Name", wrapping only when the block is taller. */
+.eventInnerInline {
+    height: 100%;
+    padding: 1px 3px;
+    overflow: hidden;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.eventTime {
+    font-weight: var(--font-weight-bold);
+}
+
+.eventTitle {
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.struck {
+    text-decoration: line-through;
+}
+
+.missedTag {
+    align-self: flex-start;
+    padding: 0 4px;
+    font-size: 0.6875rem;
+    font-weight: var(--font-weight-semibold);
+    border: 1px solid currentColor;
+    border-radius: var(--radius-sm);
+}
+
+/* ── Notes and messages ───────────────────────────────────── */
+.infoNote {
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    background-color: var(--color-info-background);
+    border-inline-start: 4px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+}
+
+.errorText {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-error);
+}
+
+.warningLine {
+    margin: var(--spacing-xs) 0 0;
+    color: var(--color-warning);
+}
+
+.warningBox {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-warning-background);
+    border-inline-start: 4px solid var(--color-warning);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+.warningTitle {
+    margin: 0;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-warning);
+}
+
+.warningList {
+    margin: var(--spacing-xs) 0 0;
+    padding-inline-start: var(--spacing-lg);
+}
+
+/* ── Editor dialog (style-guide modal header) ─────────────── */
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-md);
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.dialog {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100vh - 2rem);
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-modal);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.modalTitle {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+}
+
+.modalCloseButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xs);
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-white);
+    cursor: pointer;
+}
+
+.modalCloseButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modalCloseButton:focus-visible {
+    outline: 2px solid var(--color-white);
+    outline-offset: 2px;
+}
+
+.modalCloseIcon {
+    width: 20px;
+    height: 20px;
+}
+
+.modalBody {
+    padding: var(--spacing-lg);
+    overflow-y: auto;
+}
+
+.field {
+    margin-bottom: var(--spacing-md);
+}
+
+.label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    line-height: 1.5;
+}
+
+.required {
+    margin-inline-start: 2px;
+    color: var(--color-error);
+    font-weight: var(--font-weight-bold);
+}
+
+.input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.625rem 0.75rem;
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background-color: var(--color-background-input);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.input:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-border-hover);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--color-border-focus);
+    box-shadow: var(--shadow-input-focus);
+}
+
+.patientList {
+    margin: var(--spacing-xs) 0 0;
+    padding: var(--spacing-xs);
+    list-style: none;
+    max-height: 13rem;
+    overflow-y: auto;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.patientOption {
+    display: flex;
+    width: 100%;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    text-align: start;
+    color: var(--color-text-primary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.patientOption:hover {
+    background-color: var(--color-primary-light);
+}
+
+.patientOption:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: -2px;
+}
+
+.patientOptionName {
+    font-weight: var(--font-weight-medium);
+}
+
+.patientOptionMeta {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.selectedPatient {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-success-background);
+    border: 1.5px solid var(--color-success);
+    border-radius: var(--radius-md);
+}
+
+.selectedPatientName {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.linkButton {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.linkButton:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.actionsError {
+    flex-basis: 100%;
+}
+
+/* ── Date field (always dd/mm/yyyy) ───────────────────────── */
+.dateFieldRow {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: var(--spacing-xs);
+}
+
+.iconButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    color: var(--color-primary);
+    background-color: var(--color-secondary-button-background);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.iconButton:hover {
+    background-color: var(--color-secondary-button-hover);
+}
+
+.iconButton:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+/* The native date input is only used to open the browser's picker, anchored under the field. */
+.hiddenPicker {
+    position: absolute;
+    inset-inline-start: 0;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+    padding: 0;
+}
+
+.inputError {
+    border-color: var(--color-error);
+}
+
+.fieldErrorSmall {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-error);
+}
+
+.row3 {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+@media (max-width: 560px) {
+    .row3 {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
+.readOnlyValue {
+    margin: 0;
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+}
+
+.hint {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.checkboxRow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.checkboxRow input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkboxRow input:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+/* ── Dialog actions ───────────────────────────────────────── */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm) var(--spacing-md);
+    justify-content: flex-end;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-top: 1px solid var(--color-border-light);
+}
+
+.actionsStart {
+    margin-inline-end: auto;
+}
+
+.btnPrimary,
+.btnSecondary,
+.btnDanger,
+.btnDangerOutline {
+    padding: 0.625rem 1.25rem;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    font-family: inherit;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btnPrimary {
+    color: var(--color-white);
+    background-color: var(--color-primary);
+    border: none;
+}
+
+.btnPrimary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+}
+
+.btnSecondary {
+    color: var(--color-text-secondary);
+    background-color: var(--color-secondary-button-background);
+    border: none;
+}
+
+.btnSecondary:hover:not(:disabled) {
+    background-color: var(--color-secondary-button-hover);
+}
+
+.btnDanger {
+    color: var(--color-white);
+    background-color: var(--color-error);
+    border: none;
+}
+
+.btnDangerOutline {
+    color: var(--color-error);
+    background-color: transparent;
+    border: 1.5px solid var(--color-error);
+}
+
+.btnDangerOutline:hover:not(:disabled) {
+    background-color: var(--color-error-background);
+}
+
+.btnPrimary:focus-visible,
+.btnSecondary:focus-visible,
+.btnDanger:focus-visible,
+.btnDangerOutline:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled,
+.btnDanger:disabled,
+.btnDangerOutline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

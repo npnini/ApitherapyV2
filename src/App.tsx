@@ -24,6 +24,7 @@ import PointSideAnalysis from './components/PointSideAnalysis';
 import UserManagement from './components/UserManagement';
 import ActivityLog from './components/ActivityLog';
 import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
+import CalendarPage from './components/Appointments/CalendarPage';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
@@ -37,7 +38,7 @@ import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandalon
 import Modal from './components/common/Modal';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_calendar';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -257,6 +258,7 @@ const AppInner: React.FC = () => {
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
     const handleDataAnalysisClick = () => { setCurrentView('data_analysis'); };
     const handleActivityLogClick = () => { setCurrentView('activity_log'); };
+    const handleCalendarClick = () => { setCurrentView('appointments_calendar'); };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
@@ -536,6 +538,7 @@ const AppInner: React.FC = () => {
                     onPointSideAnalysisClick={handlePointSideAnalysisClick}
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard}
+                    onCalendarClick={handleCalendarClick}
                     onDataAnalysisClick={handleDataAnalysisClick}
                     onAppSettingsClick={handleAppSettingsClick}
                     onMeasuresAdminClick={handleMeasuresAdminClick}
@@ -580,6 +583,17 @@ const AppInner: React.FC = () => {
                                                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} isFlex={true}>
                                                                     <TreatmentEffectiveness user={effectiveUser} onPatientClick={handlePatientClick} />
                                                                 </Modal>
+                                                                : currentView === 'appointments_calendar' ?
+                                                                    // Wait for the viewed caretaker's profile under "View As" (their working hours).
+                                                                    (viewAsCaretakerId && !impersonatedUser)
+                                                                        ? <div><T>Loading...</T></div>
+                                                                        : <CalendarPage
+                                                                            caretaker={effectiveUser}
+                                                                            actor={appUser}
+                                                                            appConfig={appConfig}
+                                                                            patients={patients.filter(p => p.id).map(p => ({ id: p.id as string, fullName: p.fullName, mobile: p.mobile, identityNumber: p.identityNumber }))}
+                                                                            readOnly={!!viewAsCaretakerId && viewAsCaretakerId !== appUser.uid}
+                                                                        />
                                                                 : null
                     }
 

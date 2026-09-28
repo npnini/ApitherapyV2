@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers, CalendarDays } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
@@ -11,6 +11,7 @@ interface SidebarProps {
     onAdminClick: () => void;
     onUserDetailsClick: () => void;
     onPatientsClick: () => void;
+    onCalendarClick: () => void;
     onDataAnalysisClick: () => void;
     onPointsAdminClick: () => void;
     onPointGroupsAdminClick: () => void;
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onAdminClick,
     onUserDetailsClick,
     onPatientsClick,
+    onCalendarClick,
     onDataAnalysisClick,
     onPointsAdminClick,
     onPointGroupsAdminClick,
@@ -105,6 +107,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <UserIcon size={18} className={styles.iconPrimary} />
                     <span><T>My Profile</T></span>
                 </button>
+
+                {/* Appointments group: always open (spec §5). The Today item is added in Step 6. */}
+                <div role="group" aria-labelledby="sidebarAppointmentsLabel">
+                    <div id="sidebarAppointmentsLabel" className={`${styles.configDropdownButton} ${styles.navGroupLabel}`}>
+                        <div className={styles.flexCenter}>
+                            <CalendarDays size={18} className={styles.iconPrimary} />
+                            <span><T>Appointments</T></span>
+                        </div>
+                    </div>
+                    <div className={styles.configSubMenu}>
+                        <button onClick={onCalendarClick} className={styles.configButton}>
+                            <CalendarDays size={16} className={styles.iconSecondary} />
+                            <span><T>Calendar</T></span>
+                        </button>
+                    </div>
+                </div>
 
                 <button onClick={onPatientsClick} className={styles.navButton}>
                     <Users size={18} className={styles.iconPrimary} />

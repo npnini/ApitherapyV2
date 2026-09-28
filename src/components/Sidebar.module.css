@@ -255,6 +255,15 @@
     border-color: var(--color-sidebar-accent-hover);
 }
 
+/* Always-open group heading (not a toggle): looks like a dropdown header, but is not clickable. */
+.navGroupLabel {
+    cursor: default;
+}
+
+.navGroupLabel:hover {
+    background: transparent;
+}
+
 .flexCenter {
     display: flex;
     align-items: center;

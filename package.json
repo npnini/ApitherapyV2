@@ -8,7 +8,6 @@
     "build": "vite build",
     "preview": "vite preview",
     "emulators": "firebase emulators:start --import=./emulator-data",
-
     "emulators:autosave": "node scripts/dev/auto-save-emulator.js",
     "save-emulator-data": "node scripts/dev/save-emulator-data.js",
     "dev:all": "node scripts/dev/start-dev.js",
@@ -18,6 +17,10 @@
   "dependencies": {
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/sortable": "^10.0.0",
+    "@fullcalendar/core": "~6.1.21",
+    "@fullcalendar/interaction": "~6.1.21",
+    "@fullcalendar/react": "~6.1.21",
+    "@fullcalendar/timegrid": "~6.1.21",
     "@google-cloud/bigquery": "^8.3.0",
     "@react-three/drei": "^9.88.11",
     "@react-three/fiber": "^8.15.11",

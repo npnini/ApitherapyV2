@@ -17,6 +17,28 @@ export type PatientNameLevel = 'initials' | 'first' | 'full';
 
 export type ReminderChannel = 'email' | 'whatsapp' | 'sms';
 
+export type AppointmentStatus = 'booked' | 'attended' | 'missed' | 'cancelled';
+
+export type AppointmentSource = 'booked' | 'walk_in';
+
+/** An appointment in appointments/{id}, with Firestore Timestamps converted to Date. */
+export interface Appointment {
+    id: string;
+    caretakerId: string;
+    patientId: string;
+    start: Date;
+    end: Date;
+    status: AppointmentStatus;
+    source: AppointmentSource;
+    treatmentId?: string;
+    /** Send the patient a calendar invitation (used from Step 5). */
+    notifyPatient: boolean;
+    statusSetBy?: 'auto' | 'manual';
+    createdAt?: Date;
+    updatedAt?: Date;
+    cancelledAt?: Date;
+}
+
 /** One slot of a patient's weekly pattern, e.g. Sunday 10:00. */
 export interface WeeklySlot {
     weekday: WeekdayIndex;

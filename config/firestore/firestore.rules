@@ -24,7 +24,7 @@ service cloud.firestore {
     function canImpersonate() {
       return isAuthenticated() && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canImpersonate == true
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('canImpersonate', false) == true
       );
     }
 
@@ -153,6 +153,46 @@ service cloud.firestore {
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
     
+    // 6. Appointments (Multiple per patient). No deletes: cancelling sets status 'cancelled'.
+    // Clients only create 'booked' appointments; walk-ins and the 'invite' bookkeeping are
+    // written by Cloud Functions (Admin SDK, bypasses these rules). List queries must filter
+    // on caretakerId so the read rule can be proven for every result.
+    function isValidAppointmentStatus(status) {
+      return status in ['booked', 'attended', 'missed', 'cancelled'];
+    }
+
+    function hasValidAppointmentTimes(data) {
+      return data.start is timestamp && data.end is timestamp && data.end > data.start;
+    }
+
+    function appointmentClientFields() {
+      return ['caretakerId', 'patientId', 'start', 'end', 'status', 'source', 'notifyPatient',
+              'statusSetBy', 'treatmentId', 'createdAt', 'updatedAt', 'cancelledAt', 'invite'];
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated() && (
+        resource == null ||
+        resource.data.caretakerId == request.auth.uid ||
+        canImpersonate()
+      );
+      allow create: if isAuthenticated() &&
+        request.resource.data.caretakerId == request.auth.uid &&
+        isPatientCaretaker(request.resource.data.patientId) &&
+        request.resource.data.status == 'booked' &&
+        request.resource.data.source == 'booked' &&
+        !('invite' in request.resource.data) &&
+        request.resource.data.keys().hasOnly(appointmentClientFields()) &&
+        hasValidAppointmentTimes(request.resource.data);
+      allow update: if isAuthenticated() &&
+        resource.data.caretakerId == request.auth.uid &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['caretakerId', 'patientId', 'source', 'invite']) &&
+        request.resource.data.keys().hasOnly(appointmentClientFields()) &&
+        isValidAppointmentStatus(request.resource.data.status) &&
+        hasValidAppointmentTimes(request.resource.data);
+      allow delete: if false;
+    }
+
     match /app_audit_log/{docId} {
       allow read: if isSuperAdmin();
       allow create: if isAuthenticated();
