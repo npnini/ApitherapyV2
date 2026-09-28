@@ -9,6 +9,9 @@ import { randomUUID } from "crypto";
 import { BigQuery } from "@google-cloud/bigquery";
 
 import { v1 } from "@google-cloud/firestore";
+
+// Appointments (docs/Future/Appointments-Implementation-Plan.md §1.2)
+export { onAppointmentWritten } from "./appointments/onAppointmentWritten.js";
 import { Storage } from "@google-cloud/storage";
 
 // Initialize the external clients right below your imports

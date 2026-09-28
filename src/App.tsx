@@ -591,7 +591,7 @@ const AppInner: React.FC = () => {
                                                                             caretaker={effectiveUser}
                                                                             actor={appUser}
                                                                             appConfig={appConfig}
-                                                                            patients={patients.filter(p => p.id).map(p => ({ id: p.id as string, fullName: p.fullName, mobile: p.mobile, identityNumber: p.identityNumber }))}
+                                                                            patients={patients.filter(p => p.id).map(p => ({ id: p.id as string, fullName: p.fullName, mobile: p.mobile, identityNumber: p.identityNumber, email: p.email }))}
                                                                             readOnly={!!viewAsCaretakerId && viewAsCaretakerId !== appUser.uid}
                                                                         />
                                                                 : null

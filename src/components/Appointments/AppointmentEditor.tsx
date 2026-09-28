@@ -20,6 +20,8 @@ export interface PatientOption {
     fullName: string;
     mobile?: string;
     identityNumber?: string;
+    /** Needed for "Notify patient": no email → no patient invitation. */
+    email?: string;
 }
 
 interface AppointmentEditorProps {
@@ -85,6 +87,10 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
 
     const patientName = (id: string) => patients.find(p => p.id === id)?.fullName || '—';
 
+    // No email → the patient cannot get an invitation: the box is off and disabled (spec §12).
+    const patientHasEmail = !!patients.find(p => p.id === patientId)?.email?.trim();
+    const effectiveNotify = notifyPatient && patientHasEmail;
+
     const filteredPatients = useMemo(() => {
         const q = search.trim().toLowerCase();
         const list = q
@@ -144,15 +150,15 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
         setSaving(true);
         try {
             if (mode === 'create' && start && end) {
-                const id = await appointmentService.book({ caretakerId, patientId, start, end, notifyPatient });
+                const id = await appointmentService.book({ caretakerId, patientId, start, end, notifyPatient: effectiveNotify });
                 log('create', id, patientId, `booked ${start.toISOString()}`);
             } else if (appointment) {
                 if (canEditTime && timeChanged && start && end) {
                     await appointmentService.move(appointment.id, start, end);
                     log('update', appointment.id, appointment.patientId, `moved to ${start.toISOString()}`);
                 }
-                if (canEditTime && notifyPatient !== appointment.notifyPatient) {
-                    await appointmentService.setNotifyPatient(appointment.id, notifyPatient);
+                if (canEditTime && effectiveNotify !== appointment.notifyPatient) {
+                    await appointmentService.setNotifyPatient(appointment.id, effectiveNotify);
                 }
                 if (canSetStatus && status !== appointment.status && status !== 'cancelled') {
                     await appointmentService.setStatus(appointment.id, status);
@@ -188,7 +194,7 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
 
     const title = mode === 'create' ? 'New appointment' : readOnly ? 'Appointment' : 'Edit appointment';
     const hasChanges = mode === 'create' || timeChanged
-        || (!!appointment && (notifyPatient !== appointment.notifyPatient || status !== appointment.status));
+        || (!!appointment && (effectiveNotify !== appointment.notifyPatient || status !== appointment.status));
 
     return (
         <div className={styles.overlay} role="presentation" onClick={() => !saving && onClose()}>
@@ -299,13 +305,24 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
                         </div>
                     )}
 
-                    {/* ── Notify patient (invitations are sent from Step 5) ── */}
+                    {/* ── Notify patient: a calendar invitation by email (server-side trigger) ── */}
                     {(mode === 'create' || canEditTime) && (
                         <div className={styles.field}>
-                            <label className={styles.checkboxRow}>
-                                <input type="checkbox" checked={notifyPatient} onChange={e => setNotifyPatient(e.target.checked)} />
+                            <label className={`${styles.checkboxRow} ${patientId && !patientHasEmail ? styles.unavailable : ''}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={effectiveNotify}
+                                    disabled={!!patientId && !patientHasEmail}
+                                    onChange={e => setNotifyPatient(e.target.checked)}
+                                    aria-describedby={patientId && !patientHasEmail ? 'apptNoEmailNote' : undefined}
+                                />
                                 <span><T>Notify patient</T></span>
                             </label>
+                            {patientId && !patientHasEmail && (
+                                <p id="apptNoEmailNote" className={styles.hint}>
+                                    <T>Appointments will be booked, but the patient will not receive calendar invitations.</T>
+                                </p>
+                            )}
                         </div>
                     )}
 

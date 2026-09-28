@@ -402,6 +402,15 @@
     outline-offset: 2px;
 }
 
+.unavailable {
+    color: var(--color-text-tertiary);
+    cursor: not-allowed;
+}
+
+.unavailable input {
+    cursor: not-allowed;
+}
+
 .actionsError {
     flex-basis: 100%;
 }
