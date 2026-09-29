@@ -6,7 +6,7 @@
 // Cloud Function trigger from Step 5 on, never from here.
 
 import {
-    addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp, Timestamp, updateDoc, where,
+    addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp, Timestamp, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Appointment, AppointmentStatus } from '../types/appointments';
@@ -45,6 +45,21 @@ export const listByCaretakerRange = async (caretakerId: string, from: Date, to: 
     return snap.docs.map(d => fromDoc(d.id, d.data()));
 };
 
+/**
+ * All appointments of one patient (all statuses), ordered by start. The caretakerId filter is
+ * required by the read rule; pass the patient's caretakerId (also correct under "View As").
+ */
+export const listByPatient = async (caretakerId: string, patientId: string): Promise<Appointment[]> => {
+    const q = query(
+        appointmentsRef,
+        where('caretakerId', '==', caretakerId),
+        where('patientId', '==', patientId),
+        orderBy('start'),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => fromDoc(d.id, d.data()));
+};
+
 export interface NewAppointment {
     caretakerId: string;
     patientId: string;
@@ -55,19 +70,33 @@ export interface NewAppointment {
 
 /** Books one appointment. Returns its id. */
 export const book = async (a: NewAppointment): Promise<string> => {
-    const ref = await addDoc(appointmentsRef, {
-        caretakerId: a.caretakerId,
-        patientId: a.patientId,
-        start: Timestamp.fromDate(a.start),
-        end: Timestamp.fromDate(a.end),
-        status: 'booked',
-        source: 'booked',
-        notifyPatient: a.notifyPatient,
-        statusSetBy: 'manual',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-    });
+    const ref = await addDoc(appointmentsRef, newBookingData(a));
     return ref.id;
+};
+
+const newBookingData = (a: NewAppointment) => ({
+    caretakerId: a.caretakerId,
+    patientId: a.patientId,
+    start: Timestamp.fromDate(a.start),
+    end: Timestamp.fromDate(a.end),
+    status: 'booked',
+    source: 'booked',
+    notifyPatient: a.notifyPatient,
+    statusSetBy: 'manual',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+});
+
+/** Books several appointments in one batch: all are created, or none. Returns their ids. */
+export const bookMany = async (list: NewAppointment[]): Promise<string[]> => {
+    const batch = writeBatch(db);
+    const ids = list.map(a => {
+        const ref = doc(appointmentsRef);
+        batch.set(ref, newBookingData(a));
+        return ref.id;
+    });
+    await batch.commit();
+    return ids;
 };
 
 /** Moves (or resizes) an appointment. */

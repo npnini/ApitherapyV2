@@ -93,6 +93,8 @@ interface PatientIntakeProps {
     initialViewState?: ViewState;
     initialTab?: TabKey;
     onTreatmentComplete?: () => void;
+    /** Appointments tab "Open in calendar": leaves the intake for the Calendar on that week. */
+    onOpenCalendar?: (date: Date) => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -107,6 +109,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     initialViewState,
     initialTab,
     onTreatmentComplete,
+    onOpenCalendar,
 }) => {
     // ── State ─────────────────────────────────────────────────────────────────
     const { language: currentLang } = useTranslationContext();
@@ -118,6 +121,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // Treatments recorded for this patient (null until counted / new patient). Appointments tab:
     // "sessions done", and planned sessions may not be fewer than this.
     const [recordedTreatmentCount, setRecordedTreatmentCount] = useState<number | null>(null);
+    // "Open in calendar" with unsaved changes: the date waits here until the caretaker confirms.
+    const [pendingCalendarDate, setPendingCalendarDate] = useState<Date | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
     // Guard modal states
@@ -1197,6 +1202,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         user={user}
                         fallbackLanguage={appointmentFallbackLanguage}
                         sessionsDone={recordedTreatmentCount}
+                        savedPlan={patient.appointmentPlan}
+                        readOnly={(patient.caretakerId || user.uid) !== user.uid}
+                        onOpenCalendar={date => {
+                            if (!onOpenCalendar) return;
+                            if (isDirty) setPendingCalendarDate(date);
+                            else onOpenCalendar(date);
+                        }}
                         showErrors={globalAttemptedSubmit || tabsWithAttemptedSubmit.has('appointments')}
                     />
                 );
@@ -1503,6 +1515,20 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 message={<T>You have unsaved changes. Are you sure you want to close without saving?</T>}
                 onConfirm={() => { setShowCloseGuard(false); onClose(); }}
                 onCancel={() => setShowCloseGuard(false)}
+                showCancelButton
+            />
+
+            {/* ── "Open in calendar" with unsaved changes (same wording as the close guard) ── */}
+            <ConfirmationModal
+                isOpen={!!pendingCalendarDate}
+                title={<T>Unsaved Changes</T>}
+                message={<T>You have unsaved changes. Are you sure you want to close without saving?</T>}
+                onConfirm={() => {
+                    const date = pendingCalendarDate;
+                    setPendingCalendarDate(null);
+                    if (date && onOpenCalendar) onOpenCalendar(date);
+                }}
+                onCancel={() => setPendingCalendarDate(null)}
                 showCancelButton
             />
 

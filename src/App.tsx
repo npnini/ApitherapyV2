@@ -62,6 +62,9 @@ const AppInner: React.FC = () => {
     const [appConfig, setAppConfig] = useState<any>(null);
     const [intakeInitialViewState, setIntakeInitialViewState] = useState<'tabs' | 'sessionOpening'>('tabs');
     const [intakeInitialTab, setIntakeInitialTab] = useState<any>('personal');
+    // Appointments tab → Calendar and back (plan §1.5): the week to open, and the patient to return to.
+    const [calendarFocusDate, setCalendarFocusDate] = useState<Date | null>(null);
+    const [calendarReturnPatient, setCalendarReturnPatient] = useState<Partial<JoinedPatientData> | null>(null);
 
     useEffect(() => {
         document.documentElement.dir = direction;
@@ -258,7 +261,32 @@ const AppInner: React.FC = () => {
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
     const handleDataAnalysisClick = () => { setCurrentView('data_analysis'); };
     const handleActivityLogClick = () => { setCurrentView('activity_log'); };
-    const handleCalendarClick = () => { setCurrentView('appointments_calendar'); };
+    const handleCalendarClick = () => {
+        // From the sidebar: the current week, no "Back to patient".
+        setCalendarFocusDate(null);
+        setCalendarReturnPatient(null);
+        setCurrentView('appointments_calendar');
+    };
+
+    // Appointments tab "Open in calendar": the Calendar on that week, with "Back to patient".
+    const handleOpenCalendarFromPatient = (date: Date) => {
+        setCalendarFocusDate(date);
+        setCalendarReturnPatient(selectedPatient);
+        setCurrentView('appointments_calendar');
+    };
+
+    // "Back to patient": reopen the intake on its Appointments tab, with the latest patient data.
+    const handleBackToPatient = () => {
+        const saved = calendarReturnPatient;
+        setCalendarFocusDate(null);
+        setCalendarReturnPatient(null);
+        if (!saved) return;
+        const latest = patients.find(p => p.id === saved.id) || saved;
+        setSelectedPatient(latest);
+        setIntakeInitialViewState('tabs');
+        setIntakeInitialTab('appointments');
+        setCurrentView('patient_intake');
+    };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
         if (!appUser) return;
@@ -593,6 +621,9 @@ const AppInner: React.FC = () => {
                                                                             appConfig={appConfig}
                                                                             patients={patients.filter(p => p.id).map(p => ({ id: p.id as string, fullName: p.fullName, mobile: p.mobile, identityNumber: p.identityNumber, email: p.email }))}
                                                                             readOnly={!!viewAsCaretakerId && viewAsCaretakerId !== appUser.uid}
+                                                                            initialDate={calendarFocusDate}
+                                                                            onBackToPatient={calendarReturnPatient ? handleBackToPatient : undefined}
+                                                                            backToPatientName={calendarReturnPatient?.fullName}
                                                                         />
                                                                 : null
                     }
@@ -609,6 +640,7 @@ const AppInner: React.FC = () => {
                             initialViewState={intakeInitialViewState}
                             initialTab={intakeInitialTab}
                             onTreatmentComplete={() => fetchInitialData(appUser, viewAsCaretakerId || undefined)}
+                            onOpenCalendar={handleOpenCalendarFromPatient}
                         />
                     }
 

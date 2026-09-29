@@ -1,8 +1,12 @@
-import React, { useMemo } from 'react';
-import { AppointmentPlan, ReminderChannel, WeekdayIndex, WeeklySlot } from '../../types/appointments';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Appointment, AppointmentPlan, ReminderChannel, WeekdayIndex, WeeklySlot } from '../../types/appointments';
+import AppointmentList from './AppointmentList';
+import PatternChangeDialog from './PatternChangeDialog';
+import * as appointmentService from '../../services/appointmentService';
+import { offPatternBooked, slotsKey, upcomingBooked } from '../../utils/appointments/suggestions';
 import { JoinedPatientData } from '../../types/patient';
 import { AppUser } from '../../types/user';
-import { T, useT } from '../T';
+import { T, useT, useTranslationContext } from '../T';
 import { TimeSelect } from './WorkingWeekEditor';
 import { WEEKDAY_NAMES } from '../../utils/appointments/time';
 import { getEffectiveAppointmentPrefs } from '../../utils/appointments/prefs';
@@ -26,20 +30,76 @@ interface AppointmentsTabProps {
      * treatments from before the appointments feature. Planned sessions may not be fewer.
      */
     sessionsDone: number | null;
+    /** The plan as last saved (patients/{id}.appointmentPlan): a pattern change is detected after Update. */
+    savedPlan?: Partial<AppointmentPlan>;
+    /** "View As" another caretaker's patient: see only (spec §14). */
+    readOnly: boolean;
+    /** Opens the Calendar on the week of `date` (with "Back to patient"). */
+    onOpenCalendar: (date: Date) => void;
 }
 
+type SubTab = 'plan' | 'list';
+const SUB_TABS: { key: SubTab; label: string }[] = [
+    { key: 'plan', label: 'Treatment plan' },
+    { key: 'list', label: 'Appointments' },
+];
+
 /**
- * Patient intake "Appointments" tab, top part (spec §8): treatment plan and reminders.
- * Saved by the intake's standard Update button, which writes patients/{id}.appointmentPlan.
- * The appointment list and suggestions are added in Step 7.
+ * Patient intake "Appointments" tab (spec §8, §9): treatment plan with progress, reminders,
+ * and the appointment list with suggestions. The plan is saved by the intake's standard
+ * Update button, which writes patients/{id}.appointmentPlan; appointments are saved directly.
  */
-const AppointmentsTab: React.FC<AppointmentsTabProps> = ({ patientData, onDataChange, appConfig, user, fallbackLanguage, showErrors, sessionsDone }) => {
+const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
+    patientData, onDataChange, appConfig, user, fallbackLanguage, showErrors, sessionsDone, savedPlan, readOnly, onOpenCalendar,
+}) => {
     const tRemoveSlot = useT('Remove slot');
     const tSlot = useT('Slot');
     const tWeekday = useT('Weekday');
     const tTime = useT('Time');
+    const tLoadFailed = useT('Could not load appointments.');
+    const { direction } = useTranslationContext();
+
+    // ── The patient's appointments ───────────────────────────────────────────
+    const caretakerId = patientData.caretakerId || user.uid;
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const loadAppointments = useCallback(async () => {
+        if (!patientData.id) return;
+        try {
+            setAppointments(await appointmentService.listByPatient(caretakerId, patientData.id));
+            setLoadError(null);
+        } catch (err) {
+            console.error('Loading patient appointments failed:', err);
+            setLoadError(tLoadFailed);
+        }
+    }, [caretakerId, patientData.id, tLoadFailed]);
+    useEffect(() => { loadAppointments(); }, [loadAppointments]);
+
+    // ── Weekly pattern changed and saved: offer to move off-pattern bookings (spec §8) ──
+    const savedSlots = savedPlan?.weeklySlots || [];
+    const savedKey = slotsKey(savedSlots);
+    const previousSavedKey = useRef(savedKey);
+    const [patternChange, setPatternChange] = useState<Appointment[] | null>(null);
+    const [patternResult, setPatternResult] = useState<{ moved: number; notMoved: number } | null>(null);
+    useEffect(() => {
+        if (previousSavedKey.current === savedKey) return;
+        previousSavedKey.current = savedKey;
+        if (readOnly || savedSlots.length === 0) return;
+        const off = offPatternBooked(appointments, savedSlots);
+        if (off.length > 0) setPatternChange(off);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [savedKey]);
 
     const plan = getEffectiveAppointmentPlan(patientData, appConfig, fallbackLanguage);
+    const prefs = getEffectiveAppointmentPrefs(user, appConfig);
+    const progress = sessionsDone === null || plan.plannedSessions === null ? null : {
+        done: sessionsDone,
+        planned: plan.plannedSessions,
+        missed: appointments.filter(a => a.status === 'missed').length,
+        cancelled: appointments.filter(a => a.status === 'cancelled').length,
+        remaining: Math.max(plan.plannedSessions - sessionsDone, 0),
+        booked: upcomingBooked(appointments).length,
+    };
     const channelOptions = getReminderChannelOptions(appConfig, patientData);
     const errors = validateAppointmentPlan(plan, channelOptions, sessionsDone);
 
@@ -67,8 +127,72 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({ patientData, onDataCh
 
     const hasAvailableChannel = channelOptions.some(o => o.available);
 
+    // ── Sub-tabs: "Treatment plan" (plan + reminders) and "Appointments" (the list) ──
+    // Opens on the list once a plan exists (daily use); on the plan for first setup.
+    const [subTab, setSubTab] = useState<SubTab>(() => (plan.plannedSessions !== null ? 'list' : 'plan'));
+    // A failed Update must show its errors: switch to the plan when it has any.
+    const hasPlanErrors = Object.keys(errors).length > 0;
+    useEffect(() => {
+        if (showErrors && hasPlanErrors) setSubTab('plan');
+    }, [showErrors, hasPlanErrors]);
+
+    const handleSubTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        const index = SUB_TABS.findIndex(t => t.key === subTab);
+        const forward = (e.key === 'ArrowRight') !== (direction === 'rtl');
+        const next = SUB_TABS[(index + (forward ? 1 : SUB_TABS.length - 1)) % SUB_TABS.length].key;
+        setSubTab(next);
+        document.getElementById(`appt-subtab-${next}`)?.focus();
+    };
+
+    const panelProps = (key: SubTab) => ({
+        role: 'tabpanel',
+        id: `appt-subpanel-${key}`,
+        'aria-labelledby': `appt-subtab-${key}`,
+        hidden: subTab !== key, // Hidden, not unmounted: unsaved edits in either tab survive switching.
+        className: styles.subPanel,
+    });
+
     return (
         <div className={styles.container}>
+            {/* ── Progress (spec §8), visible in both sub-tabs ──────────── */}
+            {progress && !errors.plannedSessions && (
+                // "6 of 10 sessions done · 1 missed · …" as label: value pairs (clean Hebrew word order).
+                <p className={styles.progress} aria-live="polite">
+                    <T>Sessions done</T>: {progress.done} / {progress.planned}
+                    {' · '}<T>Missed</T>: {progress.missed}
+                    {' · '}<T>Cancelled</T>: {progress.cancelled}
+                    {' · '}<T>Remaining</T>: {progress.remaining}
+                    {' · '}<T>Booked</T>: {progress.booked}
+                </p>
+            )}
+            {patternResult && (
+                <p className={styles.infoNote} role="status">
+                    <T>Moved to the new pattern</T>: {patternResult.moved}
+                    {patternResult.notMoved > 0 && <> · <T>Not moved (no free slot)</T>: {patternResult.notMoved}</>}
+                </p>
+            )}
+
+            <div className={styles.subTabButtons} role="tablist" onKeyDown={handleSubTabKeyDown}>
+                {SUB_TABS.map(t => (
+                    <button
+                        key={t.key}
+                        id={`appt-subtab-${t.key}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={subTab === t.key}
+                        aria-controls={`appt-subpanel-${t.key}`}
+                        tabIndex={subTab === t.key ? 0 : -1}
+                        className={`${styles.subTabButton} ${subTab === t.key ? styles.subTabButtonActive : ''}`}
+                        onClick={() => setSubTab(t.key)}
+                    >
+                        <T>{t.label}</T>
+                    </button>
+                ))}
+            </div>
+
+            <div {...panelProps('plan')}>
             {/* ── Treatment plan ─────────────────────────────────────── */}
             <section className={styles.card} aria-labelledby="apptPlanTitle">
                 <h3 id="apptPlanTitle" className={styles.sectionHeader}><T>Treatment plan</T></h3>
@@ -90,11 +214,6 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({ patientData, onDataCh
                     {showErrors && errors.plannedSessions && (
                         <p id="plannedSessionsError" className={styles.fieldError}>
                             <span aria-hidden="true">⚠ </span><T>{errors.plannedSessions}</T>
-                        </p>
-                    )}
-                    {plan.plannedSessions !== null && !errors.plannedSessions && sessionsDone !== null && (
-                        <p className={styles.progress} aria-live="polite">
-                            <T>Sessions done</T>: {sessionsDone} / {plan.plannedSessions} · <T>Remaining</T>: {Math.max(plan.plannedSessions - sessionsDone, 0)}
                         </p>
                     )}
                 </div>
@@ -210,6 +329,45 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({ patientData, onDataCh
                     </select>
                 </div>
             </section>
+
+            </div>
+
+            {/* ── Appointment list with suggestions (spec §9) ─────────── */}
+            <div {...panelProps('list')}>
+            {loadError && <p className={styles.fieldError} role="alert"><span aria-hidden="true">⚠ </span>{loadError}</p>}
+            {patientData.id && (
+                <AppointmentList
+                    patient={{ id: patientData.id, fullName: patientData.fullName || '', email: patientData.email, mobile: patientData.mobile }}
+                    caretakerId={caretakerId}
+                    appointments={appointments}
+                    plan={plan}
+                    sessionsDone={sessionsDone ?? 0}
+                    meetingMinutes={prefs.defaultMeetingMinutes}
+                    workingWeek={prefs.workingWeek}
+                    readOnly={readOnly}
+                    actor={user}
+                    onChanged={loadAppointments}
+                    onOpenCalendar={onOpenCalendar}
+                />
+            )}
+            </div>
+
+            {patternChange && (
+                <PatternChangeDialog
+                    offPattern={patternChange}
+                    newSlots={savedSlots}
+                    caretakerId={caretakerId}
+                    patientName={patientData.fullName || ''}
+                    actor={user}
+                    onClose={() => setPatternChange(null)}
+                    onMoved={result => {
+                        setPatternChange(null);
+                        setPatternResult(result);
+                        loadAppointments();
+                        setSubTab('list'); // Show the moved bookings.
+                    }}
+                />
+            )}
         </div>
     );
 };

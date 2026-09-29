@@ -32,6 +32,11 @@ interface CalendarPageProps {
     patients: PatientOption[];
     /** "View As" another caretaker: see only (spec §14). */
     readOnly: boolean;
+    /** Opened from a patient's "Open in calendar": show this date's week first. */
+    initialDate?: Date | null;
+    /** Opened from a patient: "Back to patient" returns to their Appointments tab. */
+    onBackToPatient?: () => void;
+    backToPatientName?: string;
 }
 
 const SLOT_MINUTES = 30;
@@ -63,7 +68,9 @@ type PendingMove = {
  * resize by dragging (with confirmation), open an appointment to edit, cancel or correct its
  * status. Cancelled appointments are hidden. Overlapping appointments are shown side by side.
  */
-const CalendarPage: React.FC<CalendarPageProps> = ({ caretaker, actor, appConfig, patients, readOnly }) => {
+const CalendarPage: React.FC<CalendarPageProps> = ({
+    caretaker, actor, appConfig, patients, readOnly, initialDate, onBackToPatient, backToPatientName,
+}) => {
     const { language, direction } = useTranslationContext();
     const tLoadFailed = useT('Could not load appointments.');
     const tMoveFailed = useT('Could not move the appointment.');
@@ -223,6 +230,12 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ caretaker, actor, appConfig
                     <T>Calendar</T>
                     {weekTitle && <span className={styles.weekTitle} dir="ltr">{weekTitle}</span>}
                 </h1>
+                {onBackToPatient && (
+                    <button type="button" className={styles.btnSecondary} onClick={onBackToPatient}>
+                        <span aria-hidden="true">{direction === 'rtl' ? '→ ' : '← '}</span>
+                        <T>Back to patient</T>{backToPatientName ? `: ${backToPatientName}` : ''}
+                    </button>
+                )}
                 <StatusLegend />
             </div>
 
@@ -236,6 +249,7 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ caretaker, actor, appConfig
                     ref={calendarRef}
                     plugins={PLUGINS}
                     initialView="timeGridWeek"
+                    initialDate={initialDate ?? undefined}
                     locales={LOCALES}
                     locale={language === 'he' ? 'he' : 'en-gb'}
                     direction={direction}
