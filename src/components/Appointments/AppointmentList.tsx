@@ -12,7 +12,7 @@ import * as appointmentService from '../../services/appointmentService';
 import { logAction } from '../../services/auditLogService';
 import { buildSuggestions, Suggestion, upcomingBooked } from '../../utils/appointments/suggestions';
 import { findOverlaps, nearestFreeStart } from '../../utils/appointments/clashes';
-import { STATUS_LABELS, hasStarted, isChangeable } from '../../utils/appointments/status';
+import { STATUS_LABELS, canMarkCancelled, isChangeable } from '../../utils/appointments/status';
 import { addMinutes, atTime, formatDate, formatWeekday, isOutsideWorkingHours, toDateValue, toHHmm } from '../../utils/appointments/time';
 import { TreatmentSession } from '../../types/treatmentSession';
 import Modal from '../common/Modal';
@@ -33,7 +33,8 @@ interface AppointmentListProps {
     workingWeek: WorkingWeek;
     readOnly: boolean;
     actor: AppUser;
-    onChanged: () => void;
+    /** Optional: the tab's list is live, so a change needs no reload. */
+    onChanged?: () => void;
     onOpenCalendar: (date: Date) => void;
 }
 
@@ -62,6 +63,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [editor, setEditor] = useState<Appointment | null>(null);
     const [confirmCancel, setConfirmCancel] = useState<Appointment | null>(null);
+    const [confirmMark, setConfirmMark] = useState<Appointment | null>(null);
     const [confirmBookAnyway, setConfirmBookAnyway] = useState<{ start: Date; end: Date; clash: Clash } | null>(null);
     const [bookAllResult, setBookAllResult] = useState<{ booked: number; skipped: number } | null>(null);
 
@@ -128,7 +130,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
         setError(null);
         try {
             await work();
-            onChanged();
+            onChanged?.();
         } catch (err) {
             console.error('Appointment action failed:', err);
             setError(tFailed);
@@ -185,6 +187,18 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
             logAction(actor, { category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, entityName: patient.fullName, detail: 'cancelled' });
         });
     };
+
+    // Started and Missed / still Booked, but the patient did cancel in advance (spec §2).
+    const markCancelled = async (a: Appointment) => {
+        setConfirmMark(null);
+        await run(async () => {
+            await appointmentService.cancel(a.id);
+            logAction(actor, { category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, entityName: patient.fullName, detail: `marked cancelled (was ${a.status})` });
+        });
+    };
+    const markButton = (a: Appointment) => (
+        <button type="button" className={styles.linkButton} onClick={() => setConfirmMark(a)} disabled={busy}><T>Mark as cancelled</T></button>
+    );
 
     // ── Rows ────────────────────────────────────────────────────────────────
     const upcoming = upcomingBooked(appointments, now);
@@ -280,9 +294,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
                                                     <button type="button" className={styles.linkButtonDanger} onClick={() => setConfirmCancel(a)} disabled={busy}><T>Cancel</T></button>
                                                 </>
                                             )}
-                                            {!readOnly && !isChangeable(a) && hasStarted(a) && (
-                                                <button type="button" className={styles.linkButton} onClick={() => setEditor(a)} disabled={busy}><T>Change status</T></button>
-                                            )}
+                                            {!readOnly && canMarkCancelled(a) && markButton(a)}
                                             {calendarButton(a.start)}
                                         </td>
                                     </tr>
@@ -365,9 +377,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
                                         {treatment && (
                                             <button type="button" className={styles.linkButton} onClick={() => setViewTreatment(treatment)}><T>View treatment</T></button>
                                         )}
-                                        {!readOnly && a.status !== 'cancelled' && hasStarted(a) && (
-                                            <button type="button" className={styles.linkButton} onClick={() => setEditor(a)} disabled={busy}><T>Change status</T></button>
-                                        )}
+                                        {!readOnly && canMarkCancelled(a) && markButton(a)}
                                         {a.status !== 'cancelled' && calendarButton(a.start)}
                                     </td>
                                 </tr>
@@ -416,6 +426,21 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
                 cancelLabel={<T>Keep appointment</T>}
                 onConfirm={() => confirmCancel && cancelAppointment(confirmCancel)}
                 onCancel={() => setConfirmCancel(null)}
+            />
+
+            <ConfirmationModal
+                isOpen={!!confirmMark}
+                title={<T>Mark this appointment as cancelled?</T>}
+                message={confirmMark ? (
+                    <div>
+                        <p>{formatWeekday(confirmMark.start, language)} {formatDate(confirmMark.start)} {toHHmm(confirmMark.start)}</p>
+                        <p><T>Use this when the patient cancelled in advance. It will not count as missed.</T></p>
+                    </div>
+                ) : ''}
+                confirmLabel={<T>Mark as cancelled</T>}
+                cancelLabel={<T>Keep as is</T>}
+                onConfirm={() => confirmMark && markCancelled(confirmMark)}
+                onCancel={() => setConfirmMark(null)}
             />
 
             <ConfirmationModal

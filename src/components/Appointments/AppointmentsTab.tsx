@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Appointment, AppointmentPlan, ReminderChannel, WeekdayIndex, WeeklySlot } from '../../types/appointments';
 import AppointmentList from './AppointmentList';
 import { TreatmentSession } from '../../types/treatmentSession';
@@ -60,21 +60,17 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
     const tLoadFailed = useT('Could not load appointments.');
     const { direction } = useTranslationContext();
 
-    // ── The patient's appointments ───────────────────────────────────────────
+    // ── The patient's appointments, live: bookings made elsewhere and the functions' changes
+    // (walk-in, Attended, Missed) appear without reopening the tab ─────────────────────
     const caretakerId = patientData.caretakerId || user.uid;
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const loadAppointments = useCallback(async () => {
+    useEffect(() => {
         if (!patientData.id) return;
-        try {
-            setAppointments(await appointmentService.listByPatient(caretakerId, patientData.id));
-            setLoadError(null);
-        } catch (err) {
-            console.error('Loading patient appointments failed:', err);
-            setLoadError(tLoadFailed);
-        }
+        return appointmentService.watchByPatient(caretakerId, patientData.id,
+            list => { setAppointments(list); setLoadError(null); },
+            err => { console.error('Loading patient appointments failed:', err); setLoadError(tLoadFailed); });
     }, [caretakerId, patientData.id, tLoadFailed]);
-    useEffect(() => { loadAppointments(); }, [loadAppointments]);
 
     // The patient's treatments by id: session numbers and "View treatment" on attended rows.
     // Reloaded with the appointments and whenever the treatment count changes.
@@ -173,7 +169,8 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
             {progress && !errors.plannedSessions && (
                 // "6 of 10 sessions done · 1 missed · …" as label: value pairs (clean Hebrew word order).
                 <p className={styles.progress} aria-live="polite">
-                    <T>Sessions done</T>: {progress.done} / {progress.planned}
+                    {/* Isolated LTR: in Hebrew the spaced "/" would otherwise swap the two numbers. */}
+                    <T>Sessions done</T>: <bdi dir="ltr">{progress.done} / {progress.planned}</bdi>
                     {' · '}<T>Missed</T>: {progress.missed}
                     {' · '}<T>Cancelled</T>: {progress.cancelled}
                     {' · '}<T>Remaining</T>: {progress.remaining}
@@ -360,7 +357,6 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                     workingWeek={prefs.workingWeek}
                     readOnly={readOnly}
                     actor={user}
-                    onChanged={loadAppointments}
                     onOpenCalendar={onOpenCalendar}
                 />
             )}
@@ -377,7 +373,6 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                     onMoved={result => {
                         setPatternChange(null);
                         setPatternResult(result);
-                        loadAppointments();
                         setSubTab('list'); // Show the moved bookings.
                     }}
                 />

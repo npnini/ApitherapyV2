@@ -6,10 +6,11 @@
 // Cloud Function trigger from Step 5 on, never from here.
 
 import {
-    addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp, Timestamp, updateDoc, where, writeBatch,
+    addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, QuerySnapshot, serverTimestamp, Timestamp,
+    Unsubscribe, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Appointment, AppointmentStatus } from '../types/appointments';
+import { Appointment } from '../types/appointments';
 import { TreatmentSession } from '../types/treatmentSession';
 import { isTodayLocal } from '../utils/appointments/time';
 
@@ -34,33 +35,44 @@ const fromDoc = (id: string, data: any): Appointment => ({
     cancelledAt: toDate(data.cancelledAt),
 });
 
+const toList = (snap: QuerySnapshot): Appointment[] => snap.docs.map(d => fromDoc(d.id, d.data()));
+
+const caretakerRangeQuery = (caretakerId: string, from: Date, to: Date) => query(
+    appointmentsRef,
+    where('caretakerId', '==', caretakerId),
+    where('start', '>=', Timestamp.fromDate(from)),
+    where('start', '<', Timestamp.fromDate(to)),
+    orderBy('start'),
+);
+
 /** Appointments of a caretaker whose start is in [from, to), all statuses, ordered by start. */
-export const listByCaretakerRange = async (caretakerId: string, from: Date, to: Date): Promise<Appointment[]> => {
-    const q = query(
-        appointmentsRef,
-        where('caretakerId', '==', caretakerId),
-        where('start', '>=', Timestamp.fromDate(from)),
-        where('start', '<', Timestamp.fromDate(to)),
-        orderBy('start'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => fromDoc(d.id, d.data()));
-};
+export const listByCaretakerRange = async (caretakerId: string, from: Date, to: Date): Promise<Appointment[]> =>
+    toList(await getDocs(caretakerRangeQuery(caretakerId, from, to)));
 
 /**
- * All appointments of one patient (all statuses), ordered by start. The caretakerId filter is
- * required by the read rule; pass the patient's caretakerId (also correct under "View As").
+ * Live version of listByCaretakerRange (the Calendar week): `onData` gets the list now and
+ * after every change, including those written by the Cloud Functions (walk-in, Attended,
+ * Missed) or from another browser tab. Returns the function that stops listening.
  */
-export const listByPatient = async (caretakerId: string, patientId: string): Promise<Appointment[]> => {
-    const q = query(
-        appointmentsRef,
-        where('caretakerId', '==', caretakerId),
-        where('patientId', '==', patientId),
-        orderBy('start'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => fromDoc(d.id, d.data()));
-};
+export const watchByCaretakerRange = (
+    caretakerId: string, from: Date, to: Date,
+    onData: (list: Appointment[]) => void, onError: (err: Error) => void,
+): Unsubscribe => onSnapshot(caretakerRangeQuery(caretakerId, from, to), snap => onData(toList(snap)), onError);
+
+/**
+ * All appointments of one patient (all statuses), ordered by start, live (see
+ * watchByCaretakerRange). The caretakerId filter is required by the read rule; pass the
+ * patient's caretakerId (also correct under "View As").
+ */
+export const watchByPatient = (
+    caretakerId: string, patientId: string,
+    onData: (list: Appointment[]) => void, onError: (err: Error) => void,
+): Unsubscribe => onSnapshot(query(
+    appointmentsRef,
+    where('caretakerId', '==', caretakerId),
+    where('patientId', '==', patientId),
+    orderBy('start'),
+), snap => onData(toList(snap)), onError);
 
 /**
  * True when the patient already has a treatment created today (local date): the "start another
@@ -129,21 +141,15 @@ export const setNotifyPatient = async (id: string, notifyPatient: boolean): Prom
     await updateDoc(doc(db, 'appointments', id), { notifyPatient, updatedAt: serverTimestamp() });
 };
 
-/** Cancels an appointment (never deleted). */
+/**
+ * Cancels an appointment (never deleted): a future booked one, or "Mark as cancelled" on one
+ * that has started (see canMarkCancelled). The only status a caretaker sets by hand.
+ */
 export const cancel = async (id: string): Promise<void> => {
     await updateDoc(doc(db, 'appointments', id), {
         status: 'cancelled',
         statusSetBy: 'manual',
         cancelledAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-    });
-};
-
-/** Sets a status by hand (the caretaker's choice always wins over the automation). */
-export const setStatus = async (id: string, status: Exclude<AppointmentStatus, 'cancelled'>): Promise<void> => {
-    await updateDoc(doc(db, 'appointments', id), {
-        status,
-        statusSetBy: 'manual',
         updatedAt: serverTimestamp(),
     });
 };

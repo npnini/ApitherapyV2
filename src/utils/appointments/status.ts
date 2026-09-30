@@ -17,12 +17,17 @@ export const STATUS_LABELS: Record<AppointmentStatus, string> = {
 /** Statuses shown in the calendar legend (cancelled appointments are hidden from the calendar). */
 export const CALENDAR_LEGEND_STATUSES: AppointmentStatus[] = ['booked', 'attended', 'missed'];
 
-/** Statuses a caretaker can pick by hand for an appointment that has started. */
-export const MANUAL_PAST_STATUSES: Exclude<AppointmentStatus, 'cancelled'>[] = ['booked', 'attended', 'missed'];
-
-/** An appointment has started: its status can be corrected by hand. */
 export const hasStarted = (a: Pick<Appointment, 'start'>, now: Date = new Date()): boolean => a.start <= now;
 
 /** Only future booked appointments can be moved, resized or cancelled. */
 export const isChangeable = (a: Pick<Appointment, 'status' | 'start'>, now: Date = new Date()): boolean =>
     a.status === 'booked' && a.start > now;
+
+/**
+ * "Mark as cancelled" (spec §2, decided 2026-09-29): the only manual change to an appointment
+ * that has started, for a patient who did cancel in advance, so it does not count as missed.
+ * Missed ones, and booked ones already past their start (before the nightly check marks them).
+ * Past statuses are otherwise never set by hand: Attended always means a recorded treatment.
+ */
+export const canMarkCancelled = (a: Pick<Appointment, 'status' | 'start'>, now: Date = new Date()): boolean =>
+    a.status === 'missed' || (a.status === 'booked' && hasStarted(a, now));

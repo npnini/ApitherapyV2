@@ -95,18 +95,14 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
 
     const patientName = useCallback((id: string) => patients.find(p => p.id === id)?.fullName || '—', [patients]);
 
-    const load = useCallback(async () => {
+    // The visible week, live: changes from the editor, another browser tab or the Cloud Functions
+    // (walk-in, Attended, Missed) appear without reloading. Re-subscribes when the week changes.
+    useEffect(() => {
         if (!range) return;
-        try {
-            setAppointments(await appointmentService.listByCaretakerRange(caretaker.uid, range.from, range.to));
-            setError(null);
-        } catch (err) {
-            console.error('Loading appointments failed:', err);
-            setError(tLoadFailed);
-        }
+        return appointmentService.watchByCaretakerRange(caretaker.uid, range.from, range.to,
+            list => { setAppointments(list); setError(null); },
+            err => { console.error('Loading appointments failed:', err); setError(tLoadFailed); });
     }, [range, caretaker.uid, tLoadFailed]);
-
-    useEffect(() => { load(); }, [load]);
 
     const events = useMemo(() => appointments
         .filter(a => a.status !== 'cancelled')
@@ -184,7 +180,6 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
                 category: 'patient', action: 'update', entityType: 'appointment',
                 entityId: appointment.id, entityName: patientName(appointment.patientId), detail: `moved to ${start.toISOString()}`,
             });
-            await load();
         } catch (err) {
             console.error('Moving appointment failed:', err);
             revert();
@@ -295,7 +290,6 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
                     readOnly={readOnly}
                     actor={actor}
                     onClose={closeEditor}
-                    onChanged={load}
                 />
             )}
 

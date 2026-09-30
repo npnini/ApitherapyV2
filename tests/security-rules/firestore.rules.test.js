@@ -169,8 +169,10 @@ test('firestore.rules: appointments update and delete', async (t) => {
     }));
   });
 
-  await t.test('6b. the owner can set a status', async () => {
-    await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/apptA'), { status: 'attended', statusSetBy: 'manual' }));
+  // Step 6-pre (spec §2, 2026-09-29): Cancelled is the only status set by hand.
+  await t.test('6b. the owner cannot set Attended or Missed by hand', async () => {
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/apptA'), { status: 'attended', statusSetBy: 'manual' }));
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/apptA'), { status: 'missed', statusSetBy: 'manual' }));
   });
 
   await t.test('6c. the owner can cancel', async () => {
@@ -271,12 +273,49 @@ test('firestore.rules: walk-in appointments (Step 6)', async (t) => {
     });
   });
 
-  await t.test('the owner can correct a walk-in status by hand', async () => {
-    await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/walkin_patientA_3'), { status: 'missed', statusSetBy: 'manual' }));
+  await t.test('the owner cannot change a walk-in status by hand (Step 6-pre)', async () => {
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/walkin_patientA_3'), { status: 'missed', statusSetBy: 'manual' }));
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/walkin_patientA_3'), { status: 'cancelled', statusSetBy: 'manual' }));
   });
 
   await t.test('the owner cannot turn a walk-in into a booking', async () => {
     await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/walkin_patientA_3'), { source: 'booked' }));
+  });
+});
+
+test('firestore.rules: manual status changes (Step 6-pre)', async (t) => {
+  await seed();
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    // As the nightly check / attendance trigger leave them.
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'appointments/missedA'), { ...newBooking(), status: 'missed', statusSetBy: 'auto' });
+    await setDoc(doc(db, 'appointments/attendedA'), { ...newBooking(), status: 'attended', treatmentId: 'patientA_2', statusSetBy: 'auto' });
+    await setDoc(doc(db, 'appointments/cancelledA'), { ...newBooking(), status: 'cancelled', cancelledAt: Timestamp.now() });
+  });
+  const owner = dbAs('caretakerA-uid');
+
+  await t.test('the owner cannot set a Missed appointment to Attended or Booked', async () => {
+    await assertFails(updateDoc(doc(owner, 'appointments/missedA'), { status: 'attended', statusSetBy: 'manual' }));
+    await assertFails(updateDoc(doc(owner, 'appointments/missedA'), { status: 'booked', statusSetBy: 'manual' }));
+  });
+
+  await t.test('the owner cannot change an Attended appointment', async () => {
+    await assertFails(updateDoc(doc(owner, 'appointments/attendedA'), { status: 'missed', statusSetBy: 'manual' }));
+    await assertFails(updateDoc(doc(owner, 'appointments/attendedA'), { status: 'cancelled', statusSetBy: 'manual' }));
+  });
+
+  await t.test('the owner cannot un-cancel an appointment', async () => {
+    await assertFails(updateDoc(doc(owner, 'appointments/cancelledA'), { status: 'booked', statusSetBy: 'manual' }));
+  });
+
+  await t.test('another caretaker cannot mark a Missed appointment as cancelled', async () => {
+    await assertFails(updateDoc(doc(dbAs('caretakerB-uid'), 'appointments/missedA'), { status: 'cancelled' }));
+  });
+
+  await t.test('the owner can mark a Missed appointment as cancelled', async () => {
+    await assertSucceeds(updateDoc(doc(owner, 'appointments/missedA'), {
+      status: 'cancelled', statusSetBy: 'manual', cancelledAt: Timestamp.now(),
+    }));
   });
 });
 

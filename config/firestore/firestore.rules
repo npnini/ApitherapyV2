@@ -165,6 +165,13 @@ service cloud.firestore {
       return data.start is timestamp && data.end is timestamp && data.end > data.start;
     }
 
+    // The only status a caretaker sets by hand is Cancelled (spec §2, decided 2026-09-29):
+    // cancelling a booking, or "Mark as cancelled" on a Missed one. Attended / Missed are set
+    // by the Cloud Functions only.
+    function isAllowedStatusChange(before, after) {
+      return after == before || (after == 'cancelled' && before in ['booked', 'missed']);
+    }
+
     function appointmentClientFields() {
       return ['caretakerId', 'patientId', 'start', 'end', 'status', 'source', 'notifyPatient',
               'statusSetBy', 'treatmentId', 'createdAt', 'updatedAt', 'cancelledAt', 'invite'];
@@ -189,6 +196,7 @@ service cloud.firestore {
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['caretakerId', 'patientId', 'source', 'invite']) &&
         request.resource.data.keys().hasOnly(appointmentClientFields()) &&
         isValidAppointmentStatus(request.resource.data.status) &&
+        isAllowedStatusChange(resource.data.status, request.resource.data.status) &&
         hasValidAppointmentTimes(request.resource.data);
       allow delete: if false;
     }

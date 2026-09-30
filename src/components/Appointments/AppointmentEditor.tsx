@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { Appointment, AppointmentStatus, WorkingWeek } from '../../types/appointments';
+import { Appointment, WorkingWeek } from '../../types/appointments';
 import { AppUser } from '../../types/user';
 import { T, useT, useTranslationContext } from '../T';
 import { TimeSelect } from './WorkingWeekEditor';
@@ -9,7 +9,7 @@ import { logAction } from '../../services/auditLogService';
 import { addMinutes, atTime, formatDayDateTime, isOutsideWorkingHours, toHHmm } from '../../utils/appointments/time';
 import DateField from './DateField';
 import { findOverlaps } from '../../utils/appointments/clashes';
-import { MANUAL_PAST_STATUSES, STATUS_LABELS, hasStarted, isChangeable } from '../../utils/appointments/status';
+import { STATUS_LABELS, canMarkCancelled, isChangeable } from '../../utils/appointments/status';
 import styles from './Appointments.module.css';
 
 const MIN_MINUTES = 5;
@@ -39,8 +39,8 @@ interface AppointmentEditorProps {
     /** The signed-in user, for the activity log. */
     actor: AppUser;
     onClose: () => void;
-    /** Called after any successful change, so the calendar reloads. */
-    onChanged: () => void;
+    /** Optional: called after any successful change (the Calendar and the tab are live, so they need no reload). */
+    onChanged?: () => void;
 }
 
 type Warnings = { overlaps: Appointment[]; outside: boolean };
@@ -48,7 +48,8 @@ type Warnings = { overlaps: Appointment[]; outside: boolean };
 /**
  * Create / edit dialog for one appointment (spec §7). Before saving a new or moved time it
  * checks overlaps with the caretaker's other appointments and working hours, and asks for
- * "Book anyway". Past appointments can only have their status corrected.
+ * "Book anyway". An appointment that has started can only be marked as cancelled, and only
+ * when Missed or still Booked (spec §2).
  */
 const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
     mode, appointment, initialStart, initialMinutes, patients, caretakerId, workingWeek, readOnly, actor, onClose, onChanged,
@@ -75,15 +76,15 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
     const [time, setTime] = useState(toHHmm(startValue));
     const [minutes, setMinutes] = useState<number>(initialLength);
     const [notifyPatient, setNotifyPatient] = useState(appointment ? appointment.notifyPatient : true);
-    const [status, setStatus] = useState<AppointmentStatus>(appointment?.status || 'booked');
     const [warnings, setWarnings] = useState<Warnings | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmingCancel, setConfirmingCancel] = useState(false);
 
     const canEditTime = !readOnly && (mode === 'create' || (!!appointment && isChangeable(appointment)));
-    const canSetStatus = !readOnly && mode === 'edit' && !!appointment && hasStarted(appointment) && appointment.status !== 'cancelled';
     const canCancel = !readOnly && mode === 'edit' && !!appointment && isChangeable(appointment);
+    // Started, and Missed or still Booked: "Mark as cancelled" (patient cancelled in advance).
+    const canMark = !readOnly && mode === 'edit' && !!appointment && canMarkCancelled(appointment);
 
     const patientName = (id: string) => patients.find(p => p.id === id)?.fullName || '—';
 
@@ -160,12 +161,8 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
                 if (canEditTime && effectiveNotify !== appointment.notifyPatient) {
                     await appointmentService.setNotifyPatient(appointment.id, effectiveNotify);
                 }
-                if (canSetStatus && status !== appointment.status && status !== 'cancelled') {
-                    await appointmentService.setStatus(appointment.id, status);
-                    log('update', appointment.id, appointment.patientId, `status ${status}`);
-                }
             }
-            onChanged();
+            onChanged?.();
             onClose();
         } catch (err) {
             console.error('Saving appointment failed:', err);
@@ -181,8 +178,8 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
         setError(null);
         try {
             await appointmentService.cancel(appointment.id);
-            log('update', appointment.id, appointment.patientId, 'cancelled');
-            onChanged();
+            log('update', appointment.id, appointment.patientId, canMark ? `marked cancelled (was ${appointment.status})` : 'cancelled');
+            onChanged?.();
             onClose();
         } catch (err) {
             console.error('Cancelling appointment failed:', err);
@@ -194,7 +191,7 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
 
     const title = mode === 'create' ? 'New appointment' : readOnly ? 'Appointment' : 'Edit appointment';
     const hasChanges = mode === 'create' || timeChanged
-        || (!!appointment && (effectiveNotify !== appointment.notifyPatient || status !== appointment.status));
+        || (!!appointment && effectiveNotify !== appointment.notifyPatient);
 
     return (
         <div className={styles.overlay} role="presentation" onClick={() => !saving && onClose()}>
@@ -326,23 +323,11 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
                         </div>
                     )}
 
-                    {/* ── Status (appointments that have started) ── */}
+                    {/* ── Status (set by the app; see canMarkCancelled for the one manual change) ── */}
                     {appointment && (
                         <div className={styles.field}>
-                            {canSetStatus ? (
-                                <>
-                                    <label className={styles.label} htmlFor="apptStatus"><T>Status</T></label>
-                                    <select id="apptStatus" className={styles.input} value={status}
-                                        onChange={e => setStatus(e.target.value as AppointmentStatus)}>
-                                        {MANUAL_PAST_STATUSES.map(s => <option key={s} value={s}><T>{STATUS_LABELS[s]}</T></option>)}
-                                    </select>
-                                </>
-                            ) : (
-                                <>
-                                    <span className={styles.label}><T>Status</T></span>
-                                    <p className={styles.readOnlyValue}><T>{STATUS_LABELS[appointment.status]}</T></p>
-                                </>
-                            )}
+                            <span className={styles.label}><T>Status</T></span>
+                            <p className={styles.readOnlyValue}><T>{STATUS_LABELS[appointment.status]}</T></p>
                         </div>
                     )}
 
@@ -367,7 +352,14 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
 
                     {confirmingCancel && (
                         <div className={styles.warningBox} role="alert">
-                            <p className={styles.warningTitle}><T>Cancel this appointment?</T></p>
+                            {canMark ? (
+                                <>
+                                    <p className={styles.warningTitle}><T>Mark this appointment as cancelled?</T></p>
+                                    <p><T>Use this when the patient cancelled in advance. It will not count as missed.</T></p>
+                                </>
+                            ) : (
+                                <p className={styles.warningTitle}><T>Cancel this appointment?</T></p>
+                            )}
                         </div>
                     )}
                 </div>
@@ -382,24 +374,24 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
                     {confirmingCancel ? (
                         <>
                             <button type="button" className={styles.btnSecondary} onClick={() => setConfirmingCancel(false)} disabled={saving}>
-                                <T>Keep appointment</T>
+                                {canMark ? <T>Keep as is</T> : <T>Keep appointment</T>}
                             </button>
                             <button type="button" className={styles.btnDanger} onClick={handleCancelAppointment} disabled={saving}>
-                                <T>Cancel appointment</T>
+                                {canMark ? <T>Mark as cancelled</T> : <T>Cancel appointment</T>}
                             </button>
                         </>
                     ) : (
                         <>
-                            {canCancel && (
+                            {(canCancel || canMark) && (
                                 <button type="button" className={`${styles.btnDangerOutline} ${styles.actionsStart}`}
                                     onClick={() => setConfirmingCancel(true)} disabled={saving}>
-                                    <T>Cancel appointment</T>
+                                    {canMark ? <T>Mark as cancelled</T> : <T>Cancel appointment</T>}
                                 </button>
                             )}
                             <button type="button" className={styles.btnSecondary} onClick={onClose} disabled={saving}>
                                 <T>Close</T>
                             </button>
-                            {!readOnly && (canEditTime || canSetStatus) && (
+                            {!readOnly && canEditTime && (
                                 warnings ? (
                                     <button type="button" className={styles.btnPrimary} onClick={() => handleSave(true)} disabled={saving}>
                                         <T>Book anyway</T>

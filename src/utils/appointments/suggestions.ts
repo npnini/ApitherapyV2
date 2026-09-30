@@ -51,8 +51,10 @@ export const nextPatternStarts = (
 };
 
 /**
- * Suggested sessions (spec §9): enough to cover Remaining − Booked, following the weekly
- * pattern, starting after today or after the last booked appointment, whichever is later.
+ * Suggested sessions (spec §9, rule changed 2026-09-29): enough to cover Remaining − Booked,
+ * on the weekly pattern's slots from now on, one session per day: a day on which the patient
+ * already has a Booked or Attended appointment is skipped. So a booking made off the pattern
+ * (e.g. from the Calendar) takes the place of one suggestion without pushing the others later.
  */
 export const buildSuggestions = (p: {
     plan: AppointmentPlan;
@@ -69,12 +71,19 @@ export const buildSuggestions = (p: {
     const need = remaining - upcomingBooked(p.appointments, now).length;
     if (need <= 0) return [];
 
-    const lastBooked = p.appointments
-        .filter(a => a.status === 'booked')
-        .reduce<Date | null>((latest, a) => (!latest || a.start > latest ? a.start : latest), null);
-    const after = lastBooked && lastBooked > now ? lastBooked : now;
+    const usedDays = new Set(p.appointments
+        .filter(a => a.status === 'booked' || a.status === 'attended')
+        .map(a => a.start.toDateString()));
+    // Also one suggestion per day, if the pattern has two slots on the same weekday.
+    // (nextPatternStarts calls skip once per candidate and takes it when it returns false.)
+    const skip = (start: Date) => {
+        const day = start.toDateString();
+        if (usedDays.has(day)) return true;
+        usedDays.add(day);
+        return false;
+    };
 
-    return nextPatternStarts(p.plan.weeklySlots, after, need).map(start => ({
+    return nextPatternStarts(p.plan.weeklySlots, now, need, skip).map(start => ({
         key: `${start.getTime()}`,
         start,
         end: addMinutes(start, p.meetingMinutes),

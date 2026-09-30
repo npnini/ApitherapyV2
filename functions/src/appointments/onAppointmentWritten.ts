@@ -5,7 +5,9 @@
  * `invite` bookkeeping says was last sent, then records the new state. Its own
  * write-back, retries and unrelated field changes therefore send nothing.
  *   - booked, never sent / time changed / re-booked  → METHOD:REQUEST (SEQUENCE+1)
- *   - cancelled after an invitation was sent         → METHOD:CANCEL  (SEQUENCE+1)
+ *   - cancelled before its start, after an invitation was sent → METHOD:CANCEL (SEQUENCE+1)
+ *   - cancelled once started ("Mark as cancelled" on a Missed or due appointment, spec §2)
+ *     → nothing: the meeting is over, and a CANCEL would only remove it from both calendars
  *   - attended / missed / walk-in                    → nothing
  * One email per recipient (titles and languages differ): the patient when
  * notifyPatient is on and they have an email; the caretaker when "send
@@ -60,7 +62,9 @@ export const onAppointmentWritten = onDocumentWritten("appointments/{appointment
       method = "REQUEST";
       kind = "moved";
     }
-  } else if (a.status === "cancelled" && invite?.lastSentStatus === "booked") {
+  } else if (a.status === "cancelled" && invite?.lastSentStatus === "booked" &&
+    // When it was cancelled, not when this runs: a cancel just before the start still sends.
+    start.toMillis() > (a.cancelledAt instanceof Timestamp ? a.cancelledAt.toMillis() : Date.now())) {
     method = "CANCEL";
     kind = "cancelled";
   }
