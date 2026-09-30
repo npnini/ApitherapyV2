@@ -884,7 +884,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 control = (
                     <div className={styles.control}>
                         {renderTimeSelect(key, timeValue, v => handleSettingChange(path, v))}
-                        {timeValue && isQuietHours(timeValue) && (
+                        {setting.warnQuietHours && timeValue && isQuietHours(timeValue) && (
                             <p className={styles.warningMessage} role="status">
                                 <span aria-hidden="true">⚠ </span><T>{QUIET_HOURS_WARNING}</T>
                             </p>

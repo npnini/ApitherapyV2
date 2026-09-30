@@ -25,6 +25,7 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
     appNameInInvites: 'Apitherapy',
     patientNameLevel: 'first',
     startTreatmentLeadMinutes: 15,
+    missedCheckTime: '00:15',
 };
 
 /** Labels are English source text, translated in the UI. */

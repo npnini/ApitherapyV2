@@ -193,6 +193,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // 7. Daily Missed-check guard (one document per day). Written and read only by Cloud
+    // Functions (Admin SDK); no client access at all.
+    match /missed_check_runs/{runId} {
+      allow read, write: if false;
+    }
+
     match /app_audit_log/{docId} {
       allow read: if isSuperAdmin();
       allow create: if isAuthenticated();

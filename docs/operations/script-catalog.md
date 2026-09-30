@@ -7,6 +7,7 @@
 | Script | Path | Purpose |
 |---|---|---|
 | `auto-save-emulator.js` | `scripts/dev/auto-save-emulator.js` | Periodically snapshots emulator state (invoked via `npm run emulators:autosave`). |
+| `save-emulator-data.js` | `scripts/dev/save-emulator-data.js` | Invoked via `npm run save-emulator-data`, in a second terminal while the emulators are running. Exports the live emulator state into `emulator-data/` (loaded by the next `npm run dev:all`) and keeps a recovery copy in `emulator-data-manual/`. Retries up to 3 times and recovers the known Windows export-rename failure; if every attempt fails, both folders are left unchanged. |
 | `start-dev.js` | `scripts/dev/start-dev.js` | Local dev orchestrator (invoked via `npm run dev:all`); force-kills processes on emulator ports, builds `functions`, starts emulators. |
 | `sync-firestore.js` | `scripts/dev/sync-firestore.js` | Invoked via `npm run sync-data`. Full sync from live staging into the local emulator — see `docs/operations/sync-local-emulator.md`. |
 | `impersonate-user.js` | `scripts/dev/impersonate-user.js` | Dev helper for impersonating a user during local testing. |

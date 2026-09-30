@@ -9,6 +9,9 @@ export type PatientNameLevel = "initials" | "first" | "full";
 export interface ServerAppointmentSettings {
   appNameInInvites: string;
   patientNameLevel: PatientNameLevel;
+  defaultMeetingMinutes: number;
+  /** "HH:mm" in Asia/Jerusalem: when the daily Missed check runs. */
+  missedCheckTime: string;
 }
 
 export interface ServerAppointmentPrefs {
@@ -16,11 +19,24 @@ export interface ServerAppointmentPrefs {
   inviteEmail: string;
   patientNameLevel: PatientNameLevel;
   timezone: string;
+  defaultMeetingMinutes: number;
 }
 
 export const DEFAULT_TIMEZONE = "Asia/Jerusalem";
 const DEFAULT_APP_NAME = "Apitherapy";
 const DEFAULT_NAME_LEVEL: PatientNameLevel = "first";
+const DEFAULT_MEETING_MINUTES = 30;
+const DEFAULT_MISSED_CHECK_TIME = "00:15";
+
+/**
+ * A positive whole number of minutes, or the fallback.
+ * @param {unknown} value A stored value.
+ * @param {number} fallback Used when the value is not valid.
+ * @return {number} Minutes.
+ */
+function minutesOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback;
+}
 
 /**
  * Type guard for a stored patient name level.
@@ -39,9 +55,13 @@ function isNameLevel(value: unknown): value is PatientNameLevel {
 export function getAppointmentSettings(appConfig: Record<string, unknown>): ServerAppointmentSettings {
   const stored = (appConfig.appointmentSettings || {}) as Record<string, unknown>;
   const appName = typeof stored.appNameInInvites === "string" ? stored.appNameInInvites.trim() : "";
+  const checkTime = typeof stored.missedCheckTime === "string" && /^\d{2}:\d{2}$/.test(stored.missedCheckTime) ?
+    stored.missedCheckTime : DEFAULT_MISSED_CHECK_TIME;
   return {
     appNameInInvites: appName || DEFAULT_APP_NAME,
     patientNameLevel: isNameLevel(stored.patientNameLevel) ? stored.patientNameLevel : DEFAULT_NAME_LEVEL,
+    defaultMeetingMinutes: minutesOr(stored.defaultMeetingMinutes, DEFAULT_MEETING_MINUTES),
+    missedCheckTime: checkTime,
   };
 }
 
@@ -59,6 +79,7 @@ export function getEffectiveAppointmentPrefs(user: Record<string, unknown>, appC
     inviteEmail: typeof p.inviteEmail === "string" ? p.inviteEmail.trim() : String(user.email || "").trim(),
     patientNameLevel: isNameLevel(p.patientNameLevel) ? p.patientNameLevel : settings.patientNameLevel,
     timezone: typeof p.timezone === "string" && p.timezone ? p.timezone : DEFAULT_TIMEZONE,
+    defaultMeetingMinutes: minutesOr(p.defaultMeetingMinutes, settings.defaultMeetingMinutes),
   };
 }
 

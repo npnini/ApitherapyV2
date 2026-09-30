@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Appointment, AppointmentPlan, ReminderChannel, WeekdayIndex, WeeklySlot } from '../../types/appointments';
 import AppointmentList from './AppointmentList';
+import { TreatmentSession } from '../../types/treatmentSession';
 import PatternChangeDialog from './PatternChangeDialog';
 import * as appointmentService from '../../services/appointmentService';
 import { offPatternBooked, slotsKey, upcomingBooked } from '../../utils/appointments/suggestions';
@@ -74,6 +75,18 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
         }
     }, [caretakerId, patientData.id, tLoadFailed]);
     useEffect(() => { loadAppointments(); }, [loadAppointments]);
+
+    // The patient's treatments by id: session numbers and "View treatment" on attended rows.
+    // Reloaded with the appointments and whenever the treatment count changes.
+    const [treatmentsById, setTreatmentsById] = useState<Map<string, TreatmentSession>>(new Map());
+    useEffect(() => {
+        if (!patientData.id) return;
+        let cancelled = false;
+        appointmentService.listPatientTreatments(patientData.id)
+            .then(list => { if (!cancelled) setTreatmentsById(new Map(list.map(t => [t.id as string, t]))); })
+            .catch(err => console.error('Loading treatments failed:', err));
+        return () => { cancelled = true; };
+    }, [patientData.id, sessionsDone, appointments]);
 
     // ── Weekly pattern changed and saved: offer to move off-pattern bookings (spec §8) ──
     const savedSlots = savedPlan?.weeklySlots || [];
@@ -340,6 +353,7 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                     patient={{ id: patientData.id, fullName: patientData.fullName || '', email: patientData.email, mobile: patientData.mobile }}
                     caretakerId={caretakerId}
                     appointments={appointments}
+                    treatmentsById={treatmentsById}
                     plan={plan}
                     sessionsDone={sessionsDone ?? 0}
                     meetingMinutes={prefs.defaultMeetingMinutes}

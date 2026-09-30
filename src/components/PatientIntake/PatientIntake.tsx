@@ -32,6 +32,7 @@ import { getLatestTreatment } from '../../firebase/patient';
 import { logAction } from '../../services/auditLogService';
 import AppointmentsTab from '../Appointments/AppointmentsTab';
 import { getEffectiveAppointmentPlan, getReminderChannelOptions, validateAppointmentPlan } from '../../utils/appointments/plan';
+import { hasTreatmentToday } from '../../services/appointmentService';
 
 // ─── Tab key type ────────────────────────────────────────────────────────────
 type TabKey =
@@ -123,6 +124,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [recordedTreatmentCount, setRecordedTreatmentCount] = useState<number | null>(null);
     // "Open in calendar" with unsaved changes: the date waits here until the caretaker confirms.
     const [pendingCalendarDate, setPendingCalendarDate] = useState<Date | null>(null);
+    // "This patient already had a treatment today. Start another one?" (warn, never block).
+    const [showSameDayGuard, setShowSameDayGuard] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
 
     // Guard modal states
@@ -391,10 +394,37 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // Stores the effective appointment plan on save: always from the Appointments tab (so the
     // defaults shown are persisted), and on a new patient's first save (spec: new patients get
     // the reminders default from settings).
-    const withAppointmentPlan = (data: Partial<JoinedPatientData>, fromAppointmentsTab: boolean): Partial<JoinedPatientData> => {
-        if (!fromAppointmentsTab && (data.id || data.appointmentPlan)) return data;
-        return { ...data, appointmentPlan: getEffectiveAppointmentPlan(data, appConfig, appointmentFallbackLanguage) };
+    const withAppointmentPlan = async (data: Partial<JoinedPatientData>, fromAppointmentsTab: boolean): Promise<Partial<JoinedPatientData>> => {
+        if (fromAppointmentsTab || (!data.id && !data.appointmentPlan)) {
+            return { ...data, appointmentPlan: getEffectiveAppointmentPlan(data, appConfig, appointmentFallbackLanguage) };
+        }
+        // Saving another tab of an existing patient: write back the plan as stored now, not this
+        // screen's copy. The server may have changed it meanwhile (a walk-in adds 1 to planned
+        // sessions, Step 6), and every Update writes the whole patient document.
+        if (data.id) {
+            try {
+                const snap = await getDoc(doc(db, 'patients', data.id));
+                const stored = snap.data()?.appointmentPlan;
+                if (stored) return { ...data, appointmentPlan: stored };
+            } catch (err) {
+                console.error('Reading the stored appointment plan failed:', err);
+            }
+        }
+        return data;
     };
+
+    // Opening the Appointments tab shows the stored plan (e.g. +1 planned after a walk-in),
+    // unless the caretaker has unsaved edits on screen.
+    useEffect(() => {
+        if (activeTab !== 'appointments' || !patient.id || isDirty) return;
+        let cancelled = false;
+        getDoc(doc(db, 'patients', patient.id)).then(snap => {
+            const stored = snap.data()?.appointmentPlan;
+            if (!cancelled && stored) setPatientData(prev => ({ ...prev, appointmentPlan: stored }));
+        }).catch(err => console.error('Refreshing the appointment plan failed:', err));
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, patient.id]);
 
     const handleUpdate = async (): Promise<boolean> => {
         setTabsWithAttemptedSubmit(prev => new Set(prev).add(activeTab));
@@ -403,7 +433,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             return false;
         }
 
-        let finalData = withAppointmentPlan({ ...patientData }, activeTab === 'appointments');
+        let finalData = await withAppointmentPlan({ ...patientData }, activeTab === 'appointments');
 
         if (activeTab === 'consent' && consentTabRef.current) {
             try {
@@ -542,7 +572,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             return;
         }
 
-        let finalData = withAppointmentPlan({ ...patientData }, activeTab === 'appointments');
+        let finalData = await withAppointmentPlan({ ...patientData }, activeTab === 'appointments');
 
         if (activeTab === 'consent' && consentTabRef.current) {
             const signatureUrl = await consentTabRef.current.onSave();
@@ -612,10 +642,19 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     };
 
     // Step 5: Start New Treatment → now goes to sessionOpening
-    const handleStartNewTreatment = async () => {
+    const handleStartNewTreatment = async (confirmedSameDay = false) => {
         if (viewState !== 'tabs' && isDirty) {
             setShowAbortTreatmentGuard(true);
             return;
+        }
+        // Appointments Step 6: warn (never block) when this patient already had a treatment today.
+        // Read fresh: a treatment may have been finished in this same intake session.
+        if (!confirmedSameDay && patient.id) {
+            const already = await hasTreatmentToday(patient.id).catch(() => false);
+            if (already) {
+                setShowSameDayGuard(true);
+                return;
+            }
         }
 
         setIsLoading(true);
@@ -1299,7 +1338,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 type="button"
                                 className={styles.startTreatmentButton}
                                 disabled={!canStartTreatment}
-                                onClick={handleStartNewTreatment}
+                                onClick={() => handleStartNewTreatment()}
                             >
                                 {tStartNewTreatment}
                             </button>
@@ -1515,6 +1554,17 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 message={<T>You have unsaved changes. Are you sure you want to close without saving?</T>}
                 onConfirm={() => { setShowCloseGuard(false); onClose(); }}
                 onCancel={() => setShowCloseGuard(false)}
+                showCancelButton
+            />
+
+            {/* ── Second treatment today (Appointments Step 6): warn, never block ── */}
+            <ConfirmationModal
+                isOpen={showSameDayGuard}
+                title={<T>Treatment already recorded today</T>}
+                message={<T>This patient already had a treatment today. Start another one?</T>}
+                confirmLabel={<T>Start another treatment</T>}
+                onConfirm={() => { setShowSameDayGuard(false); handleStartNewTreatment(true); }}
+                onCancel={() => setShowSameDayGuard(false)}
                 showCancelButton
             />
 

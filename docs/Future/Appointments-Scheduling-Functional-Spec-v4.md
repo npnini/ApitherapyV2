@@ -34,13 +34,13 @@ Every appointment has exactly one status. The same names and colours are used on
 |---|---|---|
 | **Suggested** | A proposed date and time, calculated from the patient's weekly pattern. **Not booked yet, and no invitation has been sent.** | Calculated automatically. Shown only in the patient's Appointments tab. |
 | **Booked** | A confirmed appointment. Invitations were sent where applicable. | The caretaker books it. |
-| **Attended** | The patient came and a treatment was recorded. | Set automatically when any treatment is recorded for the patient that day, however it was started. The caretaker can also set it by hand. |
-| **Missed** | The patient did not come and did not cancel. | Set automatically at the end of the day if no treatment was recorded. The caretaker can also set it by hand. |
-| **Cancelled** | Cancelled in advance by the patient or the caretaker. **Does not count as missed.** | The caretaker cancels it. |
+| **Attended** | The patient came and a treatment was recorded. | Set automatically when any treatment is recorded for the patient that day, however it was started. Never set by hand (decided 2026-09-29). |
+| **Missed** | The patient did not come and did not cancel. | Set automatically at the end of the day if no treatment was recorded. |
+| **Cancelled** | Cancelled in advance by the patient or the caretaker. **Does not count as missed.** | The caretaker cancels it, or marks a Missed appointment as cancelled afterwards. |
 
 **Rules**
 - A meeting is marked "Missed" automatically **only after the day has ended**, never while the caretaker could still record the treatment.
-- The caretaker can **change any past status by hand**, for example Missed → Attended if the treatment was recorded late.
+- **Past statuses are not edited by hand (decided 2026-09-29),** with one exception: a **Missed** appointment can be **marked as cancelled** when the patient did cancel in advance but it was not cancelled in the app in time, so it does not count as missed. Attended always means a recorded treatment, so it is never set by hand, and a past appointment is never set back to Booked. A treatment recorded on a different day from its appointment (for example, entered a day late) counts as a walk-in, and the appointment stays Missed.
 - **Walk-in treatment:** if a treatment is recorded for a patient with no matching booked appointment, the app adds an "Attended" appointment at the time of the treatment, and **adds 1 to the patient's planned sessions** (if a plan is set), so the walk-in does not use up a planned session. A booked appointment that the treatment did not match **stays as it is** (Booked, then Missed after its day ends) until the caretaker decides what to do with it. No invitation is sent for the walk-in. A treatment **matches** a booked appointment when it is recorded on the **same day**, at any time; a patient should not get more than one treatment per day. If a second treatment is started for the same patient on the same day, the app **warns** ("This patient already had a treatment today. Start another one?") but allows it; the second treatment counts as a walk-in (+1 to planned). (Decided 2026-09-27.)
 
 **Colours (shown in a legend on the Today and Calendar pages)**
@@ -115,7 +115,7 @@ A single-day view of the caretaker's **app appointments**.
 | **Upcoming**: starts more than X minutes from now | Start Treatment (asks "Start early?"), Call, WhatsApp, Reschedule, Cancel |
 | **Due now**: from X minutes before the start until the end of the day, while no treatment has been recorded | **Start Treatment** (highlighted), Call, WhatsApp, Reschedule, Cancel |
 | **Attended**: a treatment was recorded for this appointment | **Open patient** (opens the patient's intake) and **View treatment** (opens the summary of the treatment given in this appointment) |
-| **Missed** or **Cancelled** | **Open patient** (opens the patient's intake); **Change status** (corrects the status, for example from Missed to Attended when the patient did come but the treatment was recorded late); **Book replacement** (opens the booking editor for this patient with the next free slot pre-filled, to make up for the lost session) |
+| **Missed** or **Cancelled** | **Open patient** (opens the patient's intake); **Mark as cancelled** (Missed only: the patient cancelled in advance, see §2); **Book replacement** (opens the booking editor for this patient with the next free slot pre-filled, to make up for the lost session) |
 
 - **Start Treatment** opens the treatment flow for that patient. When the treatment is saved, the appointment becomes "Attended".
 - **Call** and **WhatsApp** use the patient's mobile number. They are hidden if there is no number.
@@ -152,7 +152,7 @@ A full-width week view of the caretaker's **app appointments**.
 - The same warnings apply.
 
 **Past appointments**
-- Clicking a past appointment shows its status, which the caretaker can change (Attended / Missed / Cancelled), and a link to the patient.
+- Clicking a past appointment shows its status and a link to the patient. A Missed appointment also offers **Mark as cancelled** (§2).
 
 ---
 
@@ -202,7 +202,7 @@ These are shown **at the top of the patient's Appointments tab** (see §9).
 
 **Suggested rows**
 - The app creates enough suggestions to cover **Remaining − Booked** sessions.
-- Suggestions follow the weekly pattern. They start from the first free pattern slot after **today** or after the **last booked appointment**, whichever is later.
+- Suggestions follow the weekly pattern. They take the pattern slots **from now on**, skipping any day on which the patient already has a Booked or Attended appointment (one session per day). So a booking made outside the pattern, for example from the Calendar, takes the place of one suggestion without pushing the others later or leaving a gap. (Changed 2026-09-29; previously suggestions started after the last booked appointment.)
 - On each suggested row the caretaker can change the date or time and press **Book**.
 - If a suggestion **clashes with another app appointment**, the row shows "Clashes with <patient>'s appointment" and offers the **nearest free time**, for example "Try 17:00?".
 - **Open in calendar** opens the Calendar page on the week of that session. **Back to patient** returns the caretaker to this tab.
@@ -211,7 +211,7 @@ These are shown **at the top of the patient's Appointments tab** (see §9).
 
 **Booked rows:** Reschedule, Cancel.
 
-**Past rows:** Change status, and View treatment (for Attended rows).
+**Past rows:** View treatment (Attended rows); Mark as cancelled (Missed rows, §2).
 
 **If the patient has no email**, a note is shown: "Appointments will be booked, but the patient will not receive calendar invitations."
 
@@ -296,7 +296,7 @@ The confirmation that appears after a treatment is saved includes a **"Book next
 - [ ] Booking two patients at the same time shows an overlap warning, and "Book anyway" works.
 - [ ] Booking outside working hours shows a warning.
 - [ ] A treatment started from anywhere (Today, patient list or intake) marks that day's appointment as Attended.
-- [ ] An appointment is never marked Missed before the day has ended, and the caretaker can correct any status.
+- [ ] An appointment is never marked Missed before the day has ended, and the caretaker can mark a Missed appointment as cancelled (no other status is changed by hand).
 - [ ] Suggested rows are clearly different from Booked rows, and no invitation is sent for a Suggested row.
 - [ ] "Book all" never books a time that clashes with another app appointment.
 - [ ] End of treatment never suggests a new session when the next one is already booked.

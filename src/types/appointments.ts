@@ -89,4 +89,6 @@ export interface AppointmentSettings {
     appNameInInvites: string;
     patientNameLevel: PatientNameLevel;
     startTreatmentLeadMinutes: number;
+    /** "HH:mm" (15-minute steps): when the daily Missed check runs (Asia/Jerusalem). */
+    missedCheckTime: string;
 }

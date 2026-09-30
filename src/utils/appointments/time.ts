@@ -32,6 +32,22 @@ export const parseDate = (text: string): Date | null => {
 export const formatWeekday = (date: Date, language: string, width: 'long' | 'short' = 'long'): string =>
     date.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-GB', { weekday: width });
 
+/** A stored time (Firestore Timestamp, Date, millis or ISO string) as a Date; null if absent. */
+export const toDateValue = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof (value as { toDate?: () => Date }).toDate === 'function') return (value as { toDate: () => Date }).toDate();
+    if (typeof value === 'number' || typeof value === 'string') {
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+};
+
+/** True when a stored time falls on today's local date (e.g. "already had a treatment today"). */
+export const isTodayLocal = (value: unknown, now: Date = new Date()): boolean =>
+    toDateValue(value)?.toDateString() === now.toDateString();
+
 /** "Sunday 04/10/2026 10:00". */
 export const formatDayDateTime = (date: Date, language: string): string =>
     `${formatWeekday(date, language)} ${formatDate(date)} ${toHHmm(date)}`;

@@ -10,6 +10,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Appointment, AppointmentStatus } from '../types/appointments';
+import { TreatmentSession } from '../types/treatmentSession';
+import { isTodayLocal } from '../utils/appointments/time';
 
 const appointmentsRef = collection(db, 'appointments');
 
@@ -58,6 +60,20 @@ export const listByPatient = async (caretakerId: string, patientId: string): Pro
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => fromDoc(d.id, d.data()));
+};
+
+/**
+ * True when the patient already has a treatment created today (local date): the "start another
+ * one?" warning. Reads all the patient's treatments rather than a "latest" one, because
+ * treatment ids ("<patient>_<n>") do not sort by number as text.
+ */
+export const hasTreatmentToday = async (patientId: string): Promise<boolean> =>
+    (await listPatientTreatments(patientId)).some(t => isTodayLocal(t.createdTimestamp));
+
+/** All treatments of a patient (any order), with their ids. For session numbers and "View treatment". */
+export const listPatientTreatments = async (patientId: string): Promise<TreatmentSession[]> => {
+    const snap = await getDocs(query(collection(db, 'treatments'), where('patientId', '==', patientId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as unknown as TreatmentSession);
 };
 
 export interface NewAppointment {

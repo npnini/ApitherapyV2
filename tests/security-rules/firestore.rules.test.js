@@ -239,6 +239,47 @@ test('firestore.rules: unauthenticated access to appointments', async (t) => {
   });
 });
 
+test('firestore.rules: missed_check_runs is functions-only (Step 6)', async (t) => {
+  await seed();
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'missed_check_runs/2026-10-04'), { attended: 0, missed: 1 });
+  });
+
+  await t.test('a caretaker cannot read a guard document', async () => {
+    await assertFails(getDoc(doc(dbAs('caretakerA-uid'), 'missed_check_runs/2026-10-04')));
+  });
+
+  await t.test('a caretaker cannot create one (would block that day\'s check)', async () => {
+    await assertFails(setDoc(doc(dbAs('caretakerA-uid'), 'missed_check_runs/2026-10-05'), { startedAt: Timestamp.now() }));
+  });
+
+  await t.test('an impersonating admin cannot delete one', async () => {
+    await assertFails(deleteDoc(doc(dbAs('impersonator-uid'), 'missed_check_runs/2026-10-04')));
+  });
+
+  await t.test('an unauthenticated user cannot read one', async () => {
+    await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'missed_check_runs/2026-10-04')));
+  });
+});
+
+test('firestore.rules: walk-in appointments (Step 6)', async (t) => {
+  await seed();
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    // As onTreatmentCreated writes it.
+    await setDoc(doc(ctx.firestore(), 'appointments/walkin_patientA_3'), {
+      ...newBooking(), status: 'attended', source: 'walk_in', treatmentId: 'patientA_3', notifyPatient: false, statusSetBy: 'auto',
+    });
+  });
+
+  await t.test('the owner can correct a walk-in status by hand', async () => {
+    await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/walkin_patientA_3'), { status: 'missed', statusSetBy: 'manual' }));
+  });
+
+  await t.test('the owner cannot turn a walk-in into a booking', async () => {
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'appointments/walkin_patientA_3'), { source: 'booked' }));
+  });
+});
+
 test('firestore.rules: Step 2 and Step 3 regression (appointmentPrefs, appointmentPlan)', async (t) => {
   await seed();
 

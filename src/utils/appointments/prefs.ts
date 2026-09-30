@@ -34,6 +34,7 @@ export const getAppointmentSettings = (appConfig: any): AppointmentSettings => {
         appNameInInvites: typeof stored.appNameInInvites === 'string' ? stored.appNameInInvites : d.appNameInInvites,
         patientNameLevel: PATIENT_NAME_LEVELS.includes(stored.patientNameLevel) ? stored.patientNameLevel : d.patientNameLevel,
         startTreatmentLeadMinutes: typeof stored.startTreatmentLeadMinutes === 'number' ? stored.startTreatmentLeadMinutes : d.startTreatmentLeadMinutes,
+        missedCheckTime: typeof stored.missedCheckTime === 'string' ? stored.missedCheckTime : d.missedCheckTime,
     };
 };
 

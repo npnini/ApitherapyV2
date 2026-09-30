@@ -1,7 +1,8 @@
+// Must stay first: sets region and memory before any module defines a function.
+import "./globalOptions.js";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
-import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { Resend } from "resend";
@@ -12,13 +13,13 @@ import { v1 } from "@google-cloud/firestore";
 
 // Appointments (docs/Future/Appointments-Implementation-Plan.md §1.2)
 export { onAppointmentWritten } from "./appointments/onAppointmentWritten.js";
+export { onTreatmentCreated } from "./appointments/onTreatmentCreated.js";
+export { markMissedAppointments } from "./appointments/markMissedAppointments.js";
 import { Storage } from "@google-cloud/storage";
 
 // Initialize the external clients right below your imports
 const firestoreClient = new v1.FirestoreAdminClient();
 const storage = new Storage();
-
-setGlobalOptions({ region: "me-west1", memory: "512MiB" });
 
 admin.initializeApp();
 const db = admin.firestore();

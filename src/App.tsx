@@ -36,6 +36,8 @@ import { logAction } from './services/auditLogService';
 import PatientIntake from './components/PatientIntake/PatientIntake';
 import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandaloneView';
 import Modal from './components/common/Modal';
+import ConfirmationModal from './components/ConfirmationModal';
+import { hasTreatmentToday } from './services/appointmentService';
 import './globals.css';
 
 type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_calendar';
@@ -65,6 +67,8 @@ const AppInner: React.FC = () => {
     // Appointments tab → Calendar and back (plan §1.5): the week to open, and the patient to return to.
     const [calendarFocusDate, setCalendarFocusDate] = useState<Date | null>(null);
     const [calendarReturnPatient, setCalendarReturnPatient] = useState<Partial<JoinedPatientData> | null>(null);
+    // Start Treatment for a patient who already had one today: waits for "Start another one?".
+    const [sameDayStartPatient, setSameDayStartPatient] = useState<JoinedPatientData | null>(null);
 
     useEffect(() => {
         document.documentElement.dir = direction;
@@ -473,7 +477,12 @@ const AppInner: React.FC = () => {
         setIntakeInitialTab('personal');
     };
 
-    const handleStartTreatmentFlow = (patient: JoinedPatientData) => {
+    const handleStartTreatmentFlow = async (patient: JoinedPatientData, confirmedSameDay = false) => {
+        // Appointments Step 6: warn (never block) when this patient already had a treatment today.
+        if (!confirmedSameDay && patient.id && await hasTreatmentToday(patient.id).catch(() => false)) {
+            setSameDayStartPatient(patient);
+            return;
+        }
         setSelectedPatient(patient);
         setIntakeInitialViewState('sessionOpening');
         setCurrentView('patient_intake');
@@ -643,6 +652,21 @@ const AppInner: React.FC = () => {
                             onOpenCalendar={handleOpenCalendarFromPatient}
                         />
                     }
+
+                    {/* Second treatment today (Appointments Step 6): warn, never block. Same text as in the intake. */}
+                    <ConfirmationModal
+                        isOpen={!!sameDayStartPatient}
+                        title={<T>Treatment already recorded today</T>}
+                        message={<T>This patient already had a treatment today. Start another one?</T>}
+                        confirmLabel={<T>Start another treatment</T>}
+                        onConfirm={() => {
+                            const p = sameDayStartPatient;
+                            setSameDayStartPatient(null);
+                            if (p) handleStartTreatmentFlow(p, true);
+                        }}
+                        onCancel={() => setSameDayStartPatient(null)}
+                        showCancelButton
+                    />
 
                     {appUser && isSettingsModalOpen && (
                         <Modal

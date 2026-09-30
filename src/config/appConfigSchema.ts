@@ -14,6 +14,8 @@ export type ConfigSetting = {
   defaultValue: string | number | boolean | string[] | Record<string, any>;
   /** Choices for type 'select'. Labels are English source text (translated in the UI). */
   options?: { value: string; label: string }[];
+  /** Type 'time': warn when the value is between 22:00 and 07:00 (patient-facing sending times). */
+  warnQuietHours?: boolean;
 };
 
 /**
@@ -237,6 +239,7 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'Time of day when reminders for the next day are sent.',
         type: 'time',
         defaultValue: APPT.reminderSendTime,
+        warnQuietHours: true,
       },
       reminderChannels: {
         label: 'Reminder Channels Available',
@@ -280,6 +283,12 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'How many minutes before the meeting starts the Start Treatment button becomes available.',
         type: 'number',
         defaultValue: APPT.startTreatmentLeadMinutes,
+      },
+      missedCheckTime: {
+        label: 'Missed-Appointment Check Time',
+        description: 'Daily time when booked appointments of past days are marked Missed (or Attended, if a treatment was recorded that day). Israel time.',
+        type: 'time',
+        defaultValue: APPT.missedCheckTime,
       },
     },
   },

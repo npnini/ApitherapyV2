@@ -13,7 +13,10 @@ import { logAction } from '../../services/auditLogService';
 import { buildSuggestions, Suggestion, upcomingBooked } from '../../utils/appointments/suggestions';
 import { findOverlaps, nearestFreeStart } from '../../utils/appointments/clashes';
 import { STATUS_LABELS, hasStarted, isChangeable } from '../../utils/appointments/status';
-import { addMinutes, atTime, formatDate, formatWeekday, isOutsideWorkingHours, toHHmm } from '../../utils/appointments/time';
+import { addMinutes, atTime, formatDate, formatWeekday, isOutsideWorkingHours, toDateValue, toHHmm } from '../../utils/appointments/time';
+import { TreatmentSession } from '../../types/treatmentSession';
+import Modal from '../common/Modal';
+import TreatmentSummary from '../PatientIntake/TreatmentSummary';
 import styles from './AppointmentsTab.module.css';
 
 interface AppointmentListProps {
@@ -22,6 +25,8 @@ interface AppointmentListProps {
     caretakerId: string;
     /** The patient's appointments, all statuses (loaded by the tab). */
     appointments: Appointment[];
+    /** The patient's treatments by id: session number and "View treatment" of attended rows. */
+    treatmentsById: Map<string, TreatmentSession>;
     plan: AppointmentPlan;
     sessionsDone: number;
     meetingMinutes: number;
@@ -41,9 +46,11 @@ type Clash = { overlaps: Appointment[]; outside: boolean; tryStart: Date | null 
  * weekly pattern and are never stored; "Book all" books only suggestions without a clash.
  */
 const AppointmentList: React.FC<AppointmentListProps> = ({
-    patient, caretakerId, appointments, plan, sessionsDone, meetingMinutes, workingWeek, readOnly, actor, onChanged, onOpenCalendar,
+    patient, caretakerId, appointments, treatmentsById, plan, sessionsDone, meetingMinutes, workingWeek, readOnly, actor, onChanged, onOpenCalendar,
 }) => {
-    const { language } = useTranslationContext();
+    const { language, direction } = useTranslationContext();
+    const tTreatmentSummary = useT('Treatment Summary');
+    const [viewTreatment, setViewTreatment] = useState<TreatmentSession | null>(null);
     const tFailed = useT('Saving failed. Please try again.');
     const tOpenInCalendar = useT('Open in calendar');
     const tFutureOnly = useT('Choose a time in the future');
@@ -342,21 +349,30 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
                         {history.length > 0 && (
                             <tr className={styles.groupRow}><td colSpan={5}><T>Past and cancelled</T></td></tr>
                         )}
-                        {history.map(a => (
-                            <tr key={a.id} className={a.status === 'cancelled' ? styles.cancelledRow : undefined}>
-                                {/* Attended rows get their treatment's number in Step 6 (linked treatment). */}
-                                <td>—</td>
-                                <td>{dayCell(a.start)}</td>
-                                <td>{timeCell(a.start, a.end)}</td>
-                                <td>{statusBadge(a.status)}</td>
-                                <td className={styles.actionsCell}>
-                                    {!readOnly && a.status !== 'cancelled' && hasStarted(a) && (
-                                        <button type="button" className={styles.linkButton} onClick={() => setEditor(a)} disabled={busy}><T>Change status</T></button>
-                                    )}
-                                    {a.status !== 'cancelled' && calendarButton(a.start)}
-                                </td>
-                            </tr>
-                        ))}
+                        {history.map(a => {
+                            // Attended rows: the linked treatment's number and summary (set from Step 6 on).
+                            const treatment = a.status === 'attended' && a.treatmentId ? treatmentsById.get(a.treatmentId) : undefined;
+                            return (
+                                <tr key={a.id} className={a.status === 'cancelled' ? styles.cancelledRow : undefined}>
+                                    <td>{treatment?.treatmentNumber ?? '—'}</td>
+                                    <td>{dayCell(a.start)}</td>
+                                    <td>{timeCell(a.start, a.end)}</td>
+                                    <td>
+                                        {statusBadge(a.status)}
+                                        {a.source === 'walk_in' && <span className={styles.cellSub}><T>Walk-in</T></span>}
+                                    </td>
+                                    <td className={styles.actionsCell}>
+                                        {treatment && (
+                                            <button type="button" className={styles.linkButton} onClick={() => setViewTreatment(treatment)}><T>View treatment</T></button>
+                                        )}
+                                        {!readOnly && a.status !== 'cancelled' && hasStarted(a) && (
+                                            <button type="button" className={styles.linkButton} onClick={() => setEditor(a)} disabled={busy}><T>Change status</T></button>
+                                        )}
+                                        {a.status !== 'cancelled' && calendarButton(a.start)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
 
                         {upcomingRows.length === 0 && history.length === 0 && (
                             <tr><td colSpan={5} className={styles.emptyCell}><T>No appointments yet.</T></td></tr>
@@ -379,6 +395,17 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
                     onClose={() => setEditor(null)}
                     onChanged={onChanged}
                 />
+            )}
+
+            {viewTreatment && (
+                <Modal
+                    isOpen={true}
+                    onClose={() => setViewTreatment(null)}
+                    title={`${tTreatmentSummary}${viewTreatment.treatmentNumber ? ` #${viewTreatment.treatmentNumber}` : ''}`}
+                    subtitle={formatDate(toDateValue(viewTreatment.createdTimestamp) || new Date())}
+                >
+                    <TreatmentSummary treatment={viewTreatment} language={language} direction={direction} />
+                </Modal>
             )}
 
             <ConfirmationModal
