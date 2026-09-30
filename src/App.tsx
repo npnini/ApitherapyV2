@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { logger } from './utils/logger';
 
 import { TranslationProvider, useTranslationContext, T, useT } from './components/T';
@@ -25,6 +25,8 @@ import UserManagement from './components/UserManagement';
 import ActivityLog from './components/ActivityLog';
 import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
 import CalendarPage from './components/Appointments/CalendarPage';
+import TodayPage from './components/Appointments/TodayPage';
+import { useTodayAppointments } from './hooks/useTodayAppointments';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
@@ -40,7 +42,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import { hasTreatmentToday } from './services/appointmentService';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_calendar';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_today' | 'appointments_calendar';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -69,6 +71,12 @@ const AppInner: React.FC = () => {
     const [calendarReturnPatient, setCalendarReturnPatient] = useState<Partial<JoinedPatientData> | null>(null);
     // Start Treatment for a patient who already had one today: waits for "Start another one?".
     const [sameDayStartPatient, setSameDayStartPatient] = useState<JoinedPatientData | null>(null);
+    // Where closing the intake returns to: Today when it was opened from there (Step 6).
+    const [intakeReturnView, setIntakeReturnView] = useState<View | null>(null);
+    // Today's appointments of the viewed caretaker, live: the Today page and its sidebar badge.
+    const todayAppointments = useTodayAppointments(appUser ? (viewAsCaretakerId || appUser.uid) : undefined);
+    // Landing rule (spec §5) is applied once per login, after the first patient load.
+    const landedRef = useRef(false);
 
     useEffect(() => {
         document.documentElement.dir = direction;
@@ -252,6 +260,24 @@ const AppInner: React.FC = () => {
         }
     }, [appUser, appConfig, fetchInitialData, viewAsCaretakerId]);
 
+    // Landing rule (spec §5): after the first patient load of a login, a caretaker with at least
+    // one patient lands on Today; with none, they stay on the patient list. Never overrides the
+    // ?patientId= deep link or onboarding (those have already left the patient list).
+    useEffect(() => {
+        if (!appUser) { landedRef.current = false; return; }
+        if (landedRef.current || isLoading || !appConfig) return;
+        landedRef.current = true;
+        const deepLink = new URLSearchParams(window.location.search).has('patientId');
+        if (!deepLink && currentView === 'dashboard' && patients.length > 0) setCurrentView('appointments_today');
+    }, [appUser, appConfig, isLoading, patients, currentView]);
+
+    // Opens the patient intake. Opened from the Today page, closing it (or finishing a treatment)
+    // returns to Today (plan Step 6); from anywhere else, to the patient list as before.
+    const showIntake = () => {
+        setIntakeReturnView(currentView === 'appointments_today' ? 'appointments_today' : null);
+        setCurrentView('patient_intake');
+    };
+
     const handleLogout = async () => { await logout(); };
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
@@ -265,6 +291,16 @@ const AppInner: React.FC = () => {
     const handleUserDetailsClick = () => { setCurrentView('user_details'); };
     const handleDataAnalysisClick = () => { setCurrentView('data_analysis'); };
     const handleActivityLogClick = () => { setCurrentView('activity_log'); };
+    const handleTodayClick = () => { setCurrentView('appointments_today'); };
+
+    // Today → "Open patient": the intake on its Appointments tab.
+    const handleOpenPatientFromToday = (patient: JoinedPatientData) => {
+        setSelectedPatient(patient);
+        setIntakeInitialViewState('tabs');
+        setIntakeInitialTab('appointments');
+        showIntake();
+    };
+
     const handleCalendarClick = () => {
         // From the sidebar: the current week, no "Back to patient".
         setCalendarFocusDate(null);
@@ -289,7 +325,7 @@ const AppInner: React.FC = () => {
         setSelectedPatient(latest);
         setIntakeInitialViewState('tabs');
         setIntakeInitialTab('appointments');
-        setCurrentView('patient_intake');
+        showIntake();
     };
 
     const handleSaveUser = async (updatedUser: AppUser) => {
@@ -322,7 +358,7 @@ const AppInner: React.FC = () => {
     const handleUpdatePatient = (patient: JoinedPatientData) => {
         setSelectedPatient(patient);
         setIntakeInitialViewState('tabs');
-        setCurrentView('patient_intake');
+        showIntake();
     };
 
     const handleAddPatient = () => {
@@ -338,7 +374,7 @@ const AppInner: React.FC = () => {
             caretakerId: viewAsCaretakerId || appUser.uid,
         };
         setSelectedPatient(newPatient);
-        setCurrentView('patient_intake');
+        showIntake();
     };
 
     const handleSavePatient = async (patientData: JoinedPatientData, closeModal: boolean = true): Promise<boolean> => {
@@ -436,7 +472,7 @@ const AppInner: React.FC = () => {
 
             await fetchInitialData(appUser);
             if (closeModal) {
-                handleBackToDashboard();
+                handleCloseIntake();
             } else {
                 const updatedPatient = { ...patientData, id: finalPatientId };
                 setSelectedPatient(updatedPatient);
@@ -466,16 +502,24 @@ const AppInner: React.FC = () => {
         }
     };
 
-    const handleBackToDashboard = () => {
+    // Leaves the intake / treatment state and shows `view` (the patient list by default).
+    const leaveIntake = (view: View) => {
         setSelectedPatient(null);
         setActiveProtocol(null);
         setActiveTreatmentSession(null);
-        setCurrentView('dashboard');
+        setCurrentView(view);
         setSaveStatus('idle');
         setErrorMessage('');
         setIntakeInitialViewState('tabs');
         setIntakeInitialTab('personal');
+        setIntakeReturnView(null);
     };
+
+    // Sidebar "Patients" (always the patient list).
+    const handleBackToDashboard = () => leaveIntake('dashboard');
+
+    // Closing the intake: back to Today when it was opened from there, else the patient list.
+    const handleCloseIntake = () => leaveIntake(intakeReturnView ?? 'dashboard');
 
     const handleStartTreatmentFlow = async (patient: JoinedPatientData, confirmedSameDay = false) => {
         // Appointments Step 6: warn (never block) when this patient already had a treatment today.
@@ -485,14 +529,14 @@ const AppInner: React.FC = () => {
         }
         setSelectedPatient(patient);
         setIntakeInitialViewState('sessionOpening');
-        setCurrentView('patient_intake');
+        showIntake();
     };
 
     const handleShowTreatments = (patient: JoinedPatientData) => {
         setSelectedPatient(patient);
         setIntakeInitialViewState('tabs');
         setIntakeInitialTab('treatments');
-        setCurrentView('patient_intake');
+        showIntake();
     };
 
     const handlePatientClick = async (patientIdInput: string | number) => {
@@ -560,7 +604,9 @@ const AppInner: React.FC = () => {
         if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div><T>Loading Patient Data...</T></div></div>;
 
         const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
-        const isDashboardView = currentView === 'dashboard' || dashboardModalViews.includes(currentView);
+        // The intake is an overlay: opened from Today, Today stays underneath it (not the patient list).
+        const todayUnderIntake = currentView === 'patient_intake' && intakeReturnView === 'appointments_today';
+        const isDashboardView = !todayUnderIntake && (currentView === 'dashboard' || dashboardModalViews.includes(currentView));
         const effectiveUser = impersonatedUser || appUser;
 
         return (
@@ -575,7 +621,9 @@ const AppInner: React.FC = () => {
                     onPointSideAnalysisClick={handlePointSideAnalysisClick}
                     onUserDetailsClick={handleUserDetailsClick}
                     onPatientsClick={handleBackToDashboard}
+                    onTodayClick={handleTodayClick}
                     onCalendarClick={handleCalendarClick}
+                    todayAppointments={todayAppointments.appointments}
                     onDataAnalysisClick={handleDataAnalysisClick}
                     onAppSettingsClick={handleAppSettingsClick}
                     onMeasuresAdminClick={handleMeasuresAdminClick}
@@ -620,6 +668,21 @@ const AppInner: React.FC = () => {
                                                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} isFlex={true}>
                                                                     <TreatmentEffectiveness user={effectiveUser} onPatientClick={handlePatientClick} />
                                                                 </Modal>
+                                                                : (currentView === 'appointments_today' || todayUnderIntake) ?
+                                                                    // Wait for the viewed caretaker's profile under "View As" (their working hours).
+                                                                    (viewAsCaretakerId && !impersonatedUser)
+                                                                        ? <div><T>Loading...</T></div>
+                                                                        : <TodayPage
+                                                                            caretaker={effectiveUser}
+                                                                            actor={appUser}
+                                                                            appConfig={appConfig}
+                                                                            appointments={todayAppointments.appointments}
+                                                                            loadError={!!todayAppointments.error}
+                                                                            patients={patients}
+                                                                            readOnly={!!viewAsCaretakerId && viewAsCaretakerId !== appUser.uid}
+                                                                            onStartTreatment={p => handleStartTreatmentFlow(p)}
+                                                                            onOpenPatient={handleOpenPatientFromToday}
+                                                                        />
                                                                 : currentView === 'appointments_calendar' ?
                                                                     // Wait for the viewed caretaker's profile under "View As" (their working hours).
                                                                     (viewAsCaretakerId && !impersonatedUser)
@@ -642,7 +705,7 @@ const AppInner: React.FC = () => {
                             patient={selectedPatient}
                             user={appUser}
                             onSave={handleSavePatient}
-                            onClose={handleBackToDashboard}
+                            onClose={handleCloseIntake}
                             saveStatus={saveStatus}
                             errorMessage={errorMessage}
                             onUpdate={(patientData) => handleSavePatient(patientData, false)}

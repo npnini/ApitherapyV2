@@ -1,0 +1,192 @@
+/* TodayPage.module.css — the Today agenda (spec §6). Aligned to Claude Style-Guide.
+   Status colours come from Appointments.module.css (.status_*), which sets the
+   --fc-event-* variables; cards use them so every screen shows the same colours. */
+
+.agendaCard {
+    background: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-card);
+}
+
+.empty {
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.agenda {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* One row per hour: the hour label, then that hour's appointment cards. */
+.hourRow {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: var(--spacing-md);
+    min-height: 2.75rem;
+    padding: var(--spacing-sm) 0;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.hourRow:first-child {
+    border-top: none;
+}
+
+.hourLabel {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    padding-top: var(--spacing-xs);
+}
+
+.hourContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+/* Appointment card: white, with the status colour as a thick start border. */
+.card {
+    background: var(--color-background-card);
+    border: 1px solid var(--color-border-light);
+    border-inline-start: 6px solid var(--fc-event-border-color, var(--color-border));
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Due now: highlighted by a primary outline as well as the "Due now" tag (never colour alone). */
+.cardDue {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.cardHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.cardTime {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.patientName {
+    padding: 0;
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: start;
+}
+
+.patientName:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.patientName:disabled {
+    color: var(--color-text-secondary);
+    cursor: default;
+}
+
+.patientName:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.dueTag {
+    padding: 0.1rem 0.5rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    background-color: var(--color-primary-light);
+    border-radius: var(--radius-sm);
+}
+
+.meta {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.cardHead .meta {
+    margin: 0;
+}
+
+.cardActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs) var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.cardActions a {
+    text-decoration: none;
+}
+
+/* "+ Book HH:mm" on an hour with free time after now: quiet, dashed like a suggestion. */
+.bookFree {
+    align-self: flex-start;
+    padding: 0.2rem 0.6rem;
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    background: none;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.bookFree:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-light);
+}
+
+.bookFree:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bookFree:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+/* Current time: a line with its label, between the cards before and after now. */
+.nowLine {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--color-error);
+}
+
+.nowLine::after {
+    content: '';
+    flex: 1;
+    border-top: 2px solid var(--color-error);
+}
+
+.nowLabel {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+/* Tablet and phone: the hour label above its cards. */
+@media (max-width: 640px) {
+    .hourRow {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xs);
+    }
+}

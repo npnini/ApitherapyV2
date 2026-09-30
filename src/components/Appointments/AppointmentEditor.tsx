@@ -9,7 +9,7 @@ import { logAction } from '../../services/auditLogService';
 import { addMinutes, atTime, formatDayDateTime, isOutsideWorkingHours, toHHmm } from '../../utils/appointments/time';
 import DateField from './DateField';
 import { findOverlaps } from '../../utils/appointments/clashes';
-import { STATUS_LABELS, canMarkCancelled, isChangeable } from '../../utils/appointments/status';
+import { STATUS_LABELS, canMarkCancelled, canReschedule, isChangeable } from '../../utils/appointments/status';
 import styles from './Appointments.module.css';
 
 const MIN_MINUTES = 5;
@@ -32,6 +32,8 @@ interface AppointmentEditorProps {
     initialStart: Date;
     /** Create: selected length or the caretaker's default meeting length. */
     initialMinutes: number;
+    /** Create: the patient chosen in advance (Today's "Book replacement"). */
+    initialPatientId?: string;
     patients: PatientOption[];
     caretakerId: string;
     workingWeek: WorkingWeek;
@@ -52,7 +54,7 @@ type Warnings = { overlaps: Appointment[]; outside: boolean };
  * when Missed or still Booked (spec §2).
  */
 const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
-    mode, appointment, initialStart, initialMinutes, patients, caretakerId, workingWeek, readOnly, actor, onClose, onChanged,
+    mode, appointment, initialStart, initialMinutes, initialPatientId, patients, caretakerId, workingWeek, readOnly, actor, onClose, onChanged,
 }) => {
     const { language } = useTranslationContext();
     const tClose = useT('Close');
@@ -70,7 +72,7 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
         ? Math.round((appointment.end.getTime() - appointment.start.getTime()) / 60_000)
         : initialMinutes;
 
-    const [patientId, setPatientId] = useState(appointment?.patientId || '');
+    const [patientId, setPatientId] = useState(appointment?.patientId || initialPatientId || '');
     const [search, setSearch] = useState('');
     const [day, setDay] = useState<Date | null>(atTime(startValue, '00:00'));
     const [time, setTime] = useState(toHHmm(startValue));
@@ -81,7 +83,7 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
     const [saving, setSaving] = useState(false);
     const [confirmingCancel, setConfirmingCancel] = useState(false);
 
-    const canEditTime = !readOnly && (mode === 'create' || (!!appointment && isChangeable(appointment)));
+    const canEditTime = !readOnly && (mode === 'create' || (!!appointment && canReschedule(appointment)));
     const canCancel = !readOnly && mode === 'edit' && !!appointment && isChangeable(appointment);
     // Started, and Missed or still Booked: "Mark as cancelled" (patient cancelled in advance).
     const canMark = !readOnly && mode === 'edit' && !!appointment && canMarkCancelled(appointment);

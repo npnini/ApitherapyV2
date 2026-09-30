@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers, CalendarDays } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers, CalendarDays, CalendarClock } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
+import { Appointment } from '../types/appointments';
+import { useNow } from '../hooks/useNow';
 import styles from './Sidebar.module.css'; // Import the new CSS module
 
 interface SidebarProps {
@@ -11,7 +13,10 @@ interface SidebarProps {
     onAdminClick: () => void;
     onUserDetailsClick: () => void;
     onPatientsClick: () => void;
+    onTodayClick: () => void;
     onCalendarClick: () => void;
+    /** Today's appointments (live), for the Today badge: meetings still to come today. */
+    todayAppointments: Appointment[];
     onDataAnalysisClick: () => void;
     onPointsAdminClick: () => void;
     onPointGroupsAdminClick: () => void;
@@ -33,7 +38,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onAdminClick,
     onUserDetailsClick,
     onPatientsClick,
+    onTodayClick,
     onCalendarClick,
+    todayAppointments,
     onDataAnalysisClick,
     onPointsAdminClick,
     onPointGroupsAdminClick,
@@ -55,6 +62,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [loadingCaretakers, setLoadingCaretakers] = useState(false);
     const { language } = useTranslationContext();
     const isRtl = language === 'he';
+    const tStillToCome = useT('Meetings still to come today');
+
+    // Today badge (spec §5): booked meetings of today that have not ended yet.
+    const now = useNow(60_000);
+    const todayCount = todayAppointments.filter(a => a.status === 'booked' && a.end > now).length;
 
     const direction = isRtl ? 'rtl' : 'ltr';
 
@@ -108,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <span><T>My Profile</T></span>
                 </button>
 
-                {/* Appointments group: always open (spec §5). The Today item is added in Step 6. */}
+                {/* Appointments group: always open (spec §5). */}
                 <div role="group" aria-labelledby="sidebarAppointmentsLabel">
                     <div id="sidebarAppointmentsLabel" className={`${styles.configDropdownButton} ${styles.navGroupLabel}`}>
                         <div className={styles.flexCenter}>
@@ -117,6 +129,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                     </div>
                     <div className={styles.configSubMenu}>
+                        <button onClick={onTodayClick} className={styles.configButton}>
+                            <CalendarClock size={16} className={styles.iconSecondary} />
+                            <span><T>Today</T></span>
+                            {todayCount > 0 && (
+                                <span className={styles.countBadge} aria-label={`${tStillToCome}: ${todayCount}`} title={tStillToCome}>
+                                    {todayCount}
+                                </span>
+                            )}
+                        </button>
                         <button onClick={onCalendarClick} className={styles.configButton}>
                             <CalendarDays size={16} className={styles.iconSecondary} />
                             <span><T>Calendar</T></span>

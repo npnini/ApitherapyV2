@@ -24,6 +24,14 @@ export const isChangeable = (a: Pick<Appointment, 'status' | 'start'>, now: Date
     a.status === 'booked' && a.start > now;
 
 /**
+ * The date / time of a booked appointment can be changed in the editor: future ones, and
+ * today's even after their start (a patient running late is moved to a later time today;
+ * the editor still only accepts a new start in the future).
+ */
+export const canReschedule = (a: Pick<Appointment, 'status' | 'start'>, now: Date = new Date()): boolean =>
+    a.status === 'booked' && (a.start > now || a.start.toDateString() === now.toDateString());
+
+/**
  * "Mark as cancelled" (spec §2, decided 2026-09-29): the only manual change to an appointment
  * that has started, for a patient who did cancel in advance, so it does not count as missed.
  * Missed ones, and booked ones already past their start (before the nightly check marks them).

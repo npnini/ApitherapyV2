@@ -260,6 +260,20 @@
     cursor: default;
 }
 
+/* Today item: meetings still to come today (spec §5). Pushed to the end of the row. */
+.countBadge {
+    margin-inline-start: auto;
+    min-width: 1.4rem;
+    padding: 0 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4rem;
+    text-align: center;
+    color: var(--color-white);
+    background-color: var(--color-primary);
+    border-radius: 999px;
+}
+
 .navGroupLabel:hover {
     background: transparent;
 }

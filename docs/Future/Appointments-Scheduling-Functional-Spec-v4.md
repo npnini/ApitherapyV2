@@ -46,7 +46,7 @@ Every appointment has exactly one status. The same names and colours are used on
 **Colours (shown in a legend on the Today and Calendar pages)**
 - Booked (upcoming): bold colour.
 - Attended: light colour.
-- Missed: muted colour, with the patient name struck through and a "Missed" tag.
+- Missed: muted colour, with a "Missed" tag (in the Calendar also the patient name struck through).
 - Cancelled: not shown in the calendar. Shown in the patient's list only.
 
 ---
@@ -114,12 +114,13 @@ A single-day view of the caretaker's **app appointments**.
 |---|---|
 | **Upcoming**: starts more than X minutes from now | Start Treatment (asks "Start early?"), Call, WhatsApp, Reschedule, Cancel |
 | **Due now**: from X minutes before the start until the end of the day, while no treatment has been recorded | **Start Treatment** (highlighted), Call, WhatsApp, Reschedule, Cancel |
-| **Attended**: a treatment was recorded for this appointment | **Open patient** (opens the patient's intake) and **View treatment** (opens the summary of the treatment given in this appointment) |
-| **Missed** or **Cancelled** | **Open patient** (opens the patient's intake); **Mark as cancelled** (Missed only: the patient cancelled in advance, see §2); **Book replacement** (opens the booking editor for this patient with the next free slot pre-filled, to make up for the lost session) |
+| **Attended**: a treatment was recorded for this appointment | **View treatment** (opens the summary of the treatment given in this appointment) |
+| **Missed** or **Cancelled** | **Mark as cancelled** (Missed only: the patient cancelled in advance, see §2); **Book replacement** (opens the booking editor for this patient with the next free slot pre-filled, to make up for the lost session) |
 
 - **Start Treatment** opens the treatment flow for that patient. When the treatment is saved, the appointment becomes "Attended".
 - **Call** and **WhatsApp** use the patient's mobile number. They are hidden if there is no number.
-- Clicking a past appointment always opens the patient. Past appointments are never "dead".
+- The patient's name on every appointment opens the patient (their Appointments tab), so past appointments are never "dead". The name is never struck through on this page; the status badge shows Missed or Cancelled. (Changed 2026-09-30: this replaces a separate "Open patient" button.)
+- **Free time:** every hour from now on that still has room for a meeting of the default length shows **Book HH:mm** (the first free quarter hour). It opens the booking editor at that time, so a patient who calls can be booked from this page as from the Calendar. (Added 2026-09-30.)
 
 ---
 
@@ -281,7 +282,7 @@ The confirmation that appears after a treatment is saved includes a **"Book next
 | An admin views the app as a caretaker | The admin sees the caretaker's app appointments. Invitations still go to the caretaker and the patient as usual. |
 | The patient has no email | Booking works. No patient invitation is sent, and this is stated clearly. |
 | The patient has no mobile number | WhatsApp and SMS are unavailable for this patient. Call and WhatsApp buttons are hidden. |
-| A patient is deleted | Their upcoming appointments are cancelled, and cancellation invitations are sent to the patient (if notifications are on) and to the caretaker. The caretaker confirms this first. |
+| A patient is deleted | Does not happen: patients are never deleted (decided 2026-09-29; the delete button is removed, see the implementation plan, Step 15). |
 
 ---
 

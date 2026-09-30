@@ -65,8 +65,8 @@ type PendingMove = {
 
 /**
  * Week calendar of the caretaker's appointments (spec §7): book by click or drag, move or
- * resize by dragging (with confirmation), open an appointment to edit, cancel or correct its
- * status. Cancelled appointments are hidden. Overlapping appointments are shown side by side.
+ * resize by dragging (with confirmation), open an appointment to edit or cancel it, or mark a
+ * missed one as cancelled. Cancelled appointments are hidden. Overlapping appointments are shown side by side.
  */
 const CalendarPage: React.FC<CalendarPageProps> = ({
     caretaker, actor, appConfig, patients, readOnly, initialDate, onBackToPatient, backToPatientName,
