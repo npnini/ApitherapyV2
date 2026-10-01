@@ -4,7 +4,9 @@ Authoritative checklist of screens, server-call surfaces, Firestore collections,
 
 ## 1. Screens / Major UI Sections
 
-App is **state-driven** (no URL routing). Top-level state is `currentView` (a `View` union type) in `src/App.tsx:39`, switched via `renderContent()` (`src/App.tsx:496`). One exception: `window.location.pathname` is checked directly for the public `/feedback/:sessionId` deep link (`src/App.tsx:497-503`).
+App is **state-driven** (no URL routing). Top-level state is `currentView` (a `View` union type) in `src/App.tsx:45`, switched via `renderContent()` (`src/App.tsx:593`). One exception: `window.location.pathname` is checked directly for the public `/feedback/:sessionId` deep link (at the top of `renderContent()`). A `?patientId=` query parameter opens that patient's intake after login.
+
+**Landing rule (appointments, spec §5):** after the first patient load of a login, a caretaker with at least one patient lands on **Today**; with none, on the Patients list. Never overrides `?patientId=` or onboarding.
 
 ### Entry / Auth
 - **Login** — `src/components/Login.tsx` — shown when `!appUser` (unauthenticated).
@@ -13,16 +15,19 @@ App is **state-driven** (no URL routing). Top-level state is `currentView` (a `V
 - **Public Feedback link (`/feedback/:sessionId`)** — unauthenticated standalone route, bypasses all auth/dashboard logic — `src/components/PatientIntake/FeedbackStandaloneView.tsx`.
 
 ### Dashboard / Patient flow
-- **Patients Dashboard** (`currentView: 'dashboard'`, also the fallback for the modal views below) — `src/components/PatientsDashboard.tsx`.
+- **Patients Dashboard** (`currentView: 'dashboard'`, also the fallback for the modal views below) — `src/components/PatientsDashboard.tsx`. Columns: Patient, Contact, Problems, Last Treatment, **Next meeting** (next booked appointment; today's opens the Today page), **Sessions done** (treatments / planned sessions); on screens ≤ 1024 px the last two share one cell. Row actions: edit, treatment history, Start New Treatment (warns when the patient already had a treatment today). **There is no delete action: patients are never deleted** (rules deny `patients` deletes for everyone).
 - **Patient Intake** (`currentView: 'patient_intake'`) — modal-style flow — `src/components/PatientIntake/PatientIntake.tsx`. Internally has its own `viewState` machine:
-  - **Tabs view** (`viewState: 'tabs'`) with tabs (`TabKey`, `PatientIntake.tsx:36-54`):
+  - **Tabs view** (`viewState: 'tabs'`) with tabs in this order (`TAB_ORDER`, `PatientIntake.tsx:53-63`; "Start New Treatment" needs Personal, Questionnaire, Instructions, Consent and Problems saved):
     - Personal — `src/components/PatientIntake/PersonalDetails.tsx`
     - Questionnaire — `src/components/PatientIntake/QuestionnaireStep.tsx`
-    - Instructions — `src/components/PatientIntake/InstructionsTab.tsx`
+    - Instructions (Guidelines) — `src/components/PatientIntake/InstructionsTab.tsx`
     - Consent — `src/components/PatientIntake/ConsentTab.tsx`
-    - Problems — `src/components/PatientIntake/ProblemsTab.tsx`
     - Documents — `src/components/PatientIntake/DocumentsTab.tsx`
-    - Treatments (history) — `src/components/PatientIntake/MeasuresHistoryTab.tsx` / uses `TreatmentHistory`
+    - Problems — `src/components/PatientIntake/ProblemsTab.tsx`
+    - **Appointments** — `src/components/Appointments/AppointmentsTab.tsx`: sub-tabs "Treatment plan" (planned sessions, weekly slots, reminders on/off, channel, preferred language; saved with the intake's Update button into `patients/{id}.appointmentPlan`) and "Appointments" (`AppointmentList.tsx`: booked, suggested, past and cancelled rows; Book, Book all, Reschedule, Cancel, Mark as cancelled, View treatment, Open in calendar); progress line above both; `PatternChangeDialog.tsx` after a weekly-pattern change.
+    - Treatments (history) — uses `TreatmentHistory`
+    - Measures (history) — `src/components/PatientIntake/MeasuresHistoryTab.tsx`
+  - **"Treatment saved" confirmation** — includes **Book next session** (`src/components/Appointments/BookNextSession.tsx`): next booked session with Change; "course complete" with Extend course (writes `appointmentPlan.plannedSessions`); or a proposed time with Book / Change / Skip.
   - **Session Opening** (`viewState: 'sessionOpening'`) — `src/components/PatientIntake/SessionOpening.tsx`
   - **Problem/Protocol Selection** (`viewState: 'problemSelection'`) — `src/components/ProtocolSelection.tsx`
   - **Free point selection** (`viewState: 'freeSelection'`) — `src/components/FreeProtocolPointSelection.tsx`
@@ -34,9 +39,15 @@ App is **state-driven** (no URL routing). Top-level state is `currentView` (a `V
 - **Treatment History modal** (`currentView: 'treatment_history'`, dashboard-modal view) — `src/components/TreatmentHistory.tsx`.
 - **Protocol Selection (standalone view state)** (`currentView: 'protocol_selection'`, dashboard-modal view) — `src/components/ProtocolSelection.tsx`.
 
+### Appointments (sidebar group "Appointments", under My Profile)
+Spec: `docs/Future/Appointments-Scheduling-Functional-Spec-v4.md`; plan: `docs/Future/Appointments-Implementation-Plan.md`. All appointment lists are live (Firestore `onSnapshot`, `src/services/appointmentService.ts`). Under "View As" another caretaker every appointment screen is read-only.
+- **Today** (`currentView: 'appointments_today'`) — `src/components/Appointments/TodayPage.tsx`. Sidebar badge = booked meetings of today not yet ended. Agenda by hour (working hours, stretched to include every appointment), now-line, "+ Book HH:mm" in free hours; cards with Start New Treatment, Call, WhatsApp, Reschedule, Cancel / Mark as cancelled, View treatment, Book a replacement session; a cancelled meeting is hidden once replaced. The patient name opens the intake on its Appointments tab; closing it returns to Today.
+- **Calendar** (`currentView: 'appointments_calendar'`) — `src/components/Appointments/CalendarPage.tsx` (FullCalendar week view): create by click or drag, move/resize by drag, `AppointmentEditor.tsx` (patient search, date, time, length, Notify patient, overlap and outside-hours warnings with "Book anyway", cancel, Mark as cancelled), `StatusLegend.tsx`; "Back to patient" when opened from the Appointments tab.
+- Every book, move and cancel sends a calendar invitation email (ICS) from the `onAppointmentWritten` function, never from the client.
+
 ### User / Profile
-- **My Profile modal** (`currentView: 'user_details'`) — `src/components/UserDetails.tsx` (in `Modal`).
-- **Application Settings modal** (`isSettingsModalOpen`, not a `currentView`) — `src/components/ApplicationSettings.tsx` (in `Modal`).
+- **My Profile modal** (`currentView: 'user_details'`) — `src/components/UserDetails.tsx` (in `Modal`). Tabs "Personal Details" and "Appointments" (send invitations to me, invitation email, working week, meeting length, patient name level, time zone; stored in `users/{uid}.appointmentPrefs`).
+- **Application Settings modal** (`isSettingsModalOpen`, not a `currentView`) — `src/components/ApplicationSettings.tsx` (in `Modal`). Includes the "Appointments & Reminders" group (`cfg_app_config/main.appointmentSettings`).
 
 ### Admin screens (each its own `currentView`)
 - **Protocols Admin** (`admin_protocols`) — `src/components/ProtocolAdmin.tsx`
@@ -76,6 +87,11 @@ App is **state-driven** (no URL routing). Top-level state is `currentView` (a `V
 
 Other functions in the file not part of the requested 5, found during review (not frontend-invoked, background/scheduled/trigger-based): `dailyFeedbackSweeper` (scheduled, emails patients for feedback), `onFeedbackSessionComplete` (Firestore trigger on `feedback_sessions` update), `runDailyUnifiedBackup` (scheduled backup), `cleanupAuditLog` (scheduled `app_audit_log` retention cleanup).
 
+Appointments functions (`functions/src/appointments/`, re-exported from `index.ts`; none frontend-invoked):
+- `onAppointmentWritten` — Firestore trigger on `appointments/{id}`: sends the calendar invitation emails (ICS, via Resend) to the patient and the caretaker on book, move and cancel; idempotent via the functions-owned `invite` field.
+- `onTreatmentCreated` — Firestore trigger on `treatments/{id}` create: marks that day's booked appointment Attended and links the treatment, or creates a walk-in (Attended) appointment and adds 1 to planned sessions.
+- `markMissedAppointments` — scheduled every 15 minutes, runs once a day at `appointmentSettings.missedCheckTime` (guard: `missed_check_runs/{yyyy-mm-dd}`): booked appointments of past days become Attended (treatment that day) or Missed.
+
 ---
 
 ## 3. Firestore Collection Paths (top-level, deduped)
@@ -99,6 +115,8 @@ From grepping `collection(db, '...')` and `doc(db, '...')` across `src/`:
 - `cfg_translations`
 - `app_audit_log`
 - `feedback_sessions`
+- `appointments` — client: owner-only create (status and source `booked` only) and update (move, notify patient, cancel; status may only change to `cancelled`); impersonator read-only; never deleted; `invite` written by functions only
+- `missed_check_runs` — functions only (rules deny all client access)
 
 (Note: `feedback_sessions` is read/written client-side only from the public `FeedbackStandaloneView.tsx`, not from the authenticated app shell — worth flagging as an unauthenticated-write surface for the security review.)
 

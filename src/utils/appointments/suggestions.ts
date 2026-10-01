@@ -90,6 +90,20 @@ export const buildSuggestions = (p: {
     }));
 };
 
+/**
+ * "Book next session" after a treatment (spec §11), before the clash check: the first weekly
+ * pattern slot after today; with no pattern, the same weekday and time next week (`sessionTime`
+ * = today's appointment start or the treatment time, rounded down to the quarter hour).
+ */
+export const proposeNextSession = (slots: WeeklySlot[], sessionTime: Date, now: Date = new Date()): Date => {
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const fromPattern = nextPatternStarts(slots, endOfToday, 1)[0];
+    if (fromPattern) return fromPattern;
+    const nextWeek = new Date(sessionTime.getFullYear(), sessionTime.getMonth(), sessionTime.getDate() + 7);
+    nextWeek.setHours(sessionTime.getHours(), Math.floor(sessionTime.getMinutes() / 15) * 15, 0, 0);
+    return nextWeek;
+};
+
 /** Future booked appointments whose weekday and time are not a slot of `slots` (spec §8). */
 export const offPatternBooked = (appointments: Appointment[], slots: WeeklySlot[], now: Date = new Date()): Appointment[] =>
     appointments

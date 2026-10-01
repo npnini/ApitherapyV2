@@ -13,6 +13,8 @@ interface ConfirmationModalProps {
     confirmLabel?: string | React.ReactNode;
     cancelLabel?: string | React.ReactNode;
     type?: 'warning' | 'success' | 'error';
+    /** Optional extra content between the message and the buttons. */
+    children?: React.ReactNode;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -24,7 +26,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     showCancelButton = true,
     confirmLabel,
     cancelLabel,
-    type = 'warning'
+    type = 'warning',
+    children
 }) => {
     if (!isOpen) {
         return null;
@@ -48,6 +51,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 {renderIcon()}
                 <h3 className={styles.modalTitle}>{title}</h3>
                 <div className={styles.modalDescription}>{message}</div>
+                {children}
                 <div className={styles.modalActions}>
                     {showCancelButton && (
                         <button onClick={onCancel} className={styles.modalCancelButton}>

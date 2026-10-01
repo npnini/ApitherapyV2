@@ -6,7 +6,7 @@
 // Cloud Function trigger from Step 5 on, never from here.
 
 import {
-    addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, QuerySnapshot, serverTimestamp, Timestamp,
+    addDoc, collection, doc, getCountFromServer, getDocs, onSnapshot, orderBy, query, QuerySnapshot, serverTimestamp, Timestamp,
     Unsubscribe, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -75,6 +75,21 @@ export const watchByPatient = (
 ), snap => onData(toList(snap)), onError);
 
 /**
+ * A caretaker's appointments that start at or after `from` (all statuses), ordered by start,
+ * live: the patient list's "Next meeting" column. Uses the caretakerId + start index; the
+ * caller keeps the booked ones (a status filter would need another index).
+ */
+export const watchUpcomingByCaretaker = (
+    caretakerId: string, from: Date,
+    onData: (list: Appointment[]) => void, onError: (err: Error) => void,
+): Unsubscribe => onSnapshot(query(
+    appointmentsRef,
+    where('caretakerId', '==', caretakerId),
+    where('start', '>=', Timestamp.fromDate(from)),
+    orderBy('start'),
+), snap => onData(toList(snap)), onError);
+
+/**
  * True when the patient already has a treatment created today (local date): the "start another
  * one?" warning. Reads all the patient's treatments rather than a "latest" one, because
  * treatment ids ("<patient>_<n>") do not sort by number as text.
@@ -87,6 +102,13 @@ export const listPatientTreatments = async (patientId: string): Promise<Treatmen
     const snap = await getDocs(query(collection(db, 'treatments'), where('patientId', '==', patientId)));
     return snap.docs.map(d => ({ ...d.data(), id: d.id }) as unknown as TreatmentSession);
 };
+
+/**
+ * Number of treatments of a patient (all, including Incomplete): "sessions done" on the patient
+ * list. A server count, so the treatment documents themselves are not downloaded.
+ */
+export const countPatientTreatments = async (patientId: string): Promise<number> =>
+    (await getCountFromServer(query(collection(db, 'treatments'), where('patientId', '==', patientId)))).data().count;
 
 export interface NewAppointment {
     caretakerId: string;

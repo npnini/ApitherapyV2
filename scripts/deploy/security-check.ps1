@@ -124,6 +124,19 @@ $script:AcceptedVulnerabilityExceptions = @{
     "undici"  = "Transitive dependency of the Firebase client SDK's Node.js-only auth code path. Verified 2026-09-16: does not appear in the built browser bundle (dist/assets/*.js) - Vite resolves Firebase's 'browser' package.json export condition instead, and no Node.js script in this repo imports the client 'firebase' package (all use firebase-admin, a separate SDK)."
     "esbuild" = "Dev-server-only risk: a malicious website could read local Vite dev server responses via CORS while `npm run dev` is active. Does not affect production builds (dist/) - esbuild's dev server is not part of the shipped output. Fix requires --force (breaking upgrade to vite@8.x). Avoid browsing untrusted sites while the local dev server is running."
     "vite"    = "Same root cause as esbuild above (vite's dev server depends on the vulnerable esbuild version)."
+    # grpc-js chain (added 2026-10-01). Advisories GHSA-m9gg-hp2v-232j and GHSA-f596-whhp-79r4
+    # (fixed in 1.14.5) concern gRPC *servers*; this repo only uses grpc-js as a client.
+    # firebase-admin's copies (root and functions) were updated to 1.14.5. What remains is
+    # @grpc/grpc-js 1.9.16, pinned (~1.9.0) by the client SDK's @firebase/firestore - also in
+    # the newest client, firebase 12.19.0, so no upgrade removes it. Re-check when Google
+    # ships a client that allows grpc-js >= 1.14.5, or when upgrading the client to v12.
+    # Note: this list is shared with the functions audit, so a future grpc-js advisory there
+    # is also accepted - check 'npm ls @grpc/grpc-js' in functions when this entry is reviewed.
+    "@grpc/grpc-js"                = "Used only as a gRPC client (Firestore SDKs); both advisories concern gRPC servers. firebase-admin copies are on the fixed 1.14.5 (2026-10-01). The remaining 1.9.16 is pinned by the client SDK's @firebase/firestore (~1.9.0, also in firebase 12.19.0) and is Node-only: verified 2026-10-01 that the built browser bundle (dist/assets/*.js) contains no grpc-js (the browser SDK uses WebChannel). In Node it is used only by the local rules tests against the emulator."
+    "@firebase/firestore"          = "Flagged only through @grpc/grpc-js (see that entry); no advisory of its own."
+    "@firebase/firestore-compat"   = "Flagged only through @firebase/firestore -> @grpc/grpc-js (see that entry)."
+    "firebase"                     = "Flagged only through @firebase/firestore -> @grpc/grpc-js (see that entry). npm's suggested fix (firebase 9.14.0) is a major downgrade; the newest client (12.19.0) keeps the same grpc-js pin."
+    "@firebase/rules-unit-testing" = "Dev-only (local rules tests against the emulator); flagged only through the client SDK -> @grpc/grpc-js (see that entry)."
 }
 
 function Test-AuditPath {

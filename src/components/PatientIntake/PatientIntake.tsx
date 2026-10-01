@@ -31,6 +31,8 @@ import { AppUser } from '../../types/user';
 import { getLatestTreatment } from '../../firebase/patient';
 import { logAction } from '../../services/auditLogService';
 import AppointmentsTab from '../Appointments/AppointmentsTab';
+import BookNextSession from '../Appointments/BookNextSession';
+import { AppointmentPlan } from '../../types/appointments';
 import { getEffectiveAppointmentPlan, getReminderChannelOptions, validateAppointmentPlan } from '../../utils/appointments/plan';
 import { hasTreatmentToday } from '../../services/appointmentService';
 
@@ -1630,7 +1632,26 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 onConfirm={handleConfirmSaved}
                 showCancelButton={false}
                 type="success"
-            />
+            >
+                {/* Appointments Step 9 (spec §11) */}
+                {showTreatmentSavedModal && patient.id && (
+                    <BookNextSession
+                        patient={{
+                            id: patient.id,
+                            fullName: patientData.fullName || patient.fullName || '',
+                            email: patientData.email,
+                            mobile: patientData.mobile,
+                            caretakerId: patientData.caretakerId || patient.caretakerId,
+                        }}
+                        user={user}
+                        appConfig={appConfig}
+                        onPlannedSessionsChanged={planned => setPatientData(prev => ({
+                            ...prev,
+                            appointmentPlan: { ...(prev.appointmentPlan as AppointmentPlan), plannedSessions: planned },
+                        }))}
+                    />
+                )}
+            </ConfirmationModal>
 
             {/* ── Missing Problem Modals ─────────────────────────────────── */}
             <ConfirmationModal

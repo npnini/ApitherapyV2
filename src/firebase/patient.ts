@@ -158,21 +158,32 @@ export const saveTreatment = async (
     return docRef.id;
 };
 
+/** A stored time (Firestore Timestamp, Date, millis or ISO string) in millis; 0 if absent. */
+const toMillis = (value: any): number => {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+};
+
 /**
- * Fetches the most recent treatment for a patient.
+ * Fetches the most recent treatment for a patient: the latest createdTimestamp, then the
+ * highest treatmentNumber. Not ordered by document id: ids ("<patient>_<n>", older ones
+ * "<patient>_<millis>") sort as text, so "_10" came before "_9" (Appointments plan Step 11).
+ * Reads the patient's treatments and picks on the client, so no composite index is needed.
  */
 export const getLatestTreatment = async (patientId: string): Promise<TreatmentSession | null> => {
-    const colRef = collection(db, 'treatments');
-    const q = query(
-        colRef,
-        where('patientId', '==', patientId),
-        orderBy('__name__', 'desc'),
-        limit(1)
-    );
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    const d = snapshot.docs[0];
-    return { ...d.data(), id: d.id } as unknown as TreatmentSession;
+    const snapshot = await getDocs(query(collection(db, 'treatments'), where('patientId', '==', patientId)));
+    let latest: TreatmentSession | null = null;
+    for (const d of snapshot.docs) {
+        const t = { ...d.data(), id: d.id } as unknown as TreatmentSession;
+        if (!latest
+            || toMillis(t.createdTimestamp) > toMillis(latest.createdTimestamp)
+            || (toMillis(t.createdTimestamp) === toMillis(latest.createdTimestamp) && (t.treatmentNumber ?? 0) > (latest.treatmentNumber ?? 0))) {
+            latest = t;
+        }
+    }
+    return latest;
 };
 
 /**

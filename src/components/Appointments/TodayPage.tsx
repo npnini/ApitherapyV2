@@ -123,8 +123,27 @@ const TodayPage: React.FC<TodayPageProps> = ({
     const stateOf = (a: Appointment): CardState =>
         a.status === 'booked' ? (now >= addMinutes(a.start, -leadMinutes) ? 'due' : 'upcoming') : a.status;
 
+    // A cancelled meeting stays on the page only until it is replaced: once the same patient has
+    // a booking (or a walk-in) made after the cancellation, on any day from today on, it is hidden
+    // (user decision, 2026-09-30). Loaded only while today has a cancelled meeting.
+    const hasCancelled = appointments.some(a => a.status === 'cancelled');
+    const [fromToday, setFromToday] = useState<Appointment[]>([]);
+    useEffect(() => {
+        if (!hasCancelled) { setFromToday([]); return; }
+        const today = new Date();
+        return appointmentService.watchUpcomingByCaretaker(caretaker.uid, new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+            list => setFromToday(list),
+            err => console.error('Loading upcoming appointments failed:', err));
+    }, [caretaker.uid, hasCancelled]);
+    const isReplaced = (a: Appointment) => !!a.cancelledAt && fromToday.some(b =>
+        b.patientId === a.patientId && b.status !== 'cancelled' && !!b.createdAt && b.createdAt > a.cancelledAt!);
+
     // ── Hour rows: today's working hours, stretched to include every appointment ──
-    const sorted = useMemo(() => [...appointments].sort((a, b) => +a.start - +b.start), [appointments]);
+    const sorted = useMemo(
+        () => appointments.filter(a => !(a.status === 'cancelled' && isReplaced(a))).sort((a, b) => +a.start - +b.start),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [appointments, fromToday],
+    );
     const workDay = prefs.workingWeek[now.getDay() as WeekdayIndex];
     const bounds: number[] = workDay?.on ? [toMinutes(workDay.start), toMinutes(workDay.end)] : [];
     for (const a of sorted) {
@@ -318,9 +337,9 @@ const TodayPage: React.FC<TodayPageProps> = ({
             {error && <p className={styles.errorText} role="alert"><span aria-hidden="true">⚠ </span>{error}</p>}
 
             <section className={todayStyles.agendaCard}>
-                {hours.length === 0 ? (
-                    <p className={todayStyles.empty}><T>No appointments today.</T></p>
-                ) : (
+                {/* Also on a working day with nothing booked: the hour rows still show, for "+ Book". */}
+                {sorted.length === 0 && <p className={todayStyles.empty}><T>No appointments today.</T></p>}
+                {hours.length > 0 && (
                     <ol className={todayStyles.agenda}>
                         {hours.map(h => {
                             const inHour = sorted.filter(a => a.start.getHours() === h);

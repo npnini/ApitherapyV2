@@ -3,10 +3,13 @@ import { AppUser } from '../types/user';
 import { JoinedPatientData } from '../types/patient';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, Trash2, AlertTriangle, X } from 'lucide-react';
+import { PlusCircle, User as UserIcon, Edit, FileText, ChevronRight, ChevronLeft, Search, Mail, Phone, X } from 'lucide-react';
 import styles from './PatientsDashboard.module.css';
 import Tooltip from './common/Tooltip';
 import { T, useT, useTranslationContext } from '../components/T';
+import { useNow } from '../hooks/useNow';
+import { useNextAppointments } from '../hooks/useNextAppointments';
+import { formatDate, formatWeekday, toHHmm } from '../utils/appointments/time';
 
 interface PatientsDashboardProps {
   user: AppUser;
@@ -15,14 +18,20 @@ interface PatientsDashboardProps {
   onUpdatePatient: (patient: JoinedPatientData) => void;
   onAddPatient: () => void;
   onShowTreatments: (patient: JoinedPatientData) => void;
-  onDeletePatient: (patientId: string) => void;
   isSaving: boolean;
+  /** The caretaker whose appointments are shown (the viewed one under "View As"). */
+  caretakerId: string;
+  /** Treatments recorded per patient id ("Progress" = done / planned). */
+  treatmentCounts: Record<string, number>;
+  /** Opens the Today page (click on a next meeting that is today). */
+  onOpenToday: () => void;
 }
 
-const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, onDeletePatient, isSaving }) => {
+const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, isSaving, caretakerId, treatmentCounts, onOpenToday }) => {
   const { language } = useTranslationContext();
+  const now = useNow(60_000);
+  const nextAppointments = useNextAppointments(caretakerId, now);
   const [searchTerm, setSearchTerm] = useState('');
-  const [patientToDelete, setPatientToDelete] = useState<JoinedPatientData | null>(null);
   const [allProblems, setAllProblems] = useState<any[]>([]);
 
   useEffect(() => {
@@ -49,8 +58,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
 
   const tSearchPlaceholder = useT('Search patients...');
   const tEditPatient = useT('Edit Patient Details');
-  const tDeletePatient = useT('Delete Patient');
   const tViewHistory = useT('View Treatment History');
+  const tOpenToday = useT("Open today's appointments");
 
   const getFullName = (patient: JoinedPatientData) => patient.fullName;
 
@@ -60,16 +69,36 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     (p.email && p.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleDeleteClick = (patient: JoinedPatientData) => setPatientToDelete(patient);
-  const confirmDelete = () => {
-    if (patientToDelete) {
-      onDeletePatient(patientToDelete.id!);
-      setPatientToDelete(null);
-    }
-  };
-  const cancelDelete = () => setPatientToDelete(null);
-
   const isRtl = language === 'he';
+
+  // "Next meeting" (spec §10): weekday, dd/mm/yyyy and time. A meeting today (still booked, so
+  // not attended yet) opens the Today page, where its actions are; other days are plain text.
+  const renderNextMeeting = (patient: JoinedPatientData) => {
+    const next = patient.id ? nextAppointments.get(patient.id) : undefined;
+    if (!next) return <span className={styles.noValue}>—</span>;
+    const content = (
+      <>
+        <span>{formatWeekday(next.start, language, 'short')} {formatDate(next.start)}</span>
+        <span className={styles.nextMeetingTime}>{toHHmm(next.start)}</span>
+      </>
+    );
+    if (next.start.toDateString() !== now.toDateString()) {
+      return <span className={styles.nextMeetingText}>{content}</span>;
+    }
+    return (
+      <button type="button" className={styles.nextMeetingButton} onClick={onOpenToday} title={tOpenToday}>
+        {content}
+      </button>
+    );
+  };
+
+  // "Sessions done" (spec §10): treatments recorded / planned sessions; "—" where unknown or no plan.
+  const renderProgress = (patient: JoinedPatientData) => {
+    const done = patient.id !== undefined ? treatmentCounts[patient.id] : undefined;
+    const planned = patient.appointmentPlan?.plannedSessions;
+    if (done === undefined) return <span className={styles.noValue}>—</span>;
+    return <bdi dir="ltr">{done} / {typeof planned === 'number' ? planned : '—'}</bdi>;
+  };
 
   return (
     <div className={styles.dashboardContainer}>
@@ -107,6 +136,10 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Contact</T></div>
           <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Problems</T></div>
           <div className={styles.headerCell}><T>Last Treatment</T></div>
+          <div className={styles.appointmentCells}>
+            <div className={`${styles.headerCell} ${styles.headerCellCol15}`}><T>Next meeting</T></div>
+            <div className={styles.headerCell}><T>Sessions done</T></div>
+          </div>
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
         </div>
         <div className={styles.tableBody}>
@@ -144,16 +177,17 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
                     : <T>N/A</T>}
                 </div>
+                <div className={styles.appointmentCells}>
+                  <div className={styles.nextMeeting}>
+                    {renderNextMeeting(patient)}
+                  </div>
+                  <div className={styles.progress}>
+                    {renderProgress(patient)}
+                  </div>
+                </div>
                 <div className={styles.actionsContainer}>
                   <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={tEditPatient}><Edit size={14} /></button>
                   <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={tViewHistory}><FileText size={14} /></button>
-                  <button
-                    onClick={() => handleDeleteClick(patient)}
-                    className={`${styles.actionButton} ${styles.deleteButton}`}
-                    disabled={!!patient.medicalRecord?.lastTreatment}
-                    title={tDeletePatient}>
-                    <Trash2 size={14} />
-                  </button>
                   <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
                     <T>Start New Treatment</T>{' '}
                     {isRtl ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
@@ -171,21 +205,6 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
         </div>
       </div>
 
-      {patientToDelete && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <AlertTriangle className={styles.modalIcon} size={48} />
-            <h3 className={styles.modalTitle}><T>Are you sure?</T></h3>
-            <p className={styles.modalDescription}>
-              <T>This action is irreversible. Patient</T>: {getFullName(patientToDelete)}
-            </p>
-            <div className={styles.modalActions}>
-              <button onClick={cancelDelete} className={styles.modalCancelButton}><T>Cancel</T></button>
-              <button onClick={confirmDelete} className={styles.modalConfirmButton}><T>Delete</T></button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

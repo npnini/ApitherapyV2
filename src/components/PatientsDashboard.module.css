@@ -191,6 +191,85 @@
     flex: 1 1 0%;
 }
 
+.headerCellCol15 {
+    flex: 1.5 1 0%;
+}
+
+/* "Next meeting" and "Sessions done" (spec §10): two columns on wide screens (the wrapper
+   takes no box of its own), one stacked cell on narrow screens (media query below). */
+.appointmentCells {
+    display: contents;
+}
+
+.nextMeeting,
+.progress {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    min-width: 0;
+}
+
+.nextMeeting {
+    flex: 1.5 1 0%;
+}
+
+.progress {
+    flex: 1 1 0%;
+}
+
+.nextMeetingButton {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    color: var(--color-primary);
+    text-align: start;
+    cursor: pointer;
+}
+
+.nextMeetingButton:hover {
+    text-decoration: underline;
+}
+
+.nextMeetingButton:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.nextMeetingText {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.nextMeetingTime {
+    font-weight: var(--font-weight-semibold);
+}
+
+.noValue {
+    color: var(--color-text-tertiary);
+}
+
+@media (max-width: 1024px) {
+    .appointmentCells {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        flex: 1.5 1 0%;
+        min-width: 0;
+    }
+
+    .appointmentCells > .headerCell,
+    .appointmentCells > .nextMeeting,
+    .appointmentCells > .progress {
+        flex: none;
+    }
+}
+
 .patientAvatar {
     width: 32px;
     height: 32px;
@@ -290,11 +369,6 @@
     color: var(--color-primary);
 }
 
-.deleteButton[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 .startButton {
     display: flex;
     align-items: center;
@@ -336,80 +410,6 @@
     margin-top: var(--spacing-xs);
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
-}
-
-.modalOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modalContent {
-    background: var(--color-background-card);
-    padding: var(--spacing-2xl);
-    border-radius: var(--radius-lg);
-    text-align: center;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: var(--shadow-modal);
-}
-
-.modalIcon {
-    color: var(--color-error);
-    margin-bottom: var(--spacing-md);
-}
-
-.modalTitle {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: var(--spacing-xs);
-    color: var(--color-text-primary);
-}
-
-.modalDescription {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    margin-bottom: var(--spacing-xl);
-}
-
-.modalActions {
-    display: flex;
-    justify-content: center;
-    gap: var(--spacing-md);
-}
-
-.modalCancelButton,
-.modalConfirmButton {
-    padding: 0.625rem 1.25rem;
-    border-radius: var(--radius-md);
-    border: 1px solid transparent;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    transition: background-color 0.2s, color 0.2s, opacity 0.2s;
-}
-
-.modalCancelButton {
-    background-color: var(--color-background-card);
-    border-color: var(--color-border);
-    color: var(--color-text-primary);
-}
-
-.modalCancelButton:hover {
-    background-color: var(--color-background-input-hover);
-}
-
-.modalConfirmButton {
-    background-color: var(--color-error);
-    color: var(--color-white);
-}
-
-.modalConfirmButton:hover {
-    opacity: 0.9;
 }
 
 .truncate {

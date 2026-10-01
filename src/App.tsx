@@ -4,7 +4,7 @@ import { logger } from './utils/logger';
 import { TranslationProvider, useTranslationContext, T, useT } from './components/T';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, deleteDoc, DocumentSnapshot, DocumentData, orderBy, limit, increment } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, DocumentSnapshot, DocumentData, orderBy, limit, increment } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
 import Sidebar from './components/Sidebar';
@@ -39,7 +39,7 @@ import PatientIntake from './components/PatientIntake/PatientIntake';
 import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandaloneView';
 import Modal from './components/common/Modal';
 import ConfirmationModal from './components/ConfirmationModal';
-import { hasTreatmentToday } from './services/appointmentService';
+import { countPatientTreatments, hasTreatmentToday } from './services/appointmentService';
 import './globals.css';
 
 type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_today' | 'appointments_calendar';
@@ -52,6 +52,8 @@ const AppInner: React.FC = () => {
     const tTreatmentEffectiveness = useT('Treatment Effectiveness');
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [patients, setPatients] = useState<JoinedPatientData[]>([]);
+    // Treatments recorded per patient id (patient list "Progress"); kept apart from the patient data it is saved from.
+    const [treatmentCounts, setTreatmentCounts] = useState<Record<string, number>>({});
     const [selectedPatient, setSelectedPatient] = useState<Partial<JoinedPatientData> | null>(null);
     const [activeProtocol, setActiveProtocol] = useState<Protocol | null>(null);
     const [activeTreatmentSession, setActiveTreatmentSession] = useState<Partial<TreatmentSession> | null>(null);
@@ -194,8 +196,19 @@ const AppInner: React.FC = () => {
                 } as JoinedPatientData;
             }, [appConfig]);
 
-            const resolvedPatients = await Promise.all(patientsDataPromises);
+            // Patient list "Progress" (spec §10): treatments done per patient, loaded alongside.
+            const countsPromise = Promise.all(patientQuerySnapshot.docs.map(async patientDoc => {
+                try {
+                    return [patientDoc.id, await countPatientTreatments(patientDoc.id)] as const;
+                } catch (err) {
+                    logger.error("Treatment count failed:", err);
+                    return [patientDoc.id, null] as const;
+                }
+            }));
+
+            const [resolvedPatients, counts] = await Promise.all([Promise.all(patientsDataPromises), countsPromise]);
             setPatients(resolvedPatients);
+            setTreatmentCounts(Object.fromEntries(counts.filter(([, n]) => n !== null)) as Record<string, number>);
         } catch (error) {
             logger.error("Error fetching patient data:", error);
         } finally {
@@ -489,19 +502,6 @@ const AppInner: React.FC = () => {
         }
     };
 
-    const handleDeletePatient = async (patientId: string) => {
-        if (!appUser) return;
-        setSaveStatus('saving');
-        try {
-            await deleteDoc(doc(db, "patients", patientId));
-            await fetchInitialData(appUser);
-        } catch (error) {
-            logger.error("Error deleting patient:", error);
-        } finally {
-            setSaveStatus('idle');
-        }
-    };
-
     // Leaves the intake / treatment state and shows `view` (the patient list by default).
     const leaveIntake = (view: View) => {
         setSelectedPatient(null);
@@ -637,7 +637,7 @@ const AppInner: React.FC = () => {
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {
                         isDashboardView ?
-                            <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} onDeletePatient={handleDeletePatient} isSaving={saveStatus === 'saving'} />
+                            <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} isSaving={saveStatus === 'saving'} caretakerId={viewAsCaretakerId || appUser.uid} treatmentCounts={treatmentCounts} onOpenToday={handleTodayClick} />
                             : currentView === 'user_details' && effectiveUser ?
                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile}>
                                     <UserDetails user={effectiveUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />

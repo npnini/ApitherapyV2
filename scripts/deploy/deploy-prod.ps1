@@ -82,7 +82,7 @@ $functionsBuildOk = Invoke-Step -Name "Build Cloud Functions" `
 
 # Phase A: Database Configurations & Security Rules
 Invoke-Step -Name "Deploy Firestore & Storage configurations" `
-    -Action { firebase deploy --only firestore, storage --project prod } `
+    -Action { firebase deploy --only firestore,storage --project prod } `
     -RecommendedAction "Re-run: firebase deploy --only firestore,storage --project prod"
 
 # Phase A.5: CORS

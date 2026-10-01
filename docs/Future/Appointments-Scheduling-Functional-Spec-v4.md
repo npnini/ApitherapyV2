@@ -120,6 +120,7 @@ A single-day view of the caretaker's **app appointments**.
 - **Start Treatment** opens the treatment flow for that patient. When the treatment is saved, the appointment becomes "Attended".
 - **Call** and **WhatsApp** use the patient's mobile number. They are hidden if there is no number.
 - The patient's name on every appointment opens the patient (their Appointments tab), so past appointments are never "dead". The name is never struck through on this page; the status badge shows Missed or Cancelled. (Changed 2026-09-30: this replaces a separate "Open patient" button.)
+- **A cancelled appointment disappears from this page once it is replaced,** that is, once the patient has a new appointment (booked from today on, or a walk-in) made after the cancellation. Until then it stays, with **Book replacement**. It is still listed in the patient's Appointments tab. (Added 2026-09-30.)
 - **Free time:** every hour from now on that still has room for a meeting of the default length shows **Book HH:mm** (the first free quarter hour). It opens the booking editor at that time, so a patient who calls can be booked from this page as from the Calendar. (Added 2026-09-30.)
 
 ---
@@ -223,7 +224,7 @@ These are shown **at the top of the patient's Appointments tab** (see §9).
 - A new column, **Next meeting**, shows the date and time (for example "Wed 16:30"), or "—" if none is booked.
 - A new column, **Progress**, shows sessions done out of planned (for example "6/10").
 - On narrow screens, both are shown together in one cell.
-- Clicking the next-meeting cell opens the Calendar page on that week.
+- When the next meeting is **today** (booked, not attended yet), clicking it opens the **Today** page, where its actions are. A meeting on another day is plain text. (Changed 2026-09-30: it previously opened the Calendar on that week, which only offered rescheduling.)
 
 ---
 

@@ -117,7 +117,10 @@ service cloud.firestore {
     match /patients/{patientId} {
       allow read: if isAuthenticated() && (resource == null || resource.data.get('caretakerId', null) == request.auth.uid || canImpersonate());
       allow create: if (isCaretaker() || isAdmin()) && request.resource.data.caretakerId == request.auth.uid;
-      allow update, delete: if (isCaretaker() || isAdmin()) && resource.data.caretakerId == request.auth.uid;
+      allow update: if (isCaretaker() || isAdmin()) && resource.data.caretakerId == request.auth.uid;
+      // Patients are never deleted (decided 2026-09-29): their medical data, documents, signatures
+      // and appointments would be left unreachable. A rare removal is done by an admin in the console.
+      allow delete: if false;
     }
 
     // 2. Medical Data (Singleton per patient)

@@ -6,6 +6,7 @@
 //     clients may only create 'booked' appointments, immutable owner/patient/source/invite.
 //   - users/{uid}.appointmentPrefs and patients/{id}.appointmentPlan (Steps 2 and 3)
 //     stay writable by their owner only, and role/canImpersonate stay protected.
+//   - patients/{id}: never deleted, by anyone (Step 15).
 //
 // Run via: npm run test:rules (wraps this in `firebase emulators:exec`).
 
@@ -358,5 +359,38 @@ test('firestore.rules: Step 2 and Step 3 regression (appointmentPrefs, appointme
     await assertFails(setDoc(doc(dbAs('impersonator-uid'), 'patients/patientA'), {
       appointmentPlan: { plannedSessions: 1 },
     }, { merge: true }));
+  });
+});
+
+// Step 15 (decided 2026-09-29): patients are never deleted, by anyone.
+test('firestore.rules: patients are never deleted', async (t) => {
+  await seed();
+  // A patient owned by an admin: "owner" alone must not allow a delete either.
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'patients/patientAdmin'), { caretakerId: 'impersonator-uid', fullName: 'Admin Patient' });
+  });
+
+  await t.test('15a. the owning caretaker cannot delete their patient', async () => {
+    await assertFails(deleteDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
+  });
+
+  await t.test('15b. an admin cannot delete their own patient', async () => {
+    await assertFails(deleteDoc(doc(dbAs('impersonator-uid'), 'patients/patientAdmin')));
+  });
+
+  await t.test("15c. an impersonating admin cannot delete another caretaker's patient", async () => {
+    await assertFails(deleteDoc(doc(dbAs('impersonator-uid'), 'patients/patientA')));
+  });
+
+  await t.test("15d. a caretaker cannot delete another caretaker's patient", async () => {
+    await assertFails(deleteDoc(doc(dbAs('caretakerB-uid'), 'patients/patientA')));
+  });
+
+  await t.test('15e. an unauthenticated user cannot delete a patient', async () => {
+    await assertFails(deleteDoc(doc(testEnv.unauthenticatedContext().firestore(), 'patients/patientA')));
+  });
+
+  await t.test('15f. the owner can still update the patient (e.g. Extend course)', async () => {
+    await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA'), { 'appointmentPlan.plannedSessions': 12 }));
   });
 });
