@@ -7,9 +7,11 @@ Caretakers cannot learn from, search or discover the configuration knowledge (pr
 
 **Scope of this plan:** Phase A (read-only entity pages, browse, plain search) and Phase B (AI meaning-based search over Firestore text **and PDFs**, links only), built on **one branch and released together** (user decision, 2026-10-02). Phase C (AI-written answer with sources) is "nice to have", decided later on real usage and cost data (§2, Step 10).
 
-**Spike results (02/10/2026, see the directions document §9):**
-- Vertex AI is enabled in staging (`apitherapyv2`). `gemini-embedding-001` works on the **me-west1** regional endpoint. `gemini-2.5-flash` returns 404 on me-west1 but works on the **global** endpoint (newer Flash names 3.1–3.8 returned 404 on me-west1; global not yet tried with their exact IDs).
-- Gemini transcribes real Hebrew point PDFs well (text, codes, tables, two-column pages). Lines that mix Hebrew with Latin/Chinese characters sometimes come out in visual instead of reading order.
+**Spike and setup results (02/10/2026; details in §1.3 and the Step 1 row of §3):**
+- Vertex AI is enabled in **both** projects (staging `apitherapyv2`, production `apitherapy-c94a6`). `gemini-embedding-001` works on the **me-west1** regional endpoint. Gemini models are **not** offered on me-west1 but work on the **global** endpoint; the newest working one is **`gemini-3.8-flash`**.
+- `gemini-3.8-flash` transcribes real Hebrew point PDFs accurately (text, codes, tables, two-column pages, mixed Hebrew/Latin lines in reading order) and also reads text inside illustrations. (2.5 Flash put mixed lines in visual order and misread a word.)
+
+**Review status:** the directions documents were sent to colleagues on 02/10/2026; responses are expected the week of 05/10/2026 and the user does not expect changes. If comments do change something, update **both** directions documents (English and Hebrew) and this plan before continuing.
 
 ---
 
@@ -21,6 +23,13 @@ Caretakers cannot learn from, search or discover the configuration knowledge (pr
 4. **Testing policy** (same as the appointments feature): no unit tests; **Firestore rules for every new collection get automated rules tests** in `tests/security-rules/firestore.rules.test.js` (`npm run test:rules`, emulators stopped); everything else by hand on the emulators (`npm run dev:all`) and staging, plus the Phase B quality test set (Step 9).
 5. File and line references are from 2026-10-02; verify before editing.
 6. **At the end of a step:** update §3 (status, date, notes, anything left over).
+7. **Working with this user** (from user memory and the appointments feature):
+   - One step at a time; show results and wait for the user's acknowledgement before the next step. Explain which existing components a step touches (e.g. `App.tsx`, `Sidebar.tsx`, `ApplicationSettings.tsx`) before editing them (`airules.md`: ask before touching other components).
+   - Dates in the UI are always **dd/mm/yyyy**, in every language (use `src/utils/appointments/time.ts` `formatDate`).
+   - UI strings: English source text that is specific enough for the automatic Hebrew translation; reuse existing strings where the meaning is the same.
+   - Caretakers are non-technical: keep their screens simple.
+   - The user may merge or switch branches mid-session: check `git status` before further edits.
+   - Emulator data: before stopping `npm run dev:all`, the user may run `npm run save-emulator-data`; never run it yourself. A recovery copy lives in `emulator-data-manual/` (an emulator-data loss happened on 30/09/2026 when a save's copy step failed).
 
 ---
 
@@ -59,7 +68,7 @@ All four: **no client access** (rules `allow read, write: if false`), like `miss
 - Firestore fields: one chunk per field per language (long `longText` split at paragraph breaks into ~1,500-character chunks); a short **title line** (type + code + name) is prefixed to every chunk so passages are self-describing.
 - PDFs: per page, split at paragraphs into ~1,500-character chunks, title line prefixed.
 - `searchKnowledge`: embed the question → Firestore `findNearest` (COSINE, top 40) on `kb_chunks.embedding` → group by entity (best distance wins; Hebrew and English chunks of one entity merge) → top 15 entities, each with its best passage, source, language and page → client renders.
-- **Vector index** in `config/firestore/firestore.indexes.json` (vector field `embedding`, 768, flat). **Emulator:** verify in Step 1 that the Firestore emulator supports `findNearest`; if it does not, `searchKnowledge` falls back in dev only to an in-memory cosine scan over all chunks (a few thousand × 768 numbers: fine), same results.
+- **Vector index** in `config/firestore/firestore.indexes.json` (vector field `embedding`, 768, flat). **Emulator:** verify at the start of Step 4 that the Firestore emulator supports `findNearest`; if it does not, `searchKnowledge` falls back in dev only to an in-memory cosine scan over all chunks (a few thousand × 768 numbers: fine), same results.
 
 ### 1.5 Access, cost and safety
 - `searchKnowledge`: `onCall({ enforceAppCheck: true })` like the other callables (`functions/src/index.ts`, e.g. `sendDocumentEmail`), signed-in users only; **rate limit** 20 searches per minute per user (`kb_search_usage`); question length ≤ 500 characters; the question text is **not stored** (no patient data risk), only counts in `kb_status`.
@@ -71,7 +80,7 @@ All four: **no client access** (rules `allow read, write: if false`), like `miss
 - **Service:** `src/services/knowledgeService.ts`: load all active config entities once per session (cached; `cfg_*` are readable by any signed-in user, `config/firestore/firestore.rules` ~58–81), build the relation maps (point → protocols, protocol → problems, group → points), plain word search, `searchKnowledge` callable wrapper with fallback to plain search on error.
 - **UI:** `src/components/Knowledge/`: `KnowledgePage` (search box, browse tabs, results), `EntityView` (one component, a section per type: `ProblemView`, `ProtocolView`, `PointView`, `PointGroupView`, `MeasureView`), `ResultList`, `DocumentLinks` (reuses `StorageLink` from `src/components/shared/StorageComponents.tsx`).
 - **Navigation:** no router; add `'knowledge'` to the `View` union (`src/App.tsx` ~45) plus a small in-page history stack (entity → entity → back). Sidebar: a **"Knowledge"** item for every user (`src/components/Sidebar.tsx`), placed under Patients.
-- **Texts in the UI language** with fallback to the other language and a small language tag; long text rendered line by line as in `TreatmentExecution.tsx` (~812).
+- **Texts in the UI language** with fallback to the other language and a small language tag (`getFieldContent`, `src/utils/storageUtils.ts`); long text rendered line by line as in `TreatmentExecution.tsx` (~812).
 - **i18n:** English source text in `<T>` / `useT()`; Hebrew is translated automatically; specific, reusable strings (user memory).
 
 ---
@@ -88,10 +97,10 @@ Each step: goal · work · files · verification. All steps on **one branch** (t
      - production: the functions' runtime service account and the account in `service-account-prod.json` (used by `--project=prod` scripts).
      Check each by a test call during Step 4; a `403 PERMISSION_DENIED` means the role is missing.
      **Checked 02/10/2026 (IAM screens, both projects alike):** the functions' runtime account (`…-compute@developer.gserviceaccount.com`) has **Editor**, which includes Vertex AI → nothing to add. `firebase-adminsdk-fbsvc@…` has no Vertex role → **staging: add Vertex AI User** (needed by dev and staging scripts); **production: not added on purpose** — the production index is built with the admin "Re-index all" button (Step 6), which runs in the deployed functions under the compute account, so the production key file never needs Vertex access.
-  3. Gemini model: try the exact Model IDs of the newest Flash versions on the **global** endpoint; record the newest that answers.
-  4. Firestore emulator: check whether `findNearest` works locally (a 10-line throwaway test in the scratchpad); record the result (decides the dev fallback in §1.4).
+  3. Gemini model: try the exact Model IDs of the newest Flash versions on the **global** endpoint; record the newest that answers. **Done: `gemini-3.8-flash`.**
+  4. Firestore emulator: check whether `findNearest` works locally (a 10-line throwaway test in the scratchpad); record the result (decides the dev fallback in §1.4). **Moved to the start of Step 4.**
   5. User: write the **quality test set**: ~20 real caretaker questions (Hebrew and English, including ones whose answer is only in a PDF) with the entities you expect. Stored as `docs/Future/knowledge-search-test-questions.md`.
-  6. Optional: a Google Cloud **budget alert** (e.g. USD 10/month) on both projects.
+  6. Optional: a Google Cloud **budget alert** (e.g. USD 10/month) on both projects. **Done: one alert budget covers both projects.**
 - **Verify:** results recorded in §3.
 
 #### Step 2: Read-only entity pages
@@ -139,8 +148,8 @@ Each step: goal · work · files · verification. All steps on **one branch** (t
 | Step | Status | Branch | Staging verified | Production | Notes |
 |---|---|---|---|---|---|
 | 0 Spike (region, Hebrew PDFs) | **Done 2026-10-02** | — | — | — | See Context and directions §9. |
-| 1 Setup checks | **Done 02/10/2026; 2 items carried forward:** (b) the ~20 test questions — the user collects them from caretakers (expected the week of 05/10/2026), needed by Step 9 (a first look after Step 7); (c) emulator `findNearest` check — done by the agent at the start of Step 4. Done: production Vertex AI API enabled and the embedding test passed (user, 02/10/2026). Budget: one all-services alert budget now covers **both** projects (same payer; ₪10/month; raise to ~₪30–50 if Vertex use triggers it). Spend-cap enforcement (Preview) deliberately off. **Earlier status:** in progress. Done 02/10/2026: item 3 — newest Gemini on the global endpoint is `gemini-3.8-flash` (staging, Cloud Shell), and it transcribes the spike PDFs clearly better than 2.5 Flash (see §1.3). Item 2 checked: runtime accounts OK (Editor); staging adminsdk account: Vertex AI User **added and verified 02/10/2026** (Cloud Shell, `get-iam-policy`; first real call with it in Step 4); production adminsdk deliberately left without. Open: item 1 production API + embedding test; item 4 emulator `findNearest`; item 5 test questions (user); item 6 budget alert (optional). | | | | |
-| 2 Entity pages | Not started | | | | |
+| 1 Setup checks | **Done 02/10/2026; 2 items carried forward:** (b) the ~20 test questions — the user collects them from caretakers (expected the week of 05/10/2026), needed by Step 9 (a first look after Step 7); (c) emulator `findNearest` check — done by the agent at the start of Step 4. Done: production Vertex AI API enabled and the embedding test passed (user, 02/10/2026). Budget: one all-services alert budget now covers **both** projects (same payer; ₪10/month; raise to ~₪30–50 if Vertex use triggers it). Spend-cap enforcement (Preview) deliberately off. Item 3: newest Gemini on the global endpoint is `gemini-3.8-flash` (staging, Cloud Shell), and it transcribes the spike PDFs clearly better than 2.5 Flash (see §1.3). Item 2: runtime accounts OK (Editor); staging adminsdk account: Vertex AI User **added and verified 02/10/2026** (Cloud Shell, `get-iam-policy`; first real call with it in Step 4); production adminsdk deliberately left without. | — | — | — | |
+| 2 Entity pages | **Not started. Next session starts here (as of 02/10/2026):** branch `feature/knowledge-search` exists (created by the user; first commit `266dda8` = the directions documents, this plan and the points/protocols translation script). (1) Follow §0. (2) Read the directions §4 (Phase A pages) and §6 (multilingual), and §1.1 and §1.6 here. (3) Look at the existing code first: the `cfg_*` types (`src/types/apipuncture.ts`, `protocol.ts`, `problem.ts`, `pointGroup.ts`, `measure.ts`; note problems carry both `protocolId` and `protocolIds`, protocols carry `points` as an array of point ids, points carry `Point_Grouping` = a point-group document id), how the admin screens read them (`PointsAdmin.tsx`, `ProtocolAdmin.tsx`, `ProblemAdmin/`, `PointGroupAdmin/`, `MeasureAdmin/`), how multilingual values are shown (`getFieldContent` in `src/utils/storageUtils.ts`, used by `TreatmentExecution.tsx`; there may be other document-URL helpers in the same file), `StorageLink` (`src/components/shared/StorageComponents.tsx`), the `View` union and view switching in `App.tsx`, `Sidebar.tsx`, and the App Settings groups (`src/config/appConfigSchema.ts`, `ApplicationSettings.tsx`). (4) Propose the Step 2 file list and UI briefly to the user before coding (it touches `App.tsx`, `Sidebar.tsx`, the settings schema). (5) Build, `tsc --noEmit` (14 old errors exist in ProblemAdmin, ProtocolAdmin, ProtocolSelection, TreatmentFeedback; add no new ones), then the user verifies on the emulators. Untracked and intentionally not committed: `docs/Future/Knowledge-Search-Directions*.pdf` (the user's exports). | feature/knowledge-search | | | |
 | 3 Browse and plain search | Not started | | | | |
 | 4 Index core | Not started | | | | |
 | 5 PDFs | Not started | | | | |
