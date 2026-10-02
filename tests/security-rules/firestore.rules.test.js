@@ -7,6 +7,8 @@
 //   - users/{uid}.appointmentPrefs and patients/{id}.appointmentPlan (Steps 2 and 3)
 //     stay writable by their owner only, and role/canImpersonate stay protected.
 //   - patients/{id}: never deleted, by anyone (Step 15).
+// And the knowledge search (docs/Future/Knowledge-Search-Implementation-Plan.md §1.2):
+//   - kb_chunks, kb_doc_text, kb_status, kb_search_usage: no client access at all.
 //
 // Run via: npm run test:rules (wraps this in `firebase emulators:exec`).
 
@@ -262,6 +264,38 @@ test('firestore.rules: missed_check_runs is functions-only (Step 6)', async (t) 
 
   await t.test('an unauthenticated user cannot read one', async () => {
     await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'missed_check_runs/2026-10-04')));
+  });
+});
+
+test('firestore.rules: knowledge search kb_* collections are functions-only', async (t) => {
+  await seed();
+  const KB_DOCS = ['kb_chunks/point_p1_he_field-label_0', 'kb_doc_text/abc123', 'kb_status/main', 'kb_search_usage/caretakerA-uid'];
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/superadmin-uid'), { role: 'superadmin' });
+    for (const p of KB_DOCS) await setDoc(doc(db, p), { text: 'x' });
+  });
+
+  for (const p of KB_DOCS) {
+    const name = p.split('/')[0];
+    await t.test(`a caretaker cannot read or write ${name}`, async () => {
+      await assertFails(getDoc(doc(dbAs('caretakerA-uid'), p)));
+      await assertFails(setDoc(doc(dbAs('caretakerA-uid'), p), { text: 'y' }));
+    });
+
+    await t.test(`a superadmin cannot read, write or delete ${name}`, async () => {
+      await assertFails(getDoc(doc(dbAs('superadmin-uid'), p)));
+      await assertFails(setDoc(doc(dbAs('superadmin-uid'), p), { text: 'y' }));
+      await assertFails(deleteDoc(doc(dbAs('superadmin-uid'), p)));
+    });
+
+    await t.test(`an unauthenticated user cannot read ${name}`, async () => {
+      await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), p)));
+    });
+  }
+
+  await t.test('a caretaker cannot list kb_chunks', async () => {
+    await assertFails(getDocs(collection(dbAs('caretakerA-uid'), 'kb_chunks')));
   });
 });
 

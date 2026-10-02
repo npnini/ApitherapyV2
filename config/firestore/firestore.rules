@@ -210,6 +210,23 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // 8. Knowledge search index (docs/Future/Knowledge-Search-Implementation-Plan.md §1.2):
+    // passages with embeddings, the PDF transcription cache, index status and the search rate
+    // limit. Written and read only by Cloud Functions (Admin SDK); clients get results only
+    // through the searchKnowledge callable.
+    match /kb_chunks/{chunkId} {
+      allow read, write: if false;
+    }
+    match /kb_doc_text/{pathHash} {
+      allow read, write: if false;
+    }
+    match /kb_status/{statusId} {
+      allow read, write: if false;
+    }
+    match /kb_search_usage/{uid} {
+      allow read, write: if false;
+    }
+
     match /app_audit_log/{docId} {
       allow read: if isSuperAdmin();
       allow create: if isAuthenticated();
