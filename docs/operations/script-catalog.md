@@ -43,6 +43,7 @@
 | `updatePointDescriptions.cjs` | `scripts/migrations/updatePointDescriptions.cjs` |
 | `cleanup_measure_D59QXsAzO3jZ3iBcZF31.cjs` | `scripts/migrations/cleanup_measure_D59QXsAzO3jZ3iBcZF31.cjs` |
 | `clean-translations-pii.js` | `scripts/migrations/clean-translations-pii.js` |
+| `translate-points-he-to-en.js` | `scripts/migrations/translate-points-he-to-en.js` (added 2026-10-01): fills the English of `cfg_acupuncture_points` `description` / `longText` with a Google Translate translation of the Hebrew, where Hebrew exists and English is empty (`--overwrite` to replace English). `--project=dev\|staging\|prod`; a review run writes a report to `scratch/`, then `--apply --from=<report>` writes exactly the reviewed translations (rows changed since the report are skipped). `--export` writes the same file with empty `enNew` and calls no API, for translating elsewhere and applying the same way. `--collection=protocols` (added 2026-10-01) does `cfg_protocols` instead: `description` and `rationale` always (existing English replaced), `name` only where its English is empty. |
 | `migrate_ext_envs.cjs` | `scripts/migrations/migrate_ext_envs.cjs` (moved here from the gitignored `scratch/` folder during Phase 4; a real, purposeful dev→stage extension-config rewriter, not throwaway scratch material) |
 
 ## Diagnostics (read-only inspection)
