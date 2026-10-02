@@ -26,6 +26,7 @@ import ActivityLog from './components/ActivityLog';
 import TreatmentEffectiveness from './components/DataAnalysis/TreatmentEffectiveness';
 import CalendarPage from './components/Appointments/CalendarPage';
 import TodayPage from './components/Appointments/TodayPage';
+import KnowledgePage from './components/Knowledge/KnowledgePage';
 import { useTodayAppointments } from './hooks/useTodayAppointments';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
@@ -42,7 +43,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import { countPatientTreatments, hasTreatmentToday } from './services/appointmentService';
 import './globals.css';
 
-type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_today' | 'appointments_calendar';
+type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_today' | 'appointments_calendar' | 'knowledge';
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -77,6 +78,8 @@ const AppInner: React.FC = () => {
     const [intakeReturnView, setIntakeReturnView] = useState<View | null>(null);
     // Today's appointments of the viewed caretaker, live: the Today page and its sidebar badge.
     const todayAppointments = useTodayAppointments(appUser ? (viewAsCaretakerId || appUser.uid) : undefined);
+    // Sidebar "Knowledge" always opens the Knowledge list: a new key resets the page's in-page history.
+    const [knowledgeKey, setKnowledgeKey] = useState(0);
     // Landing rule (spec §5) is applied once per login, after the first patient load.
     const landedRef = useRef(false);
 
@@ -305,6 +308,9 @@ const AppInner: React.FC = () => {
     const handleDataAnalysisClick = () => { setCurrentView('data_analysis'); };
     const handleActivityLogClick = () => { setCurrentView('activity_log'); };
     const handleTodayClick = () => { setCurrentView('appointments_today'); };
+    const handleKnowledgeClick = () => { setKnowledgeKey(k => k + 1); setCurrentView('knowledge'); };
+    // App Settings → Knowledge → enabled; on unless an admin turned it off.
+    const knowledgeEnabled = appConfig?.knowledgeSettings?.enabled !== false;
 
     // Today → "Open patient": the intake on its Appointments tab.
     const handleOpenPatientFromToday = (patient: JoinedPatientData) => {
@@ -623,6 +629,8 @@ const AppInner: React.FC = () => {
                     onPatientsClick={handleBackToDashboard}
                     onTodayClick={handleTodayClick}
                     onCalendarClick={handleCalendarClick}
+                    onKnowledgeClick={handleKnowledgeClick}
+                    knowledgeEnabled={knowledgeEnabled}
                     todayAppointments={todayAppointments.appointments}
                     onDataAnalysisClick={handleDataAnalysisClick}
                     onAppSettingsClick={handleAppSettingsClick}
@@ -697,6 +705,8 @@ const AppInner: React.FC = () => {
                                                                             onBackToPatient={calendarReturnPatient ? handleBackToPatient : undefined}
                                                                             backToPatientName={calendarReturnPatient?.fullName}
                                                                         />
+                                                                : currentView === 'knowledge' && knowledgeEnabled ?
+                                                                    <KnowledgePage key={knowledgeKey} appConfig={appConfig} />
                                                                 : null
                     }
 

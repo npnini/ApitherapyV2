@@ -59,6 +59,12 @@
     cursor: pointer;
 }
 
+/* Single items (My Profile, Patients, Knowledge): icon and text together at the start side,
+   like the group headers (space-between above is for a header's chevron). */
+.navButton {
+    justify-content: flex-start;
+}
+
 .navButton:hover,
 .configDropdownButton:hover {
     background-color: var(--color-sidebar-accent-hover);

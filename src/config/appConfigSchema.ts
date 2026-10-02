@@ -292,6 +292,24 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
       },
     },
   },
+  knowledgeSettings: {
+    label: 'Knowledge',
+    description: 'The Knowledge page, where caretakers read and search problems, protocols, points, point groups and measures.',
+    children: {
+      enabled: {
+        label: 'Knowledge Page Enabled',
+        description: 'If off, the Knowledge item is hidden from the menu for all users.',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      searchesPerMinute: {
+        label: 'Smart Searches per Minute (per User)',
+        description: 'Maximum number of AI searches one user can run in a minute.',
+        type: 'number',
+        defaultValue: 20,
+      },
+    },
+  },
   auditLogSettings: {
     label: 'Audit Log',
     description: 'Settings for the application activity log.',

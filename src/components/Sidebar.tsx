@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppUser } from '../types/user';
-import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers, CalendarDays, CalendarClock } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, ChevronDown, Users, Settings, ListChecks, FileText, MapPin, Ruler, Bug, ShieldAlert, Eye, BarChart2, ClipboardList, Sun, ClipboardCheck, Layers, CalendarDays, CalendarClock, BookOpen } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { Appointment } from '../types/appointments';
 import { useNow } from '../hooks/useNow';
@@ -15,6 +15,9 @@ interface SidebarProps {
     onPatientsClick: () => void;
     onTodayClick: () => void;
     onCalendarClick: () => void;
+    onKnowledgeClick: () => void;
+    /** App Settings → Knowledge → enabled. */
+    knowledgeEnabled: boolean;
     /** Today's appointments (live), for the Today badge: meetings still to come today. */
     todayAppointments: Appointment[];
     onDataAnalysisClick: () => void;
@@ -40,6 +43,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     onPatientsClick,
     onTodayClick,
     onCalendarClick,
+    onKnowledgeClick,
+    knowledgeEnabled,
     todayAppointments,
     onDataAnalysisClick,
     onPointsAdminClick,
@@ -149,6 +154,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <Users size={18} className={styles.iconPrimary} />
                     <span><T>Patients</T></span>
                 </button>
+
+                {knowledgeEnabled && (
+                    <button onClick={onKnowledgeClick} className={styles.navButton}>
+                        <BookOpen size={18} className={styles.iconPrimary} />
+                        <span><T>Knowledge</T></span>
+                    </button>
+                )}
 
                 <div>
                     <button onClick={() => setDataAnalysisOpen(!dataAnalysisOpen)} className={styles.configDropdownButton}>
