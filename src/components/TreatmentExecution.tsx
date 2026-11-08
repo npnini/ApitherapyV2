@@ -15,7 +15,7 @@ import VitalsInputGroup from './VitalsInputGroup';
 import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, ChevronRight, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 import { useStorageUrl } from "../hooks/useStorageUrl";
-import { resolveStoragePath, getFieldContent, getGDriveFallbackUrls } from '../utils/storageUtils';
+import { resolveStoragePath, getFieldContent, getPointLabel, getGDriveFallbackUrls } from '../utils/storageUtils';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
     points: StingPoint[];
@@ -510,7 +510,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 >
                                     <div className={styles.pointInfo}>
                                         <span className={styles.pointCode} style={{ color }}>{p.code}</span>
-                                        <span className={styles.pointLabel} style={{ color }}>{getFieldContent(p.label, language)}</span>
+                                        <span className={styles.pointLabel} style={{ color }}>{getPointLabel(p.label)}</span>
                                     </div>
                                     <div className={styles.pointActions}>
                                         {hasPointDoc(p) && (
@@ -616,7 +616,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                             className={`${styles.stungItem} ${styles.stungItemPrev}`}
                                             onClick={() => setActivePointId(p.id)}
                                         >
-                                            <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
+                                            <span><span className={styles.pointCode}>{p.code}</span> – {getPointLabel(p.label)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -637,7 +637,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                         className={`${styles.stungItem} ${activePointId === p.id ? styles.stungItemActive : ''}`}
                                         onClick={() => setActivePointId(p.id)}
                                     >
-                                        <span><span className={styles.pointCode}>{p.code}</span> – {getFieldContent(p.label, language)}</span>
+                                        <span><span className={styles.pointCode}>{p.code}</span> – {getPointLabel(p.label)}</span>
                                         <div className={styles.stungItemControls}>
                                             <div className={styles.counterGroup} onClick={e => e.stopPropagation()}>
                                                 {isPaired ? (
@@ -782,7 +782,7 @@ const PointDetailModal: React.FC<PointDetailModalProps> = ({ point, type, langua
             <div className={styles.detailModalContent} onClick={(e) => e.stopPropagation()}>
                 <div className={styles.detailModalHeader}>
                     <h3 className={styles.detailModalTitle}>
-                        {point.code} - {getFieldContent(point.label, language)}
+                        {point.code} - {getPointLabel(point.label)}
                     </h3>
                     <button className={styles.detailModalClose} onClick={onClose}>
                         <X size={20} />

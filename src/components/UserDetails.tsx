@@ -10,15 +10,17 @@ import { getEffectiveAppointmentPrefs } from '../utils/appointments/prefs';
 import { isWorkingDayInvalid } from '../utils/appointments/time';
 import { DEFAULT_TIMEZONE, PATIENT_NAME_LEVEL_OPTIONS } from '../config/appointmentDefaults';
 import WorkingWeekEditor from './Appointments/WorkingWeekEditor';
+import { PATIENT_LIST_FIELDS, getAvailablePatientListFields, getVisiblePatientListFields } from '../config/patientListFields';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_MEETING_MINUTES = 5;
 const MAX_MEETING_MINUTES = 480;
 
-type ProfileTab = 'details' | 'appointments';
+type ProfileTab = 'details' | 'appointments' | 'patientList';
 const PROFILE_TABS: { key: ProfileTab; label: string }[] = [
     { key: 'details', label: 'Personal Details' },
     { key: 'appointments', label: 'Appointments' },
+    { key: 'patientList', label: 'Patient list details' },
 ];
 
 interface UserDetailsProps {
@@ -38,6 +40,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
     // Appointments section (not shown during onboarding). Null until the app config has loaded.
     const [apptPrefs, setApptPrefs] = useState<AppointmentPrefs | null>(null);
     const [activeTab, setActiveTab] = useState<ProfileTab>('details');
+    // Patient list section: the fields the admin offers (app config) and the ones this user shows.
+    const [offeredListFields, setOfferedListFields] = useState<string[]>(() => getAvailablePatientListFields(undefined));
+    const [shownListFields, setShownListFields] = useState<string[]>(() => getVisiblePatientListFields(undefined, user.patientListFields));
     const countryToLang: { [key: string]: string } = {
         'israel': 'he',
     };
@@ -51,6 +56,8 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                     const data = configDoc.data();
                     configData = data;
                     setSupportedLanguages(data.languageSettings?.supportedLanguages || ['en']);
+                    setOfferedListFields(getAvailablePatientListFields(data.patientListSettings?.availableFields));
+                    setShownListFields(getVisiblePatientListFields(data.patientListSettings?.availableFields, user.patientListFields));
                 }
             } catch (err) {
                 console.error('Error fetching supported languages:', err);
@@ -166,7 +173,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
         }
         setError(null);
         onSave(showAppointments
-            ? { ...formData, appointmentPrefs: { ...apptPrefs, inviteEmail: trimmedInviteEmail } }
+            ? { ...formData, appointmentPrefs: { ...apptPrefs, inviteEmail: trimmedInviteEmail }, patientListFields: shownListFields }
             : formData);
     };
 
@@ -370,6 +377,26 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                         <p className={styles.tip}>
                             <span aria-hidden="true">ℹ </span>{tipText}
                         </p>
+                    </div>
+                )}
+                {showTabs && (
+                    <div {...tabPanelProps('patientList')} className={styles.section}>
+                        <div className={styles.field}>
+                            <span className={styles.label} id="patientListFieldsLabel"><T>Show these details in the patient list</T></span>
+                            <div role="group" aria-labelledby="patientListFieldsLabel">
+                                {PATIENT_LIST_FIELDS.filter(f => offeredListFields.includes(f.value)).map(f => (
+                                    <label key={f.value} className={styles.checkboxRow}>
+                                        <input
+                                            type="checkbox"
+                                            checked={shownListFields.includes(f.value)}
+                                            onChange={e => setShownListFields(prev =>
+                                                PATIENT_LIST_FIELDS.map(o => o.value).filter(v => (v === f.value ? e.target.checked : prev.includes(v))))}
+                                        />
+                                        <span><T>{f.label}</T></span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
                 <div className={styles.actions}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PatientProblem } from '../types/patient';
@@ -10,7 +10,18 @@ import styles from './ProtocolSelection.module.css';
 import { T, useT, useTranslationContext } from './T';
 import ConfirmationModal from './ConfirmationModal';
 
+/** What the caretaker entered on this page; kept by the parent so it survives going to the next page and back. */
+export interface ProtocolSelectionDraft {
+    selectedProtocolIds: string[];
+    measureValues: Record<string, number | string>;
+    selectedAdhocProblemId: string;
+}
+
 interface ProtocolSelectionProps {
+    /** Restored when the caretaker returns to this page (Back). Absent for a fresh round. */
+    initialDraft?: ProtocolSelectionDraft | null;
+    /** Called when this page closes, with the current entries, so the parent can keep them. */
+    onDraftSave?: (draft: ProtocolSelectionDraft) => void;
     problems: PatientProblem[];
     treatmentNumber: number;
     isSensitivityTestCompleted?: boolean;
@@ -34,6 +45,8 @@ interface ProblemRowData {
 }
 
 const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
+    initialDraft,
+    onDraftSave,
     problems,
     onProtocolSelect,
     onTargetedPainSelect,
@@ -64,12 +77,20 @@ const ProtocolSelection: React.FC<ProtocolSelectionProps> = ({
     const [adhocProblemId, setAdhocProblemId] = useState<string>('');
 
     // Selection State
-    const [selectedProtocolIds, setSelectedProtocolIds] = useState<Set<string>>(new Set());
+    const [selectedProtocolIds, setSelectedProtocolIds] = useState<Set<string>>(() => new Set(initialDraft?.selectedProtocolIds ?? []));
     const [selectedProblemIds, setSelectedProblemIds] = useState<Set<string>>(new Set());
     const [isSensitivityRequired, setIsSensitivityRequired] = useState(false);
-    const [measureValues, setMeasureValues] = useState<Record<string, number | string>>({});
-    const [selectedAdhocProblemId, setSelectedAdhocProblemId] = useState<string>('');
+    const [measureValues, setMeasureValues] = useState<Record<string, number | string>>(() => initialDraft?.measureValues ?? {});
+    const [selectedAdhocProblemId, setSelectedAdhocProblemId] = useState<string>(() => initialDraft?.selectedAdhocProblemId ?? '');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Hand the entries to the parent when this page closes (Start Treatment, Back or Exit),
+    // so coming back to the page shows them again.
+    const draftRef = useRef<ProtocolSelectionDraft>({ selectedProtocolIds: [], measureValues: {}, selectedAdhocProblemId: '' });
+    draftRef.current = { selectedProtocolIds: Array.from(selectedProtocolIds), measureValues, selectedAdhocProblemId };
+    const onDraftSaveRef = useRef(onDraftSave);
+    onDraftSaveRef.current = onDraftSave;
+    useEffect(() => () => onDraftSaveRef.current?.(draftRef.current), []);
 
     // Modal state for requesting missing problem
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);

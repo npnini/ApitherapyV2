@@ -17,7 +17,7 @@ import { Questionnaire } from '../../types/questionnaire';
 import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import DocumentsTab from './DocumentsTab';
-import ProtocolSelection from '../ProtocolSelection';
+import ProtocolSelection, { ProtocolSelectionDraft } from '../ProtocolSelection';
 import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import TreatmentFeedback from './TreatmentFeedback';
@@ -157,6 +157,19 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [sessionIsSensitivityTest, setSessionIsSensitivityTest] = useState(false);
     const [freeProtocolUsed, setFreeProtocolUsed] = useState(false);
     const [selectedAdhocProtocol, setSelectedAdhocProtocol] = useState<Protocol | null>(null);
+    // Entries of the protocol-selection page, kept so Back from the next page shows them again.
+    // Cleared when a new round starts ("Another Protocol").
+    const [protocolSelectionDraft, setProtocolSelectionDraft] = useState<ProtocolSelectionDraft | null>(null);
+    // Index of the current protocol round, fixed when the round's first "Start Treatment" saves its
+    // pre-treatment reading. Going Back and starting again in the same round reuses it, so the reading
+    // is overwritten instead of duplicated. Cleared when the next round begins.
+    const currentRoundRef = useRef<{ treatmentId: string | undefined; index: number } | null>(null);
+    const getRoundIndex = (treatmentId: string | undefined): number => {
+        const current = currentRoundRef.current;
+        if (current && current.treatmentId === treatmentId) return current.index;
+        currentRoundRef.current = { treatmentId, index: usedProtocolIds.length };
+        return usedProtocolIds.length;
+    };
     const [showTreatmentSavedModal, setShowTreatmentSavedModal] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -758,7 +771,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             // 1. Save measure readings — unique ID per protocol round so rounds don't overwrite each other
             let preTreatmentMeasureReadingId = sessionOpeningData?.preTreatmentMeasureReadingId;
             if (measureReadings.length > 0 && sessionOpeningData) {
-                const roundIndex = usedProtocolIds.length; // 0 for first protocol, 1 for second, etc.
+                const roundIndex = getRoundIndex(sessionOpeningData.generatedTreatmentId); // 0 for first round, 1 for second, etc.
                 const readingDocId = `${sessionOpeningData.generatedTreatmentId}_pre_r${roundIndex}`;
                 preTreatmentMeasureReadingId = await addMeasuredValueReading(patient.id as string, {
                     patientId: patient.id as string,
@@ -872,7 +885,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
         // Save measures if present
         if (measureReadings.length > 0 && sessionOpeningData) {
             try {
-                const roundIndex = usedProtocolIds.length;
+                const roundIndex = getRoundIndex(sessionOpeningData.generatedTreatmentId);
                 const readingDocId = `${sessionOpeningData.generatedTreatmentId}_pre_r${roundIndex}`;
                 await addMeasuredValueReading(patient.id as string, {
                     treatmentId: sessionOpeningData.generatedTreatmentId,
@@ -911,6 +924,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             // Clear the targeted pain protocol — next round may select a different one
             setSelectedAdhocProtocol(null);
             setFreeProtocolPoints([]); // Clear custom/free points for next protocol
+            setProtocolSelectionDraft(null); // The next round starts with an empty selection
+            currentRoundRef.current = null; // ...and gets its own pre-treatment reading
 
             // Return to problem selection for next protocol
             setViewState('problemSelection');
@@ -1424,6 +1439,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             )}
                             {viewState === 'problemSelection' && (
                                 <ProtocolSelection
+                                    initialDraft={protocolSelectionDraft}
+                                    onDraftSave={setProtocolSelectionDraft}
                                     problems={activeProblems}
                                     treatmentNumber={sessionOpeningData?.treatmentNumber || 1}
                                     isSensitivityTestCompleted={usedProtocolIds.length > 0}

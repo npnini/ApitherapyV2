@@ -18,6 +18,7 @@ import ProtocolSelection from './components/ProtocolSelection';
 import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
+import { getVisiblePatientListFields } from './config/patientListFields';
 import ApplicationSettings from './components/ApplicationSettings';
 import BodyModelTuner from './components/BodyModelTuner';
 import PointSideAnalysis from './components/PointSideAnalysis';
@@ -645,7 +646,7 @@ const AppInner: React.FC = () => {
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {
                         isDashboardView ?
-                            <PatientsDashboard user={appUser} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} isSaving={saveStatus === 'saving'} caretakerId={viewAsCaretakerId || appUser.uid} treatmentCounts={treatmentCounts} onOpenToday={handleTodayClick} />
+                            <PatientsDashboard user={appUser} visibleFields={getVisiblePatientListFields(appConfig?.patientListSettings?.availableFields, effectiveUser?.patientListFields)} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} isSaving={saveStatus === 'saving'} caretakerId={viewAsCaretakerId || appUser.uid} treatmentCounts={treatmentCounts} onOpenToday={handleTodayClick} />
                             : currentView === 'user_details' && effectiveUser ?
                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile}>
                                     <UserDetails user={effectiveUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />

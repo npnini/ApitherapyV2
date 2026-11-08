@@ -2,6 +2,7 @@
 // src/config/appConfigSchema.ts
 
 import { DEFAULT_APPOINTMENT_SETTINGS as APPT, PATIENT_NAME_LEVEL_OPTIONS } from './appointmentDefaults';
+import { PATIENT_LIST_FIELDS, ALL_PATIENT_LIST_FIELD_KEYS } from './patientListFields';
 
 /**
  * Represents the type definition for a single, atomic setting.
@@ -10,9 +11,9 @@ import { DEFAULT_APPOINTMENT_SETTINGS as APPT, PATIENT_NAME_LEVEL_OPTIONS } from
 export type ConfigSetting = {
   label: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'password' | 'workingWeek' | 'time' | 'select';
+  type: 'string' | 'number' | 'boolean' | 'protocol' | 'languages' | 'question' | 'defaultLanguage' | 'file' | 'mlString' | 'password' | 'workingWeek' | 'time' | 'select' | 'checklist';
   defaultValue: string | number | boolean | string[] | Record<string, any>;
-  /** Choices for type 'select'. Labels are English source text (translated in the UI). */
+  /** Choices for types 'select' and 'checklist' (checklist value = array of the checked values). Labels are English source text (translated in the UI). */
   options?: { value: string; label: string }[];
   /** Type 'time': warn when the value is between 22:00 and 07:00 (patient-facing sending times). */
   warnQuietHours?: boolean;
@@ -209,6 +210,19 @@ export const appConfigSchema: { [key: string]: ConfigGroup } = {
         description: 'Select the question that represents the severity of the patient\'s condition.',
         type: 'question',
         defaultValue: '',
+      },
+    },
+  },
+  patientListSettings: {
+    label: 'Patient List',
+    description: 'The patient list on the Patients page.',
+    children: {
+      availableFields: {
+        label: 'Patient List Fields',
+        description: 'Fields caretakers can choose to show in the patient list (My Profile → Patient list details). Unchecked fields are never shown.',
+        type: 'checklist',
+        defaultValue: ALL_PATIENT_LIST_FIELD_KEYS,
+        options: PATIENT_LIST_FIELDS,
       },
     },
   },

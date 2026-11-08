@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { StingPoint } from '../types/apipuncture';
+import { getPointLabel } from '../utils/storageUtils';
 import { Pause, Play, MapPin } from 'lucide-react';
-import { T, useTranslationContext } from './T';
+import { T } from './T';
 import BodyScene from './BodyScene';
 import styles from './PointsModelViewer.module.css';
-
-const getMLValue = (value: any, lang: string): string => {
-    if (typeof value === 'string') return value;
-    if (value && typeof value === 'object') {
-        return value[lang] || value.en || '';
-    }
-    return '';
-};
 
 interface PointsModelViewerProps {
     points: StingPoint[];
@@ -21,7 +14,6 @@ interface PointsModelViewerProps {
 }
 
 const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points, totalStings }) => {
-    const { language } = useTranslationContext();
     const [isRolling, setIsRolling] = useState(true);
     const [highlightedPointIds, setHighlightedPointIds] = useState<Set<string>>(new Set());
 
@@ -58,7 +50,7 @@ const PointsModelViewer: React.FC<PointsModelViewerProps> = ({ points, totalStin
                                 onClick={() => togglePoint(point.id)}
                             >
                                 <span className={styles.pointCode}>{point.code}</span>
-                                <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>
+                                <span className={styles.pointLabel}>{getPointLabel(point.label)}</span>
                             </li>
                         ))}
                     </ul>

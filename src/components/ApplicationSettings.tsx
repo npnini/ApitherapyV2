@@ -879,6 +879,29 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                     </select>
                 );
                 break;
+            case 'checklist': {
+                const checkedValues: string[] = Array.isArray(value) ? value : [];
+                control = (
+                    <div className={styles.checklist} role="group" aria-label={getTranslation(setting.label)}>
+                        {(setting.options || []).map(option => (
+                            <label key={option.value} className={styles.checklistRow}>
+                                <input
+                                    type="checkbox"
+                                    checked={checkedValues.includes(option.value)}
+                                    onChange={e => handleSettingChange(
+                                        path,
+                                        (setting.options || [])
+                                            .map(o => o.value)
+                                            .filter(v => (v === option.value ? e.target.checked : checkedValues.includes(v)))
+                                    )}
+                                />
+                                <span><T>{option.label}</T></span>
+                            </label>
+                        ))}
+                    </div>
+                );
+                break;
+            }
             case 'time': {
                 const timeValue = typeof value === 'string' ? value : '';
                 control = (

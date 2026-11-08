@@ -80,3 +80,13 @@ export function getFieldContent(input: string | Record<string, string> | undefin
   if (typeof input === 'string') return input;
   return input[lang] || input.en || Object.values(input)[0];
 }
+
+/**
+ * Acupuncture point labels are never translated: always the English label,
+ * or the Hebrew one when a point has no English label (then any other value).
+ */
+export function getPointLabel(label: string | Record<string, string> | undefined): string {
+  if (!label) return '';
+  if (typeof label === 'string') return label;
+  return label.en || label.he || Object.values(label).find(Boolean) || '';
+}

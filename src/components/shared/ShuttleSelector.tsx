@@ -18,6 +18,8 @@ interface ShuttleSelectorProps {
   selectedTitle?: string;
   placeholder?: string;
   fillHeight?: boolean;
+  /** false = show item names as given (e.g. acupuncture point labels, which are never translated) */
+  translateNames?: boolean;
 }
 
 const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
@@ -27,6 +29,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
   availableTitle = 'Available',
   selectedTitle = 'Selected',
   fillHeight = false,
+  translateNames = true,
 }) => {
   const { language, registerString, getTranslation } = useTranslationContext();
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,7 +108,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
         <ul className={styles.list}>
           {filteredAvailableItems.map(item => (
             <li key={item.id} className={styles.listItem} onClick={() => handleSelect(item)}>
-              <T>{item.name}</T>
+              {translateNames ? <T>{item.name}</T> : item.name}
               <SelectArrow size={18} className={styles.arrowIcon} />
             </li>
           ))}
@@ -125,7 +128,7 @@ const ShuttleSelector: React.FC<ShuttleSelectorProps> = ({
           {selectedItems.map(item => (
             <li key={item.id} className={styles.listItem} onClick={() => handleDeselect(item)}>
               <DeselectArrow size={18} className={styles.arrowIcon} />
-              <T>{item.name}</T>
+              {translateNames ? <T>{item.name}</T> : item.name}
             </li>
           ))}
         </ul>

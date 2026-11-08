@@ -23,4 +23,6 @@ export interface AppUser {
   country?: string;
   /** Missing on users created before the appointments feature; read via getEffectiveAppointmentPrefs. */
   appointmentPrefs?: AppointmentPrefs;
+  /** Optional patient-list columns this caretaker shows (see config/patientListFields). Missing = all offered. */
+  patientListFields?: string[];
 }

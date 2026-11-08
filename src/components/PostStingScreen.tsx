@@ -6,6 +6,7 @@ import { VitalSigns } from '../types/treatmentSession';
 import { StingPoint } from '../types/apipuncture';
 import { Protocol } from '../types/protocol';
 import { StungPointCounts, formatPointCode } from '../utils/pointSide';
+import { getPointLabel } from '../utils/storageUtils';
 import VitalsInputGroup from './VitalsInputGroup';
 import { CheckCircle, ChevronLeft, ChevronRight, Loader, List, ClipboardList } from 'lucide-react';
 import styles from './PostStingScreen.module.css';
@@ -168,7 +169,7 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
                             {points.map(p => (
                                 <div key={p.id} className={styles.listItem}>
                                     <span className={styles.pointCode}>{formatPointCode(p.code, stungPoints[p.id])}</span>
-                                    <span className={styles.pointLabel}>{getMLValue(p.label, language)}</span>
+                                    <span className={styles.pointLabel}>{getPointLabel(p.label)}</span>
                                 </div>
                             ))}
                         </div>

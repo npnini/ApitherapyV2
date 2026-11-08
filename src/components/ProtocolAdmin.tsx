@@ -14,7 +14,7 @@ import { T, useT, useTranslationContext } from './T';
 import { logAction } from '../services/auditLogService';
 import Tooltip from './common/Tooltip';
 import { StorageLink } from './shared/StorageComponents';
-import { getFieldContent } from '../utils/storageUtils';
+import { getFieldContent, getPointLabel } from '../utils/storageUtils';
 
 // A type for the form state, where points are an array of strings (IDs)
 interface ProtocolFormState extends Omit<Protocol, 'points' | 'measureIds'> {
@@ -617,9 +617,9 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
             .filter(p => p.status === 'active' || (protocol.points || []).includes(p.id))
             .map(p => ({
                 id: String(p.id),
-                name: `${p.code} - ${typeof p.label === 'object' ? (p.label[currentLang] || p.label[appConfig.defaultLanguage] || Object.values(p.label)[0]) : p.label}`
+                name: `${p.code} - ${getPointLabel(p.label)}`
             }));
-    }, [allAcuPoints, protocol.points, currentLang, appConfig.defaultLanguage]);
+    }, [allAcuPoints, protocol.points]);
 
     const selectedPointsForShuttle = useMemo(() => {
         return (protocol.points || []).map(id => {
@@ -627,11 +627,11 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
             return {
                 id,
                 name: point
-                    ? `${point.code} - ${typeof point.label === 'object' ? (point.label[currentLang] || point.label[appConfig.defaultLanguage] || Object.values(point.label)[0]) : point.label}`
+                    ? `${point.code} - ${getPointLabel(point.label)}`
                     : id
             };
         });
-    }, [allAcuPoints, protocol.points, currentLang, appConfig.defaultLanguage]);
+    }, [allAcuPoints, protocol.points]);
 
     const availableMeasuresForShuttle = useMemo(() => {
         return allMeasures
@@ -839,6 +839,7 @@ const EditProtocolForm: React.FC<EditProtocolFormProps> = ({ protocol, allAcuPoi
                                         onSelectionChange={handleShuttleChange}
                                         availableTitle={getTranslation('Available points')}
                                         selectedTitle={getTranslation('Selected points')}
+                                        translateNames={false}
                                     />
                                 </div>
                             </div>

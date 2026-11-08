@@ -15,7 +15,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { StorageLink } from './shared/StorageComponents';
 import PointPlacementScene from './PointPlacementScene';
 import DocumentManagement from './shared/DocumentManagement';
-import { getFieldContent } from '../utils/storageUtils';
+import { getFieldContent, getPointLabel } from '../utils/storageUtils';
 
 const PointsAdmin: React.FC = () => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
@@ -248,7 +248,7 @@ const PointsAdmin: React.FC = () => {
 
             const dataToSave = {
                 code: pointToSave.code!.trim(),
-                label: pointToSave.label,
+                label: { en: getPointLabel(pointToSave.label).trim() }, // point labels are never translated
                 description: pointToSave.description,
                 longText: pointToSave.longText,
                 sensitivity: pointToSave.sensitivity || 'Medium',
@@ -499,7 +499,7 @@ const PointsAdmin: React.FC = () => {
                                 return (
                                     <tr key={point.id} className={styles.tableRow}>
                                         <td className={`${styles.cell} ${styles.codeCell}`}>{point.code}</td>
-                                        <td className={styles.cell}>{point.label[currentLang] || point.label['en'] || ''}</td>
+                                        <td className={styles.cell}>{getPointLabel(point.label)}</td>
                                         <td className={`${styles.cell} ${styles.descriptionCell}`} title={point.description[currentLang] || point.description['en'] || ''}>{point.description[currentLang] || point.description['en'] || ''}</td>
                                         <td className={styles.cell}>
                                             <span className={`${styles.statusBadge} ${point.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
@@ -623,9 +623,11 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSav
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name === 'label' || name === 'description' || name === 'longText') {
+            // Point labels are never translated: the label field always edits the English value.
+            const langKey = name === 'label' ? 'en' : activeLang;
             setFormData(prev => ({
                 ...prev,
-                [name]: { ...(prev[name] as Record<string, string> || {}), [activeLang]: value }
+                [name]: { ...(prev[name] as Record<string, string> || {}), [langKey]: value }
             }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -731,28 +733,16 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSav
                                 <div>
                                     <div className={styles.labelWrapper}>
                                         <label htmlFor="label" className={styles.label}><T>Label</T><span className={styles.requiredAsterisk}>*</span></label>
-                                        <div className={styles.indicatorContainer}>
-                                            <Globe size={14} className={styles.indicatorIcon} />
-                                            <span className={styles.translationCounter}>
-                                                {Object.values(formData.label || {}).filter(Boolean).length}/{SUPPORTED_LANGS.length}
-                                            </span>
-                                        </div>
                                     </div>
-                                    {activeLang !== appConfig.defaultLanguage && !((formData.label as Record<string, string>)?.[activeLang]) && (
-                                        <TranslationReference
-                                            label={`${getTranslation('Default Language')}: ${getTranslation(appConfig.defaultLanguage === 'he' ? 'Hebrew' : 'English')}`}
-                                            text={(formData.label as Record<string, string>)?.[appConfig.defaultLanguage]}
-                                        />
-                                    )}
                                     <input
                                         id="label"
                                         name="label"
                                         type="text"
-                                        value={(formData.label as Record<string, string>)?.[activeLang] || ''}
+                                        value={getPointLabel(formData.label)}
                                         onChange={handleChange}
                                         placeholder={getTranslation('e.g., Hundred Meetings')}
                                         className={styles.input}
-                                        required={activeLang === appConfig.defaultLanguage}
+                                        required
                                     />
                                 </div>
                             </div>

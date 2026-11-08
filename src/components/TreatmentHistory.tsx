@@ -5,6 +5,7 @@ import { collection, getDocs, doc, getDoc, where, query, orderBy } from 'firebas
 import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import { StungPointCounts, formatPointCode } from '../utils/pointSide';
+import { getPointLabel } from '../utils/storageUtils';
 import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { StorageImage } from './shared/StorageComponents';
@@ -461,7 +462,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 <th><T>Problem(s)</T></th>
                                 <th><T>Protocol(s)</T></th>
                                 <th><T>Pre treatment Vitals</T></th>
-                                <th><T>Stings</T></th>
+                                <th><T>Treated points</T></th>
+                                <th><T>Total points</T></th>
                                 <th><T>Post-Sting Vitals</T></th>
                                 <th><T>Post treatment Vitals</T></th>
                                 <th><T>Final Vitals</T></th>
@@ -488,6 +490,10 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                 const stingCodes = t.resolvedStungPoints.length > 0
                                     ? t.resolvedStungPoints.map(p => formatPointCode(p.code, t.stungPoints?.[p.id])).join(', ')
                                     : '-';
+
+                                // Sum of left + right + single over all stung points of this treatment
+                                const totalPoints = Object.values(t.stungPoints ?? {})
+                                    .reduce((sum, c) => sum + c.left + c.right + c.single, 0);
 
                                 return (
                                     <tr key={t.id} onClick={() => {
@@ -538,6 +544,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         </td>
                                         <td className={styles.vitalsCell}>{preVitalsStr}</td>
                                         <td className={styles.stingsCell} title={stingCodes !== '-' ? stingCodes : undefined}>{stingCodes}</td>
+                                        <td className={styles.measureCell}>{totalPoints > 0 ? totalPoints : '-'}</td>
                                         <td className={styles.vitalsCell}>{postStingVitalsStr}</td>
                                         <td className={styles.vitalsCell}>{postVitalsStr}</td>
                                         <td className={styles.notesCell} title={t.finalNotes || undefined}>{t.finalNotes || '-'}</td>
@@ -677,7 +684,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                                     <MapPin size={14} className={styles.pointIcon} />
                                                                     <span className={styles.pointTextWrapper}>
                                                                         <span className={styles.pointCode}>{point.code}</span>,{' '}
-                                                                        <span className={styles.pointLabel}>{getMLValue(point.label, language)}</span>,{' '}
+                                                                        <span className={styles.pointLabel}>{getPointLabel(point.label)}</span>,{' '}
                                                                         <span className={styles.pointCounters}>L={counts.left}, R={counts.right}, S={counts.single}</span>
                                                                     </span>
                                                                 </div>

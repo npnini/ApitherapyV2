@@ -25,9 +25,12 @@ interface PatientsDashboardProps {
   treatmentCounts: Record<string, number>;
   /** Opens the Today page (click on a next meeting that is today). */
   onOpenToday: () => void;
+  /** Optional details to show (keys from config/patientListFields); the patient initials and actions are always shown. */
+  visibleFields: string[];
 }
 
-const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, isSaving, caretakerId, treatmentCounts, onOpenToday }) => {
+const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, onAddPatient, onStartTreatment, onUpdatePatient, onShowTreatments, isSaving, caretakerId, treatmentCounts, onOpenToday, visibleFields }) => {
+  const show = (field: string) => visibleFields.includes(field);
   const { language } = useTranslationContext();
   const now = useNow(60_000);
   const nextAppointments = useNextAppointments(caretakerId, now);
@@ -52,7 +55,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
     return activeIds.map(id => {
       const prob = allProblems.find((ap: any) => ap.id === id);
       if (!prob) return id;
-      return typeof prob.name === 'string' ? prob.name : (prob.name[language] || prob.name.en || prob.name);
+      return typeof prob.name === 'string' ? prob.name : (prob.name[language] || prob.name.en || Object.values(prob.name)[0] || id);
     }).join(', ');
   };
 
@@ -133,13 +136,15 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
       <div className={styles.tableContainer}>
         <div className={styles.tableHeader}>
           <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Patient</T></div>
-          <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Contact</T></div>
-          <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Problems</T></div>
-          <div className={styles.headerCell}><T>Last Treatment</T></div>
-          <div className={styles.appointmentCells}>
-            <div className={`${styles.headerCell} ${styles.headerCellCol15}`}><T>Next meeting</T></div>
-            <div className={styles.headerCell}><T>Sessions done</T></div>
-          </div>
+          {show('contact') && <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Contact</T></div>}
+          {show('problems') && <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Problems</T></div>}
+          {show('lastTreatment') && <div className={styles.headerCell}><T>Last Treatment</T></div>}
+          {(show('nextMeeting') || show('sessionsDone')) && (
+            <div className={styles.appointmentCells}>
+              {show('nextMeeting') && <div className={`${styles.headerCell} ${styles.headerCellCol15}`}><T>Next meeting</T></div>}
+              {show('sessionsDone') && <div className={styles.headerCell}><T>Sessions done</T></div>}
+            </div>
+          )}
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
         </div>
         <div className={styles.tableBody}>
@@ -148,43 +153,59 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
               <div key={patient.id} className={styles.tableRow}>
                 <div className={styles.patientInfo}>
                   <div className={styles.patientAvatar}>{(getFullName(patient) || '').slice(0, 2).toUpperCase()}</div>
-                  <div>
-                    <p className={styles.patientName}>{getFullName(patient)}</p>
-                    <p className={styles.patientId}>
-                      <T>Identity</T>: {patient.identityNumber}
-                    </p>
+                  {(show('patientName') || show('identity')) && (
+                    <div>
+                      {show('patientName') && <p className={styles.patientName}>{getFullName(patient)}</p>}
+                      {show('identity') && (
+                        <p className={styles.patientId}>
+                          <T>Identity</T>: {patient.identityNumber}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {show('contact') && (
+                  <div className={styles.contactInfo}>
+                    <a href={`mailto:${patient.email}`} className={styles.contactLink}>
+                      <Mail size={12} className={styles.contactIcon} />
+                      {patient.email}
+                    </a>
+                    <a href={`tel:${patient.mobile}`} className={styles.contactLink}>
+                      <Phone size={12} className={styles.contactIcon} />
+                      {patient.mobile}
+                    </a>
                   </div>
-                </div>
-                <div className={styles.contactInfo}>
-                  <a href={`mailto:${patient.email}`} className={styles.contactLink}>
-                    <Mail size={12} className={styles.contactIcon} />
-                    {patient.email}
-                  </a>
-                  <a href={`tel:${patient.mobile}`} className={styles.contactLink}>
-                    <Phone size={12} className={styles.contactIcon} />
-                    {patient.mobile}
-                  </a>
-                </div>
-                <div className={styles.problemsInfo}>
-                  <Tooltip text={getActiveProblemsText(patient)} className={styles.problemsTooltip}>
-                    <span className={styles.truncate}>
-                      {getActiveProblemsText(patient)}
-                    </span>
-                  </Tooltip>
-                </div>
-                <div className={styles.lastTreatment}>
-                  {patient.medicalRecord?.lastTreatment
-                    ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
-                    : <T>N/A</T>}
-                </div>
-                <div className={styles.appointmentCells}>
-                  <div className={styles.nextMeeting}>
-                    {renderNextMeeting(patient)}
+                )}
+                {show('problems') && (
+                  <div className={styles.problemsInfo}>
+                    <Tooltip text={getActiveProblemsText(patient)} className={styles.problemsTooltip}>
+                      <span className={styles.truncate}>
+                        {getActiveProblemsText(patient)}
+                      </span>
+                    </Tooltip>
                   </div>
-                  <div className={styles.progress}>
-                    {renderProgress(patient)}
+                )}
+                {show('lastTreatment') && (
+                  <div className={styles.lastTreatment}>
+                    {patient.medicalRecord?.lastTreatment
+                      ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
+                      : <T>N/A</T>}
                   </div>
-                </div>
+                )}
+                {(show('nextMeeting') || show('sessionsDone')) && (
+                  <div className={styles.appointmentCells}>
+                    {show('nextMeeting') && (
+                      <div className={styles.nextMeeting}>
+                        {renderNextMeeting(patient)}
+                      </div>
+                    )}
+                    {show('sessionsDone') && (
+                      <div className={styles.progress}>
+                        {renderProgress(patient)}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className={styles.actionsContainer}>
                   <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={tEditPatient}><Edit size={14} /></button>
                   <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={tViewHistory}><FileText size={14} /></button>

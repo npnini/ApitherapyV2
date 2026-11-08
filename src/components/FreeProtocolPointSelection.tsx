@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { StingPoint } from '../types/apipuncture';
+import { getPointLabel } from '../utils/storageUtils';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import styles from './FreeProtocolPointSelection.module.css';
 import { T, useT, useTranslationContext } from './T';
@@ -51,9 +52,7 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
     const shuttleAvailableItems: ShuttleItem[] = useMemo(() => {
         return allPoints.map(p => {
             const code = p.code || '??';
-            const labelStr = typeof p.label === 'object'
-                ? (p.label[language] || p.label.en || '')
-                : (p.label || '');
+            const labelStr = getPointLabel(p.label);
 
             // Helper to extract values regardless of string or object format
             const extractValues = (field: any) => {
@@ -77,7 +76,7 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
                 searchContent
             };
         });
-    }, [allPoints, language]);
+    }, [allPoints]);
 
     const handleNext = () => {
         const selectedIds = new Set(selectedItems.map(item => item.id));
@@ -114,6 +113,7 @@ const FreeProtocolPointSelection: React.FC<FreeProtocolPointSelectionProps> = ({
                         availableTitle="Available Points"
                         selectedTitle="Selected Points"
                         fillHeight
+                        translateNames={false}
                     />
                 </div>
 
