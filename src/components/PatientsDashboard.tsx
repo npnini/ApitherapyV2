@@ -136,9 +136,9 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
       <div className={styles.tableContainer}>
         <div className={styles.tableHeader}>
           <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Patient</T></div>
-          {show('contact') && <div className={`${styles.headerCell} ${styles.headerCellCol2}`}><T>Contact</T></div>}
-          {show('problems') && <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Problems</T></div>}
-          {show('lastTreatment') && <div className={styles.headerCell}><T>Last Treatment</T></div>}
+          {show('contact') && <div className={`${styles.headerCell} ${styles.headerCellCol2} ${styles.colContact}`}><T>Contact</T></div>}
+          {show('problems') && <div className={`${styles.headerCell} ${styles.headerCellCol3} ${styles.colProblems}`}><T>Problems</T></div>}
+          {show('lastTreatment') && <div className={`${styles.headerCell} ${styles.colLastTreatment}`}><T>Last Treatment</T></div>}
           {(show('nextMeeting') || show('sessionsDone')) && (
             <div className={styles.appointmentCells}>
               {show('nextMeeting') && <div className={`${styles.headerCell} ${styles.headerCellCol15}`}><T>Next meeting</T></div>}
@@ -165,7 +165,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   )}
                 </div>
                 {show('contact') && (
-                  <div className={styles.contactInfo}>
+                  <div className={`${styles.contactInfo} ${styles.colContact}`}>
                     <a href={`mailto:${patient.email}`} className={styles.contactLink}>
                       <Mail size={12} className={styles.contactIcon} />
                       {patient.email}
@@ -177,7 +177,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   </div>
                 )}
                 {show('problems') && (
-                  <div className={styles.problemsInfo}>
+                  <div className={`${styles.problemsInfo} ${styles.colProblems}`}>
                     <Tooltip text={getActiveProblemsText(patient)} className={styles.problemsTooltip}>
                       <span className={styles.truncate}>
                         {getActiveProblemsText(patient)}
@@ -186,7 +186,7 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   </div>
                 )}
                 {show('lastTreatment') && (
-                  <div className={styles.lastTreatment}>
+                  <div className={`${styles.lastTreatment} ${styles.colLastTreatment}`}>
                     {patient.medicalRecord?.lastTreatment
                       ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
                       : <T>N/A</T>}

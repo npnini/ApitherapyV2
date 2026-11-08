@@ -957,3 +957,40 @@
 .clearRestartBtn:hover {
     background: var(--color-secondary-button-hover, #e2e8f0);
 }
+/* ── Side-by-side pane (SplitLayout container "splitpane"): follow the PANE width,
+      using the same layouts the viewport breakpoints above give narrower screens ── */
+@container splitpane (max-width: 1200px) {
+    .grid {
+        grid-template-columns: 1fr 1.5fr;
+    }
+
+    .pointsPanel {
+        display: none;
+    }
+}
+
+@container splitpane (max-width: 760px) {
+    .grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: min-content 1fr min-content;
+        overflow-y: auto;
+    }
+
+    .canvasPanel {
+        height: 40vh;
+        min-height: 300px;
+    }
+
+    .canvasSizer {
+        min-height: 300px;
+    }
+
+    .dataPanel {
+        overflow-y: visible;
+    }
+
+    .pointsPanel {
+        display: flex;
+        order: 3;
+    }
+}

@@ -175,3 +175,9 @@
     color: var(--color-text-secondary);
     cursor: default;
 }
+/* Side-by-side pane (SplitLayout container "splitpane"): follow the PANE width */
+@container splitpane (max-width: 760px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}

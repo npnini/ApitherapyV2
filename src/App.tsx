@@ -19,6 +19,8 @@ import TreatmentExecution from './components/TreatmentExecution';
 import TreatmentHistory from './components/TreatmentHistory';
 import UserDetails from './components/UserDetails';
 import { getVisiblePatientListFields } from './config/patientListFields';
+import SplitLayout from './components/shared/SplitLayout';
+import { useSplitAvailable } from './hooks/useSplitAvailable';
 import ApplicationSettings from './components/ApplicationSettings';
 import BodyModelTuner from './components/BodyModelTuner';
 import PointSideAnalysis from './components/PointSideAnalysis';
@@ -50,6 +52,10 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 const AppInner: React.FC = () => {
     const { language, setLanguage, direction } = useTranslationContext();
     const tMyProfile = useT('My Profile');
+    const tTodayPaneLabel = useT("Today's appointments");
+    const tPatientsPaneLabel = useT('Patients');
+    // Today + patient list side by side needs a wider screen than the treatment split: the sidebar takes 280px.
+    const homeSplitAvailable = useSplitAvailable(1440);
     const tAppSettings = useT('Application Settings');
     const tTreatmentEffectiveness = useT('Treatment Effectiveness');
     const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -616,6 +622,27 @@ const AppInner: React.FC = () => {
         const isDashboardView = !todayUnderIntake && (currentView === 'dashboard' || dashboardModalViews.includes(currentView));
         const effectiveUser = impersonatedUser || appUser;
 
+        const patientsDashboardEl = (
+            <PatientsDashboard user={appUser} visibleFields={getVisiblePatientListFields(appConfig?.patientListSettings?.availableFields, effectiveUser?.patientListFields)} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} isSaving={saveStatus === 'saving'} caretakerId={viewAsCaretakerId || appUser.uid} treatmentCounts={treatmentCounts} onOpenToday={handleTodayClick} />
+        );
+
+        // Today's agenda; wide screens can also show the patient list next to it (My Profile → Screen layout).
+        // Wait for the viewed caretaker's profile under "View As" (their working hours).
+        const todayEl = (viewAsCaretakerId && !impersonatedUser)
+            ? <div><T>Loading...</T></div>
+            : <TodayPage
+                caretaker={effectiveUser}
+                actor={appUser}
+                appConfig={appConfig}
+                appointments={todayAppointments.appointments}
+                loadError={!!todayAppointments.error}
+                patients={patients}
+                readOnly={!!viewAsCaretakerId && viewAsCaretakerId !== appUser.uid}
+                onStartTreatment={p => handleStartTreatmentFlow(p)}
+                onOpenPatient={handleOpenPatientFromToday}
+            />;
+        const homeSplit = homeSplitAvailable && appUser.homeLayout === 'todayAndPatients';
+
         return (
             <div className="flex h-screen">
                 <Sidebar
@@ -646,7 +673,7 @@ const AppInner: React.FC = () => {
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
                     {
                         isDashboardView ?
-                            <PatientsDashboard user={appUser} visibleFields={getVisiblePatientListFields(appConfig?.patientListSettings?.availableFields, effectiveUser?.patientListFields)} patients={patients} onAddPatient={handleAddPatient} onUpdatePatient={handleUpdatePatient} onShowTreatments={handleShowTreatments} onStartTreatment={handleStartTreatmentFlow} isSaving={saveStatus === 'saving'} caretakerId={viewAsCaretakerId || appUser.uid} treatmentCounts={treatmentCounts} onOpenToday={handleTodayClick} />
+                            patientsDashboardEl
                             : currentView === 'user_details' && effectiveUser ?
                                 <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile}>
                                     <UserDetails user={effectiveUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
@@ -678,20 +705,18 @@ const AppInner: React.FC = () => {
                                                                     <TreatmentEffectiveness user={effectiveUser} onPatientClick={handlePatientClick} />
                                                                 </Modal>
                                                                 : (currentView === 'appointments_today' || todayUnderIntake) ?
-                                                                    // Wait for the viewed caretaker's profile under "View As" (their working hours).
-                                                                    (viewAsCaretakerId && !impersonatedUser)
-                                                                        ? <div><T>Loading...</T></div>
-                                                                        : <TodayPage
-                                                                            caretaker={effectiveUser}
-                                                                            actor={appUser}
-                                                                            appConfig={appConfig}
-                                                                            appointments={todayAppointments.appointments}
-                                                                            loadError={!!todayAppointments.error}
-                                                                            patients={patients}
-                                                                            readOnly={!!viewAsCaretakerId && viewAsCaretakerId !== appUser.uid}
-                                                                            onStartTreatment={p => handleStartTreatmentFlow(p)}
-                                                                            onOpenPatient={handleOpenPatientFromToday}
+                                                                    homeSplit
+                                                                        ? <SplitLayout
+                                                                            storageKey="homeSplitRatio"
+                                                                            defaultRatio={42}
+                                                                            minRatio={30}
+                                                                            maxRatio={60}
+                                                                            startLabel={tTodayPaneLabel}
+                                                                            endLabel={tPatientsPaneLabel}
+                                                                            start={<div className="p-1">{todayEl}</div>}
+                                                                            end={<div className="p-1">{patientsDashboardEl}</div>}
                                                                         />
+                                                                        : todayEl
                                                                 : currentView === 'appointments_calendar' ?
                                                                     // Wait for the viewed caretaker's profile under "View As" (their working hours).
                                                                     (viewAsCaretakerId && !impersonatedUser)

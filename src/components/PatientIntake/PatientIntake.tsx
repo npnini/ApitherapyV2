@@ -18,6 +18,9 @@ import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import DocumentsTab from './DocumentsTab';
 import ProtocolSelection, { ProtocolSelectionDraft } from '../ProtocolSelection';
+import { History, X } from 'lucide-react';
+import SplitLayout from '../shared/SplitLayout';
+import { useSplitAvailable } from '../../hooks/useSplitAvailable';
 import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import TreatmentFeedback from './TreatmentFeedback';
@@ -163,6 +166,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // Index of the current protocol round, fixed when the round's first "Start Treatment" saves its
     // pre-treatment reading. Going Back and starting again in the same round reuses it, so the reading
     // is overwritten instead of duplicated. Cleared when the next round begins.
+    // Treatment history next to the treatment: side by side on wide screens (if the user chose it),
+    // otherwise in a slide-over panel opened from the stepper bar.
+    const splitAvailable = useSplitAvailable();
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
     const currentRoundRef = useRef<{ treatmentId: string | undefined; index: number } | null>(null);
     const getRoundIndex = (treatmentId: string | undefined): number => {
         const current = currentRoundRef.current;
@@ -205,6 +213,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tNextStep = useT('Next Step');
     const tDone = useT('Done');
     const tTreatmentFeedback = useT('Treatment Feedback');
+    const tTreatmentPaneLabel = useT('Treatment');
+    const tHistoryPaneLabel = useT('Treatment history');
+    const tClose = useT('Close');
     const tSaveError = useT('Failed to save signed document. Please check your connection and try again.');
     const tTreatmentSaved = useT('Treatment Saved');
     const tOK = useT('OK');
@@ -858,6 +869,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
                 // Clear transitioning BEFORE changing view so overlay doesn't flash on TreatmentExecution
                 setIsTransitioning(false);
+                setHistoryRefreshKey(k => k + 1); // the treatment in progress was just saved
                 setViewState('treatmentExecution');
             }
         } catch (error) {
@@ -1307,8 +1319,13 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures' && activeTab !== 'documents'
         && !(activeTab === 'appointments' && !patient.id);
 
+    // Two panes (treatment | history) only during the treatment steps, when chosen and the screen is wide
+    // enough. The overlay then covers the sidebar too, to give each pane room.
+    const isFlowStep = viewState !== 'tabs' && viewState !== 'treatmentFeedback';
+    const splitActive = isFlowStep && user.treatmentLayout === 'sideBySide' && splitAvailable;
+
     return (
-        <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>
+        <div className={`${styles.overlay} ${viewState !== 'tabs' && !splitActive ? styles.overlayWide : ''}`}>
             <div className={`${styles.modal} ${viewState !== 'tabs' ? styles.modalWide : ''}`}>
 
                 {/* ── Modal Header ─────────────────────────────────────────── */}
@@ -1396,16 +1413,25 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     className={`${styles.stepItem} ${viewState === step.id ? styles.stepActive : ''}`}
                                 >
                                     <span className={styles.stepNum}>{idx + 1}</span>
-                                    <span className={styles.stepLabel}><T>{step.label}</T></span>
+                                    <span className={styles.stepLabel}>
+                                        <T>{step.label}</T>
+                                        {/* The treatment number is part of the first step's label */}
+                                        {idx === 0 && sessionOpeningData?.treatmentNumber ? <>{' '}<bdi>{sessionOpeningData.treatmentNumber}</bdi></> : null}
+                                    </span>
                                 </div>
                             ))}
                         </div>
 
                         <div className={styles.stepperRight}>
-                            {sessionOpeningData?.treatmentNumber && (
-                                <div className={styles.treatmentNumIndicator}>
-                                    <T>Treatment</T> - {sessionOpeningData.treatmentNumber}
-                                </div>
+                            {!splitActive && (
+                                <button
+                                    type="button"
+                                    className={styles.historyButton}
+                                    onClick={() => setIsHistoryOpen(true)}
+                                >
+                                    <History size={16} aria-hidden="true" />
+                                    <T>History</T>
+                                </button>
                             )}
                             {lastSavedAt && (
                                 <div className={styles.draftIndicator}>
@@ -1417,7 +1443,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 )}
 
                 {/* ── Content Area ──────────────────────────────────────────── */}
-                <div className={`${styles.contentArea} ${viewState !== 'tabs' ? styles.contentAreaFlow : ''}`}>
+                <div className={`${styles.contentArea} ${viewState !== 'tabs' ? (splitActive ? styles.contentAreaSplit : styles.contentAreaFlow) : ''}`}>
                     {/* Transition overlay to prevent blink during async protocol load */}
                     {isTransitioning && (
                         <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-overlay, rgba(0,0,0,0.35))' }}>
@@ -1426,7 +1452,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     )}
                     {viewState === 'tabs' && renderTabContent()}
 
-                    {viewState !== 'tabs' && (
+                    {viewState !== 'tabs' && (() => { const flowContent = (
                         <div key={viewState} className={styles.slideIn}>
                             {viewState === 'sessionOpening' && (
                                 <SessionOpening
@@ -1501,7 +1527,28 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 />
                             )}
                         </div>
-                    )}
+                    );
+                        return splitActive ? (
+                            <SplitLayout
+                                storageKey="treatmentSplitRatio"
+                                startLabel={tTreatmentPaneLabel}
+                                endLabel={tHistoryPaneLabel}
+                                start={<div className={styles.splitTreatmentPane}>{flowContent}</div>}
+                                end={
+                                    <div className={styles.splitHistoryPane}>
+                                        <TreatmentHistory
+                                            patient={patientData as JoinedPatientData}
+                                            onBack={() => { }}
+                                            isTab={true}
+                                            readOnly
+                                            defaultViewMode="list"
+                                            refreshKey={historyRefreshKey}
+                                        />
+                                    </div>
+                                }
+                            />
+                        ) : flowContent;
+                    })()}
                 </div>
 
                 {/* ── Bottom Bar (UX-8: hidden when not in tabs view) ───────── */}
@@ -1554,6 +1601,36 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* ── Treatment history slide-over (when the two panes are not shown) ── */}
+            {isHistoryOpen && !splitActive && isFlowStep && (
+                <>
+                    <div className={styles.historyBackdrop} onClick={() => setIsHistoryOpen(false)} />
+                    <aside className={styles.historyDrawer} role="dialog" aria-label={tHistoryPaneLabel}>
+                        <div className={styles.historyDrawerHeader}>
+                            <h4 className={styles.historyDrawerTitle}>{tHistoryPaneLabel}</h4>
+                            <button
+                                type="button"
+                                className={styles.historyDrawerClose}
+                                onClick={() => setIsHistoryOpen(false)}
+                                aria-label={tClose}
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div className={styles.historyDrawerBody}>
+                            <TreatmentHistory
+                                patient={patientData as JoinedPatientData}
+                                onBack={() => { }}
+                                isTab={true}
+                                readOnly
+                                defaultViewMode="list"
+                                refreshKey={historyRefreshKey}
+                            />
+                        </div>
+                    </aside>
+                </>
+            )}
 
             {/* ── Exit Treatment guard ────────────────────────────────────── */}
             <ConfirmationModal

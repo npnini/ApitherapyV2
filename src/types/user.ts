@@ -25,4 +25,8 @@ export interface AppUser {
   appointmentPrefs?: AppointmentPrefs;
   /** Optional patient-list columns this caretaker shows (see config/patientListFields). Missing = all offered. */
   patientListFields?: string[];
+  /** 'sideBySide' = show the treatment history next to the treatment on wide screens. Missing = 'single'. */
+  treatmentLayout?: 'single' | 'sideBySide';
+  /** 'todayAndPatients' = show the patient list next to today's agenda on wide screens. Missing = 'todayOnly'. */
+  homeLayout?: 'todayOnly' | 'todayAndPatients';
 }

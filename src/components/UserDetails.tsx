@@ -280,6 +280,29 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                         <label className={styles.label}><T>Role</T></label>
                         <p className={`${styles.readOnlyField} ${styles.capitalize}`}><T>{formData.role}</T></p>
                     </div>
+                    {!isOnboarding && (
+                        <div className={`${styles.field} ${styles.fullWidth}`}>
+                            <span className={styles.label}><T>Screen layout</T></span>
+                            <label className={styles.checkboxRow}>
+                                <input
+                                    id="treatmentLayout"
+                                    type="checkbox"
+                                    checked={formData.treatmentLayout === 'sideBySide'}
+                                    onChange={e => setFormData(prev => ({ ...prev, treatmentLayout: e.target.checked ? 'sideBySide' : 'single' }))}
+                                />
+                                <span><T>Show the treatment history next to the treatment (on wide screens)</T></span>
+                            </label>
+                            <label className={styles.checkboxRow}>
+                                <input
+                                    id="homeLayout"
+                                    type="checkbox"
+                                    checked={formData.homeLayout === 'todayAndPatients'}
+                                    onChange={e => setFormData(prev => ({ ...prev, homeLayout: e.target.checked ? 'todayAndPatients' : 'todayOnly' }))}
+                                />
+                                <span><T>Show the patient list next to today's appointments (on wide screens)</T></span>
+                            </label>
+                        </div>
+                    )}
                 </div>
                 </div>
                 {showTabs && apptPrefs && (

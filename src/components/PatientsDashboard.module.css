@@ -430,3 +430,44 @@
 :global([dir="rtl"]) .severityInfo {
     text-align: right;
 }
+/* ── Shown in a narrow pane next to the Today agenda (SplitLayout container "splitpane"):
+      follow the PANE width, hiding the less essential columns first ──────────────── */
+.colContact,
+.colProblems,
+.colLastTreatment {
+    /* marker classes for the container rules below */
+}
+
+@container splitpane (max-width: 860px) {
+    .colContact,
+    .colProblems {
+        display: none;
+    }
+
+    .header {
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+    }
+
+    .headerActions {
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+        width: 100%;
+    }
+
+    .searchContainer {
+        flex: 1 1 12rem;
+        width: auto;
+    }
+
+    .tableHeader,
+    .tableRow {
+        padding-inline: var(--spacing-md);
+    }
+}
+
+@container splitpane (max-width: 640px) {
+    .colLastTreatment {
+        display: none;
+    }
+}

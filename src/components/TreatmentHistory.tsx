@@ -100,9 +100,15 @@ interface TreatmentHistoryProps {
     isTab?: boolean;
     onResumeTreatment?: (treatment: any) => void;
     onAddFeedback?: (treatment: any) => void;
+    /** Browse only: hides the Resume and Add-feedback buttons (used next to a treatment in progress). */
+    readOnly?: boolean;
+    /** Opens in this view instead of the table (the table is wide; the list fits narrow panes). */
+    defaultViewMode?: 'list' | 'tabular';
+    /** Changing this value reloads the history quietly (e.g. after the treatment in progress is saved). */
+    refreshKey?: number;
 }
 
-const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab, onResumeTreatment, onAddFeedback }) => {
+const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, isTab, onResumeTreatment, onAddFeedback, readOnly = false, defaultViewMode = 'tabular', refreshKey }) => {
     const { language } = useTranslationContext();
     const tNotAvailable = useT('Not available');
     const tInvalidDate = useT('Invalid date');
@@ -114,7 +120,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [caretakerNames, setCaretakerNames] = useState<Map<string, string>>(new Map());
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'tabular'>('tabular');
+    const [viewMode, setViewMode] = useState<'list' | 'tabular'>(defaultViewMode);
     const [patientMeasureNames, setPatientMeasureNames] = useState<{ id: string, name: string | Record<string, string> }[]>([]);
     const [protocolsNamesMap, setProtocolsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
     const [problemsNamesMap, setProblemsNamesMap] = useState<Map<string, string | Record<string, string>>>(new Map());
@@ -125,8 +131,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
     const treatmentRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
-    const fetchTreatments = useCallback(async () => {
-        setIsLoading(true);
+    const fetchTreatments = useCallback(async (silent: boolean = false) => {
+        if (!silent) setIsLoading(true);
         setError(null);
         try {
             const treatmentsRef = collection(db, 'treatments');
@@ -300,9 +306,12 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
         }
     }, [patient.id]);
 
+    // First load shows the spinner; a later refreshKey change reloads without it.
+    const loadedOnceRef = useRef(false);
     useEffect(() => {
-        fetchTreatments();
-    }, [fetchTreatments]);
+        fetchTreatments(loadedOnceRef.current);
+        loadedOnceRef.current = true;
+    }, [fetchTreatments, refreshKey]);
     
     useEffect(() => {
         if (viewMode === 'list' && selectedTreatmentId) {
@@ -555,8 +564,8 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                         <CheckCircle size={14} />
                                                         <T>Entered</T>
                                                     </span>
-                                                ) : (
-                                                    <button 
+                                                ) : readOnly ? null : (
+                                                    <button
                                                         className={styles.addFeedbackBtn}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -607,7 +616,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                         <span>{caretakerNames.get(treatment.caretakerId) || treatment.caretakerId}</span>
                                     </div>
                                 </div>
-                                {treatment.status === 'Incomplete' && (
+                                {treatment.status === 'Incomplete' && !readOnly && (
                                     <button
                                         className={styles.resumeIconBtn}
                                         onClick={() => onResumeTreatment?.(treatment)}
@@ -785,9 +794,9 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                                                     </div>
                                                 )}
                                             </div>
-                                        ) : (
+                                        ) : readOnly ? null : (
                                             <div className={styles.emptyFeedback}>
-                                                <button 
+                                                <button
                                                     className={styles.addFeedbackBtn}
                                                     onClick={() => onAddFeedback?.(treatment)}
                                                 >

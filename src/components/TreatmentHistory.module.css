@@ -870,3 +870,13 @@
 .emptyFeedback {
     padding: 0.5rem 0;
 }
+/* ── Side-by-side pane (SplitLayout container "splitpane"): follow the PANE width ── */
+@container splitpane (max-width: 760px) {
+    .detailsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .sideBySidePhases {
+        flex-direction: column;
+    }
+}
