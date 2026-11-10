@@ -1346,7 +1346,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 </div>
 
                 {/* ── Tab Bar Row ───────────────────────────────────────────── */}
-                <div className={styles.tabBar}>
+                <div className={`${styles.tabBar} ${viewState !== 'tabs' ? styles.tabBarFlow : ''}`}>
                     <div className={styles.tabButtons}>
                         {TAB_ORDER.map((tab, idx) => (
                             <button
@@ -1407,12 +1407,14 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 { id: 'treatmentExecution', label: 'Execution' },
                                 { id: 'freeSelection', label: 'Free Selection' },
                                 { id: 'postSting', label: 'Post-Sting' },
-                            ].map((step, idx) => (
+                            ].map((step, idx, allSteps) => (
                                 <div
                                     key={step.id}
                                     className={`${styles.stepItem} ${viewState === step.id ? styles.stepActive : ''}`}
                                 >
                                     <span className={styles.stepNum}>{idx + 1}</span>
+                                    {/* Phone: only the current step is shown, as "3/5 Execution" */}
+                                    <span className={styles.stepTotal}>/{allSteps.length}</span>
                                     <span className={styles.stepLabel}>
                                         <T>{step.label}</T>
                                         {/* The treatment number is part of the first step's label */}
@@ -1420,6 +1422,10 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                     </span>
                                 </div>
                             ))}
+                            {/* Phone: the first step (which carries the treatment number) is hidden, so show the number here */}
+                            {sessionOpeningData?.treatmentNumber ? (
+                                <span className={styles.compactTreatmentNum}><T>Treatment</T> <bdi>{sessionOpeningData.treatmentNumber}</bdi></span>
+                            ) : null}
                         </div>
 
                         <div className={styles.stepperRight}>

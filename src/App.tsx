@@ -21,6 +21,8 @@ import UserDetails from './components/UserDetails';
 import { getVisiblePatientListFields } from './config/patientListFields';
 import SplitLayout from './components/shared/SplitLayout';
 import { useSplitAvailable } from './hooks/useSplitAvailable';
+import { useMediaQuery } from './hooks/useMediaQuery';
+import MobileNav from './components/MobileNav';
 import ApplicationSettings from './components/ApplicationSettings';
 import BodyModelTuner from './components/BodyModelTuner';
 import PointSideAnalysis from './components/PointSideAnalysis';
@@ -56,6 +58,9 @@ const AppInner: React.FC = () => {
     const tPatientsPaneLabel = useT('Patients');
     // Today + patient list side by side needs a wider screen than the treatment split: the sidebar takes 280px.
     const homeSplitAvailable = useSplitAvailable(1440);
+    // Below 1024px (phones, tablets in portrait) the sidebar becomes a drawer opened from a top bar
+    const isCompactNav = useMediaQuery('(max-width: 1023px)');
+    const [navOpen, setNavOpen] = useState(false);
     const tAppSettings = useT('Application Settings');
     const tTreatmentEffectiveness = useT('Treatment Effectiveness');
     const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -66,6 +71,8 @@ const AppInner: React.FC = () => {
     const [activeProtocol, setActiveProtocol] = useState<Protocol | null>(null);
     const [activeTreatmentSession, setActiveTreatmentSession] = useState<Partial<TreatmentSession> | null>(null);
     const [currentView, setCurrentView] = useState<View>('dashboard');
+    // The navigation drawer closes whenever the page changes, or when the screen becomes wide
+    useEffect(() => { setNavOpen(false); }, [currentView, isCompactNav]);
     const [viewAsCaretakerId, setViewAsCaretakerId] = useState<string | null>(null);
     const [impersonatedUser, setImpersonatedUser] = useState<AppUser | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -93,6 +100,12 @@ const AppInner: React.FC = () => {
     useEffect(() => {
         document.documentElement.dir = direction;
     }, [direction]);
+
+    // The page language follows the app language: with lang="en" on a Hebrew page, the browser's own
+    // translation (Chrome on Android) would translate the Hebrew text again, as if it were English.
+    useEffect(() => {
+        document.documentElement.lang = language;
+    }, [language]);
 
     useEffect(() => {
         if (!appUser) return;
@@ -643,8 +656,7 @@ const AppInner: React.FC = () => {
             />;
         const homeSplit = homeSplitAvailable && appUser.homeLayout === 'todayAndPatients';
 
-        return (
-            <div className="flex h-screen">
+        const sidebarEl = (
                 <Sidebar
                     user={appUser}
                     onLogout={handleLogout}
@@ -670,7 +682,14 @@ const AppInner: React.FC = () => {
                     viewAsCaretakerId={viewAsCaretakerId}
                     onViewAsCaretakerChange={setViewAsCaretakerId}
                 />
-                <main className="flex-grow p-4 md:p-8 overflow-y-auto">
+        );
+
+        return (
+            <div className={isCompactNav ? 'flex flex-col' : 'flex h-screen'} style={isCompactNav ? { height: '100dvh' } : undefined}>
+                {isCompactNav
+                    ? <MobileNav open={navOpen} onOpenChange={setNavOpen}>{sidebarEl}</MobileNav>
+                    : sidebarEl}
+                <main className={`flex-grow p-4 md:p-8 overflow-y-auto${isCompactNav ? ' min-h-0' : ''}`}>
                     {
                         isDashboardView ?
                             patientsDashboardEl

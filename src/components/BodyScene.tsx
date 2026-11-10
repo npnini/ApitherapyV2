@@ -27,6 +27,8 @@ interface BodySceneProps {
   onModelTap?: (normalizedPos: { x: number; y: number; z: number }) => void;
   tapPosition?: { x: number; y: number; z: number } | null;
   onZoomChange?: (scale: number) => void;
+  /** Zoom in (dir 1) or out (dir -1) by one step; a new id means a new request. */
+  zoomRequest?: { dir: 1 | -1; id: number };
 }
 
 
@@ -109,7 +111,8 @@ const BodyScene: React.FC<BodySceneProps> = ({
   sensitivityColorMap, 
   onModelTap, 
   tapPosition, 
-  onZoomChange 
+  onZoomChange,
+  zoomRequest
 }) => {
   const effectivePoints = points.length > 0 ? points : (protocol?.points || []);
   const { config } = useBodyModelLightingConfig();
@@ -152,6 +155,17 @@ const BodyScene: React.FC<BodySceneProps> = ({
       });
     }
   }, [resetTrigger]);
+
+  // Zoom buttons: move the camera 30% closer / farther along its line to the orbit target
+  React.useEffect(() => {
+    if (!zoomRequest || !controlsRef.current) return;
+    const controls = controlsRef.current;
+    const target: THREE.Vector3 = controls.target.clone();
+    const offset: THREE.Vector3 = controls.object.position.clone().sub(target);
+    const newDistance = THREE.MathUtils.clamp(offset.length() * (zoomRequest.dir > 0 ? 0.7 : 1 / 0.7), 0.2, 7);
+    offset.setLength(newDistance);
+    setTargetZoom({ position: target.clone().add(offset), target });
+  }, [zoomRequest]);
 
   const handleDoubleClick = (point: StingPoint, pos: { x: number, y: number, z: number }) => {
     // If the group is rotating, the absolute position is slightly skewed by the group rotation, 

@@ -326,3 +326,80 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border-light);
 }
+
+/* ── Phone and touch (treatment steps review) ─────────────────────────────── */
+@media (max-width: 640px) {
+    .tableSection,
+    .adhocSection,
+    .measuresSection {
+        padding: var(--spacing-md);
+    }
+
+    /* The problem / protocols table becomes one block per problem: name on top, protocols below */
+    .selectionTable thead {
+        display: none;
+    }
+
+    .selectionTable,
+    .selectionTable tbody,
+    .selectionTable tr,
+    .selectionTable td {
+        display: block;
+        width: 100%;
+    }
+
+    .selectionTable td {
+        border-bottom: none;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .selectionTable tr {
+        border-bottom: 1px solid var(--color-border-light);
+        padding-bottom: var(--spacing-xs);
+    }
+
+    .selectionTable tr:last-child {
+        border-bottom: none;
+    }
+
+    .problemNameCell,
+    .protocolsCell {
+        width: 100%;
+    }
+
+    .actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        gap: var(--spacing-md);
+    }
+
+    .actionsLeft {
+        justify-content: space-between;
+    }
+
+    .actionsLeft > * {
+        flex: 1;
+    }
+
+    .actions .btnPrimary {
+        width: 100%;
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media (pointer: coarse) {
+    .protocolBadge {
+        min-height: 2.5rem;
+    }
+
+    .btnPrimary,
+    .btnSecondary {
+        min-height: 2.75rem;
+    }
+
+    /* 16px keeps iOS from zooming the page when a field gets the focus */
+    .modalInput,
+    .measureInput {
+        font-size: 1rem;
+    }
+}

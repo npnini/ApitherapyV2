@@ -181,3 +181,21 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Phone and touch (treatment steps review) ─────────────────────────────── */
+@media (max-width: 560px) {
+    .section {
+        padding: var(--spacing-md);
+    }
+
+    .actionRow .btnPrimary {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (pointer: coarse) {
+    .btnPrimary {
+        min-height: 2.75rem;
+    }
+}

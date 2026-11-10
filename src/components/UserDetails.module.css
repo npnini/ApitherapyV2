@@ -306,3 +306,21 @@
 .backButton:active:not(:disabled) {
     transform: translateY(1px);
 }
+/* Narrow screens (phone in portrait): the profile tabs are one below the other, so none is cut off */
+@media (max-width: 640px) {
+    .tabButtons {
+        flex-direction: column;
+    }
+
+    .tabButton {
+        flex: none;
+        min-height: 2.75rem;
+        text-align: start;
+        border-inline-end: none;
+        border-bottom: 1.2px solid var(--color-text-tertiary);
+    }
+
+    .tabButton:last-child {
+        border-bottom: none;
+    }
+}

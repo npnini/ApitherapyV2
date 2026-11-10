@@ -210,7 +210,8 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                   <button onClick={() => onUpdatePatient(patient)} className={styles.actionButton} title={tEditPatient}><Edit size={14} /></button>
                   <button onClick={() => onShowTreatments(patient)} className={styles.actionButton} title={tViewHistory}><FileText size={14} /></button>
                   <button onClick={() => onStartTreatment(patient)} className={styles.startButton}>
-                    <T>Start New Treatment</T>{' '}
+                    <span className={styles.labelFull}><T>Start New Treatment</T></span>
+                    <span className={styles.labelShort}><T>New Treatment</T></span>{' '}
                     {isRtl ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                   </button>
                 </div>

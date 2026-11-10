@@ -653,3 +653,116 @@ html[dir="rtl"] .stepItem:not(:last-child)::after {
     overflow: auto;
     padding: 0.5rem;
 }
+
+/* ── Treatment steps on tablet and phone ─────────────────────────────────────── */
+.stepTotal,
+.compactTreatmentNum {
+    display: none;
+}
+
+@media (max-width: 1279px) {
+    /* No sidebar gap: the treatment fills the screen (100dvh = visible height on mobile browsers).
+       Below 1280px (phones, tablets incl. iPad Pro 13 in portrait) the sidebar would leave the treatment too narrow. */
+    .overlayWide {
+        left: 0;
+        padding: 0;
+    }
+
+    :global([dir="rtl"]) .overlayWide {
+        right: 0;
+    }
+
+    .modalWide {
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    /* The patient tabs are not used during a treatment */
+    .tabBarFlow {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .treatmentStepper {
+        padding: 0.4rem 0.75rem;
+        gap: 0.5rem;
+    }
+
+    /* Only the current step, as "3/5 Execution" */
+    .stepItem:not(.stepActive) {
+        display: none;
+    }
+
+    .stepItem:not(:last-child)::after {
+        display: none;
+    }
+
+    .stepTotal {
+        display: inline;
+        margin-inline-start: -0.25rem;
+        font-size: 0.72rem;
+        opacity: 0.85;
+    }
+
+    .compactTreatmentNum {
+        display: inline;
+        margin-inline-start: 0.75rem;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        white-space: nowrap;
+    }
+
+    .stepperRight {
+        gap: 0.5rem;
+    }
+}
+
+/* ── Phone in landscape (short screen): slim header and step bar, to leave the height to the treatment ── */
+@media (max-height: 500px) {
+    .modalHeader {
+        padding: 0.3rem 1rem;
+    }
+
+    .headerTitle {
+        font-size: 1rem;
+    }
+
+    .treatmentStepper {
+        padding: 0.25rem 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .stepItem:not(.stepActive) {
+        display: none;
+    }
+
+    .stepItem:not(:last-child)::after {
+        display: none;
+    }
+
+    .stepTotal {
+        display: inline;
+        margin-inline-start: -0.25rem;
+        font-size: 0.72rem;
+        opacity: 0.85;
+    }
+
+    .compactTreatmentNum {
+        display: inline;
+        margin-inline-start: 0.75rem;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        white-space: nowrap;
+    }
+
+    .contentAreaFlow {
+        padding: 0.25rem 0.5rem;
+    }
+}

@@ -12,9 +12,10 @@ import { StungPointCounts } from '../utils/pointSide';
 import { PointGroup, PointGroupLaterality } from '../types/pointGroup';
 import BodyScene from './BodyScene';
 import VitalsInputGroup from './VitalsInputGroup';
-import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, ChevronRight, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, ChevronLeft, ChevronRight, FileText, PlusCircle, XSquare, Image, BookOpen, X, Maximize, RefreshCw, Plus, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import styles from './TreatmentExecution.module.css';
 import { useStorageUrl } from "../hooks/useStorageUrl";
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { resolveStoragePath, getFieldContent, getPointLabel, getGDriveFallbackUrls } from '../utils/storageUtils';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
@@ -59,6 +60,8 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
 
     const tFailedToLoadModel = useT('Failed to load 3D model data.');
+    const tZoomIn = useT('Zoom in');
+    const tZoomOut = useT('Zoom out');
     const tNotesPlaceholder = useT('Add any final observations or notes here...');
     const tAnotherProtocol = useT('Another Protocol');
     const tEndTreatment = useT('End Treatment');
@@ -70,6 +73,10 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const tSensDirectiveFallback = useT('Wait 10 minutes. If there is an allergic reaction, press Finish Treatment. If there is no allergic reaction, press Another Protocol');
     const tStdDirectiveFallback = useT('Wait 15 minutes before removing the stingers, then measure the final vitals');
     const tSensitivityLevel = useT('Sensitivity Level');
+    const tAllLevels = useT('All');
+    const tLowLevel = useT('Low');
+    const tMediumLevel = useT('Medium');
+    const tHighLevel = useT('High');
     const tNoAdditionalDetails = useT('No additional details available in this language.');
     const tMissingCountsError = useT('Enter a sting count before continuing for:');
 
@@ -84,13 +91,24 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const [pointGroups, setPointGroups] = useState<PointGroup[]>([]);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [activePointId, setActivePointId] = useState<string | null>(null);
-    const [isRolling, setIsRolling] = useState(true);
+    // A touch screen: the model does not rotate by itself (a moving target is hard to tap) and zooms with the
+    // camera only (pinch or the + / - buttons), without growing the page.
+    const isCoarsePointer = useMediaQuery('(pointer: coarse)');
+    const [isRolling, setIsRolling] = useState(() => !(typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches));
+    const [zoomRequest, setZoomRequest] = useState<{ dir: 1 | -1; id: number } | undefined>(undefined);
+    const requestZoom = (dir: 1 | -1) => setZoomRequest(prev => ({ dir, id: (prev?.id ?? 0) + 1 }));
     const [selectedSensitivity, setSelectedSensitivity] = useState<'all' | 'Low' | 'Medium' | 'High'>('all');
     const [pointDetailToShow, setPointDetailToShow] = useState<{ point: StingPoint; type: 'doc' | 'image' | 'text' } | null>(null);
     // Hydrated previously-stung points from prior protocols in this treatment
     const [resolvedPrevPoints, setResolvedPrevPoints] = useState<StingPoint[]>([]);
 
     const [appConfig, setAppConfig] = useState<any>(null);
+
+    // The same on every device (mouse or finger): a click or tap on a list row only highlights the point
+    // on the model; the "+" button records it. A point that is not paired starts at a sting count of 1.
+    const tMarkAsStung = useT('Mark as stung');
+    const tDecrease = useT('Decrease');
+    const tIncrease = useT('Increase');
 
     type ProxTapMode = 'idle' | 'loading' | 'results' | 'empty-radius';
     const [proxTapMode, setProxTapMode]         = React.useState<ProxTapMode>('idle');
@@ -223,9 +241,19 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     }, [hydrateProtocol]);
 
     const handlePointSelect = useCallback((pointToAdd: StingPoint) => {
+        // A point that is not paired starts at 1. A paired point always starts at 0 on both
+        // sides: only the caretaker decides which side (or both) was stung.
+        const initialCounts: StungPointCounts = getLaterality(pointToAdd) !== 'Paired'
+            ? { left: 0, right: 0, single: 1 }
+            : { left: 0, right: 0, single: 0 };
         setStungPoints(prev => prev.some(p => p.id === pointToAdd.id) ? prev : [...prev, pointToAdd]);
-        setStungPointCounts(prev => prev[pointToAdd.id] ? prev : { ...prev, [pointToAdd.id]: { left: 0, right: 0, single: 0 } });
+        setStungPointCounts(prev => prev[pointToAdd.id] ? prev : { ...prev, [pointToAdd.id]: initialCounts });
         setActivePointId(pointToAdd.id);
+    }, [getLaterality]);
+
+    // Tapping a point on the model in touch mode only highlights it (the list's "+" records it)
+    const handlePointHighlight = useCallback((point: StingPoint) => {
+        setActivePointId(prev => prev === point.id ? null : point.id);
     }, []);
 
     const handleRemoveStungPoint = (id: string) => {
@@ -370,6 +398,39 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
 
     const canCompleteRound = stungPoints.length > 0 || (accumulatedStungPointIds && accumulatedStungPointIds.length > 0);
 
+    // A sting count: a number (can be typed) with up / down arrows. The same on every device.
+    const renderCountInput = (id: string, field: keyof StungPointCounts, value: number) => (
+        <div className={styles.countField}>
+            <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                className={styles.counterInput}
+                value={value}
+                onChange={e => handleSetPointCount(id, field, e.target.value)}
+            />
+            <div className={styles.countArrows}>
+                <button
+                    type="button"
+                    className={styles.countArrowBtn}
+                    onClick={() => handleSetPointCount(id, field, String(value + 1))}
+                    aria-label={tIncrease}
+                >
+                    <ChevronUp size={14} />
+                </button>
+                <button
+                    type="button"
+                    className={styles.countArrowBtn}
+                    onClick={() => handleSetPointCount(id, field, String(Math.max(0, value - 1)))}
+                    disabled={value <= 0}
+                    aria-label={tDecrease}
+                >
+                    <ChevronDown size={14} />
+                </button>
+            </div>
+        </div>
+    );
+
     if (isHydrating && (!customPoints || customPoints.length === 0)) {
         return (
             <div className={styles.centeredMsg}>
@@ -423,6 +484,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         <List size={16} />
                         <span><T>Protocol Points</T></span>
                     </div>
+                    <div className={styles.pointsControls}>
                     <label className={styles.toggleLabel}>
                         <span><T>Auto-Rotate</T></span>
                         <div className={styles.toggle} onClick={() => setIsRolling(r => !r)}>
@@ -435,6 +497,18 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     {/* Sensitivity Selector */}
                     <div className={styles.sensitivitySelector}>
                         <label className={styles.selectorLabel}>{tSensitivityLevel}</label>
+                        {/* Phone: a compact list box instead of the four buttons (the buttons are hidden by CSS) */}
+                        <select
+                            className={styles.sensitivitySelect}
+                            aria-label={tSensitivityLevel}
+                            value={selectedSensitivity}
+                            onChange={e => setSelectedSensitivity(e.target.value as 'all' | 'Low' | 'Medium' | 'High')}
+                        >
+                            <option value="all">{tSensitivityLevel}: {tAllLevels}</option>
+                            <option value="Low">{tLowLevel}</option>
+                            <option value="Medium">{tMediumLevel}</option>
+                            <option value="High">{tHighLevel}</option>
+                        </select>
                         <div className={styles.sensitivityOptions}>
                             {['all', 'Low', 'Medium', 'High'].map(level => {
                                 const isActive = selectedSensitivity === level;
@@ -451,6 +525,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 );
                             })}
                         </div>
+                    </div>
                     </div>
 
 
@@ -486,7 +561,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     )}
 
                     {displayedPoints.length > 0 && (
-                        <p className={styles.hintText}><T>Click a point to mark it as stung.</T></p>
+                        <p className={styles.hintText}><T>Press + to mark a point as stung.</T></p>
                     )}
                     
                     {displayedPoints.length > 0 && (
@@ -502,9 +577,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                             return (
                                 <div
                                     key={p.id}
-                                    onMouseEnter={() => setActivePointId(p.id)}
-                                    onMouseLeave={() => setActivePointId(null)}
-                                    onClick={() => handlePointSelect(p)}
+                                    onClick={() => handlePointHighlight(p)}
                                     className={`${styles.pointItem} ${activePointId === p.id ? styles.pointItemActive : ''} ${isStung ? styles.pointItemStung : ''}`}
                                     style={{ borderLeftColor: color }}
                                 >
@@ -543,6 +616,17 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                                 <BookOpen size={14} />
                                             </button>
                                         )}
+                                        {!isStung && (
+                                            <button
+                                                type="button"
+                                                className={styles.pointAddBtn}
+                                                onClick={(e) => { e.stopPropagation(); handlePointSelect(p); }}
+                                                aria-label={tMarkAsStung}
+                                                title={tMarkAsStung}
+                                            >
+                                                <Plus size={20} />
+                                            </button>
+                                        )}
                                         {isStung && (
                                             <CheckCircle size={14} className={styles.stungIcon} style={{ color }} />
                                         )}
@@ -562,6 +646,24 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     >
                         <Maximize size={20} />
                     </button>
+                    <div className={styles.zoomBtns}>
+                        <button
+                            className={`${styles.resetViewBtn} ${styles.zoomBtn}`}
+                            onClick={() => requestZoom(1)}
+                            title={tZoomIn}
+                            aria-label={tZoomIn}
+                        >
+                            <ZoomIn size={20} />
+                        </button>
+                        <button
+                            className={`${styles.resetViewBtn} ${styles.zoomBtn}`}
+                            onClick={() => requestZoom(-1)}
+                            title={tZoomOut}
+                            aria-label={tZoomOut}
+                        >
+                            <ZoomOut size={20} />
+                        </button>
+                    </div>
                     <div 
                         className={styles.canvasScrollWrapper}
                         ref={scrollWrapperRef}
@@ -580,11 +682,12 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                 <BodyScene
                                     protocol={hydratedProtocol}
                                     points={displayedPoints}
-                                    onPointSelect={handlePointSelect}
+                                    onPointSelect={handlePointHighlight}
                                     activePointId={activePointId}
                                     isRolling={isRolling}
                                     resetTrigger={resetTrigger}
-                                    onZoomChange={setCanvasScale}
+                                    onZoomChange={isCoarsePointer ? undefined : setCanvasScale}
+                                    zoomRequest={zoomRequest}
                                     sensitivityColorMap={sensitivityColorMap}
                                     onModelTap={(!protocol && (!customPoints || customPoints.length === 0)) ? handleModelTap : undefined}
                                     tapPosition={(!protocol && (!customPoints || customPoints.length === 0)) ? tapPosition : null}
@@ -599,11 +702,11 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                     <h3 className={styles.dataTitle}>
                         <MousePointerClick size={18} />
                         <T>Treatment Data</T>
+                        <span className={styles.dataTitleCount}>{tStungPoints} ({stungPoints.length + resolvedPrevPoints.length})</span>
                     </h3>
 
                     {/* Stung points list */}
                     <div className={styles.stungSection}>
-                        <label className={styles.sectionLabel}>{tStungPoints} ({stungPoints.length + resolvedPrevPoints.length})</label>
 
                         {/* Previously stung in this treatment (read-only) */}
                         {resolvedPrevPoints.length > 0 && (
@@ -624,7 +727,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                         )}
 
                         {/* Current protocol stung points (removable) */}
-                        <label className={styles.subSectionLabel}><T>This protocol</T></label>
+                        {resolvedPrevPoints.length > 0 && <label className={styles.subSectionLabel}><T>This protocol</T></label>}
                         <div className={styles.stungList}>
                             {stungPoints.length === 0 ? (
                                 <p className={styles.emptyStung}>{tNoPointsStung}</p>
@@ -644,35 +747,17 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
                                                     <>
                                                         <div className={styles.counterBox} title={getTranslation('Left')}>
                                                             <span className={styles.counterLabel}>L</span>
-                                                            <input
-                                                                type="number"
-                                                                min={0}
-                                                                className={styles.counterInput}
-                                                                value={counts.left}
-                                                                onChange={e => handleSetPointCount(p.id, 'left', e.target.value)}
-                                                            />
+                                                            {renderCountInput(p.id, 'left', counts.left)}
                                                         </div>
                                                         <div className={styles.counterBox} title={getTranslation('Right')}>
                                                             <span className={styles.counterLabel}>R</span>
-                                                            <input
-                                                                type="number"
-                                                                min={0}
-                                                                className={styles.counterInput}
-                                                                value={counts.right}
-                                                                onChange={e => handleSetPointCount(p.id, 'right', e.target.value)}
-                                                            />
+                                                            {renderCountInput(p.id, 'right', counts.right)}
                                                         </div>
                                                     </>
                                                 ) : (
                                                     <div className={styles.counterBox} title={getTranslation('Midline-Unilateral')}>
                                                         <span className={styles.counterLabel}>S</span>
-                                                        <input
-                                                            type="number"
-                                                            min={0}
-                                                            className={styles.counterInput}
-                                                            value={counts.single}
-                                                            onChange={e => handleSetPointCount(p.id, 'single', e.target.value)}
-                                                        />
+                                                        {renderCountInput(p.id, 'single', counts.single)}
                                                     </div>
                                                 )}
                                             </div>

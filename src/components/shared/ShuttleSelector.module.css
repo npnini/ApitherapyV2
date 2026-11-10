@@ -112,3 +112,47 @@
     flex: 2;
     margin: 0 1rem;
 }
+/* ── Phone and touch: the two lists are stacked, one above the other ───────── */
+@media (max-width: 768px) {
+    .shuttleSelector {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .shuttleSelector.shuttleSelectorFill {
+        grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .box {
+        height: 14rem;
+    }
+
+    .box.boxFill {
+        height: 100%;
+    }
+
+    .header {
+        flex-wrap: wrap;
+        gap: 0.25rem 0.5rem;
+    }
+
+    .searchContainer {
+        flex: 1 1 8rem;
+        margin: 0 0.25rem;
+    }
+}
+
+@media (pointer: coarse) {
+    .listItem {
+        min-height: 2.75rem;
+    }
+
+    .headerButton {
+        min-height: 2.25rem;
+    }
+
+    /* 16px keeps iOS from zooming the page when the search field gets the focus */
+    .searchInput {
+        font-size: 1rem;
+    }
+}

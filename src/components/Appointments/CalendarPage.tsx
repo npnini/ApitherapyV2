@@ -240,6 +240,9 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
             {error && <p className={styles.errorText} role="alert"><span aria-hidden="true">⚠ </span>{error}</p>}
 
             <div className={styles.calendarCard}>
+                {/* On a narrow screen the week keeps a minimum width and scrolls sideways (see the CSS) */}
+                <div className={styles.calendarScroll}>
+                <div className={styles.calendarInner}>
                 <FullCalendar
                     ref={calendarRef}
                     plugins={PLUGINS}
@@ -276,6 +279,8 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
                     eventDrop={handleEventDrop}
                     eventResize={handleEventResize}
                 />
+                </div>
+                </div>
             </div>
 
             {editor && (

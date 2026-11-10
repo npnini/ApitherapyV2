@@ -591,3 +591,30 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ── Narrow screens: the week keeps room for its 7 columns and scrolls sideways ── */
+.calendarScroll,
+.calendarInner {
+    height: 100%;
+}
+
+@media (max-width: 760px) {
+    .calendarScroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    /* 7 day columns of about 5.5rem plus the time column */
+    .calendarInner {
+        min-width: 42rem;
+    }
+
+    .calendarCard {
+        padding: var(--spacing-sm);
+    }
+
+    .calendarCard :global(.fc .fc-col-header-cell-cushion) {
+        font-size: 0.75rem;
+        padding: 4px 2px;
+    }
+}

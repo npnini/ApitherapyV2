@@ -112,3 +112,20 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+/* Dev only: the Firebase Auth emulator adds a fixed red banner at the bottom of the screen; on a phone-size
+   window it would cover the bottom buttons of the treatment screens. It does not exist outside emulator mode. */
+@media (max-width: 768px) {
+  .firebase-emulator-warning {
+    display: none;
+  }
+}
+
+/* Touch screens: text fields use at least 16px. Phone browsers zoom the page in when a field with smaller
+   text gets the focus, and the user has to pinch the page back. (The sizes on non-touch screens are unchanged.) */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

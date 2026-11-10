@@ -281,8 +281,11 @@
 
 .pointInfo {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.5rem;
     min-width: 0;
+    flex: 1;
 }
 
 .pointCode {
@@ -292,6 +295,7 @@
 }
 
 .pointLabel {
+    min-width: 0;
     font-size: 0.7rem;
     color: var(--color-text-secondary);
     overflow: hidden;
@@ -900,6 +904,15 @@
 
     .pointsPanel {
         display: flex;
+        order: 1;
+        height: auto;
+    }
+
+    .canvasPanel {
+        order: 2;
+    }
+
+    .dataPanel {
         order: 3;
     }
 }
@@ -991,6 +1004,601 @@
 
     .pointsPanel {
         display: flex;
+        order: 1;
+        height: auto;
+    }
+
+    .canvasPanel {
+        order: 2;
+    }
+
+    .dataPanel {
         order: 3;
+    }
+}
+
+/* ── Phone layout: compact points controls (sensitivity as a list box, next to Auto-Rotate) ── */
+.pointsControls {
+    display: contents; /* desktop: the toggle and the filter stack as before */
+}
+
+.sensitivitySelect {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .pointsControls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+    }
+
+    .sensitivitySelector {
+        flex: 1 1 12rem;
+        padding: 0;
+        background: none;
+        border: none;
+    }
+
+    .selectorLabel,
+    .sensitivityOptions {
+        display: none;
+    }
+
+    .sensitivitySelect {
+        display: block;
+        width: 100%;
+        min-height: 2.25rem;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-text-primary);
+        background: var(--color-background-card);
+        border: 1.5px solid var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+
+    /* the list scrolls inside its own box so the model stays on screen below it */
+    .pointsList {
+        flex: none;
+        max-height: 30vh;
+    }
+}
+
+@container splitpane (max-width: 760px) {
+    .pointsControls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+    }
+
+    .sensitivitySelector {
+        flex: 1 1 12rem;
+        padding: 0;
+        background: none;
+        border: none;
+    }
+
+    .selectorLabel,
+    .sensitivityOptions {
+        display: none;
+    }
+
+    .sensitivitySelect {
+        display: block;
+        width: 100%;
+        min-height: 2.25rem;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-text-primary);
+        background: var(--color-background-card);
+        border: 1.5px solid var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+
+    .pointsList {
+        flex: none;
+        max-height: 30vh;
+    }
+}
+
+/* ── Phone: the page scrolls as one column (one scroller, nothing clipped); the action buttons are sticky ── */
+@media (max-width: 768px) {
+    .container {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+    }
+
+    .grid {
+        display: flex;
+        flex-direction: column;
+        flex: none;
+        min-height: auto;
+        overflow: visible;
+    }
+
+    .pointsPanel,
+    .dataPanel {
+        height: auto;
+        flex: none;
+        overflow: visible;
+    }
+
+    .canvasPanel {
+        height: 42vh;
+        min-height: 300px;
+        flex: none;
+    }
+
+    /* The two buttons stay at the bottom of the screen while the page scrolls */
+    .actionRow {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
+        background: var(--color-background-card);
+    }
+}
+
+@container splitpane (max-width: 760px) {
+    .container {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+    }
+
+    .grid {
+        display: flex;
+        flex-direction: column;
+        flex: none;
+        min-height: auto;
+        overflow: visible;
+    }
+
+    .pointsPanel,
+    .dataPanel {
+        height: auto;
+        flex: none;
+        overflow: visible;
+    }
+
+    .canvasPanel {
+        height: 42vh;
+        min-height: 300px;
+        flex: none;
+    }
+
+    /* The two buttons stay at the bottom of the screen while the page scrolls */
+    .actionRow {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
+        background: var(--color-background-card);
+    }
+}
+
+/* ── Every width above the phone: model on the left; the point list above the stung points and buttons on the right (the old three-column layout was too narrow for the right part) ── */
+@media (min-width: 769px) {
+    .grid {
+        grid-template-columns: minmax(0, 1fr) clamp(20rem, 42%, 34rem);
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'canvas points'
+            'canvas data';
+    }
+
+    .canvasPanel {
+        grid-area: canvas;
+    }
+
+    .pointsPanel {
+        display: flex;
+        grid-area: points;
+        min-height: 0;
+    }
+
+    .dataPanel {
+        grid-area: data;
+        max-height: 46vh;
+    }
+}
+
+@container splitpane (min-width: 761px) {
+    .grid {
+        grid-template-columns: minmax(0, 1fr) clamp(20rem, 42%, 34rem);
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'canvas points'
+            'canvas data';
+    }
+
+    .canvasPanel {
+        grid-area: canvas;
+    }
+
+    .pointsPanel {
+        display: flex;
+        grid-area: points;
+        min-height: 0;
+    }
+
+    .dataPanel {
+        grid-area: data;
+        max-height: 46vh;
+    }
+}
+
+/* ── Tablet on a short screen (laptop height): the point list keeps a minimum height, the right column scrolls if needed ── */
+@media (min-width: 769px) {
+    .grid {
+        grid-template-rows: minmax(12rem, 1fr) auto;
+        overflow-y: auto;
+    }
+
+    .dataPanel {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .stungList {
+        min-height: 4rem;
+    }
+
+    /* compact controls: Auto-Rotate and the sensitivity list box on one line */
+    .pointsControls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+    }
+
+    .sensitivitySelector {
+        flex: 1 1 12rem;
+        padding: 0;
+        background: none;
+        border: none;
+    }
+
+    .selectorLabel,
+    .sensitivityOptions {
+        display: none;
+    }
+
+    .sensitivitySelect {
+        display: block;
+        width: 100%;
+        min-height: 2.25rem;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-text-primary);
+        background: var(--color-background-card);
+        border: 1.5px solid var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+}
+
+@container splitpane (min-width: 761px) {
+    .grid {
+        grid-template-rows: minmax(12rem, 1fr) auto;
+        overflow-y: auto;
+    }
+
+    .dataPanel {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .stungList {
+        min-height: 4rem;
+    }
+
+    /* compact controls: Auto-Rotate and the sensitivity list box on one line */
+    .pointsControls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+    }
+
+    .sensitivitySelector {
+        flex: 1 1 12rem;
+        padding: 0;
+        background: none;
+        border: none;
+    }
+
+    .selectorLabel,
+    .sensitivityOptions {
+        display: none;
+    }
+
+    .sensitivitySelect {
+        display: block;
+        width: 100%;
+        min-height: 2.25rem;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-text-primary);
+        background: var(--color-background-card);
+        border: 1.5px solid var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+}
+
+/* ── Phone in landscape (short screen): three columns, each as tall as the screen and scrolling on its own ── */
+@media (max-height: 500px) and (min-width: 560px) {
+    .container {
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0.25rem;
+        gap: 0.25rem;
+    }
+
+    .header {
+        gap: 0.5rem;
+    }
+
+    .headerTitle {
+        font-size: var(--font-size-base);
+    }
+
+    .grid {
+        display: grid;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+        grid-template-areas: 'points canvas data';
+        gap: 0.35rem;
+    }
+
+    .pointsPanel {
+        display: flex;
+        grid-area: points;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .canvasPanel {
+        grid-area: canvas;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .canvasSizer {
+        min-height: 0;
+    }
+
+    .dataPanel {
+        grid-area: data;
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    /* the list takes all the height that is left; the hint and the title are not needed here */
+    .pointsList {
+        flex: 1;
+        max-height: none;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .panelHeader,
+    .hintText {
+        display: none;
+    }
+
+    .stungList {
+        min-height: 3rem;
+        max-height: none;
+    }
+
+    .actionRow {
+        position: sticky;
+        bottom: 0;
+        margin-top: 0.5rem;
+        padding: 0.4rem 0;
+        background: var(--color-background-card);
+    }
+
+    .pointsControls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem 0.6rem;
+    }
+
+    .sensitivitySelector {
+        flex: 1 1 8rem;
+        padding: 0;
+        background: none;
+        border: none;
+    }
+
+    .selectorLabel,
+    .sensitivityOptions {
+        display: none;
+    }
+
+    .sensitivitySelect {
+        display: block;
+        width: 100%;
+        min-height: 2rem;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-text-primary);
+        background: var(--color-background-card);
+        border: 1.5px solid var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+}
+
+/* ── Touch mode (touch screen or narrow area): bigger targets, - / + counters, the '+' button on list rows ── */
+
+.pointAddBtn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-primary);
+    color: var(--color-white);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.pointAddBtn:active {
+    background: var(--color-primary-hover);
+}
+
+
+
+
+
+.removeBtn {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Sting count: a number with stacked up / down arrows (same on every device) ── */
+.countField {
+    display: inline-flex;
+    align-items: stretch;
+}
+
+.countField .counterInput {
+    width: 2.2rem;
+    text-align: center;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.countField .counterInput::-webkit-outer-spin-button,
+.countField .counterInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.countArrows {
+    display: flex;
+    flex-direction: column;
+}
+
+.countArrowBtn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-inline-start: none;
+    background: var(--color-background-card);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.countArrowBtn:first-child {
+    border-start-end-radius: var(--radius-sm);
+}
+
+.countArrowBtn:last-child {
+    border-top: none;
+    border-end-end-radius: var(--radius-sm);
+}
+
+.countArrowBtn:hover:not(:disabled) {
+    color: var(--color-primary);
+    background: var(--color-background-page);
+}
+
+.countArrowBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Touch: each arrow is a comfortable target (two of them stack to about 3rem) */
+.countField .counterInput {
+    width: 2.4rem;
+    font-size: 1rem;
+}
+
+.countArrowBtn {
+    width: 1.9rem;
+    min-height: 1.5rem;
+}
+
+/* the tap area of the round + is larger than what is drawn */
+.pointAddBtn::after {
+    content: '';
+    position: absolute;
+    inset: -0.4rem;
+}
+
+/* Stung points count, on the Treatment Data title line */
+.dataTitleCount {
+    margin-inline-start: auto;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    letter-spacing: 0.02em;
+}
+
+/* ── Zoom buttons under the reset button (camera zoom; works with or without a touch screen) ── */
+.zoomBtns {
+    position: absolute;
+    top: 3.75rem;
+    right: 1rem;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.zoomBtn {
+    position: static;
+}
+
+/* ── Touch: in the one-column phone layout the page scrolls, so a vertical swipe on the model must scroll
+      the page (a horizontal swipe still rotates it). Everywhere else the model takes every touch. ── */
+@media (max-width: 768px) {
+    .canvasSizer canvas {
+        touch-action: pan-y !important;
+    }
+}
+
+@container splitpane (max-width: 760px) {
+    .canvasSizer canvas {
+        touch-action: pan-y !important;
+    }
+}
+
+@media (max-height: 500px) and (min-width: 560px) {
+    .canvasSizer canvas {
+        touch-action: none !important;
     }
 }

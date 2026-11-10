@@ -678,3 +678,56 @@
     margin: 0;
     font-weight: var(--font-weight-semibold);
 }
+/* ── Phone and touch (treatment steps review) ─────────────────────────────── */
+.docTypeRow,
+.captionInputGroup {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+    .container {
+        padding: var(--spacing-md) var(--spacing-sm);
+    }
+
+    .section {
+        padding: var(--spacing-md);
+    }
+
+    /* Exit + Back on one line, the main button full width above them */
+    .actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .actionsLeft {
+        justify-content: space-between;
+    }
+
+    .actionsLeft > * {
+        flex: 1;
+    }
+
+    .actions .btnPrimary {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (pointer: coarse) {
+    .btnPrimary,
+    .btnSecondary,
+    .btnExit,
+    .btnUpload {
+        min-height: 2.75rem;
+    }
+
+    .problemChip,
+    .btnAddProblem {
+        min-height: 2.25rem;
+    }
+
+    /* 16px keeps iOS from zooming the page when a field gets the focus */
+    .problemSearchInput {
+        font-size: 1rem;
+    }
+}

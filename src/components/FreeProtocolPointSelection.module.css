@@ -100,3 +100,18 @@
         transform: rotate(360deg);
     }
 }
+/* ── Phone (treatment steps review) ───────────────────────────────────────── */
+@media (max-width: 768px) {
+    .container {
+        padding: var(--spacing-sm);
+    }
+
+    /* two stacked lists need more height than the side-by-side pair */
+    .selectorWrapper {
+        min-height: 32rem;
+    }
+
+    .footer .nextButton {
+        width: 100%;
+    }
+}

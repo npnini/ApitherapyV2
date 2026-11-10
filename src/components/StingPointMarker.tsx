@@ -6,6 +6,12 @@ import { StingPoint } from '../types/apipuncture';
 import { getTransformedPosition } from '../utils/pointMapping';
 import { MARKER_OUTWARD_OFFSET, findSurfaceOffsetDirection, naiveRadialOffsetDirection } from '../utils/markerSurfaceOffset';
 
+// Touch screens: a finger cannot hit a marker that is only a few pixels wide, so each marker also gets
+// an invisible, larger sphere that takes the tap. Decided once (a device does not change its pointer).
+const IS_COARSE_POINTER = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(pointer: coarse)').matches;
+
 interface StingPointMarkerProps {
   point: StingPoint;
   onClick: (point: StingPoint) => void;
@@ -94,7 +100,22 @@ const StingPointMarker: React.FC<StingPointMarkerProps> = ({
 
   return (
     <group ref={groupRef} position={[attachedPosition.x, attachedPosition.y, attachedPosition.z]} renderOrder={999}>
+      {IS_COARSE_POINTER && (
+        <mesh
+          userData={{ isMarker: true }}
+          onClick={(e) => {
+            // Ignore the tap when the body is in front of this marker (the marker is on the far side)
+            if (!e.intersections[0]?.object.userData?.isMarker) return;
+            e.stopPropagation();
+            onClick(point);
+          }}
+        >
+          <sphereGeometry args={[0.065, 8, 8]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
       <mesh
+        userData={{ isMarker: true }}
         onClick={(e) => {
           e.stopPropagation();
           onClick(point);

@@ -471,3 +471,77 @@
         display: none;
     }
 }
+
+/* ── Phone in landscape and tablet in portrait (up to 1024px): the buttons go to a second line
+      of each row, so every column of data has the width to the end of the screen; smaller text ── */
+.labelShort {
+    display: none;
+}
+
+@media (max-width: 1024px) {
+    .labelFull {
+        display: none;
+    }
+
+    .labelShort {
+        display: inline;
+    }
+
+    /* Next meeting and Sessions done are two columns again (they were stacked to make room) */
+    .appointmentCells {
+        display: contents;
+    }
+
+    .appointmentCells > .headerCell {
+        flex: 1 1 0%;
+    }
+
+    .appointmentCells > .headerCellCol15,
+    .appointmentCells > .nextMeeting {
+        flex: 1.5 1 0%;
+    }
+
+    .appointmentCells > .progress {
+        flex: 1 1 0%;
+    }
+
+    .tableHeader,
+    .tableRow {
+        padding: var(--spacing-sm) var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+
+    .tableRow {
+        flex-wrap: wrap;
+        row-gap: var(--spacing-xs);
+    }
+
+    /* the (empty) header cell above the buttons is not needed when they have their own line */
+    .tableHeader > :last-child {
+        display: none;
+    }
+
+    .actionsContainer {
+        flex: 1 1 100%;
+        gap: var(--spacing-xs);
+    }
+
+    .headerCell {
+        font-size: 0.65rem;
+        letter-spacing: 0.02em;
+    }
+
+    .patientName,
+    .patientInfo,
+    .problemsInfo,
+    .lastTreatment,
+    .nextMeeting,
+    .progress {
+        font-size: var(--font-size-xs);
+    }
+
+    .startButton {
+        font-size: var(--font-size-xs);
+        padding: 0.3rem 0.75rem;
+    }
+}
