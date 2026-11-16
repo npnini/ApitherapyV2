@@ -971,7 +971,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
         try {
             await saveTreatment(patient.id as string, {
-                status: data.finalVitals && Object.keys(data.finalVitals).length > 0 ? 'Completed' : 'Incomplete',
+                status: 'Completed', // stinger-removal measures are optional, so they don't decide completion
                 patientId: patient.id as string,
                 caretakerId: user.uid,
                 patientReport: sessionOpeningData.patientReport,
@@ -999,7 +999,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
 
             setLatestTreatment({
                 id: sessionOpeningData.generatedTreatmentId,
-                status: data.finalVitals && Object.keys(data.finalVitals).length > 0 ? 'Completed' : 'Incomplete',
+                status: 'Completed', // stinger-removal measures are optional, so they don't decide completion
                 patientId: patient.id as string,
                 caretakerId: user.uid,
                 protocolIds: usedProtocolIds,

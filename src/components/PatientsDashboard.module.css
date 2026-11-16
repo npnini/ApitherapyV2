@@ -195,9 +195,10 @@
     flex: 1.5 1 0%;
 }
 
-/* "Next meeting" and "Sessions done" (spec §10): two columns on wide screens (the wrapper
-   takes no box of its own), one stacked cell on narrow screens (media query below). */
-.appointmentCells {
+/* "Last treatment" + "Next meeting" and "Sessions done" (spec §10): separate columns (the
+   wrappers take no box of their own); on phones the two dates stack in one cell (last block). */
+.appointmentCells,
+.datesCells {
     display: contents;
 }
 
@@ -244,10 +245,6 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-}
-
-.nextMeetingTime {
-    font-weight: var(--font-weight-semibold);
 }
 
 .noValue {
@@ -496,11 +493,6 @@
         flex: 1 1 0%;
     }
 
-    .appointmentCells > .headerCellCol15,
-    .appointmentCells > .nextMeeting {
-        flex: 1.5 1 0%;
-    }
-
     .appointmentCells > .progress {
         flex: 1 1 0%;
     }
@@ -543,5 +535,28 @@
     .startButton {
         font-size: var(--font-size-xs);
         padding: 0.3rem 0.75rem;
+    }
+}
+
+/* ── Phone in portrait: Last treatment above Next meeting, one date per line, so the two never
+      overlap in the narrow row ── */
+@media (max-width: 600px) {
+    .datesCells {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        flex: 1.5 1 0%;
+        min-width: 0;
+    }
+
+    .datesCells > .headerCell,
+    .datesCells > .lastTreatment,
+    .datesCells > .nextMeeting {
+        flex: none;
+    }
+
+    .nextMeetingButton,
+    .nextMeetingText {
+        white-space: nowrap;
     }
 }

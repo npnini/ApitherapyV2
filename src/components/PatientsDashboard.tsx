@@ -9,7 +9,7 @@ import Tooltip from './common/Tooltip';
 import { T, useT, useTranslationContext } from '../components/T';
 import { useNow } from '../hooks/useNow';
 import { useNextAppointments } from '../hooks/useNextAppointments';
-import { formatDate, formatWeekday, toHHmm } from '../utils/appointments/time';
+import { formatDate, formatWeekday } from '../utils/appointments/time';
 
 interface PatientsDashboardProps {
   user: AppUser;
@@ -74,17 +74,12 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
 
   const isRtl = language === 'he';
 
-  // "Next meeting" (spec §10): weekday, dd/mm/yyyy and time. A meeting today (still booked, so
+  // "Next meeting" (spec §10): weekday and dd/mm/yyyy (no time: it did not fit narrow screens). A meeting today (still booked, so
   // not attended yet) opens the Today page, where its actions are; other days are plain text.
   const renderNextMeeting = (patient: JoinedPatientData) => {
     const next = patient.id ? nextAppointments.get(patient.id) : undefined;
     if (!next) return <span className={styles.noValue}>—</span>;
-    const content = (
-      <>
-        <span>{formatWeekday(next.start, language, 'short')} {formatDate(next.start)}</span>
-        <span className={styles.nextMeetingTime}>{toHHmm(next.start)}</span>
-      </>
-    );
+    const content = <span>{formatWeekday(next.start, language, 'short')} {formatDate(next.start)}</span>;
     if (next.start.toDateString() !== now.toDateString()) {
       return <span className={styles.nextMeetingText}>{content}</span>;
     }
@@ -138,11 +133,15 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
           <div className={`${styles.headerCell} ${styles.headerCellCol3}`}><T>Patient</T></div>
           {show('contact') && <div className={`${styles.headerCell} ${styles.headerCellCol2} ${styles.colContact}`}><T>Contact</T></div>}
           {show('problems') && <div className={`${styles.headerCell} ${styles.headerCellCol3} ${styles.colProblems}`}><T>Problems</T></div>}
-          {show('lastTreatment') && <div className={`${styles.headerCell} ${styles.colLastTreatment}`}><T>Last Treatment</T></div>}
-          {(show('nextMeeting') || show('sessionsDone')) && (
-            <div className={styles.appointmentCells}>
+          {(show('lastTreatment') || show('nextMeeting')) && (
+            <div className={styles.datesCells}>
+              {show('lastTreatment') && <div className={`${styles.headerCell} ${styles.colLastTreatment}`}><T>Last Treatment</T></div>}
               {show('nextMeeting') && <div className={`${styles.headerCell} ${styles.headerCellCol15}`}><T>Next meeting</T></div>}
-              {show('sessionsDone') && <div className={styles.headerCell}><T>Sessions done</T></div>}
+            </div>
+          )}
+          {show('sessionsDone') && (
+            <div className={styles.appointmentCells}>
+              <div className={styles.headerCell}><T>Sessions done</T></div>
             </div>
           )}
           <div className={`${styles.headerCell} ${styles.headerCellCol2}`} />
@@ -185,25 +184,27 @@ const PatientsDashboard: React.FC<PatientsDashboardProps> = ({ user, patients, o
                     </Tooltip>
                   </div>
                 )}
-                {show('lastTreatment') && (
-                  <div className={`${styles.lastTreatment} ${styles.colLastTreatment}`}>
-                    {patient.medicalRecord?.lastTreatment
-                      ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
-                      : <T>N/A</T>}
-                  </div>
-                )}
-                {(show('nextMeeting') || show('sessionsDone')) && (
-                  <div className={styles.appointmentCells}>
+                {(show('lastTreatment') || show('nextMeeting')) && (
+                  <div className={styles.datesCells}>
+                    {show('lastTreatment') && (
+                      <div className={`${styles.lastTreatment} ${styles.colLastTreatment}`}>
+                        {patient.medicalRecord?.lastTreatment
+                          ? new Date(patient.medicalRecord.lastTreatment).toLocaleDateString(isRtl ? 'en-GB' : undefined)
+                          : <T>N/A</T>}
+                      </div>
+                    )}
                     {show('nextMeeting') && (
                       <div className={styles.nextMeeting}>
                         {renderNextMeeting(patient)}
                       </div>
                     )}
-                    {show('sessionsDone') && (
-                      <div className={styles.progress}>
-                        {renderProgress(patient)}
-                      </div>
-                    )}
+                  </div>
+                )}
+                {show('sessionsDone') && (
+                  <div className={styles.appointmentCells}>
+                    <div className={styles.progress}>
+                      {renderProgress(patient)}
+                    </div>
                   </div>
                 )}
                 <div className={styles.actionsContainer}>

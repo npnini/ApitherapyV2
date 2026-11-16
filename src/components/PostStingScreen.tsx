@@ -113,6 +113,10 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
         hydrateData();
     }, [stungPointIds, protocolIds]);
 
+    // Post-stinging measures are mandatory (all three values); stinger-removal measures are not.
+    const hasPostStingingVitals = [postTreatmentVitals.systolic, postTreatmentVitals.diastolic, postTreatmentVitals.heartRate]
+        .every(v => v !== undefined && !Number.isNaN(v));
+
     const handleFinish = () => {
         onFinish({
             postTreatmentVitals: postTreatmentVitals,
@@ -184,7 +188,7 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
                         />
 
                         <VitalsInputGroup
-                            title="Post-Stinging Measures (Optional)"
+                            title="Post-Stinging Measures"
                             vitals={postTreatmentVitals}
                             onVitalsChange={setPostTreatmentVitals}
                         />
@@ -193,6 +197,7 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
                             title="Stinger Removal Measures (Optional)"
                             vitals={finalVitals}
                             onVitalsChange={setFinalVitals}
+                            optional
                         />
 
                         <h3 className={styles.sectionTitle} style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>
@@ -212,7 +217,7 @@ const PostStingScreen: React.FC<PostStingScreenProps> = ({
                 <button 
                     className={styles.btnPrimary} 
                     onClick={handleFinish}
-                    disabled={!finalNotes.trim()}
+                    disabled={!finalNotes.trim() || !hasPostStingingVitals}
                 >
                     <CheckCircle size={18} />
                     {tFinishTreatment}

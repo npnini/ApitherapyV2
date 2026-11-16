@@ -9,12 +9,14 @@ interface VitalsInputGroupProps {
     title: string;
     vitals: Partial<VitalSigns>;
     onVitalsChange: (vitals: Partial<VitalSigns>) => void;
+    /** When true the fields are not marked as required (no red star). */
+    optional?: boolean;
 }
 
 // Defines the fields that are numeric vital signs.
 type VitalField = keyof Omit<VitalSigns, 'outOfRange'>;
 
-const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVitalsChange }) => {
+const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVitalsChange, optional = false }) => {
     const { language, direction } = useTranslationContext();
     const tOutOfRange = useT('Value out of range');
     const tHeartRate = useT('Heart Rate');
@@ -124,7 +126,7 @@ const VitalsInputGroup: React.FC<VitalsInputGroupProps> = ({ title, vitals, onVi
                     </span>
                 )}
                 <label className={styles.label}>
-                    {fieldLabel} <span className={styles.requiredStar}>*</span>
+                    {fieldLabel} {!optional && <span className={styles.requiredStar}>*</span>}
                 </label>
                 {isConfirmedProblematic && (
                     <p className={styles.warningText}>{tOutOfRange}</p>
