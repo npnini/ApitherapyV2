@@ -9,7 +9,7 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { CALLABLE_OPTIONS, UserTermsConfig, writeAudit } from "./access.js";
+import { CALLABLE_OPTIONS, UserTermsConfig, ownValue, writeAudit } from "./access.js";
 
 export const acceptUserTerms = onCall(CALLABLE_OPTIONS, async (request) => {
   if (!request.auth) {
@@ -35,8 +35,8 @@ export const acceptUserTerms = onCall(CALLABLE_OPTIONS, async (request) => {
     if (!cfg.currentVersion || cfg.currentVersion !== version) {
       throw new HttpsError("failed-precondition", "This is not the current User Terms version.");
     }
-    const versionData = cfg.versions?.[version];
-    if (versionData?.status !== "published" || !versionData.files?.[language]?.path) {
+    const versionData = ownValue(cfg.versions, version);
+    if (versionData?.status !== "published" || !ownValue(versionData.files, language)?.path) {
       throw new HttpsError("invalid-argument", "No published User Terms file for this language.");
     }
     tx.create(userRef.collection("termsAcceptances").doc(), {

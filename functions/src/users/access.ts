@@ -40,6 +40,18 @@ export interface UserTermsConfig {
   versions?: Record<string, UserTermsVersion>;
 }
 
+/**
+ * Reads map[key] for a key that comes from a request (a version number, a language code) - own
+ * entries only, so a key such as "constructor" or "__proto__" never reaches a built-in property.
+ * Uses a Map of the object's own entries instead of map[key] (SAST: security/detect-object-injection).
+ * @param {Record<string, T> | undefined | null} map The object, e.g. cfg.versions or a version's files.
+ * @param {string} key The key from the request.
+ * @return {T | undefined} The value, or undefined when the object has no such own key.
+ */
+export function ownValue<T>(map: Record<string, T> | undefined | null, key: string): T | undefined {
+  return map ? new Map(Object.entries(map)).get(key) : undefined;
+}
+
 /** Grace period after a publish: users who accepted the previous version keep access this long. */
 export const TERMS_GRACE_MS = 24 * 60 * 60 * 1000;
 

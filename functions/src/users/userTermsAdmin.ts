@@ -12,7 +12,7 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldPath, FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
-import { CALLABLE_OPTIONS, TERMS_GRACE_MS, UserTermsConfig, requireActive, writeAudit } from "./access.js";
+import { CALLABLE_OPTIONS, TERMS_GRACE_MS, UserTermsConfig, ownValue, requireActive, writeAudit } from "./access.js";
 
 const USER_DOCUMENTS_PREFIX = "App_config/user_documents/";
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z._-]{0,19}$/;
@@ -48,7 +48,7 @@ export const saveUserTermsFile = onCall(CALLABLE_OPTIONS, async (request) => {
   const cfgRef = db.collection("cfg_app_config").doc("userTerms");
   await db.runTransaction(async (tx) => {
     const cfg = ((await tx.get(cfgRef)).data() || {}) as UserTermsConfig;
-    const existing = cfg.versions?.[version];
+    const existing = ownValue(cfg.versions, version);
     if (existing?.status === "published") {
       throw new HttpsError("failed-precondition", "This version is published and cannot be changed.");
     }
@@ -72,8 +72,8 @@ export const saveUserTermsFile = onCall(CALLABLE_OPTIONS, async (request) => {
 export const publishUserTerms = onCall(CALLABLE_OPTIONS, async (request) => {
   const { uid } = await requireActive(request, ["superadmin"], "publishUserTerms");
   const version = String(request.data?.version || "").trim();
-  if (!version) {
-    throw new HttpsError("invalid-argument", "Missing version.");
+  if (!VERSION_PATTERN.test(version)) {
+    throw new HttpsError("invalid-argument", "Invalid version number.");
   }
   const languages = await getSupportedLanguages();
 
@@ -81,14 +81,14 @@ export const publishUserTerms = onCall(CALLABLE_OPTIONS, async (request) => {
   const cfgRef = db.collection("cfg_app_config").doc("userTerms");
   await db.runTransaction(async (tx) => {
     const cfg = ((await tx.get(cfgRef)).data() || {}) as UserTermsConfig;
-    const v = cfg.versions?.[version];
+    const v = ownValue(cfg.versions, version);
     if (!v) {
       throw new HttpsError("not-found", "Version not found.");
     }
     if (v.status === "published") {
       throw new HttpsError("failed-precondition", "This version is already published.");
     }
-    const missing = languages.filter((l) => !v.files?.[l]?.path);
+    const missing = languages.filter((l) => !ownValue(v.files, l)?.path);
     if (missing.length) {
       throw new HttpsError("failed-precondition", `A file is missing for: ${missing.join(", ")}.`);
     }
