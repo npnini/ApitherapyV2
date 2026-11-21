@@ -115,7 +115,7 @@ const AppointmentEditor: React.FC<AppointmentEditorProps> = ({
         (start.getTime() !== appointment.start.getTime() || end.getTime() !== appointment.end.getTime()));
 
     const log = (action: 'create' | 'update', id: string, pid: string, detail: string) => logAction(actor, {
-        category: 'patient', action, entityType: 'appointment', entityId: id, entityName: patientName(pid), detail,
+        category: 'patient', action, entityType: 'appointment', entityId: id, patientId: pid, detail,
     });
 
     const handleSave = async (bookAnyway = false) => {

@@ -1,0 +1,182 @@
+/*
+ * User Terms acceptance page (F3). The page is exactly one screen high: the header and the
+ * footer (checkbox + Accept / Decline) never scroll away; only the document area in the middle
+ * takes the remaining height and scrolls inside the PDF viewer.
+ * 100dvh follows the visible area on phones (address bar shown or hidden); 100vh is the fallback.
+ */
+
+.page {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    background: var(--color-background, #f8fafc);
+    overflow: hidden;
+}
+
+.card {
+    width: 100%;
+    max-width: 56rem;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.header {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.titleRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+}
+
+.title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+}
+
+.title h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.version {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.intro {
+    font-size: 0.875rem;
+    color: #374151;
+    margin: 0;
+}
+
+/* Takes all the height left between header and footer; never smaller than a readable strip */
+.document {
+    flex: 1 1 auto;
+    min-height: 140px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.document iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 12px;
+}
+
+.consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9375rem;
+}
+
+.consent input {
+    margin-top: 4px;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.button {
+    min-height: 44px; /* touch target */
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.acceptButton {
+    color: #fff;
+    background: #f59e0b;
+}
+
+.declineButton {
+    color: #1f2937;
+    background: #fff;
+    border: 1px solid #d1d5db;
+}
+
+/* Tablets and desktops: more breathing room */
+@media (min-width: 768px) and (min-height: 600px) {
+    .page { padding: 32px; }
+    .card { padding: 24px; gap: 16px; }
+    .title h1 { font-size: 1.5rem; }
+}
+
+/* Phone portrait: the two buttons share the width, so both are large and visible */
+@media (max-width: 480px) {
+    .page { padding: 8px; }
+    .card { padding: 12px; gap: 10px; }
+    .buttons { flex-wrap: nowrap; }
+    .button { flex: 1 1 0; padding: 8px 10px; }
+}
+
+/* Short screens (phone landscape): compact header, checkbox and buttons on one row,
+   so the document keeps as much height as possible */
+@media (max-height: 500px) {
+    .page { padding: 6px; }
+    .card { padding: 8px 12px; gap: 6px; border-radius: 8px; }
+    .title h1 { font-size: 1.05rem; }
+    .intro { display: none; }
+    .document { min-height: 100px; }
+    .footer {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        padding-top: 6px;
+    }
+    .consent { flex: 1 1 auto; font-size: 0.8125rem; }
+    .consent input { margin-top: 2px; }
+    .buttons { flex-wrap: nowrap; flex-shrink: 0; gap: 8px; }
+    .button { min-height: 40px; padding: 6px 14px; }
+}

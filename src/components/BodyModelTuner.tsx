@@ -10,6 +10,7 @@ import { CORPO_MODEL_URL } from '../constants';
 import { CorpoModel, ExposureController } from './shared/ModelComponents';
 import { useBodyModelLightingConfig, DEFAULT_BODY_MODEL_LIGHTING, BodyModelLightingConfig } from '../hooks/useBodyModelLightingConfig';
 import { logAction } from '../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../utils/changedFields';
 import { T } from './T';
 import styles from './BodyModelTuner.module.css';
 
@@ -118,15 +119,13 @@ const BodyModelTuner: React.FC = () => {
       await setDoc(doc(db, 'cfg_app_config', 'bodyModelLighting'), draft);
 
       if (user) {
-        const changedKeys = (Object.keys(draft) as (keyof BodyModelLightingConfig)[])
-          .filter((k) => draft[k] !== baseline[k]);
         logAction(user, {
           category: 'config',
           action: 'update',
           entityType: 'bodyModelLighting',
           entityId: 'bodyModelLighting',
           entityName: '3D Body Model Lighting',
-          detail: changedKeys.join(', '),
+          detail: changedFieldsDetail(changedFieldPaths(baseline as Record<string, any>, draft as Record<string, any>)),
         });
       }
 

@@ -42,10 +42,31 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['caretaker', 'admin', 'superadmin'] &&
         firestore.get(/databases/(default)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid;
     }
+    // User Terms PDFs (spec §4): any authenticated user may read (the acceptance screen shows
+    // them before acceptance). Only a superadmin may add a file, and only as a new file: no
+    // replace and no delete, because acceptance records point to published files.
+    match /App_config/user_documents/{fileName=**} {
+      allow read: if request.auth != null;
+      // resource == null: no file exists at this path. Checked explicitly because an upload
+      // over an existing file can be evaluated as "create" (seen in the Storage emulator).
+      allow create: if request.auth != null &&
+        resource == null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'superadmin' &&
+        request.resource.contentType == 'application/pdf';
+      allow update, delete: if false;
+    }
     // Allow any authenticated user to read; only admins/superadmins may write.
-    match /App_config/{allPaths=**} {
+    // Patient consent and guidelines templates are in App_config/patient_documents/.
+    // Storage rules allow access when ANY matching rule allows it, so these two rules
+    // must not match user_documents/ (handled above): files directly under App_config/,
+    // and subfolders other than user_documents.
+    match /App_config/{fileName} {
       allow read: if request.auth != null;
       allow write: if isAdminOrSuperadmin();
+    }
+    match /App_config/{folder}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if folder != 'user_documents' && isAdminOrSuperadmin();
     }
   }
 }

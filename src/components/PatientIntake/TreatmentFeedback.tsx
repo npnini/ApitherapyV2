@@ -164,7 +164,7 @@ const TreatmentFeedback: React.FC<TreatmentFeedbackProps> = ({ patient, treatmen
                     action: 'update',
                     entityType: 'treatment',
                     entityId: treatment.id!,
-                    entityName: patient.fullName || '',
+                    patientId: patient.id,
                     detail: `feedback - treatment ${treatment.treatmentNumber || ''}`,
                 });
             }

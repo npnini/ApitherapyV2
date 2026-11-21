@@ -4,7 +4,7 @@ import { logger } from './utils/logger';
 import { TranslationProvider, useTranslationContext, T, useT } from './components/T';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, getDoc, addDoc, updateDoc, DocumentSnapshot, DocumentData, orderBy, limit, increment } from 'firebase/firestore';
+import { collection, doc, getDocs, query, where, getDoc, addDoc, updateDoc, DocumentSnapshot, DocumentData, orderBy, limit, increment, serverTimestamp } from 'firebase/firestore';
 import Login from './components/Login';
 import PatientsDashboard from './components/PatientsDashboard';
 import Sidebar from './components/Sidebar';
@@ -33,10 +33,13 @@ import CalendarPage from './components/Appointments/CalendarPage';
 import TodayPage from './components/Appointments/TodayPage';
 import KnowledgePage from './components/Knowledge/KnowledgePage';
 import { useTodayAppointments } from './hooks/useTodayAppointments';
+import { useNightlyTermsSignOut } from './hooks/useNightlyTermsSignOut';
 import { JoinedPatientData, MedicalData, QuestionnaireResponse } from './types/patient';
 import { savePatient, saveMedicalData, addQuestionnaireResponse, addMeasuredValueReading, saveTreatment, getLatestTreatment } from './firebase/patient';
 import { AppUser } from './types/user';
-import { getEffectiveAppointmentPrefs } from './utils/appointments/prefs';
+import { UserTermsConfig, hasValidTermsAcceptance } from './types/userTerms';
+import { registerUser, getUserTermsConfig, PATIENT_DATA_ROLES } from './services/userService';
+import UserTermsAcceptance from './components/UserTerms/UserTermsAcceptance';
 import { Protocol } from './types/protocol';
 import { TreatmentSession, VitalSigns } from './types/treatmentSession';
 import { logout } from './services/authService';
@@ -49,6 +52,8 @@ import { countPatientTreatments, hasTreatmentToday } from './services/appointmen
 import './globals.css';
 
 type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_today' | 'appointments_calendar' | 'knowledge';
+/** Knowledge search is on unless cfg_app_config/main.knowledgeSettings.enabled is false. */
+const knowledgeEnabledFor = (appConfig: any): boolean => appConfig?.knowledgeSettings?.enabled !== false;
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 const AppInner: React.FC = () => {
@@ -64,6 +69,10 @@ const AppInner: React.FC = () => {
     const tAppSettings = useT('Application Settings');
     const tTreatmentEffectiveness = useT('Treatment Effectiveness');
     const [appUser, setAppUser] = useState<AppUser | null>(null);
+    // cfg_app_config/userTerms (spec §4–5), loaded at sign-in; null until loaded.
+    const [userTermsCfg, setUserTermsCfg] = useState<UserTermsConfig | null>(null);
+    // True when this sign-in created the user record: the profile form follows User Terms acceptance.
+    const [isNewRegistration, setIsNewRegistration] = useState(false);
     const [patients, setPatients] = useState<JoinedPatientData[]>([]);
     // Treatments recorded per patient id (patient list "Progress"); kept apart from the patient data it is saved from.
     const [treatmentCounts, setTreatmentCounts] = useState<Record<string, number>>({});
@@ -91,7 +100,12 @@ const AppInner: React.FC = () => {
     // Where closing the intake returns to: Today when it was opened from there (Step 6).
     const [intakeReturnView, setIntakeReturnView] = useState<View | null>(null);
     // Today's appointments of the viewed caretaker, live: the Today page and its sidebar badge.
-    const todayAppointments = useTodayAppointments(appUser ? (viewAsCaretakerId || appUser.uid) : undefined);
+    // Valid User Terms acceptance (spec §5) and patient-data access by role (§7): a learner, or a
+    // user who has not accepted the current version, loads no patient data at all.
+    const termsAccepted = hasValidTermsAcceptance(appUser, userTermsCfg);
+    const isLearner = appUser?.role === 'learner';
+    const canUsePatientData = !!appUser && userTermsCfg !== null && termsAccepted && PATIENT_DATA_ROLES.includes(appUser.role);
+    const todayAppointments = useTodayAppointments(appUser && canUsePatientData ? (viewAsCaretakerId || appUser.uid) : undefined);
     // Sidebar "Knowledge" always opens the Knowledge list: a new key resets the page's in-page history.
     const [knowledgeKey, setKnowledgeKey] = useState(0);
     // Landing rule (spec §5) is applied once per login, after the first patient load.
@@ -132,26 +146,21 @@ const AppInner: React.FC = () => {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
             return { uid: user.uid, ...userSnap.data() } as AppUser;
-        } else {
-            // App config is not loaded yet at this point (it waits for appUser), so read it here
-            // to copy the current appointment defaults into the new user.
-            let configData: any = {};
-            try {
-                const configSnap = await getDoc(doc(db, 'cfg_app_config', 'main'));
-                if (configSnap.exists()) configData = configSnap.data();
-            } catch (err) {
-                logger.error("Config fetch for new user defaults failed:", err);
-            }
-            const email = user.email || '';
-            const newUser: AppUser = {
-                uid: user.uid, email, fullName: user.displayName || 'New User', displayName: user.displayName || 'New User', mobile: '', role: 'caretaker',
-                appointmentPrefs: getEffectiveAppointmentPrefs({ email }, configData),
-            };
-            const { uid, ...userDataToSave } = newUser;
-            await setDoc(userRef, userDataToSave);
-            setCurrentView('onboarding_test');
-            return newUser;
         }
+        // F2 first registration: the registerUser Cloud Function creates the record (learner, free plan)
+        // and notifies the admins. Appointment prefs are not stored: readers fall back to the defaults.
+        const { created } = await registerUser();
+        if (created) setIsNewRegistration(true);
+        const newSnap = await getDoc(userRef);
+        return { uid: user.uid, ...newSnap.data() } as AppUser;
+    };
+
+    /** Re-reads the signed-in user's record (after User Terms acceptance). */
+    const reloadAppUser = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists()) setAppUser({ uid: user.uid, ...snap.data() } as AppUser);
     };
 
     const fetchInitialData = useCallback(async (user: AppUser, targetCaretakerId?: string) => {
@@ -243,9 +252,18 @@ const AppInner: React.FC = () => {
         const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
             if (user) {
                 const appUserData = await fetchUserData(user);
+                let termsCfg: UserTermsConfig = {};
+                try {
+                    termsCfg = await getUserTermsConfig();
+                } catch (err) {
+                    logger.error("User Terms config fetch failed:", err);
+                }
+                setUserTermsCfg(termsCfg);
                 setAppUser(appUserData);
             } else {
                 setAppUser(null);
+                setUserTermsCfg(null);
+                setIsNewRegistration(false);
                 setPatients([]);
             }
             setAuthReady(true);
@@ -255,7 +273,7 @@ const AppInner: React.FC = () => {
 
     // [TRACER] Handle URL-based deep linking on mount/auth
     useEffect(() => {
-        if (authReady && appUser && appConfig) {
+        if (authReady && appUser && appConfig && canUsePatientData) {
             const params = new URLSearchParams(window.location.search);
             const urlPatientId = params.get('patientId');
             if (urlPatientId) {
@@ -265,7 +283,7 @@ const AppInner: React.FC = () => {
                 // but usually keeping it is fine for SPAs.
             }
         }
-    }, [authReady, appUser, appConfig]);
+    }, [authReady, appUser, appConfig, canUsePatientData]);
 
     useEffect(() => {
         if (appUser && appUser.preferredLanguage) {
@@ -292,9 +310,35 @@ const AppInner: React.FC = () => {
 
     useEffect(() => {
         if (appUser && appConfig) {
-            fetchInitialData(appUser, viewAsCaretakerId || undefined);
+            if (canUsePatientData) {
+                fetchInitialData(appUser, viewAsCaretakerId || undefined);
+            } else {
+                // Learner, or User Terms not accepted: no patient data is loaded.
+                setPatients([]);
+                setIsLoading(false);
+            }
         }
-    }, [appUser, appConfig, fetchInitialData, viewAsCaretakerId]);
+    }, [appUser, appConfig, fetchInitialData, viewAsCaretakerId, canUsePatientData]);
+
+    // Learner (spec §7): only My Profile and Knowledge are reachable. Any other view
+    // (e.g. 'dashboard' after closing My Profile) goes to the learner's home.
+    const learnerHome: View = knowledgeEnabledFor(appConfig) ? 'knowledge' : 'user_details';
+    useEffect(() => {
+        if (!isLearner || !appConfig) return;
+        const allowed: View[] = ['knowledge', 'user_details', 'onboarding_test'];
+        if (!allowed.includes(currentView) || (currentView === 'knowledge' && learnerHome !== 'knowledge')) {
+            setCurrentView(learnerHome);
+        }
+    }, [isLearner, appConfig, currentView, learnerHome]);
+
+    // Onboarding order (decided 19/11/2026): registration → User Terms → profile form → home.
+    // Runs once acceptance is valid (immediately when no User Terms version is published yet).
+    useEffect(() => {
+        if (isNewRegistration && appUser && userTermsCfg !== null && termsAccepted) {
+            setIsNewRegistration(false);
+            setCurrentView('onboarding_test');
+        }
+    }, [isNewRegistration, appUser, userTermsCfg, termsAccepted]);
 
     // Landing rule (spec §5): after the first patient load of a login, a caretaker with at least
     // one patient lands on Today; with none, they stay on the patient list. Never overrides the
@@ -315,6 +359,9 @@ const AppInner: React.FC = () => {
     };
 
     const handleLogout = async () => { await logout(); };
+    // A User Terms version published during this session: sign out at 2 AM if not accepted (the
+    // previous version stays valid 24 hours, so work in progress is never interrupted).
+    useNightlyTermsSignOut(appUser, handleLogout);
     const handleAdminClick = () => { setCurrentView('admin_protocols'); };
     const handlePointsAdminClick = () => { setCurrentView('admin_points'); };
     const handlePointGroupsAdminClick = () => { setCurrentView('admin_point_groups'); };
@@ -330,7 +377,7 @@ const AppInner: React.FC = () => {
     const handleTodayClick = () => { setCurrentView('appointments_today'); };
     const handleKnowledgeClick = () => { setKnowledgeKey(k => k + 1); setCurrentView('knowledge'); };
     // App Settings → Knowledge → enabled; on unless an admin turned it off.
-    const knowledgeEnabled = appConfig?.knowledgeSettings?.enabled !== false;
+    const knowledgeEnabled = knowledgeEnabledFor(appConfig);
 
     // Today → "Open patient": the intake on its Appointments tab.
     const handleOpenPatientFromToday = (patient: JoinedPatientData) => {
@@ -371,15 +418,16 @@ const AppInner: React.FC = () => {
         if (!appUser) return;
         setSaveStatus('saving');
         const userRef = doc(db, 'users', updatedUser.uid);
-        const { uid, ...userDataToSave } = updatedUser;
-        await updateDoc(userRef, userDataToSave);
+        // Fields written by Cloud Functions only (role, plan, User Terms) and createdTimestamp are never
+        // sent back (the rules refuse a change to them); updatedTimestamp is set by the server.
+        const { uid, createdTimestamp, updatedTimestamp, role, plan, termsVersion, termsAcceptedTimestamp, ...userDataToSave } = updatedUser;
+        await updateDoc(userRef, { ...userDataToSave, updatedTimestamp: serverTimestamp() });
 
         logAction(appUser, {
             category: 'config',
             action: 'update',
             entityType: 'user',
             entityId: updatedUser.uid,
-            entityName: updatedUser.fullName || updatedUser.displayName || '',
             detail: 'profile',
         });
 
@@ -505,7 +553,7 @@ const AppInner: React.FC = () => {
                     action: isNewPatient ? 'create' : 'update',
                     entityType: 'patient',
                     entityId: finalPatientId,
-                    entityName: patientData.fullName || '',
+                    patientId: finalPatientId,
                 });
             }
 
@@ -627,6 +675,10 @@ const AppInner: React.FC = () => {
 
         if (!authReady) return <div className="flex justify-center items-center h-screen"><div><T>Initializing...</T></div></div>;
         if (!appUser) return <Login />;
+        // F3: until the current User Terms are accepted, no other screen is reachable.
+        if (userTermsCfg !== null && !termsAccepted) {
+            return <UserTermsAcceptance user={appUser} termsConfig={userTermsCfg} onAccepted={reloadAppUser} onDeclined={handleLogout} />;
+        }
         if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div><T>Loading Patient Data...</T></div></div>;
 
         const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];

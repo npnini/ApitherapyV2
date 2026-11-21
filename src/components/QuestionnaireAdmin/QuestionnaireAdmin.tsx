@@ -11,6 +11,7 @@ import { saveQuestionnaire } from '../../firebase/questionnaire';
 import { T, useT } from '../T';
 import { auth } from '../../firebase';
 import { logAction } from '../../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../../utils/changedFields';
 
 const QuestionnaireAdmin: React.FC = () => {
     const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
@@ -81,6 +82,10 @@ const QuestionnaireAdmin: React.FC = () => {
                     entityType: 'questionnaire',
                     entityId: itemToSave.id || '',
                     entityName: itemToSave.domain || '',
+                    // Which fields changed (names only), compared with the questionnaire as loaded
+                    detail: itemToSave.id ? changedFieldsDetail(changedFieldPaths(
+                        questionnaires.find(q => q.id === itemToSave.id) as Record<string, any> | undefined,
+                        itemToSave as Record<string, any>, itemToSave as Record<string, any>)) : undefined,
                 });
             }
 

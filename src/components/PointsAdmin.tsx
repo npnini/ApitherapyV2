@@ -10,6 +10,7 @@ import styles from './PointsAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
 import { T, useT, useTranslationContext } from '../components/T';
 import { logAction } from '../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../utils/changedFields';
 import Tooltip from './common/Tooltip';
 import ConfirmationModal from './ConfirmationModal';
 import { StorageLink } from './shared/StorageComponents';
@@ -280,6 +281,9 @@ const PointsAdmin: React.FC = () => {
                     entityType: 'point',
                     entityId: pointToSave.id || '',
                     entityName: pointDisplayName,
+                    // Which fields changed (names only), compared with the point as loaded
+                    detail: isNewPoint ? undefined : changedFieldsDetail(
+                        changedFieldPaths(points.find(p => p.id === pointToSave.id) as Record<string, any>, dataToSave, dataToSave)),
                 });
             }
 

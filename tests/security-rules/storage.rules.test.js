@@ -18,7 +18,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { ref, getBytes, uploadBytes } from 'firebase/storage';
+import { ref, getBytes, uploadBytes, deleteObject } from 'firebase/storage';
 import { doc, setDoc } from 'firebase/firestore';
 
 const REFERENCE_DATA_FOLDERS = ['Points', 'Protocols', 'Measures', 'Problems', 'App_config'];
@@ -128,6 +128,58 @@ test('storage.rules: Patients/{patientId} ownership enforcement', async (t) => {
       );
     }
   );
+});
+
+// User Terms PDFs (Functional Spec – Registration, Roles, Plans and User Terms §4, §10 test 8):
+// everyone signed in reads; only a superadmin adds a PDF, as a new file; nobody replaces or deletes.
+test('storage.rules: App_config/user_documents/ (User Terms)', async (t) => {
+  await seedUsersAndPatient();
+  const existing = 'App_config/user_documents/1700000000000_user_terms_1.0_he.pdf';
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await uploadBytes(ref(ctx.storage(), existing), Buffer.from('%PDF published'), { contentType: 'application/pdf' });
+  });
+  const pdf = { contentType: 'application/pdf' };
+
+  await t.test('any signed-in user can read a User Terms file', async () => {
+    const caretakerA = testEnv.authenticatedContext('caretakerA-uid');
+    await assertSucceeds(getBytes(ref(caretakerA.storage(), existing)));
+  });
+
+  await t.test('unauthenticated cannot read', async () => {
+    await assertFails(getBytes(ref(testEnv.unauthenticatedContext().storage(), existing)));
+  });
+
+  await t.test('a superadmin can add a new PDF', async () => {
+    const superadmin = testEnv.authenticatedContext('superadmin-uid');
+    await assertSucceeds(uploadBytes(ref(superadmin.storage(), 'App_config/user_documents/new_en.pdf'), Buffer.from('%PDF'), pdf));
+  });
+
+  await t.test('a superadmin cannot add a file that is not a PDF', async () => {
+    const superadmin = testEnv.authenticatedContext('superadmin-uid');
+    await assertFails(uploadBytes(ref(superadmin.storage(), 'App_config/user_documents/new.txt'), Buffer.from('text'), { contentType: 'text/plain' }));
+  });
+
+  await t.test('a superadmin cannot replace an existing file', async () => {
+    const superadmin = testEnv.authenticatedContext('superadmin-uid');
+    await assertFails(uploadBytes(ref(superadmin.storage(), existing), Buffer.from('%PDF changed'), pdf));
+  });
+
+  await t.test('an admin cannot add, replace or delete a User Terms file', async () => {
+    const admin = testEnv.authenticatedContext('admin-uid');
+    await assertFails(uploadBytes(ref(admin.storage(), 'App_config/user_documents/admin.pdf'), Buffer.from('%PDF'), pdf));
+    await assertFails(uploadBytes(ref(admin.storage(), existing), Buffer.from('%PDF changed'), pdf));
+    await assertFails(deleteObject(ref(admin.storage(), existing)));
+  });
+
+  await t.test('a superadmin cannot delete a User Terms file', async () => {
+    const superadmin = testEnv.authenticatedContext('superadmin-uid');
+    await assertFails(deleteObject(ref(superadmin.storage(), existing)));
+  });
+
+  await t.test('patient_documents/ stays admin-writable', async () => {
+    const admin = testEnv.authenticatedContext('admin-uid');
+    await assertSucceeds(uploadBytes(ref(admin.storage(), 'App_config/patient_documents/x_he.txt'), Buffer.from('text'), { contentType: 'text/plain' }));
+  });
 });
 
 for (const folder of REFERENCE_DATA_FOLDERS) {

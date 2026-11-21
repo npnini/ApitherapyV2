@@ -146,7 +146,7 @@ const BookNextSession: React.FC<BookNextSessionProps> = ({ patient, user, appCon
             const end = addMinutes(proposal.start, prefs.defaultMeetingMinutes);
             const id = await appointmentService.book({ caretakerId, patientId: patient.id, start: proposal.start, end, notifyPatient: hasEmail });
             logAction(user, {
-                category: 'patient', action: 'create', entityType: 'appointment', entityId: id, entityName: patient.fullName,
+                category: 'patient', action: 'create', entityType: 'appointment', entityId: id, patientId: patient.id,
                 detail: `booked ${proposal.start.toISOString()} (book next session)`,
             });
         } catch (err) {
@@ -170,8 +170,9 @@ const BookNextSession: React.FC<BookNextSessionProps> = ({ patient, user, appCon
         try {
             await updateDoc(doc(db, 'patients', patient.id), { 'appointmentPlan.plannedSessions': next });
             logAction(user, {
-                category: 'patient', action: 'update', entityType: 'patient', entityId: patient.id, entityName: patient.fullName,
-                detail: `planned sessions ${planned} → ${next} (extend course)`,
+                category: 'patient', action: 'update', entityType: 'patient', entityId: patient.id, patientId: patient.id,
+                // No session numbers: the treatment plan is treatment data
+                detail: 'extend course',
             });
             setPlanned(next);
             setExtendOpen(false);

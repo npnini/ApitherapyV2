@@ -518,65 +518,30 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
             markTabSaved(activeTab);
             if (patientData.id) {
                 if (activeTab === 'problems') {
-                    // Resolve problem names asynchronously, then log
+                    // Counts only: which problems a patient has is clinical data and is not stored in the log
                     const oldProblems = patient.medicalRecord?.problems || [];
                     const newProblems = finalData.medicalRecord?.problems || [];
                     const oldIds = new Set(oldProblems.map((p: any) => p.problemId));
                     const newIds = new Set(newProblems.map((p: any) => p.problemId));
-                    const addedIds = newProblems.filter((p: any) => !oldIds.has(p.problemId)).map((p: any) => p.problemId);
-                    const removedIds = oldProblems.filter((p: any) => !newIds.has(p.problemId)).map((p: any) => p.problemId);
-                    const allIds = [...addedIds, ...removedIds];
-
-                    if (allIds.length > 0) {
-                        Promise.all(allIds.map((id: string) => getDoc(doc(db, 'cfg_problems', id)))).then(snaps => {
-                            const nameMap: Record<string, string> = {};
-                            snaps.forEach(snap => {
-                                if (snap.exists()) {
-                                    const data = snap.data();
-                                    const name = typeof data.name === 'object'
-                                        ? (data.name[currentLang] || Object.values(data.name).find(v => v) || snap.id)
-                                        : snap.id;
-                                    nameMap[snap.id] = name;
-                                }
-                            });
-                            const parts: string[] = [];
-                            if (addedIds.length) parts.push(`added: ${addedIds.map((id: string) => nameMap[id] || id).join(', ')}`);
-                            if (removedIds.length) parts.push(`removed: ${removedIds.map((id: string) => nameMap[id] || id).join(', ')}`);
-                            logAction(user, {
-                                category: 'patientIntake',
-                                action: 'update',
-                                entityType: 'patient',
-                                entityId: patientData.id!,
-                                entityName: patientData.fullName || '',
-                                detail: parts.join('; '),
-                            });
-                        }).catch(() => {
-                            logAction(user, {
-                                category: 'patientIntake',
-                                action: 'update',
-                                entityType: 'patient',
-                                entityId: patientData.id!,
-                                entityName: patientData.fullName || '',
-                                detail: 'problems',
-                            });
-                        });
-                    } else {
-                        logAction(user, {
-                            category: 'patientIntake',
-                            action: 'update',
-                            entityType: 'patient',
-                            entityId: patientData.id,
-                            entityName: patientData.fullName || '',
-                            detail: 'problems (no changes)',
-                        });
-                    }
+                    const added = newProblems.filter((p: any) => !oldIds.has(p.problemId)).length;
+                    const removed = oldProblems.filter((p: any) => !newIds.has(p.problemId)).length;
+                    logAction(user, {
+                        category: 'patientIntake',
+                        action: 'update',
+                        entityType: 'patient',
+                        entityId: patientData.id,
+                        patientId: patientData.id,
+                        detail: added || removed
+                            ? `problems: ${added} added, ${removed} removed`
+                            : 'problems (no changes)',
+                    });
                 } else {
                     logAction(user, {
                         category: 'patientIntake',
                         action: 'update',
                         entityType: 'patient',
                         entityId: patientData.id,
-                        entityName: patientData.fullName || '',
+                        patientId: patientData.id,
                         detail: activeTab,
                     });
                 }
@@ -661,7 +626,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 action: 'view',
                 entityType: 'patient',
                 entityId: patientData.id,
-                entityName: patientData.fullName || '',
+                patientId: patientData.id,
                 detail: tab,
             });
         }
@@ -761,7 +726,7 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 action: 'create',
                 entityType: 'treatment',
                 entityId: generatedTreatmentId,
-                entityName: patientData.fullName || '',
+                patientId: patientData.id,
                 detail: `treatment ${treatmentNumber}`,
             });
         } catch (err) {

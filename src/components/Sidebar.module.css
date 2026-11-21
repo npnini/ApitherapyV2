@@ -146,6 +146,21 @@
     color: var(--color-white);
 }
 
+/* Items a learner sees but cannot select (spec §7): greyed out, no hover highlight. */
+.navButton:disabled,
+.configDropdownButton:disabled,
+.configButton:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.navButton:disabled:hover,
+.configDropdownButton:disabled:hover,
+.configButton:disabled:hover {
+    background-color: transparent;
+    color: inherit;
+}
+
 .chevron {
     transition: transform 0.3s;
 }

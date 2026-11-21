@@ -1,5 +1,7 @@
 /**
  * Utility to generate a combined image of a document template and signatures.
+ * The image is A4 width; its height grows with the text so that the whole document
+ * and the signatures below it always fit (at least one A4 page high).
  */
 export const generateDocumentImage = async (
     templateText: string,
@@ -15,50 +17,18 @@ export const generateDocumentImage = async (
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Could not get canvas context');
 
-    // A4 aspect ratio at 96 DPI (approx)
+    // A4 width at 96 DPI (approx); A4 height is the minimum height
+    const A4_HEIGHT = 1123;
     canvas.width = 794;
-    canvas.height = 1123;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#1e293b';
-    ctx.font = '16px Georgia, serif';
-    ctx.direction = direction; // Explicitly set direction for RTL/LTR font rendering
     const margin = 50;
     const maxWidth = canvas.width - (margin * 2);
-    let y = 80;
+    const topY = 80;
+    const lineHeight = 24;
+    const textFont = '16px Georgia, serif';
 
     const isRtl = direction === 'rtl';
-    ctx.textAlign = isRtl ? 'right' : 'left';
     const startX = isRtl ? canvas.width - margin : margin;
-
-    const wrapText = (text: string, x: number, startY: number, maxWidth: number, lineHeight: number) => {
-        if (!text.trim()) return startY + lineHeight; // Handle empty lines as paragraph spacing
-
-        const words = text.replace(/<[^>]*>/g, '').split(' ');
-        let line = '';
-        const linesToDraw: string[] = [];
-
-        for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + ' ';
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth && n > 0) {
-                linesToDraw.push(line.trim());
-                line = words[n] + ' ';
-            } else {
-                line = testLine;
-            }
-        }
-        linesToDraw.push(line.trim());
-
-        linesToDraw.forEach((l) => {
-            ctx.fillText(l, x, startY);
-            startY += lineHeight;
-        });
-
-        return startY;
-    };
 
     // Replace placeholders
     let processedText = templateText;
@@ -67,17 +37,62 @@ export const generateDocumentImage = async (
         processedText = processedText.replace(regex, value);
     });
 
-    // Handle newlines, breaks and paragraphs
+    // 1. Lay out the text into lines (measured with the text font).
+    //    An empty paragraph becomes an empty line (paragraph spacing).
+    ctx.font = textFont;
+    ctx.direction = direction;
+    const lines: string[] = [];
     const paragraphs = processedText.split(/\n|<br\s*\/?>|<p>/i);
     paragraphs.forEach(p => {
         // Strip other HTML tags (like <b>) but keep the text
         const cleanP = p.replace(/<[^>]*>/g, '').trim();
-        y = wrapText(cleanP, startX, y, maxWidth, 24);
+        if (!cleanP) {
+            lines.push('');
+            return;
+        }
+        const words = cleanP.split(' ');
+        let line = '';
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                lines.push(line.trim());
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line.trim());
     });
 
-    y += 40;
+    // 2. Size the canvas: text, then the signature rows (2 per row), then a bottom margin.
+    const blockWidth = 200;
+    const sigHeight = 100;
+    const spacing = 40;
+    const rowHeight = sigHeight + 60;
+    const textEndY = topY + lines.length * lineHeight;
+    const sigTopY = textEndY + 40;
+    const sigRows = Math.ceil(signatures.length / 2);
+    const contentBottom = sigRows > 0
+        ? sigTopY + (sigRows - 1) * rowHeight + 30 + sigHeight
+        : textEndY;
+    // Setting the height resets the context state, so styles are set after this
+    canvas.height = Math.max(A4_HEIGHT, Math.ceil(contentBottom + margin));
 
-    // Load images
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 3. Draw the text
+    ctx.fillStyle = '#1e293b';
+    ctx.font = textFont;
+    ctx.direction = direction; // Explicitly set direction for RTL/LTR font rendering
+    ctx.textAlign = isRtl ? 'right' : 'left';
+    let y = topY;
+    lines.forEach(l => {
+        if (l) ctx.fillText(l, startX, y);
+        y += lineHeight;
+    });
+
+    // 4. Draw the signatures
     const loadImg = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve) => {
             const img = new Image();
@@ -86,22 +101,17 @@ export const generateDocumentImage = async (
         });
     };
 
-    const blockWidth = 200;
-    const sigHeight = 100;
-    const spacing = 40;
-
     for (let i = 0; i < signatures.length; i++) {
         const sig = signatures[i];
         if (!sig.dataUrl) continue;
 
         const img = await loadImg(sig.dataUrl);
 
-        // Arrange signatures horizontally if possible, or vertically if too many
-        // For simplicity, we'll do 2 per row
+        // 2 signatures per row
         const row = Math.floor(i / 2);
         const col = i % 2;
 
-        const currentY = y + (row * (sigHeight + 60));
+        const currentY = sigTopY + (row * rowHeight);
         let currentX;
 
         if (isRtl) {

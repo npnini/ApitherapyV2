@@ -26,7 +26,7 @@ interface DocumentsTabProps {
     patientName?: string;
 }
 
-const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId, patientName }) => {
+const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
     const [documents, setDocuments] = useState<PatientDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchText, setSearchText] = useState('');
@@ -106,8 +106,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId, patientName }) =
                     action: 'delete',
                     entityType: 'document',
                     entityId: documentToDelete.id,
-                    entityName: patientName || '',
-                    detail: documentToDelete.description,
+                    patientId,
+                    // No description: it is free text typed by the caretaker and may hold clinical details
                 });
             }
 
@@ -152,8 +152,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId, patientName }) =
                     action: 'create',
                     entityType: 'document',
                     entityId: docRef.id,
-                    entityName: patientName || '',
-                    detail: newDescription.trim(),
+                    patientId,
+                    // No description: it is free text typed by the caretaker and may hold clinical details
                 });
             }
 

@@ -122,7 +122,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
     const nameOf = (id: string) => (id === patient.id ? patient.fullName : otherNames[id] || '—');
 
     const log = (id: string, detail: string) => logAction(actor, {
-        category: 'patient', action: 'create', entityType: 'appointment', entityId: id, entityName: patient.fullName, detail,
+        category: 'patient', action: 'create', entityType: 'appointment', entityId: id, patientId: patient.id, detail,
     });
 
     const run = async (work: () => Promise<void>) => {
@@ -184,7 +184,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
         setConfirmCancel(null);
         await run(async () => {
             await appointmentService.cancel(a.id);
-            logAction(actor, { category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, entityName: patient.fullName, detail: 'cancelled' });
+            logAction(actor, { category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, patientId: patient.id, detail: 'cancelled' });
         });
     };
 
@@ -193,7 +193,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
         setConfirmMark(null);
         await run(async () => {
             await appointmentService.cancel(a.id);
-            logAction(actor, { category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, entityName: patient.fullName, detail: `marked cancelled (was ${a.status})` });
+            logAction(actor, { category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, patientId: patient.id, detail: `marked cancelled (was ${a.status})` });
         });
     };
     const markButton = (a: Appointment) => (

@@ -15,6 +15,13 @@ import { v1 } from "@google-cloud/firestore";
 export { onAppointmentWritten } from "./appointments/onAppointmentWritten.js";
 export { onTreatmentCreated } from "./appointments/onTreatmentCreated.js";
 export { markMissedAppointments } from "./appointments/markMissedAppointments.js";
+
+// Registration, roles, plans and User Terms (Functional Spec – Registration, Roles, Plans and User Terms)
+export { registerUser } from "./users/registerUser.js";
+export { acceptUserTerms, logUserTermsDeclined } from "./users/acceptUserTerms.js";
+export { setUserRole } from "./users/setUserRole.js";
+export { saveUserTermsFile, publishUserTerms } from "./users/userTermsAdmin.js";
+import { PATIENT_ROLES, requireActive } from "./users/access.js";
 import { Storage } from "@google-cloud/storage";
 
 // Initialize the external clients right below your imports
@@ -344,7 +351,9 @@ export const onFeedbackSessionComplete = onDocumentUpdated("feedback_sessions/{s
  * 3. Callable: sendDocumentEmail
  * Sends a signed document to a patient via SendGrid.
  */
-export const sendDocumentEmail = onCall({ enforceAppCheck: true }, async (request) => {
+export const sendDocumentEmail = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" }, async (request) => {
+  // Role and User Terms acceptance check (spec §7: learners and users without valid acceptance are refused)
+  await requireActive(request, PATIENT_ROLES, "sendDocumentEmail");
   // Check authentication
   if (!request.auth) {
     throw new HttpsError(
@@ -493,7 +502,9 @@ export const filterPiiTransform = onRequest(async (req, res) => {
  * 5. Data Analysis: Treatment Effectiveness
  * Securely queries the BigQuery view based on user role and drill-down level.
  */
-export const getTreatmentEffectiveness = onCall({ enforceAppCheck: true }, async (request) => {
+export const getTreatmentEffectiveness = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" }, async (request) => {
+  // Role and User Terms acceptance check (spec §7: learners and users without valid acceptance are refused)
+  await requireActive(request, PATIENT_ROLES, "getTreatmentEffectiveness");
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",
@@ -683,7 +694,9 @@ export const getTreatmentEffectiveness = onCall({ enforceAppCheck: true }, async
  * 6. Callable: sendMissingProblemEmail
  * Notifies admin when a caretaker cannot find a specific problem in the system.
  */
-export const sendMissingProblemEmail = onCall({ enforceAppCheck: true }, async (request) => {
+export const sendMissingProblemEmail = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" }, async (request) => {
+  // Role and User Terms acceptance check (spec §7: learners and users without valid acceptance are refused)
+  await requireActive(request, PATIENT_ROLES, "sendMissingProblemEmail");
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated.");
   }
@@ -815,7 +828,7 @@ export const sendMissingProblemEmail = onCall({ enforceAppCheck: true }, async (
  * 7. Callable: translateText
  * Proxy for Google Translate API to avoid exposing the Translate API Key on the frontend.
  */
-export const translateText = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true' }, async (request) => {
+export const translateText = onCall({ enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",

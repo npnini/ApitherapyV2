@@ -178,7 +178,7 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
             await appointmentService.move(appointment.id, start, end);
             logAction(actor, {
                 category: 'patient', action: 'update', entityType: 'appointment',
-                entityId: appointment.id, entityName: patientName(appointment.patientId), detail: `moved to ${start.toISOString()}`,
+                entityId: appointment.id, patientId: appointment.patientId, detail: `moved to ${start.toISOString()}`,
             });
         } catch (err) {
             console.error('Moving appointment failed:', err);

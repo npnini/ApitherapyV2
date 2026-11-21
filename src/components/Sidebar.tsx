@@ -79,6 +79,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const userUid = user?.uid;
 
+    // Learner (spec §7): the sidebar stays as for every role, but only My Profile and Knowledge
+    // are active; the patient items are shown disabled, so a learner sees what the full app offers.
+    const isLearner = user?.role === 'learner';
+    const tCaretakersOnly = useT('Available to caretakers only. An administrator can give you caretaker access.');
+
     React.useEffect(() => {
         if (!userUid) return;
         if (canImpersonate && caretakers.length === 0) {
@@ -134,7 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                     </div>
                     <div className={styles.configSubMenu}>
-                        <button onClick={onTodayClick} className={styles.configButton}>
+                        <button onClick={onTodayClick} className={styles.configButton} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                             <CalendarClock size={16} className={styles.iconSecondary} />
                             <span><T>Today</T></span>
                             {todayCount > 0 && (
@@ -143,14 +148,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </span>
                             )}
                         </button>
-                        <button onClick={onCalendarClick} className={styles.configButton}>
+                        <button onClick={onCalendarClick} className={styles.configButton} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                             <CalendarDays size={16} className={styles.iconSecondary} />
                             <span><T>Calendar</T></span>
                         </button>
                     </div>
                 </div>
 
-                <button onClick={onPatientsClick} className={styles.navButton}>
+                <button onClick={onPatientsClick} className={styles.navButton} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                     <Users size={18} className={styles.iconPrimary} />
                     <span><T>Patients</T></span>
                 </button>
@@ -163,14 +168,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 <div>
-                    <button onClick={() => setDataAnalysisOpen(!dataAnalysisOpen)} className={styles.configDropdownButton} data-keep-nav-open>
+                    <button onClick={() => setDataAnalysisOpen(!dataAnalysisOpen)} className={styles.configDropdownButton} data-keep-nav-open disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                         <div className={styles.flexCenter}>
                             <BarChart2 size={18} className={styles.iconPrimary} />
                             <span><T>Data Analysis</T></span>
                         </div>
                         <ChevronDown size={16} className={`${styles.chevron} ${dataAnalysisOpen ? styles.chevronOpen : ''}`} />
                     </button>
-                    {dataAnalysisOpen && (
+                    {dataAnalysisOpen && !isLearner && (
                         <div className={styles.configSubMenu}>
                             <button onClick={onDataAnalysisClick} className={styles.configButton}>
                                 <BarChart2 size={16} className={styles.iconSecondary} />

@@ -8,6 +8,7 @@ import styles from '../PointsAdmin.module.css';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
 import { logAction } from '../../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../../utils/changedFields';
 
 const TYPE_OPTIONS: PointGroupType[] = ['meridian', 'ex-point'];
 const LATERALITY_OPTIONS: PointGroupLaterality[] = ['Paired', 'Midline-front', 'Midline-back', 'Unilateral'];
@@ -201,6 +202,9 @@ const PointGroupAdmin: React.FC = () => {
                     entityType: 'point_group',
                     entityId: groupToSave.id || '',
                     entityName: groupToSave.name.trim(),
+                    // Which fields changed (names only), compared with the group as loaded
+                    detail: isNewGroup ? undefined : changedFieldsDetail(
+                        changedFieldPaths(pointGroups.find(g => g.id === groupToSave.id) as Record<string, any> | undefined, dataToSave, dataToSave)),
                 });
             }
 

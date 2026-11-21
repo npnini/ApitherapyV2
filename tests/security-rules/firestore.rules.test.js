@@ -63,7 +63,10 @@ const newBooking = (overrides = {}) => ({
 
 // Clears fixture state and reseeds. Called once at the start of each top-level test()
 // block (not via a global beforeEach, which would also fire before every nested t.test()).
-async function seed() {
+// `extra(db)` adds block-specific fixtures in the same rules-disabled context: a second
+// withSecurityRulesDisabled call after the block's authenticated reads can fail with
+// "Firestore has already been started".
+async function seed(extra) {
   await testEnv.clearFirestore();
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -79,6 +82,9 @@ async function seed() {
       ...newBooking(),
       invite: { sequence: 0, lastSentStatus: 'booked' },
     });
+
+    // Block-specific fixtures, after the base ones so they can extend them
+    if (extra) await extra(db);
   });
 }
 
@@ -392,5 +398,182 @@ test('firestore.rules: patients are never deleted', async (t) => {
 
   await t.test('15f. the owner can still update the patient (e.g. Extend course)', async () => {
     await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA'), { 'appointmentPlan.plannedSessions': 12 }));
+  });
+});
+
+// Registration, roles, plans and User Terms (Functional Spec – Registration, Roles, Plans and
+// User Terms §3, §5, §7, §10 tests 3 and 8). role/plan/terms fields and the acceptance history are
+// written by Cloud Functions only; a learner, or a user without valid acceptance, reaches no patient data.
+test('firestore.rules: roles, plans and User Terms', async (t) => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'users/learner-uid'), { role: 'learner', plan: 'free', fullName: 'L' });
+    await setDoc(doc(db, 'users/super-uid'), { role: 'superadmin', fullName: 'S' });
+    await setDoc(doc(db, 'users/caretakerA-uid/termsAcceptances/acc1'), { version: '1.0', language: 'he', acceptedTimestamp: START });
+  });
+
+  await t.test('a learner cannot read a patient or list patients (test 3)', async () => {
+    await assertFails(getDoc(doc(dbAs('learner-uid'), 'patients/patientA')));
+    await assertFails(getDocs(query(collection(dbAs('learner-uid'), 'patients'), where('caretakerId', '==', 'learner-uid'))));
+  });
+
+  await t.test('a learner cannot create a patient', async () => {
+    await assertFails(setDoc(doc(dbAs('learner-uid'), 'patients/newL'), { caretakerId: 'learner-uid', fullName: 'X' }));
+  });
+
+  await t.test('a learner cannot read or create appointments, treatments or medical data', async () => {
+    await assertFails(getDocs(query(collection(dbAs('learner-uid'), 'appointments'), where('caretakerId', '==', 'learner-uid'))));
+    await assertFails(getDoc(doc(dbAs('learner-uid'), 'patient_medical_data/patientA')));
+    await assertFails(setDoc(doc(dbAs('learner-uid'), 'treatments/t1'), { patientId: 'patientA' }));
+  });
+
+  await t.test('a learner can read the Knowledge Base configuration', async () => {
+    await assertSucceeds(getDocs(collection(dbAs('learner-uid'), 'cfg_protocols')));
+  });
+
+  await t.test('nobody creates a user record from the app (registerUser function only)', async () => {
+    await assertFails(setDoc(doc(dbAs('new-uid'), 'users/new-uid'), { role: 'learner' }));
+    await assertFails(setDoc(doc(dbAs('new-uid'), 'users/new-uid'), { role: 'caretaker' }));
+  });
+
+  await t.test('a user cannot change their own role, plan or User Terms fields', async () => {
+    await assertFails(updateDoc(doc(dbAs('learner-uid'), 'users/learner-uid'), { role: 'caretaker' }));
+    await assertFails(updateDoc(doc(dbAs('learner-uid'), 'users/learner-uid'), { plan: 'level3' }));
+    await assertFails(updateDoc(doc(dbAs('learner-uid'), 'users/learner-uid'), { termsVersion: '1.0' }));
+    await assertFails(updateDoc(doc(dbAs('learner-uid'), 'users/learner-uid'), { termsAcceptedTimestamp: START }));
+    await assertFails(updateDoc(doc(dbAs('learner-uid'), 'users/learner-uid'), { createdTimestamp: START }));
+  });
+
+  await t.test('a user can still edit the rest of their own profile', async () => {
+    await assertSucceeds(updateDoc(doc(dbAs('learner-uid'), 'users/learner-uid'), { mobile: '050', updatedTimestamp: START }));
+  });
+
+  await t.test('a superadmin cannot change a role or plan from the app (Cloud Functions only)', async () => {
+    await assertFails(updateDoc(doc(dbAs('super-uid'), 'users/learner-uid'), { role: 'caretaker' }));
+    await assertFails(updateDoc(doc(dbAs('super-uid'), 'users/learner-uid'), { plan: 'level1' }));
+  });
+
+  await t.test('a superadmin can still set the impersonation flag', async () => {
+    await assertSucceeds(updateDoc(doc(dbAs('super-uid'), 'users/caretakerB-uid'), { canImpersonate: true }));
+  });
+
+  await t.test('acceptance records: owner and superadmin read, nobody writes or deletes (test 8)', async () => {
+    const accPath = 'users/caretakerA-uid/termsAcceptances/acc1';
+    await assertSucceeds(getDoc(doc(dbAs('caretakerA-uid'), accPath)));
+    await assertSucceeds(getDoc(doc(dbAs('super-uid'), accPath)));
+    await assertFails(getDoc(doc(dbAs('caretakerB-uid'), accPath)));
+    await assertFails(setDoc(doc(dbAs('caretakerA-uid'), 'users/caretakerA-uid/termsAcceptances/acc2'), { version: '9' }));
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), accPath), { version: '9' }));
+    await assertFails(deleteDoc(doc(dbAs('super-uid'), accPath)));
+  });
+
+  await t.test('cfg_app_config/userTerms: everyone reads, nobody writes from the app', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('learner-uid'), 'cfg_app_config/userTerms')));
+    await assertFails(setDoc(doc(dbAs('super-uid'), 'cfg_app_config/userTerms'), { currentVersion: '1.0' }));
+    await assertFails(setDoc(doc(dbAs('impersonator-uid'), 'cfg_app_config/userTerms'), { currentVersion: '1.0' }));
+  });
+
+  await t.test('other cfg_app_config documents stay admin-writable', async () => {
+    await assertSucceeds(setDoc(doc(dbAs('impersonator-uid'), 'cfg_app_config/main'), { x: 1 }, { merge: true }));
+  });
+});
+
+test('firestore.rules: no User Terms published yet — existing users keep working (spec §5)', async (t) => {
+  await seed();
+
+  await t.test('no userTerms document: existing caretakers keep working', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
+  });
+});
+
+test('firestore.rules: userTerms without currentVersion — check not applied (spec §5)', async (t) => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'cfg_app_config/userTerms'), { versions: {} });
+  });
+
+  await t.test('userTerms without currentVersion: the check is not applied', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
+  });
+});
+
+test('firestore.rules: valid User Terms acceptance gates patient data (spec §5)', async (t) => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'cfg_app_config/userTerms'), {
+      currentVersion: '1.0',
+      versions: { '1.0': { status: 'published', files: {} } },
+    });
+    // caretakerB has accepted 1.0; caretakerA has not
+    await setDoc(doc(db, 'users/caretakerB-uid'), { termsVersion: '1.0' }, { merge: true });
+  });
+
+  await t.test('a caretaker who has not accepted the current version is refused', async () => {
+    await assertFails(getDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
+    await assertFails(updateDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA'), { 'appointmentPlan.plannedSessions': 3 }));
+    await assertFails(getDocs(query(collection(dbAs('caretakerA-uid'), 'appointments'), where('caretakerId', '==', 'caretakerA-uid'))));
+  });
+
+  await t.test('a caretaker who accepted the current version works as before', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('caretakerB-uid'), 'patients/patientB')));
+  });
+
+  await t.test('without acceptance, the user can still read and edit their own profile', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('caretakerA-uid'), 'users/caretakerA-uid')));
+    await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'users/caretakerA-uid'), { mobile: '052' }));
+  });
+});
+
+// Grace period (decided 21/11/2026): after a publish, the previous version stays valid for 24 hours;
+// the app signs open sessions out at 2 AM local time, always within that window.
+test('firestore.rules: previous User Terms version valid during the grace period', async (t) => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'cfg_app_config/userTerms'), {
+      currentVersion: '2.0',
+      previousVersion: '1.0',
+      previousValidUntil: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000),
+      versions: {},
+    });
+    // caretakerA accepted the previous version; caretakerB an older one
+    await setDoc(doc(db, 'users/caretakerA-uid'), { termsVersion: '1.0' }, { merge: true });
+    await setDoc(doc(db, 'users/caretakerB-uid'), { termsVersion: '0.9' }, { merge: true });
+  });
+
+  await t.test('a caretaker who accepted the previous version keeps access during the grace period', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
+    await assertSucceeds(updateDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA'), { 'appointmentPlan.plannedSessions': 3 }));
+  });
+
+  await t.test('an older version than the previous one is refused', async () => {
+    await assertFails(getDoc(doc(dbAs('caretakerB-uid'), 'patients/patientB')));
+  });
+});
+
+test('firestore.rules: previous User Terms version refused after the grace period', async (t) => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'cfg_app_config/userTerms'), {
+      currentVersion: '2.0',
+      previousVersion: '1.0',
+      previousValidUntil: Timestamp.fromMillis(Date.now() - 60 * 1000),
+      versions: {},
+    });
+    await setDoc(doc(db, 'users/caretakerA-uid'), { termsVersion: '1.0' }, { merge: true });
+  });
+
+  await t.test('after the grace period the previous version no longer gives access', async () => {
+    await assertFails(getDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
+  });
+});
+
+test('firestore.rules: first publish gives no grace to users who never accepted', async (t) => {
+  await seed(async (db) => {
+    // First publish: no earlier version, previousVersion is ''
+    await setDoc(doc(db, 'cfg_app_config/userTerms'), {
+      currentVersion: '1.0',
+      previousVersion: '',
+      previousValidUntil: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000),
+      versions: {},
+    });
+  });
+
+  await t.test('a caretaker with no termsVersion is refused even inside the window', async () => {
+    await assertFails(getDoc(doc(dbAs('caretakerA-uid'), 'patients/patientA')));
   });
 });

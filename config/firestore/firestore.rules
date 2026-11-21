@@ -28,12 +28,46 @@ service cloud.firestore {
       );
     }
 
+    // Roles with access to patient data. learner has none (Knowledge Base only).
+    // admin/superadmin keep today's patient access (decided 19/11/2026).
+    function isCaretakerOrAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['caretaker', 'admin', 'superadmin'];
+    }
+
+    // Valid User Terms acceptance (spec §5): no version published yet (no currentVersion),
+    // or the user's termsVersion equals the current version, or - during the 24-hour grace period
+    // after a publish - equals the previous version (decided 21/11/2026: open sessions are not
+    // interrupted; the app signs them out at 2 AM local time, always within the grace period).
+    // previousVersion is '' after the first publish, so users who never accepted get no grace.
+    function termsOk() {
+      let termsPath = /databases/$(database)/documents/cfg_app_config/userTerms;
+      let userTermsVersion = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('termsVersion', '');
+      return !exists(termsPath) ||
+        !('currentVersion' in get(termsPath).data) ||
+        userTermsVersion == get(termsPath).data.currentVersion ||
+        (userTermsVersion != '' &&
+          userTermsVersion == get(termsPath).data.get('previousVersion', '') &&
+          request.time < get(termsPath).data.get('previousValidUntil', timestamp.value(0)));
+    }
+
+    // Patient-data access: a role that allows it and valid User Terms acceptance.
+    function isActiveCaretaker() {
+      return isCaretakerOrAdmin() && termsOk();
+    }
+
     function canReadPatientData(patientId) {
-      return isAuthenticated() && (
+      return isActiveCaretaker() && (
         get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid ||
         canImpersonate()
       );
     }
+
+    // Fields only Cloud Functions write (spec §3): the app can never change them.
+    function functionOnlyUserFields() {
+      return ['role', 'plan', 'termsVersion', 'termsAcceptedTimestamp', 'createdTimestamp'];
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated() && (
         request.auth.uid == userId ||
@@ -41,16 +75,25 @@ service cloud.firestore {
         canImpersonate() ||
         ( (isCaretaker() || isAdmin()) && (resource == null || resource.data.role != 'patient') )
       );
-      // Only superadmins can change roles or impersonation flags.
-      // Regular users can only update their own profile EXCEPT for those fields.
-      allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.role == 'caretaker' && !('canImpersonate' in request.resource.data);
-      allow update: if isAuthenticated() && (
-        isSuperAdmin() || (
-          request.auth.uid == userId && 
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'canImpersonate'])
-        )
-      );
+      // Users are created by the registerUser Cloud Function only (role learner, plan free).
+      allow create: if false;
+      // Role, plan and User Terms fields are written by Cloud Functions only.
+      // Only superadmins change the impersonation flag; users edit the rest of their own profile.
+      allow update: if isAuthenticated() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(functionOnlyUserFields()) && (
+          isSuperAdmin() || (
+            request.auth.uid == userId &&
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['canImpersonate'])
+          )
+        );
       allow delete: if isSuperAdmin();
+
+      // User Terms acceptance history (legal evidence): written by the acceptUserTerms
+      // Cloud Function only, never changed or deleted.
+      match /termsAcceptances/{acceptanceId} {
+        allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+        allow write: if false;
+      }
     }
 
     // --- CONFIGURATION COLLECTIONS (LONG-TERM) ---
@@ -87,7 +130,8 @@ service cloud.firestore {
 
     match /cfg_app_config/{configId} {
         allow read: if isAuthenticated();
-        allow write: if isAdmin();
+        // userTerms is written by Cloud Functions only (saveUserTermsFile, publishUserTerms)
+        allow write: if isAdmin() && configId != 'userTerms';
     }
 
     match /cfg_secrets/{secretId} {
@@ -98,10 +142,10 @@ service cloud.firestore {
     match /cfg_translations/{document=**} {
       // 1. Every authenticated user must be able to read language files to load the UI
       allow read: if isAuthenticated();
-      
+
       // 2. Admins/Superadmins retain full permissions to modify, fix, or delete records directly
       allow write: if isAdmin();
-      
+
       // 3. Automated frontend translation components (T.tsx) can ONLY append missing strings.
       // They are explicitly blocked from modifying (updating) or purging (deleting) existing caches.
       allow create: if isAuthenticated();
@@ -110,14 +154,14 @@ service cloud.firestore {
     // --- REFACTORED PATIENT COLLECTIONS ---
 
     function isPatientCaretaker(patientId) {
-      return (isCaretaker() || isAdmin()) && get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid;
+      return isActiveCaretaker() && get(/databases/$(database)/documents/patients/$(patientId)).data.caretakerId == request.auth.uid;
     }
 
     // 1. Personal Details
     match /patients/{patientId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.get('caretakerId', null) == request.auth.uid || canImpersonate());
-      allow create: if (isCaretaker() || isAdmin()) && request.resource.data.caretakerId == request.auth.uid;
-      allow update: if (isCaretaker() || isAdmin()) && resource.data.caretakerId == request.auth.uid;
+      allow read: if isActiveCaretaker() && (resource == null || resource.data.get('caretakerId', null) == request.auth.uid || canImpersonate());
+      allow create: if isActiveCaretaker() && request.resource.data.caretakerId == request.auth.uid;
+      allow update: if isActiveCaretaker() && resource.data.caretakerId == request.auth.uid;
       // Patients are never deleted (decided 2026-09-29): their medical data, documents, signatures
       // and appointments would be left unreachable. A rare removal is done by an admin in the console.
       allow delete: if false;
@@ -137,25 +181,25 @@ service cloud.firestore {
 
     // 3. Questionnaire Responses (Multiple per patient)
     match /questionnaire_responses/{responseId} {
-      allow read: if resource == null || canReadPatientData(resource.data.patientId);
+      allow read: if (resource == null && isActiveCaretaker()) || canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
 
     // 4. Treatments (Multiple per patient)
     match /treatments/{treatmentId} {
-      allow read: if resource == null || canReadPatientData(resource.data.patientId);
+      allow read: if (resource == null && isActiveCaretaker()) || canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
 
     // 5. Measured Values (Multiple per patient)
     match /measured_values/{readingId} {
-      allow read: if resource == null || canReadPatientData(resource.data.patientId);
+      allow read: if (resource == null && isActiveCaretaker()) || canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
       allow update, delete: if isPatientCaretaker(resource.data.patientId);
     }
-    
+
     // 6. Appointments (Multiple per patient). No deletes: cancelling sets status 'cancelled'.
     // Clients only create 'booked' appointments; walk-ins and the 'invite' bookkeeping are
     // written by Cloud Functions (Admin SDK, bypasses these rules). List queries must filter
@@ -181,12 +225,12 @@ service cloud.firestore {
     }
 
     match /appointments/{appointmentId} {
-      allow read: if isAuthenticated() && (
+      allow read: if isActiveCaretaker() && (
         resource == null ||
         resource.data.caretakerId == request.auth.uid ||
         canImpersonate()
       );
-      allow create: if isAuthenticated() &&
+      allow create: if isActiveCaretaker() &&
         request.resource.data.caretakerId == request.auth.uid &&
         isPatientCaretaker(request.resource.data.patientId) &&
         request.resource.data.status == 'booked' &&
@@ -194,7 +238,7 @@ service cloud.firestore {
         !('invite' in request.resource.data) &&
         request.resource.data.keys().hasOnly(appointmentClientFields()) &&
         hasValidAppointmentTimes(request.resource.data);
-      allow update: if isAuthenticated() &&
+      allow update: if isActiveCaretaker() &&
         resource.data.caretakerId == request.auth.uid &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['caretakerId', 'patientId', 'source', 'invite']) &&
         request.resource.data.keys().hasOnly(appointmentClientFields()) &&
@@ -220,7 +264,7 @@ service cloud.firestore {
       allow get: if true;
       allow list: if isAuthenticated() && canReadPatientData(resource.data.patientId);
       allow create: if isPatientCaretaker(request.resource.data.patientId);
-      allow update: if (resource.data.status == 'pending' 
+      allow update: if (resource.data.status == 'pending'
                && request.resource.data.status == 'completed'
                && request.resource.data.diff(resource.data).affectedKeys()
                   .hasOnly(['responses', 'status', 'completedAt', 'feedbackText', 'event']))

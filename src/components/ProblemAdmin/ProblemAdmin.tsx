@@ -12,6 +12,7 @@ import { useTranslationContext } from '../T';
 import { getDoc } from 'firebase/firestore';
 import { auth } from '../../firebase';
 import { logAction } from '../../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../../utils/changedFields';
 
 type View = 'list' | 'details' | 'form';
 
@@ -185,6 +186,9 @@ const ProblemAdmin: React.FC = () => {
             entityType: 'problem',
             entityId: selectedProblemId || '',
             entityName: problemDisplayName,
+            // Which fields changed (names only), compared with the problem as loaded
+            detail: isUpdate ? changedFieldsDetail(
+                changedFieldPaths(problemDocument?.data() as Record<string, any> | undefined, dataToSave, dataToSave)) : undefined,
         });
       }
 

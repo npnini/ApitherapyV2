@@ -1,25 +1,53 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, getDocs, startAfter, DocumentSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, getDoc, doc, startAfter, DocumentSnapshot, Timestamp } from 'firebase/firestore';
 import { T, useTranslationContext } from './T';
 import { RefreshCw } from 'lucide-react';
 import styles from './ActivityLog.module.css';
 
+/**
+ * A log record. Since 21/11/2026 records hold IDs only for people: userId (no name) and patientId
+ * (no patient name); entityName is kept only for knowledge-base / config items. Older records may
+ * still carry userName and a patient's name in entityName (legacy), shown only when the ID cannot
+ * be resolved. Names are resolved here for display and never written back to the log.
+ */
 interface AuditLogEntry {
     id: string;
     timestamp: Timestamp;
     userId: string;
-    userName: string;
+    userName?: string;
     userRole: string;
     category: string;
     action: string;
     entityType: string;
     entityId: string;
-    entityName: string;
+    entityName?: string;
+    patientId?: string;
     detail: string;
 }
 
-type SortField = 'timestamp' | 'userName' | 'category' | 'action' | 'entityType';
+type SortField = 'timestamp' | 'user' | 'category' | 'action' | 'entityType';
+
+/**
+ * Resolved names by ID. Missing key = not read yet. `name: null` = no such record (deleted);
+ * `denied` = the read was refused by the security rules (e.g. the viewer has not yet accepted
+ * a newly published User Terms version), so the record may well exist.
+ */
+type NameCache = Record<string, { name: string | null; denied?: boolean }>;
+
+/** Label for an ID whose name is not available: deleted, not readable, or not loaded yet. */
+const unresolvedLabel = (entry: { name: string | null; denied?: boolean } | undefined, id: string, kind: 'user' | 'patient') =>
+    !entry ? shortId(id)
+        : entry.denied ? `(no access) ${shortId(id)}`
+        : `(deleted ${kind}) ${shortId(id)}`;
+
+const PATIENT_CATEGORIES = ['patient', 'patientIntake'];
+
+const shortId = (id: string) => (id.length > 8 ? `${id.slice(0, 8)}…` : id);
+
+/** The patient a record relates to: patientId, or the entity itself for older patient records. */
+const patientIdOf = (e: AuditLogEntry): string | undefined =>
+    e.patientId || (e.entityType === 'patient' ? e.entityId : undefined);
 type SortDir = 'asc' | 'desc';
 
 const PAGE_SIZE = 100;
@@ -41,6 +69,9 @@ const ActivityLog: React.FC = () => {
 
     const [sortField, setSortField] = useState<SortField>('timestamp');
     const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+    const [userNames, setUserNames] = useState<NameCache>({});
+    const [patientNames, setPatientNames] = useState<NameCache>({});
 
     const fetchEntries = useCallback(async (isLoadMore = false) => {
         if (isLoadMore) setLoadingMore(true); else setLoading(true);
@@ -87,6 +118,73 @@ const ActivityLog: React.FC = () => {
         fetchEntries();
     }, []);
 
+    // Resolve user and patient names for the loaded records (each ID is read once and cached)
+    useEffect(() => {
+        const userIds = new Set<string>();
+        const patientIds = new Set<string>();
+        entries.forEach(e => {
+            if (e.userId) userIds.add(e.userId);
+            if (e.entityType === 'user' && e.entityId) userIds.add(e.entityId);
+            const pid = patientIdOf(e);
+            if (pid) patientIds.add(pid);
+        });
+        const missingUsers = [...userIds].filter(id => !(id in userNames));
+        const missingPatients = [...patientIds].filter(id => !(id in patientNames));
+        if (!missingUsers.length && !missingPatients.length) return;
+
+        const readNames = async (coll: string, ids: string[]): Promise<NameCache> => {
+            const pairs = await Promise.all(ids.map(async (id): Promise<[string, NameCache[string]]> => {
+                try {
+                    const snap = await getDoc(doc(db, coll, id));
+                    const data = snap.data();
+                    const name = String(data?.fullName || data?.displayName || data?.email || '');
+                    return [id, { name: snap.exists() && name ? name : null }];
+                } catch (err) {
+                    console.warn(`Activity log: could not read ${coll}/${id}:`, err);
+                    return [id, { name: null, denied: true }];
+                }
+            }));
+            return Object.fromEntries(pairs);
+        };
+        let cancelled = false;
+        Promise.all([readNames('users', missingUsers), readNames('patients', missingPatients)]).then(([u, p]) => {
+            if (cancelled) return;
+            if (missingUsers.length) setUserNames(prev => ({ ...prev, ...u }));
+            if (missingPatients.length) setPatientNames(prev => ({ ...prev, ...p }));
+        });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [entries]);
+
+    /** Name of the user who acted. Falls back to the stored legacy name, then a short ID. */
+    const userLabel = (e: AuditLogEntry): string => {
+        const cached = userNames[e.userId];
+        if (cached?.name) return cached.name;
+        if (e.userName) return e.userName;
+        return unresolvedLabel(cached, e.userId, 'user');
+    };
+
+    /** Name of the patient the record relates to, or '—'. Older records: the stored name. */
+    const patientLabel = (e: AuditLogEntry): string => {
+        const pid = patientIdOf(e);
+        const cached = pid ? patientNames[pid] : undefined;
+        if (cached?.name) return cached.name;
+        const legacy = PATIENT_CATEGORIES.includes(e.category) ? e.entityName : '';
+        if (legacy) return legacy;
+        if (pid) return unresolvedLabel(cached, pid, 'patient');
+        return '—';
+    };
+
+    /** Entity name: a user's resolved name, a stored knowledge-base / config name, or '—' for patient data. */
+    const entityLabel = (e: AuditLogEntry): string => {
+        if (e.entityType === 'user') {
+            const cached = userNames[e.entityId];
+            return cached?.name || e.entityName || unresolvedLabel(cached, e.entityId, 'user');
+        }
+        if (PATIENT_CATEGORIES.includes(e.category)) return '—';
+        return e.entityName || '—';
+    };
+
     const handleRefresh = () => {
         setLastDoc(null);
         setHasMore(true);
@@ -106,8 +204,11 @@ const ActivityLog: React.FC = () => {
         if (filterCategory && e.category !== filterCategory) return false;
         if (filterAction && e.action !== filterAction) return false;
         if (filterEntityType && e.entityType !== filterEntityType) return false;
-        if (filterUser && e.userName !== filterUser) return false;
-        if (filterSearch && !e.entityName.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+        if (filterUser && e.userId !== filterUser) return false;
+        if (filterSearch) {
+            const q = filterSearch.toLowerCase();
+            if (!entityLabel(e).toLowerCase().includes(q) && !patientLabel(e).toLowerCase().includes(q)) return false;
+        }
         return true;
     });
 
@@ -118,15 +219,20 @@ const ActivityLog: React.FC = () => {
             const tB = b.timestamp?.toMillis?.() || 0;
             cmp = tA - tB;
         } else {
-            const valA = (a[sortField] || '').toLowerCase();
-            const valB = (b[sortField] || '').toLowerCase();
+            const valA = (sortField === 'user' ? userLabel(a) : a[sortField] || '').toLowerCase();
+            const valB = (sortField === 'user' ? userLabel(b) : b[sortField] || '').toLowerCase();
             cmp = valA.localeCompare(valB);
         }
         return sortDir === 'asc' ? cmp : -cmp;
     });
 
-    const uniqueUsers = [...new Set(entries.map(e => e.userName))].sort();
+    const uniqueUsers = [...new Set(entries.map(e => e.userId))]
+        .map(id => ({ id, label: userLabel(entries.find(e => e.userId === id)!) }))
+        .sort((a, b) => a.label.localeCompare(b.label));
     const uniqueEntityTypes = [...new Set(entries.map(e => e.entityType))].sort();
+    // Fixed values plus any found in the records (e.g. 'user' and the function actions such as roleChanged)
+    const uniqueCategories = [...new Set(['patient', 'patientIntake', 'config', ...entries.map(e => e.category)])];
+    const uniqueActions = [...new Set(['create', 'update', 'view', 'delete', ...entries.map(e => e.action)])];
 
     const formatTimestamp = (ts: Timestamp) => {
         if (!ts || !ts.toDate) return '—';
@@ -171,16 +277,11 @@ const ActivityLog: React.FC = () => {
             <div className={styles.filters}>
                 <select className={styles.filterSelect} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
                     <option value="">All Categories</option>
-                    <option value="patient">patient</option>
-                    <option value="patientIntake">patientIntake</option>
-                    <option value="config">config</option>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <select className={styles.filterSelect} value={filterAction} onChange={e => setFilterAction(e.target.value)}>
                     <option value="">All Actions</option>
-                    <option value="create">create</option>
-                    <option value="update">update</option>
-                    <option value="view">view</option>
-                    <option value="delete">delete</option>
+                    {uniqueActions.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
                 <select className={styles.filterSelect} value={filterEntityType} onChange={e => setFilterEntityType(e.target.value)}>
                     <option value="">All Entity Types</option>
@@ -188,12 +289,12 @@ const ActivityLog: React.FC = () => {
                 </select>
                 <select className={styles.filterSelect} value={filterUser} onChange={e => setFilterUser(e.target.value)}>
                     <option value="">All Users</option>
-                    {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
+                    {uniqueUsers.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
                 </select>
                 <input
                     className={styles.filterInput}
                     type="text"
-                    placeholder="Search entity name..."
+                    placeholder="Search entity or patient name..."
                     value={filterSearch}
                     onChange={e => setFilterSearch(e.target.value)}
                 />
@@ -212,8 +313,8 @@ const ActivityLog: React.FC = () => {
                                     <th onClick={() => handleSort('timestamp')}>
                                         <T>Timestamp</T>{sortIndicator('timestamp')}
                                     </th>
-                                    <th onClick={() => handleSort('userName')}>
-                                        <T>User</T>{sortIndicator('userName')}
+                                    <th onClick={() => handleSort('user')}>
+                                        <T>User</T>{sortIndicator('user')}
                                     </th>
                                     <th onClick={() => handleSort('category')}>
                                         <T>Category</T>{sortIndicator('category')}
@@ -225,6 +326,7 @@ const ActivityLog: React.FC = () => {
                                         <T>Entity Type</T>{sortIndicator('entityType')}
                                     </th>
                                     <th><T>Entity Name</T></th>
+                                    <th><T>Patient</T></th>
                                     <th><T>Detail</T></th>
                                 </tr>
                             </thead>
@@ -232,11 +334,12 @@ const ActivityLog: React.FC = () => {
                                 {sorted.map(entry => (
                                     <tr key={entry.id}>
                                         <td>{formatTimestamp(entry.timestamp)}</td>
-                                        <td>{entry.userName}</td>
+                                        <td>{userLabel(entry)}</td>
                                         <td>{categoryBadge(entry.category)}</td>
                                         <td>{actionBadge(entry.action)}</td>
                                         <td>{entry.entityType}</td>
-                                        <td>{entry.entityName}</td>
+                                        <td>{entityLabel(entry)}</td>
+                                        <td>{patientLabel(entry)}</td>
                                         <td className={styles.detailText}>{entry.detail}</td>
                                     </tr>
                                 ))}

@@ -13,6 +13,7 @@ import { T, useT, useTranslationContext } from '../T';
 import { StorageLink } from '../shared/StorageComponents';
 import Tooltip from '../common/Tooltip';
 import { logAction } from '../../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../../utils/changedFields';
 import { CSS } from '@dnd-kit/utilities';
 
 const MeasureAdmin: React.FC = () => {
@@ -281,6 +282,9 @@ const MeasureAdmin: React.FC = () => {
                     entityType: 'measure',
                     entityId: measureToSave.id || '',
                     entityName: measureDisplayName,
+                    // Which fields changed (names only), compared with the measure as loaded
+                    detail: isNewMeasure ? undefined : changedFieldsDetail(
+                        changedFieldPaths(originalMeasure as Record<string, any> | null, dataToSave, dataToSave)),
                 });
             }
 

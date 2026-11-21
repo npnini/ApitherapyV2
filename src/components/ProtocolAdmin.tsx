@@ -12,6 +12,7 @@ import { uploadFile, deleteFile } from '../services/storageService';
 import DocumentManagement from './shared/DocumentManagement';
 import { T, useT, useTranslationContext } from './T';
 import { logAction } from '../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../utils/changedFields';
 import Tooltip from './common/Tooltip';
 import { StorageLink } from './shared/StorageComponents';
 import { getFieldContent, getPointLabel } from '../utils/storageUtils';
@@ -318,6 +319,9 @@ const ProtocolAdmin: React.FC = () => {
                     entityType: 'protocol',
                     entityId: editingProtocol.id || '',
                     entityName: protocolDisplayName,
+                    // Which fields changed (names only), compared with the protocol as loaded
+                    detail: isUpdate ? changedFieldsDetail(
+                        changedFieldPaths(protocols.find((p: Protocol) => p.id === editingProtocol.id) as Record<string, any>, protocolToSave, protocolToSave)) : undefined,
                 });
             }
 

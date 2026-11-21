@@ -29,7 +29,7 @@ const HORIZON_DAYS = 400;
  * invitations are sent by the server trigger. Past appointments are never touched.
  */
 const PatternChangeDialog: React.FC<PatternChangeDialogProps> = ({
-    offPattern, newSlots, caretakerId, patientName, actor, onClose, onMoved,
+    offPattern, newSlots, caretakerId, actor, onClose, onMoved,
 }) => {
     const [working, setWorking] = useState(false);
 
@@ -55,7 +55,7 @@ const PatternChangeDialog: React.FC<PatternChangeDialogProps> = ({
                 await appointmentService.move(a.id, target, end);
                 logAction(actor, {
                     category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id,
-                    entityName: patientName, detail: `moved to new pattern ${target.toISOString()}`,
+                    patientId: a.patientId, detail: `moved to new pattern ${target.toISOString()}`,
                 });
                 placed.push({ ...a, start: target, end });
                 cursor = target;

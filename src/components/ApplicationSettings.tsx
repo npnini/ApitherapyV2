@@ -11,7 +11,9 @@ import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import { Question, Questionnaire } from '../types/questionnaire';
 import { T, useT, useTranslationContext } from './T';
 import { logAction } from '../services/auditLogService';
+import { changedFieldPaths, changedFieldsDetail } from '../utils/changedFields';
 import { ALL_LANGUAGES } from '../utils/languageNames';
+import UserTermsSettings from './UserTerms/UserTermsSettings';
 
 interface ApplicationSettingsProps {
     user: AppUser;
@@ -343,6 +345,13 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
         try {
             const settingsToSave = JSON.parse(JSON.stringify(settings));
 
+            // Activity log detail: only the settings really changed, field by field (e.g. auditLogSettings.retentionDays).
+            // The API key field is write-only (kept empty locally), so it counts as changed only when a new key was entered.
+            const newApiKeyEntered = !!settingsToSave.notificationSettings?.emailApiKey?.trim();
+            const changedPaths = changedFieldPaths(initialSettings, settingsToSave)
+                .filter(p => p !== 'notificationSettings.emailApiKey');
+            if (newApiKeyEntered) changedPaths.push('notificationSettings.emailApiKey');
+
             // Extract emailApiKey and save to cfg_secrets if it has been updated
             if (settingsToSave.notificationSettings) {
                 const newEmailApiKey = settingsToSave.notificationSettings.emailApiKey;
@@ -356,16 +365,13 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
 
             await setDoc(configRef, settingsToSave);
 
-            const changedKeys = Object.keys(settingsToSave).filter(k =>
-                JSON.stringify(settingsToSave[k]) !== JSON.stringify(initialSettings[k])
-            );
             logAction(user, {
                 category: 'config',
                 action: 'update',
                 entityType: 'appSettings',
                 entityId: 'main',
                 entityName: 'Application Settings',
-                detail: changedKeys.join(', '),
+                detail: changedFieldsDetail(changedPaths),
             });
 
             // Reset the emailApiKey in the local state so it stays write-only (empty)
@@ -416,7 +422,7 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                 customFileName = `${lang}_treatment_instructions.${extension}`;
             }
 
-            const downloadUrl = await uploadFile(file, 'App_config', customFileName);
+            const downloadUrl = await uploadFile(file, 'App_config/patient_documents', customFileName);
 
             setSettings(prev => {
                 const newSettings = JSON.parse(JSON.stringify(prev));
@@ -995,6 +1001,10 @@ const ApplicationSettings: React.FC<ApplicationSettingsProps> = ({ user, onClose
                                 {renderGroup(group, [key])}
                             </fieldset>
                         ))}
+                    {/* User Terms (spec §4): superadmin only; saved immediately through Cloud Functions */}
+                    {user.role === 'superadmin' && (
+                        <UserTermsSettings supportedLanguages={initialSettings.languageSettings?.supportedLanguages || ['en']} />
+                    )}
                 </div>
             </main>
             <div className={styles.actions}>

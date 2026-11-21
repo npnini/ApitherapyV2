@@ -195,7 +195,7 @@ const TodayPage: React.FC<TodayPageProps> = ({
         await run(async () => {
             await appointmentService.cancel(a.id);
             logAction(actor, {
-                category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, entityName: nameOf(a.patientId),
+                category: 'patient', action: 'update', entityType: 'appointment', entityId: a.id, patientId: a.patientId,
                 detail: marking ? `marked cancelled (was ${a.status})` : 'cancelled',
             });
         });

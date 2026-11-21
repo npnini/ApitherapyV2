@@ -280,6 +280,13 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                         <label className={styles.label}><T>Role</T></label>
                         <p className={`${styles.readOnlyField} ${styles.capitalize}`}><T>{formData.role}</T></p>
                     </div>
+                    {/* F8: the plan is shown read-only; no UI changes it yet. Users without a plan are on free. */}
+                    <div className={styles.field}>
+                        <label className={styles.label}><T>Plan</T></label>
+                        <p className={styles.readOnlyField}>
+                            {(formData.plan || 'free') === 'free' ? <T>Free plan</T> : formData.plan}
+                        </p>
+                    </div>
                     {!isOnboarding && (
                         <div className={`${styles.field} ${styles.fullWidth}`}>
                             <span className={styles.label}><T>Screen layout</T></span>
