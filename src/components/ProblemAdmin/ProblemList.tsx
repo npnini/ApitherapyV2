@@ -24,7 +24,10 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [problemToDelete, setProblemToDelete] = useState<string | null>(null);
-
+  // Hooks must not be called inside the table rows below (their number changes with the data).
+  const tViewDocument = useT('View Document');
+  const tEditProblem = useT('Edit Problem');
+  const tDeleteProblem = useT('Delete Problem');
 
   const problems = useMemo(() => {
     if (!problemsCollection) return [];
@@ -134,13 +137,13 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
                       path={problem.documentUrl} 
                       lang={currentLang}
                     >
-                      <Tooltip text={useT('View Document')}>
+                      <Tooltip text={tViewDocument}>
                         <FileCheck2 size={18} />
                       </Tooltip>
                     </StorageLink>
                   </td>
                   <td className={styles.actionCell}>
-                    <Tooltip text={useT('Edit Problem')}>
+                    <Tooltip text={tEditProblem}>
                       <button onClick={() => onEdit(problem.id)} className={styles.iconButton}>
                         <Edit size={18} />
                       </button>
@@ -152,7 +155,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
                         </button>
                       </Tooltip>
                     ) : (
-                      <Tooltip text={useT('Delete Problem')}>
+                      <Tooltip text={tDeleteProblem}>
                         <button onClick={() => handleDeleteClick(problem.id)} className={`${styles.iconButton} ${styles.deleteButton} `}>
                           <Trash2 size={18} />
                         </button>

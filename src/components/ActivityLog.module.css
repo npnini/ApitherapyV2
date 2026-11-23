@@ -173,6 +173,11 @@
     color: #6b7280;
 }
 
+.badgeExport {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
 .badgeDelete {
     background: var(--color-error-background);
     color: var(--color-error);

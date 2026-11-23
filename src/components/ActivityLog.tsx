@@ -253,6 +253,7 @@ const ActivityLog: React.FC = () => {
         const cls = action === 'create' ? styles.badgeCreate
             : action === 'update' ? styles.badgeUpdate
             : action === 'view' ? styles.badgeView
+            : action === 'export' ? styles.badgeExport
             : styles.badgeDelete;
         return <span className={`${styles.badge} ${cls}`}>{action}</span>;
     };

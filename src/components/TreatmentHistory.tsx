@@ -6,11 +6,12 @@ import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import { StungPointCounts, formatPointCode } from '../utils/pointSide';
 import { getPointLabel } from '../utils/storageUtils';
-import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding } from 'lucide-react';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding, Printer } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { StorageImage } from './shared/StorageComponents';
 import Modal from './common/Modal';
 import PointsModelViewer from './PointsModelViewer';
+import TreatmentExportModal from './TreatmentExport/TreatmentExportModal';
 import styles from './TreatmentHistory.module.css';
 
 const getMLValue = (value: any, lang: string): string => {
@@ -128,6 +129,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
     const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(null);
     const [selectedTreatmentIds, setSelectedTreatmentIds] = useState<Set<string>>(new Set());
     const [isModelModalOpen, setIsModelModalOpen] = useState<boolean>(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
     const pointsMapRef = useRef<Map<string, StingPoint>>(new Map());
     const treatmentRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
@@ -442,6 +444,17 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
                     <PersonStanding size={18} />
                     <T>Show Model</T>
                 </button>
+                {!readOnly && (
+                    <button
+                        onClick={() => setIsExportModalOpen(true)}
+                        disabled={selectedTreatmentIds.size === 0}
+                        className={styles.toggleButton}
+                        title={tShowModelTooltip}
+                    >
+                        <Printer size={18} />
+                        <T>Export</T>
+                    </button>
+                )}
             </div>
 
             {treatments.length === 0 ? (
@@ -822,6 +835,20 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
             >
                 <PointsModelViewer points={aggregatedPoints} totalStings={totalStings} />
             </Modal>
+
+            {patient.id && (
+                <TreatmentExportModal
+                    isOpen={isExportModalOpen}
+                    onClose={() => setIsExportModalOpen(false)}
+                    patientId={patient.id}
+                    patient={patient}
+                    treatments={treatments.filter(t => selectedTreatmentIds.has(t.id))}
+                    caretakerNames={caretakerNames}
+                    protocolsNamesMap={protocolsNamesMap}
+                    freeProtoId={freeProtoId}
+                    language={language}
+                />
+            )}
         </div>
     );
 };

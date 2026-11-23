@@ -12,7 +12,7 @@ import { AppUser } from '../types/user';
  */
 export interface AuditEntry {
   category: 'patient' | 'patientIntake' | 'config';
-  action: 'create' | 'update' | 'view' | 'delete';
+  action: 'create' | 'update' | 'view' | 'delete' | 'export';
   entityType: string;
   entityId: string;
   /** Only for knowledge-base / config entities. Dropped for patient-related and user records. */

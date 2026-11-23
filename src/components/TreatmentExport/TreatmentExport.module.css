@@ -1,0 +1,188 @@
+/* ── Popup ─────────────────────────────────────────────────────────────── */
+.popupBody {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.summary {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+}
+
+.group {
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin: 0;
+}
+
+.groupTitle {
+    font-weight: 600;
+    padding: 0 0.4rem;
+    color: var(--color-text-primary);
+}
+
+.hint {
+    margin: 0.25rem 0 0.5rem;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.checkRow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0;
+    cursor: pointer;
+}
+
+.checkRow input {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.warning {
+    margin: 0;
+    color: #92400e;
+    background: #fef3c7;
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.cancelButton,
+.exportButton {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--color-border-light);
+}
+
+.cancelButton {
+    background: transparent;
+    color: var(--color-text-primary);
+}
+
+.exportButton {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.exportButton:disabled,
+.cancelButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Printed report (hidden on screen, shown only when printing) ───────── */
+.report {
+    display: none;
+}
+
+@media print {
+    .report {
+        display: block;
+        background: #fff;
+        color: #000;
+        font-size: 11pt;
+        line-height: 1.4;
+    }
+}
+
+.reportHeader {
+    border-bottom: 2px solid #000;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+}
+
+.reportTitle {
+    margin: 0 0 0.25rem;
+    font-size: 18pt;
+}
+
+.reportMeta {
+    margin: 0 0 0.5rem;
+    font-size: 10pt;
+}
+
+.patientBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 11pt;
+}
+
+.treatment {
+    border: 1px solid #000;
+    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.9rem;
+    break-inside: avoid;
+}
+
+.treatmentHeader {
+    border-bottom: 1px solid #999;
+    margin-bottom: 0.4rem;
+    padding-bottom: 0.3rem;
+}
+
+.treatmentTitle {
+    margin: 0;
+    font-size: 13pt;
+}
+
+.treatmentMeta {
+    font-size: 10pt;
+}
+
+.phaseTitle {
+    margin: 0.6rem 0 0.2rem;
+    font-size: 11pt;
+    text-decoration: underline;
+    break-after: avoid;
+}
+
+.item {
+    margin: 0.2rem 0;
+    break-inside: avoid;
+}
+
+.label {
+    margin: 0;
+    font-size: 10pt;
+    font-weight: 700;
+}
+
+.text {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.pair {
+    display: inline-block;
+    margin-inline-end: 1rem;
+}
+
+.pointsList {
+    margin: 0;
+    padding-inline-start: 1.2rem;
+}
+
+.photo {
+    display: block;
+    max-width: 100%;
+    max-height: 8cm;
+    object-fit: contain;
+    border: 1px solid #999;
+}

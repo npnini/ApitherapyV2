@@ -741,7 +741,7 @@ const AppInner: React.FC = () => {
                 {isCompactNav
                     ? <MobileNav open={navOpen} onOpenChange={setNavOpen}>{sidebarEl}</MobileNav>
                     : sidebarEl}
-                <main className={`flex-grow p-4 md:p-8 overflow-y-auto${isCompactNav ? ' min-h-0' : ''}`}>
+                <main className={`flex-grow min-w-0 p-4 md:p-8 overflow-y-auto${isCompactNav ? ' min-h-0' : ''}`}>
                     {
                         isDashboardView ?
                             patientsDashboardEl

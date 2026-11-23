@@ -124,3 +124,15 @@ label {
   font-weight: 400; /* Regular font weight, not bold */
   color: var(--color-text-muted);
 }
+
+/* Treatment export: while printing, show only the report (rendered into document.body). */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  body.treatment-export-printing > #root {
+    display: none !important;
+  }
+}
