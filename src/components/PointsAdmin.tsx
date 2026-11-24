@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { db } from '../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint, Vector3Pos } from '../types/apipuncture';
 import { PointGroup } from '../types/pointGroup';
 import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, Lock, Unlock } from 'lucide-react';
 import styles from './PointsAdmin.module.css';
-import { uploadFile, deleteFile } from '../services/storageService';
+import { newDocumentId, uploadPendingDocuments, deleteDocuments, unusedDocumentPaths } from '../services/entityDocuments';
 import { T, useT, useTranslationContext } from '../components/T';
 import { logAction } from '../services/auditLogService';
 import { changedFieldPaths, changedFieldsDetail } from '../utils/changedFields';
@@ -33,7 +33,9 @@ const PointsAdmin: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
-    const [midlineConfirm, setMidlineConfirm] = useState<{ pointToSave: Partial<StingPoint>; corpo: Vector3Pos } | null>(null);
+    const [midlineConfirm, setMidlineConfirm] = useState<{ pointToSave: Partial<StingPoint>; corpo: Vector3Pos; pendingFiles: Record<string, File> } | null>(null);
+    // The Firestore id a new point will get, chosen when the form opens so its files can go to the point's own folder.
+    const [newPointId, setNewPointId] = useState<string | null>(null);
 
     const pointsCollectionRef = useMemo(() => collection(db, 'cfg_acupuncture_points'), []);
     const pointGroupsCollectionRef = useMemo(() => collection(db, 'cfg_point_groups'), []);
@@ -157,6 +159,7 @@ const PointsAdmin: React.FC = () => {
 
     const handleStartEditing = (point: StingPoint) => {
         setFormError(null);
+        setNewPointId(null);
         // Normalize legacy fields and handle migration to 'positions'
         const pointToEdit = { ...point };
 
@@ -185,6 +188,7 @@ const PointsAdmin: React.FC = () => {
 
     const handleAddNew = () => {
         setFormError(null);
+        setNewPointId(newDocumentId('cfg_acupuncture_points'));
         const newPoint: Partial<StingPoint> = {
             id: '',
             code: '',
@@ -204,48 +208,20 @@ const PointsAdmin: React.FC = () => {
         setOriginalPoint(newPoint);
     };
 
-    const handleUpdate = async (updatedPoint: Partial<StingPoint>, file?: File | null, lang: string = currentLang) => {
-        setEditingPoint(updatedPoint);
-        setIsDirty(true);
-
-        if (file) {
-            setIsSubmitting(true);
-            try {
-                const folderName = updatedPoint.id || 'new';
-                const firebasePath = `Points/${folderName}`;
-                const newUrl = await uploadFile(file, firebasePath);
-
-                const currentDocUrls = typeof updatedPoint.documentUrl === 'object' ? { ...updatedPoint.documentUrl } : {};
-                const newDocUrls = { ...currentDocUrls, [lang]: newUrl };
-
-                setEditingPoint({ ...updatedPoint, documentUrl: newDocUrls });
-                setFormError(null);
-            } catch (err) {
-                logger.error("Error uploading file during update:", err);
-                setFormError(getTranslation('Failed to upload file.'));
-            } finally {
-                setIsSubmitting(false);
-            }
-        }
-    };
-
-    const performSave = async (pointToSave: Partial<StingPoint>, corpo: Vector3Pos) => {
+    // Save order: upload the chosen files -> write the point -> delete the files it no longer uses.
+    // A point never refers to a missing file, and nothing is uploaded before Save (Cancel leaves nothing behind).
+    const performSave = async (pointToSave: Partial<StingPoint>, corpo: Vector3Pos, pendingFiles: Record<string, File> = {}) => {
         const isNewPoint = !pointToSave.id;
+        const pointId = isNewPoint ? (newPointId || newDocumentId('cfg_acupuncture_points')) : pointToSave.id!;
 
         setIsSubmitting(true);
+        let uploadedPaths: string[] = [];
+        let pointWritten = false;
         try {
-            // Cleanup orphaned files (files that were in original but not in pointToSave)
-            const originalDocUrls = originalPoint?.documentUrl;
-            if (originalDocUrls) {
-                const oldUrls: Record<string, string> = typeof originalDocUrls === 'string' ? { en: originalDocUrls } : originalDocUrls as Record<string, string>;
-                const currentUrls: Record<string, string> = (pointToSave.documentUrl as Record<string, string>) || {};
-
-                for (const [l, url] of Object.entries(oldUrls)) {
-                    if (url && !currentUrls[l]) {
-                        await deleteFile(url).catch(err => logger.error("Error deleting orphaned file:", err));
-                    }
-                }
-            }
+            // 1. Upload the files chosen in the form to Points/<pointId>/<lang>/
+            const uploaded = await uploadPendingDocuments('Points', pointId, pendingFiles);
+            uploadedPaths = Object.values(uploaded);
+            const documentUrl: Record<string, string> = { ...((pointToSave.documentUrl as Record<string, string>) || {}), ...uploaded };
 
             const dataToSave = {
                 code: pointToSave.code!.trim(),
@@ -256,20 +232,25 @@ const PointsAdmin: React.FC = () => {
                 imageURL: pointToSave.imageURL || '',
                 positions: { corpo },
                 Point_Grouping: pointToSave.Point_Grouping,
-                documentUrl: pointToSave.documentUrl && Object.keys(pointToSave.documentUrl).length > 0 ? pointToSave.documentUrl : null,
+                documentUrl: Object.keys(documentUrl).length > 0 ? documentUrl : null,
                 status: pointToSave.status || 'active',
                 reference_count: pointToSave.reference_count || 0,
                 updatedAt: serverTimestamp(),
             };
 
+            // 2. Write the point
             if (isNewPoint) {
-                const newDocRef = await addDoc(pointsCollectionRef, { ...dataToSave, createdAt: serverTimestamp() });
-                logger.log(`[DEBUG-SAVE-SUCCESS] New point created with ID: ${newDocRef.id}`);
+                await setDoc(doc(db, 'cfg_acupuncture_points', pointId), { ...dataToSave, createdAt: serverTimestamp() });
+                logger.log(`[DEBUG-SAVE-SUCCESS] New point created with ID: ${pointId}`);
             } else {
-                const pointDoc = doc(db, 'cfg_acupuncture_points', pointToSave.id!);
+                const pointDoc = doc(db, 'cfg_acupuncture_points', pointId);
                 await updateDoc(pointDoc, dataToSave);
-                logger.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointToSave.id} updated.`);
+                logger.log(`[DEBUG-SAVE-SUCCESS] Point with ID: ${pointId} updated.`);
             }
+            pointWritten = true;
+
+            // 3. Only now delete the files the point no longer uses (removed or replaced documents)
+            await deleteDocuments(unusedDocumentPaths(originalPoint?.documentUrl as Record<string, string> | string | undefined, documentUrl));
 
             if (user) {
                 const pointDisplayName = typeof pointToSave.label === 'object'
@@ -279,7 +260,7 @@ const PointsAdmin: React.FC = () => {
                     category: 'config',
                     action: isNewPoint ? 'create' : 'update',
                     entityType: 'point',
-                    entityId: pointToSave.id || '',
+                    entityId: pointId,
                     entityName: pointDisplayName,
                     // Which fields changed (names only), compared with the point as loaded
                     detail: isNewPoint ? undefined : changedFieldsDetail(
@@ -288,18 +269,21 @@ const PointsAdmin: React.FC = () => {
             }
 
             setEditingPoint(null);
+            setNewPointId(null);
             setIsDirty(false);
             fetchPoints();
 
         } catch (err) {
             logger.error('Save failed:', err);
-            setFormError(getTranslation('Failed to save the point'));
+            // The point was not written: the files uploaded in this Save are not used by anything
+            if (!pointWritten) await deleteDocuments(uploadedPaths);
+            setFormError(getTranslation(uploadedPaths.length === 0 && Object.keys(pendingFiles).length > 0 ? 'Failed to upload file.' : 'Failed to save the point'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleSave = async (pointToSave: Partial<StingPoint>) => {
+    const handleSave = async (pointToSave: Partial<StingPoint>, pendingFiles: Record<string, File> = {}) => {
         const labelValues = Object.values(pointToSave.label || {}).map(v => v.trim()).filter(Boolean);
         if (!pointToSave.code || labelValues.length === 0) {
             setFormError(getTranslation('Point code and label (in at least one language) are required'));
@@ -324,32 +308,32 @@ const PointsAdmin: React.FC = () => {
             // Always normalize to the character's Right side (negative x),
             // regardless of which side was actually clicked.
             if (corpo.x > 0) corpo = { ...corpo, x: -corpo.x };
-            await performSave(pointToSave, corpo);
+            await performSave(pointToSave, corpo, pendingFiles);
         } else if (group.laterality === 'Midline-front' || group.laterality === 'Midline-back') {
             if (corpo.x !== 0) {
                 // Don't hard-error — ask whether to snap to the exact midline.
-                setMidlineConfirm({ pointToSave, corpo });
+                setMidlineConfirm({ pointToSave, corpo, pendingFiles });
             } else {
-                await performSave(pointToSave, corpo);
+                await performSave(pointToSave, corpo, pendingFiles);
             }
         } else {
             // Unilateral: no restriction, save exactly as clicked.
-            await performSave(pointToSave, corpo);
+            await performSave(pointToSave, corpo, pendingFiles);
         }
     };
 
     const handleConfirmMidlineSnap = async () => {
         if (!midlineConfirm) return;
-        const { pointToSave, corpo } = midlineConfirm;
+        const { pointToSave, corpo, pendingFiles } = midlineConfirm;
         setMidlineConfirm(null);
-        await performSave(pointToSave, { ...corpo, x: 0 });
+        await performSave(pointToSave, { ...corpo, x: 0 }, pendingFiles);
     };
 
     const handleDeclineMidlineSnap = async () => {
         if (!midlineConfirm) return;
-        const { pointToSave, corpo } = midlineConfirm;
+        const { pointToSave, corpo, pendingFiles } = midlineConfirm;
         setMidlineConfirm(null);
-        await performSave(pointToSave, corpo);
+        await performSave(pointToSave, corpo, pendingFiles);
     };
 
     const confirmDelete = async () => {
@@ -358,18 +342,10 @@ const PointsAdmin: React.FC = () => {
 
         setIsSubmitting(true);
         try {
-            // Delete all documents from storage if they exist
-            if (deletingPoint.documentUrl) {
-                const urls = typeof deletingPoint.documentUrl === 'string' ? [deletingPoint.documentUrl] : Object.values(deletingPoint.documentUrl);
-                for (const url of urls) {
-                    try {
-                        logger.log(`[DEBUG-DELETE-02] Deleting file from storage: ${url}`);
-                        await deleteFile(url);
-                    } catch (storageError) {
-                        logger.error("[DEBUG-DELETE-ERROR] Failed to delete file from storage, but proceeding with Firestore deletion.", storageError);
-                    }
-                }
-            }
+            // The point's files are deleted AFTER the point itself (a point never refers to a deleted file).
+            const documentPaths = !deletingPoint.documentUrl ? []
+                : typeof deletingPoint.documentUrl === 'string' ? [deletingPoint.documentUrl]
+                : Object.values(deletingPoint.documentUrl);
 
             // Log before delete — after deleteDoc, reactive state may re-render/unmount
             if (user) {
@@ -388,6 +364,7 @@ const PointsAdmin: React.FC = () => {
             const pointDoc = doc(db, 'cfg_acupuncture_points', deletingPoint.id);
             await deleteDoc(pointDoc);
             logger.log('[DEBUG-DELETE-SUCCESS] Point deleted from Firestore.');
+            await deleteDocuments(documentPaths);
             fetchPoints();
         } catch (err) {
             logger.error('[DEBUG-DELETE-ERROR] Firestore deletion failed.', err);
@@ -399,6 +376,7 @@ const PointsAdmin: React.FC = () => {
 
     const handleCancelEdit = () => {
         setEditingPoint(null);
+        setNewPointId(null);
         setFormError(null);
     };
 
@@ -435,8 +413,7 @@ const PointsAdmin: React.FC = () => {
                     key={editingPoint.id || 'new'}
                     point={editingPoint}
                     pointGroups={pointGroups}
-                    onSave={(data) => handleSave(data)}
-                    onUpdate={(data, file, lang) => handleUpdate(data, file, lang)}
+                    onSave={(data, pendingFiles) => handleSave(data, pendingFiles)}
                     onCancel={handleCancelEdit}
                     error={formError}
                     isSubmitting={isSubmitting}
@@ -565,8 +542,7 @@ const TranslationReference: React.FC<{ label: string; text: string | undefined }
 interface EditPointFormProps {
     point: Partial<StingPoint>;
     pointGroups: PointGroup[];
-    onSave: (point: Partial<StingPoint>) => void;
-    onUpdate: (point: Partial<StingPoint>, file?: File, lang?: string) => void;
+    onSave: (point: Partial<StingPoint>, pendingFiles: Record<string, File>) => void;
     onCancel: () => void;
     error: string | null;
     isSubmitting: boolean;
@@ -574,9 +550,11 @@ interface EditPointFormProps {
     appConfig: { defaultLanguage: string; supportedLanguages: string[] };
 }
 
-const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSave, onUpdate, onCancel, error, isSubmitting, isDirty: initialIsDirty, appConfig }) => {
+const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSave, onCancel, error, isSubmitting, isDirty: initialIsDirty, appConfig }) => {
     const { language: currentLang, registerString, getTranslation } = useTranslationContext();
     const [formData, setFormData] = useState<Partial<StingPoint>>(point);
+    // Documents chosen in this form, per language. They are uploaded only when the point is saved.
+    const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
     const [activeLang, setActiveLang] = useState<string>(currentLang);
     const SUPPORTED_LANGS = appConfig.supportedLanguages;
     const orderedLangs = useMemo(() => [currentLang, ...SUPPORTED_LANGS.filter(l => l !== currentLang).sort()]
@@ -655,22 +633,36 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSav
 
     const handleFileChange = (newFile: File | null) => {
         if (newFile) {
-            onUpdate(formData, newFile, activeLang);
+            setPendingFiles(prev => ({ ...prev, [activeLang]: newFile }));
+            setIsDirty(true);
         }
     };
 
     const handleFileDelete = () => {
+        // A file chosen but not saved yet is simply dropped (nothing was uploaded)
+        if (pendingFiles[activeLang]) {
+            setPendingFiles(prev => {
+                const next = { ...prev };
+                delete next[activeLang];
+                return next;
+            });
+            setIsDirty(true);
+            return;
+        }
+
         if (!formData.documentUrl) return;
 
-        let newDocUrls = { ... (typeof formData.documentUrl === 'object' ? formData.documentUrl : { en: formData.documentUrl }) };
+        // A saved document is removed from the point now; its file is deleted when the point is saved
+        const newDocUrls = { ... (typeof formData.documentUrl === 'object' ? formData.documentUrl : { en: formData.documentUrl }) };
         delete (newDocUrls as Record<string, any>)[activeLang];
 
-        onUpdate({ ...formData, documentUrl: newDocUrls });
+        setFormData(prev => ({ ...prev, documentUrl: newDocUrls }));
+        setIsDirty(true);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        onSave(formData, pendingFiles);
     };
 
     const isEditing = !!formData.id;
@@ -896,6 +888,8 @@ const EditPointForm: React.FC<EditPointFormProps> = ({ point, pointGroups, onSav
                                 onFileChange={handleFileChange}
                                 onFileDelete={handleFileDelete}
                                 isSubmitting={isSubmitting}
+                                selectedFileName={pendingFiles[activeLang]?.name}
+                                hasPendingFile={!!pendingFiles[activeLang]}
                                 activeLang={activeLang}
                             />
                         </form>

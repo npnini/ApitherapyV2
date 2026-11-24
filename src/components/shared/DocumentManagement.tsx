@@ -10,6 +10,8 @@ interface DocumentManagementProps {
   onFileDelete: () => void;
   isSubmitting: boolean;
   selectedFileName?: string;
+  /** A file was chosen for the active language but is only uploaded when the form is saved. */
+  hasPendingFile?: boolean;
   activeLang?: string;
   entityName: string;
 }
@@ -37,6 +39,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   onFileDelete,
   isSubmitting,
   selectedFileName,
+  hasPendingFile = false,
   activeLang,
   entityName
 }) => {
@@ -100,13 +103,14 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
 
       <div className={styles.documentInfo}>
         <div className={styles.documentButtonRow}>
-          {hasDocumentForCurrentLang ? (
+          {hasDocumentForCurrentLang || hasPendingFile ? (
             <>
               <button
                 type="button"
                 onClick={() => resolvedUrl && window.open(resolvedUrl, '_blank')}
                 className={`${styles.documentActionButton} ${styles.blueButton}`}
-                disabled={isSubmitting}
+                // The link only exists once the saved file has loaded (a chosen, unsaved file cannot be opened)
+                disabled={isSubmitting || !resolvedUrl}
               >
                 <ExternalLink size={16} /> <T>View Document</T>
               </button>
