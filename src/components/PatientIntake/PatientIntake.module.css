@@ -447,6 +447,8 @@
 
 /* ── Treatment Stepper Bar (UX-A) ──────────────────────────────────────── */
 .treatmentStepper {
+    container-type: inline-size;
+    container-name: stepper;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -548,30 +550,28 @@ html[dir="rtl"] .stepItem:not(:last-child)::after {
 }
 /* ── Treatment history next to / over the treatment ──────────────────────────── */
 
-/* Two panes (SplitLayout) during the treatment steps: no padding of its own, the panes scroll. */
-.contentAreaSplit {
+/* Holds the content area; the history opens over it */
+.contentWrap {
+    position: relative;
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    padding: 0;
-    min-height: 0;
-    background-color: var(--color-background-page);
 }
 
-.splitTreatmentPane {
-    flex: 1;
+/* Left part of the stepper bar: the screen's title and Back (put here by the screen), then the History toggle */
+.stepperLead {
     display: flex;
-    flex-direction: column;
-    padding: 0.5rem 1rem;
-    min-height: 0;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    flex-shrink: 1;
 }
 
-.splitHistoryPane {
-    flex: 1;
-    min-height: 0;
-    padding: 0.5rem;
-    background-color: var(--color-background-card);
+.stepperSlot {
+    display: flex;
+    align-items: center;
+    min-width: 0;
 }
 
 /* "History" button in the stepper bar (shown when the two panes are not) */
@@ -594,24 +594,29 @@ html[dir="rtl"] .stepItem:not(:last-child)::after {
     background: var(--color-background-input-hover);
 }
 
-.historyBackdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    background: rgba(0, 0, 0, 0.35);
+.historyButtonOn {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
 }
 
-/* Slide-over panel from the inline-end side (right in LTR, left in RTL) */
-.historyDrawer {
-    position: fixed;
+/* History over the right two thirds of the treatment (the end side: left in RTL); the model stays visible */
+.historyOverlay {
+    position: absolute;
     inset-block: 0;
     inset-inline-end: 0;
-    z-index: 61;
-    width: min(640px, 100vw);
+    z-index: 20;
+    width: 66.667%;
+    min-width: min(100%, 32rem);
     display: flex;
     flex-direction: column;
     background: var(--color-background-card);
+    border-inline-start: 1px solid var(--color-border-light);
     box-shadow: var(--shadow-modal);
+}
+
+.historyOverlay[hidden] {
+    display: none;
 }
 
 .historyDrawerHeader {
@@ -764,5 +769,24 @@ html[dir="rtl"] .stepItem:not(:last-child)::after {
 
     .contentAreaFlow {
         padding: 0.25rem 0.5rem;
+    }
+}
+
+/* ── Narrow stepper bar (laptop): the steps that are not current keep only their number; the draft note goes ── */
+@container stepper (max-width: 1100px) {
+    .stepItem:not(.stepActive) .stepLabel {
+        display: none;
+    }
+
+    .stepItem {
+        padding-inline: 0.5rem;
+    }
+
+    .stepItem:not(:last-child)::after {
+        margin-inline-start: 0.5rem;
+    }
+
+    .draftIndicator {
+        display: none;
     }
 }

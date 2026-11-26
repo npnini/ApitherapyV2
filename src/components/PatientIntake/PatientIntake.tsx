@@ -18,9 +18,10 @@ import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import DocumentsTab from './DocumentsTab';
 import ProtocolSelection, { ProtocolSelectionDraft } from '../ProtocolSelection';
-import { History, X } from 'lucide-react';
-import SplitLayout from '../shared/SplitLayout';
-import { useSplitAvailable } from '../../hooks/useSplitAvailable';
+import { History, Lightbulb, X } from 'lucide-react';
+import KnowledgePage from '../Knowledge/KnowledgePage';
+import { StepHeaderSlotContext } from './StepHeaderSlot';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import TreatmentExecution from '../TreatmentExecution';
 import SessionOpening, { SessionOpeningData } from './SessionOpening';
 import TreatmentFeedback from './TreatmentFeedback';
@@ -168,8 +169,17 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     // is overwritten instead of duplicated. Cleared when the next round begins.
     // Treatment history next to the treatment: side by side on wide screens (if the user chose it),
     // otherwise in a slide-over panel opened from the stepper bar.
-    const splitAvailable = useSplitAvailable();
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    // Laptop and wider: a screen's title and Back button sit in the stepper bar (see StepHeaderSlot)
+    const stepHeaderInStepper = useMediaQuery('(min-width: 769px) and (min-height: 501px)');
+    const [stepHeaderSlot, setStepHeaderSlot] = useState<HTMLElement | null>(null);
+    // One overlay slot over the treatment: History or Knowledge (never both)
+    const [openPane, setOpenPane] = useState<'history' | 'knowledge' | null>(null);
+    const [knowledgeMounted, setKnowledgeMounted] = useState(false); // stays mounted once opened, keeps its position
+    const isHistoryOpen = openPane === 'history';
+    const isKnowledgeOpen = openPane === 'knowledge';
+    const isPaneOpen = openPane !== null;
+    const setIsHistoryOpen = (update: boolean | ((open: boolean) => boolean)) =>
+        setOpenPane(p => ((typeof update === 'function' ? update(p === 'history') : update) ? 'history' : null));
     const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
     const currentRoundRef = useRef<{ treatmentId: string | undefined; index: number } | null>(null);
     const getRoundIndex = (treatmentId: string | undefined): number => {
@@ -182,6 +192,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     const [appConfig, setAppConfig] = useState<any>(null);
+    // Same rule as App.tsx: on unless an admin turned it off in App Settings
+    const knowledgeEnabled = appConfig?.knowledgeSettings?.enabled !== false;
     const [isLoading, setIsLoading] = useState(false);
     const [treatmentSaveStatus, setTreatmentSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [treatmentErrorMessage, setTreatmentErrorMessage] = useState<string | null>(null);
@@ -213,9 +225,9 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const tNextStep = useT('Next Step');
     const tDone = useT('Done');
     const tTreatmentFeedback = useT('Treatment Feedback');
-    const tTreatmentPaneLabel = useT('Treatment');
     const tHistoryPaneLabel = useT('Treatment history');
     const tClose = useT('Close');
+    const tKnowledgePaneLabel = useT('Knowledge');
     const tSaveError = useT('Failed to save signed document. Please check your connection and try again.');
     const tTreatmentSaved = useT('Treatment Saved');
     const tOK = useT('OK');
@@ -255,6 +267,23 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     );
     const [tabsWithAttemptedSubmit, setTabsWithAttemptedSubmit] = useState<Set<TabKey>>(new Set());
     const [globalAttemptedSubmit, setGlobalAttemptedSubmit] = useState(false);
+
+    // The treatment history always starts closed: it closes when the step changes, and on Esc
+    useEffect(() => {
+        setOpenPane(null);
+    }, [viewState]);
+
+    useEffect(() => {
+        if (!isPaneOpen) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                setOpenPane(null);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown, true);
+        return () => window.removeEventListener('keydown', onKeyDown, true);
+    }, [isPaneOpen]);
 
     useEffect(() => {
         const data = initializePatientData(patient);
@@ -1284,13 +1313,11 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
     const showUpdateButton = activeTab !== 'treatments' && activeTab !== 'measures' && activeTab !== 'documents'
         && !(activeTab === 'appointments' && !patient.id);
 
-    // Two panes (treatment | history) only during the treatment steps, when chosen and the screen is wide
-    // enough. The overlay then covers the sidebar too, to give each pane room.
+    // The treatment steps (history can be opened over them)
     const isFlowStep = viewState !== 'tabs' && viewState !== 'treatmentFeedback';
-    const splitActive = isFlowStep && user.treatmentLayout === 'sideBySide' && splitAvailable;
 
     return (
-        <div className={`${styles.overlay} ${viewState !== 'tabs' && !splitActive ? styles.overlayWide : ''}`}>
+        <div className={`${styles.overlay} ${viewState !== 'tabs' ? styles.overlayWide : ''}`}>
             <div className={`${styles.modal} ${viewState !== 'tabs' ? styles.modalWide : ''}`}>
 
                 {/* ── Modal Header ─────────────────────────────────────────── */}
@@ -1365,6 +1392,33 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 {/* ── Treatment Stepper (UX-A) ──────────────────────────── */}
                 {viewState !== 'tabs' && viewState !== 'treatmentFeedback' && (
                     <div className={styles.treatmentStepper}>
+                        {/* Title and Back of the current screen (put here by the screen), then the History toggle */}
+                        <div className={styles.stepperLead}>
+                            <div ref={setStepHeaderSlot} className={styles.stepperSlot} />
+                            <button
+                                type="button"
+                                className={`${styles.historyButton} ${isHistoryOpen ? styles.historyButtonOn : ''}`}
+                                aria-pressed={isHistoryOpen}
+                                onClick={() => setIsHistoryOpen(open => !open)}
+                            >
+                                <History size={16} aria-hidden="true" />
+                                <T>History</T>
+                            </button>
+                            {knowledgeEnabled && (
+                                <button
+                                    type="button"
+                                    className={`${styles.historyButton} ${isKnowledgeOpen ? styles.historyButtonOn : ''}`}
+                                    aria-pressed={isKnowledgeOpen}
+                                    onClick={() => {
+                                        setKnowledgeMounted(true);
+                                        setOpenPane(p => (p === 'knowledge' ? null : 'knowledge'));
+                                    }}
+                                >
+                                    <Lightbulb size={16} aria-hidden="true" />
+                                    <T>Knowledge</T>
+                                </button>
+                            )}
+                        </div>
                         <div className={styles.stepperSteps}>
                             {[
                                 { id: 'sessionOpening', label: 'Session Opening' },
@@ -1394,16 +1448,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                         </div>
 
                         <div className={styles.stepperRight}>
-                            {!splitActive && (
-                                <button
-                                    type="button"
-                                    className={styles.historyButton}
-                                    onClick={() => setIsHistoryOpen(true)}
-                                >
-                                    <History size={16} aria-hidden="true" />
-                                    <T>History</T>
-                                </button>
-                            )}
                             {lastSavedAt && (
                                 <div className={styles.draftIndicator}>
                                     <T>Draft saved</T> {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1414,7 +1458,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                 )}
 
                 {/* ── Content Area ──────────────────────────────────────────── */}
-                <div className={`${styles.contentArea} ${viewState !== 'tabs' ? (splitActive ? styles.contentAreaSplit : styles.contentAreaFlow) : ''}`}>
+                <div className={styles.contentWrap}>
+                <div className={`${styles.contentArea} ${viewState !== 'tabs' ? styles.contentAreaFlow : ''}`}>
                     {/* Transition overlay to prevent blink during async protocol load */}
                     {isTransitioning && (
                         <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-overlay, rgba(0,0,0,0.35))' }}>
@@ -1499,27 +1544,60 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                             )}
                         </div>
                     );
-                        return splitActive ? (
-                            <SplitLayout
-                                storageKey="treatmentSplitRatio"
-                                startLabel={tTreatmentPaneLabel}
-                                endLabel={tHistoryPaneLabel}
-                                start={<div className={styles.splitTreatmentPane}>{flowContent}</div>}
-                                end={
-                                    <div className={styles.splitHistoryPane}>
-                                        <TreatmentHistory
-                                            patient={patientData as JoinedPatientData}
-                                            onBack={() => { }}
-                                            isTab={true}
-                                            readOnly
-                                            defaultViewMode="list"
-                                            refreshKey={historyRefreshKey}
-                                        />
-                                    </div>
-                                }
-                            />
-                        ) : flowContent;
+                        return (
+                            <StepHeaderSlotContext.Provider value={stepHeaderInStepper ? stepHeaderSlot : null}>
+                                {flowContent}
+                            </StepHeaderSlotContext.Provider>
+                        );
                     })()}
+                </div>
+
+                {/* ── Treatment history: opens over the right two thirds of the treatment (the model stays visible) ── */}
+                {isHistoryOpen && isFlowStep && (
+                    <aside className={styles.historyOverlay} role="region" aria-label={tHistoryPaneLabel}>
+                        <div className={styles.historyDrawerHeader}>
+                            <h4 className={styles.historyDrawerTitle}>{tHistoryPaneLabel}</h4>
+                            <button
+                                type="button"
+                                className={styles.historyDrawerClose}
+                                onClick={() => setIsHistoryOpen(false)}
+                                aria-label={tClose}
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div className={styles.historyDrawerBody}>
+                            <TreatmentHistory
+                                patient={patientData as JoinedPatientData}
+                                onBack={() => { }}
+                                isTab={true}
+                                readOnly
+                                defaultViewMode="tabular"
+                                refreshKey={historyRefreshKey}
+                            />
+                        </div>
+                    </aside>
+                )}
+
+                {/* ── Knowledge: same slot as History; stays mounted once opened so its position is kept ── */}
+                {knowledgeEnabled && knowledgeMounted && isFlowStep && (
+                    <aside className={styles.historyOverlay} role="region" aria-label={tKnowledgePaneLabel} hidden={!isKnowledgeOpen}>
+                        <div className={styles.historyDrawerHeader}>
+                            <h4 className={styles.historyDrawerTitle}>{tKnowledgePaneLabel}</h4>
+                            <button
+                                type="button"
+                                className={styles.historyDrawerClose}
+                                onClick={() => setOpenPane(null)}
+                                aria-label={tClose}
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div className={styles.historyDrawerBody}>
+                            <KnowledgePage appConfig={appConfig} compact />
+                        </div>
+                    </aside>
+                )}
                 </div>
 
                 {/* ── Bottom Bar (UX-8: hidden when not in tabs view) ───────── */}
@@ -1572,36 +1650,6 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                     </div>
                 )}
             </div>
-
-            {/* ── Treatment history slide-over (when the two panes are not shown) ── */}
-            {isHistoryOpen && !splitActive && isFlowStep && (
-                <>
-                    <div className={styles.historyBackdrop} onClick={() => setIsHistoryOpen(false)} />
-                    <aside className={styles.historyDrawer} role="dialog" aria-label={tHistoryPaneLabel}>
-                        <div className={styles.historyDrawerHeader}>
-                            <h4 className={styles.historyDrawerTitle}>{tHistoryPaneLabel}</h4>
-                            <button
-                                type="button"
-                                className={styles.historyDrawerClose}
-                                onClick={() => setIsHistoryOpen(false)}
-                                aria-label={tClose}
-                            >
-                                <X size={18} aria-hidden="true" />
-                            </button>
-                        </div>
-                        <div className={styles.historyDrawerBody}>
-                            <TreatmentHistory
-                                patient={patientData as JoinedPatientData}
-                                onBack={() => { }}
-                                isTab={true}
-                                readOnly
-                                defaultViewMode="list"
-                                refreshKey={historyRefreshKey}
-                            />
-                        </div>
-                    </aside>
-                </>
-            )}
 
             {/* ── Exit Treatment guard ────────────────────────────────────── */}
             <ConfirmationModal

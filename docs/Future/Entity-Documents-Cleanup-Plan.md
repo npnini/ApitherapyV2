@@ -10,7 +10,7 @@ The user wants to **translate the Hebrew PDFs into English** (a separate process
 - **A.** Fix the admin screens so they stop creating garbage and always save in the new layout.
 - **B.** A one-time migration per environment: move every file in use into the new layout and delete unused files.
 
-Status: **plan, waiting for the user's review** (03/10/2026). No code written.
+Status (24/11/2026): **done for Points** (Part A on the Points screen and Part B on all three environments, see §7 and `docs/Future/Point-Documents-Handoff.md`). Protocols, Problems and Measures are not started. Originally written 03/10/2026.
 
 ---
 
@@ -178,5 +178,5 @@ Out of scope here. Prerequisites this plan provides: every item's documents are 
 |---|---|---|---|
 | Plan | Written 03/10/2026, **waiting for the user's review** | — | D2 and D5 confirmed by the user; the rest proposed. |
 | B0 Dry run only (count) | Not started | | Optional first look: the script's dry run can be written and run before Part A to see the real numbers (orphans, `new/`, old single-string values). Changes nothing. |
-| A Admin screens | **Points done 23/11/2026, awaiting dev test** | `point-documents-language-folders` | Points screen only: files go to `Points/<id>/<lang>/`, new points get their id when the form opens (no more `Points/new/`), upload happens on Save, order upload → write point → delete unused files, point files deleted after the point. New `src/services/entityDocuments.ts` (shared for the other screens), `DocumentManagement.tsx` shows a chosen-but-unsaved file (`hasPendingFile`), `useStorageUrl.ts` no longer hands out a stale or discarded blob link. Protocols, Problems, Measures: not started. |
-| B Migration (dev, staging, prod) | Not started | | After A is released. |
+| A Admin screens | **Points done and in `main` (commit `3234840`, 24/11/2026)** | `point-documents-language-folders` (merged) | Points screen only: files go to `Points/<id>/<lang>/`, new points get their id when the form opens (no more `Points/new/`), upload happens on Save, order upload → write point → delete unused files, point files deleted after the point. New `src/services/entityDocuments.ts` (shared for the other screens), `DocumentManagement.tsx` shows a chosen-but-unsaved file (`hasPendingFile`), `useStorageUrl.ts` no longer hands out a stale or discarded blob link. Protocols, Problems, Measures: not started. |
+| B Migration (dev, staging, prod) | **Points done on dev, staging and production (23/11/2026)** | | `scripts/migrations/reorganize-point-documents.js` (points only): 372 production references moved to `Points/<id>/<lang>/`, 60 unreferenced files and the empty folders deleted, last production dry run fully clean. Protocols, Problems, Measures: not done (the script is points-only). See `docs/Future/Point-Documents-Handoff.md`. |

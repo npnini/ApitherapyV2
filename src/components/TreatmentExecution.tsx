@@ -16,6 +16,8 @@ import { AlertTriangle, CheckCircle, Trash2, Loader, MousePointerClick, List, Ch
 import styles from './TreatmentExecution.module.css';
 import { useStorageUrl } from "../hooks/useStorageUrl";
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useStepHeaderSlot } from './PatientIntake/StepHeaderSlot';
+import { createPortal } from 'react-dom';
 import { resolveStoragePath, getFieldContent, getPointLabel, getGDriveFallbackUrls } from '../utils/storageUtils';
 
 interface HydratedProtocol extends Omit<Protocol, 'points'> {
@@ -58,6 +60,7 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
     const { language, direction, getTranslation } = useTranslationContext();
     const { url: protocolDocUrl } = useStorageUrl(protocol?.documentUrl, language, 'doc');
     const BackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
+    const stepHeaderSlot = useStepHeaderSlot();
 
     const tFailedToLoadModel = useT('Failed to load 3D model data.');
     const tZoomIn = useT('Zoom in');
@@ -451,30 +454,36 @@ const TreatmentExecution: React.FC<TreatmentExecutionProps> = ({
         );
     }
 
+    // Title and Back: in the stepper bar on laptop and wider screens, at the top of this screen otherwise
+    const header = (
+        <div className={`${styles.header} ${stepHeaderSlot ? styles.headerInStepper : ''}`} dir={direction}>
+            <h2 className={styles.headerTitle}>
+                <span className={styles.headerTitleText}>
+                    {displayTitle || (protocol ? getFieldContent(protocol.name, language) : <T>Free Selection</T>)}
+                </span>
+                {/* Document icon if protocol has a document URL */}
+                {protocol && protocolDocUrl && (
+                    <a
+                        href={protocolDocUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={styles.docLink}
+                        title="View protocol document"
+                    >
+                        <FileText size={18} />
+                    </a>
+                )}
+            </h2>
+            <button onClick={onBack} className={styles.btnBack}>
+                <BackIcon size={16} />
+                <T>Back</T>
+            </button>
+        </div>
+    );
+
     return (
         <div className={styles.container} dir={direction}>
-            {/* Header */}
-            <div className={styles.header}>
-                <h2 className={styles.headerTitle}>
-                    {displayTitle || (protocol ? getFieldContent(protocol.name, language) : <T>Free Selection</T>)}
-                    {/* Document icon if protocol has a document URL */}
-                    {protocol && protocolDocUrl && (
-                        <a
-                            href={protocolDocUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={styles.docLink}
-                            title="View protocol document"
-                        >
-                            <FileText size={18} />
-                        </a>
-                    )}
-                </h2>
-                <button onClick={onBack} className={styles.btnBack}>
-                    <BackIcon size={16} />
-                    <T>Back</T>
-                </button>
-            </div>
+            {stepHeaderSlot ? createPortal(header, stepHeaderSlot) : header}
 
 
             <div className={styles.grid}>

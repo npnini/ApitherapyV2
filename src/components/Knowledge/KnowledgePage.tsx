@@ -11,6 +11,8 @@ import styles from './Knowledge.module.css';
 
 interface KnowledgePageProps {
     appConfig: any;
+    /** Inside a drawer that has its own title: no page header. */
+    compact?: boolean;
 }
 
 /** Shorter text does not search (one letter matches almost everything). */
@@ -22,7 +24,7 @@ const MIN_QUERY_LENGTH = 2;
  * its matches (best first) and shows their number. Items open the read-only entity pages, with an
  * in-page history (entity → entity → Back).
  */
-const KnowledgePage: React.FC<KnowledgePageProps> = ({ appConfig }) => {
+const KnowledgePage: React.FC<KnowledgePageProps> = ({ appConfig, compact }) => {
     const { language, direction } = useTranslationContext();
     const [kb, setKb] = useState<KnowledgeBase | null>(null);
     const [loadError, setLoadError] = useState(false);
@@ -99,10 +101,12 @@ const KnowledgePage: React.FC<KnowledgePageProps> = ({ appConfig }) => {
 
     return (
         <div className={styles.page} ref={topRef}>
-            <header className={styles.pageHeader}>
-                <h1 className={styles.pageTitle}><T>Knowledge</T></h1>
-                <p className={styles.pageSubtitle}><T>Problems, protocols, points, point groups and measures, for reading and learning.</T></p>
-            </header>
+            {!compact && (
+                <header className={styles.pageHeader}>
+                    <h1 className={styles.pageTitle}><T>Knowledge</T></h1>
+                    <p className={styles.pageSubtitle}><T>Problems, protocols, points, point groups and measures, for reading and learning.</T></p>
+                </header>
+            )}
 
             {loadError ? (
                 <section className={styles.card}>

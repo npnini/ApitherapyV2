@@ -643,13 +643,11 @@
     background-color: var(--color-primary);
     color: var(--color-white);
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.72rem;
-    padding: 0.65rem 0.85rem;
+    font-size: 0.68rem; /* normal case and one line: the header row stays low */
+    padding: 0.4rem 0.6rem;
     text-align: start;
     border-bottom: 2px solid var(--color-primary-dark, var(--color-text-secondary));
-    white-space: normal;
+    white-space: nowrap;
 }
 
 .stickyHeader {
