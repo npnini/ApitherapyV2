@@ -29,6 +29,18 @@ export const parseDate = (text: string): Date | null => {
 };
 
 /** Weekday name in the UI language, e.g. "Sunday" / "יום ראשון". */
+/** "yyyy-mm-dd" (the stored form of a date-only value) → a local date; null when empty or invalid. */
+export const fromIsoDate = (iso: string | undefined | null): Date | null => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((iso || '').trim());
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return d.getMonth() === Number(m[2]) - 1 ? d : null;
+};
+
+/** A local date → "yyyy-mm-dd". */
+export const toIsoDate = (date: Date): string =>
+    `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+
 export const formatWeekday = (date: Date, language: string, width: 'long' | 'short' = 'long'): string =>
     date.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-GB', { weekday: width });
 

@@ -8,7 +8,7 @@
   min-width: max-content;
   width: auto;
   background-color: #333;
-  color: #fff;
+  color: var(--color-white);
   text-align: center;
   border-radius: 4px;
   padding: 6px 10px;

@@ -17,6 +17,7 @@ import { nextPatternStarts } from '../../utils/appointments/suggestions';
 import { findOverlaps } from '../../utils/appointments/clashes';
 import { STATUS_LABELS, canMarkCancelled, canReschedule, isChangeable } from '../../utils/appointments/status';
 import { addMinutes, atTime, formatDate, formatWeekday, toDateValue, toHHmm } from '../../utils/appointments/time';
+import { CalendarClock, CalendarPlus, Eye, MessageCircle, Phone, Play, XCircle } from 'lucide-react';
 import styles from './Appointments.module.css';
 import listStyles from './AppointmentsTab.module.css';
 import todayStyles from './TodayPage.module.css';
@@ -85,6 +86,9 @@ const TodayPage: React.FC<TodayPageProps> = ({
         { mode: 'edit'; appointment: Appointment } | { mode: 'create'; patientId?: string; start: Date } | null
     >(null);
     const [viewTreatment, setViewTreatment] = useState<TreatmentSession | null>(null);
+    // "+ Book" chips on the free hours: on demand (UI redesign Tier 2), so the day shows the appointments
+    // first. null = not chosen yet: shown only on a day with nothing booked.
+    const [showFreeChoice, setShowFreeChoice] = useState<boolean | null>(null);
 
     const patientOf = (id: string) => patients.find(p => p.id === id);
     const nameOf = (id: string) => patientOf(id)?.fullName || '—';
@@ -154,6 +158,7 @@ const TodayPage: React.FC<TodayPageProps> = ({
     const firstHour = bounds.length ? Math.floor(Math.min(...bounds) / 60) : 0;
     const lastHour = bounds.length ? Math.min(24, Math.ceil(Math.max(...bounds) / 60)) : 0;
     const hours = Array.from({ length: Math.max(lastHour - firstHour, 0) }, (_, i) => firstHour + i);
+    const showFree = showFreeChoice ?? sorted.length === 0;
     const nowMinutes = minutesOfDay(now);
     const showNowLine = hours.length > 0 && nowMinutes >= firstHour * 60 && nowMinutes < lastHour * 60;
 
@@ -250,60 +255,68 @@ const TodayPage: React.FC<TodayPageProps> = ({
                     </span>
                     {state === 'due' && <span className={todayStyles.dueTag}><T>Due now</T></span>}
                     {a.source === 'walk_in' && <span className={todayStyles.meta}><T>Walk-in</T></span>}
+                    {/* Session number on the header line (UI redesign Tier 2): one line less per card; wraps on narrow screens */}
+                    {session && (
+                        <span className={todayStyles.meta}>
+                            <T>Session number</T>: <bdi dir="ltr">{session}</bdi>
+                        </span>
+                    )}
                 </div>
-
-                {session && (
-                    <p className={todayStyles.meta}>
-                        <T>Session number</T>: <bdi dir="ltr">{session}</bdi>
-                    </p>
-                )}
 
                 <div className={todayStyles.cardActions}>
                     {booked && !readOnly && patient && (
                         <button
                             type="button"
-                            className={state === 'due' ? listStyles.primaryButtonSmall : listStyles.linkButton}
+                            className={`${todayStyles.actionButton} ${todayStyles.actionPrimary}`}
                             onClick={() => (state === 'upcoming' ? setConfirmEarly(a) : startTreatment(a))}
                             disabled={busy}
                         >
+                            <Play size={14} aria-hidden="true" />
                             <T>Start New Treatment</T>
                         </button>
                     )}
                     {booked && mobile && (
-                        <a className={listStyles.linkButton} href={`tel:${mobile}`} aria-label={`${tCallPatient}: ${nameOf(a.patientId)}`}>
+                        <a className={todayStyles.actionButton} href={`tel:${mobile}`} aria-label={`${tCallPatient}: ${nameOf(a.patientId)}`}>
+                            <Phone size={14} aria-hidden="true" />
                             {tCallPatient}
                         </a>
                     )}
                     {booked && waNumber && (
-                        <a className={listStyles.linkButton} href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer"
+                        <a className={todayStyles.actionButton} href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer"
                             aria-label={`WhatsApp: ${nameOf(a.patientId)}`}>
+                            <MessageCircle size={14} aria-hidden="true" />
                             WhatsApp
                         </a>
                     )}
                     {booked && !readOnly && canReschedule(a, now) && (
-                        <button type="button" className={listStyles.linkButton} onClick={() => setEditor({ mode: 'edit', appointment: a })} disabled={busy}>
+                        <button type="button" className={todayStyles.actionButton} onClick={() => setEditor({ mode: 'edit', appointment: a })} disabled={busy}>
+                            <CalendarClock size={14} aria-hidden="true" />
                             <T>Reschedule</T>
                         </button>
                     )}
                     {booked && !readOnly && (
-                        <button type="button" className={listStyles.linkButtonDanger} onClick={() => setConfirmCancel(a)} disabled={busy}>
+                        <button type="button" className={`${todayStyles.actionButton} ${todayStyles.actionDanger}`} onClick={() => setConfirmCancel(a)} disabled={busy}>
+                            <XCircle size={14} aria-hidden="true" />
                             {isChangeable(a, now) ? <T>Cancel</T> : <T>Mark as cancelled</T>}
                         </button>
                     )}
 
                     {treatment && (
-                        <button type="button" className={listStyles.linkButton} onClick={() => setViewTreatment(treatment)}>
+                        <button type="button" className={todayStyles.actionButton} onClick={() => setViewTreatment(treatment)}>
+                            <Eye size={14} aria-hidden="true" />
                             <T>View treatment</T>
                         </button>
                     )}
                     {!readOnly && a.status === 'missed' && canMarkCancelled(a, now) && (
-                        <button type="button" className={listStyles.linkButton} onClick={() => setConfirmCancel(a)} disabled={busy}>
+                        <button type="button" className={`${todayStyles.actionButton} ${todayStyles.actionDanger}`} onClick={() => setConfirmCancel(a)} disabled={busy}>
+                            <XCircle size={14} aria-hidden="true" />
                             <T>Mark as cancelled</T>
                         </button>
                     )}
                     {!readOnly && lostSession && patient && (
-                        <button type="button" className={listStyles.linkButton}
+                        <button type="button" className={todayStyles.actionButton}
                             onClick={() => setEditor({ mode: 'create', patientId: a.patientId, start: replacementStart(a.patientId) })} disabled={busy}>
+                            <CalendarPlus size={14} aria-hidden="true" />
                             <T>Book a replacement session</T>
                         </button>
                     )}
@@ -323,10 +336,13 @@ const TodayPage: React.FC<TodayPageProps> = ({
     return (
         <div className={styles.page}>
             <div className={styles.pageHeader}>
-                <h1 className={styles.pageTitle}>
-                    <T>Today</T>
-                    <span className={styles.weekTitle}>{formatWeekday(now, language)} <span dir="ltr">{formatDate(now)}</span></span>
-                </h1>
+                <div className={todayStyles.titleBlock}>
+                    <span className={todayStyles.titleIcon} aria-hidden="true"><CalendarClock size={22} /></span>
+                    <h1 className={`${styles.pageTitle} ${todayStyles.pageTitle}`}>
+                        <T>Today</T>
+                        <span className={styles.weekTitle}>{formatWeekday(now, language)} <span dir="ltr">{formatDate(now)}</span></span>
+                    </h1>
+                </div>
                 <StatusLegend statuses={['booked', 'attended', 'missed', 'cancelled']} />
             </div>
 
@@ -337,8 +353,19 @@ const TodayPage: React.FC<TodayPageProps> = ({
             {error && <p className={styles.errorText} role="alert"><span aria-hidden="true">⚠ </span>{error}</p>}
 
             <section className={todayStyles.agendaCard}>
-                {/* Also on a working day with nothing booked: the hour rows still show, for "+ Book". */}
-                {sorted.length === 0 && <p className={todayStyles.empty}><T>No appointments today.</T></p>}
+                {(sorted.length === 0 || (!readOnly && hours.length > 0)) && (
+                    <div className={todayStyles.agendaTop}>
+                        {/* Also on a working day with nothing booked: the hour rows still show, for "+ Book". */}
+                        {sorted.length === 0 && <p className={todayStyles.empty}><T>No appointments today.</T></p>}
+                        {!readOnly && hours.length > 0 && (
+                            <button type="button" className={todayStyles.freeToggle} aria-pressed={showFree}
+                                onClick={() => setShowFreeChoice(!showFree)}>
+                                <CalendarPlus size={15} aria-hidden="true" />
+                                {showFree ? <T>Hide free times</T> : <T>Show free times for booking</T>}
+                            </button>
+                        )}
+                    </div>
+                )}
                 {hours.length > 0 && (
                     <ol className={todayStyles.agenda}>
                         {hours.map(h => {
@@ -346,7 +373,7 @@ const TodayPage: React.FC<TodayPageProps> = ({
                             const nowHere = showNowLine && now.getHours() === h;
                             const before = nowHere ? inHour.filter(a => a.start <= now) : inHour;
                             const after = nowHere ? inHour.filter(a => a.start > now) : [];
-                            const free = readOnly ? null : freeStartIn(h);
+                            const free = readOnly || !showFree ? null : freeStartIn(h);
                             return (
                                 <li key={h} className={todayStyles.hourRow}>
                                     <span className={todayStyles.hourLabel} dir="ltr">{`${String(h).padStart(2, '0')}:00`}</span>

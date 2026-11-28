@@ -28,9 +28,11 @@ interface UserDetailsProps {
     onSave: (updatedUser: AppUser) => void;
     onBack?: () => void; // onBack is now optional
     isOnboarding?: boolean; // New prop to control the mode
+    /** Inside a fixed-height modal: title and tabs stay on top, only the fields scroll, the buttons stay at the bottom. */
+    fixedActions?: boolean;
 }
 
-const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboarding = false }) => {
+const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboarding = false, fixedActions = false }) => {
     const { language, registerString } = useTranslationContext();
     const isRtl = language === 'he';
     const [formData, setFormData] = useState<AppUser>(user);
@@ -204,7 +206,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
     const saveChanges = useT('Save Changes');
 
     return (
-        <div className={styles.container} dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className={`${styles.container} ${fixedActions ? styles.containerFixedActions : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
             <div className={styles.card}>
                 <h2 className={styles.title}>{isOnboarding ? yourProfileDetailsTitle : myProfileTitle}</h2>
                 <p className={styles.subtitle}>{isOnboarding ? <T>Update your information below</T> : ''}</p>
@@ -227,6 +229,8 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                         ))}
                     </div>
                 )}
+                {/* The data items: the only part that scrolls when fixedActions is set */}
+                <div className={styles.scrollArea}>
                 {error && <p className={styles.error}>{error}</p>}
                 <div {...tabPanelProps('details')}>
                 <div className={styles.grid}>
@@ -420,6 +424,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onSave, onBack, isOnboa
                         </div>
                     </div>
                 )}
+                </div>
                 <div className={styles.actions}>
                     {!isOnboarding && onBack && <button onClick={onBack} className={styles.backButton}><T>Back to Dashboard</T></button>}
                     <button onClick={handleSave} className={styles.saveButton}>{isOnboarding ? saveAndContinue : saveChanges}</button>

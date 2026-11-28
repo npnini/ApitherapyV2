@@ -261,3 +261,42 @@
 .link:hover {
     color: var(--color-primary-dark);
 }
+
+/* Result badges: soft tints with dark text (UI redesign Tier 2) — green improvement, red degradation, grey no effect */
+.effBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+}
+
+.effValue {
+    font-weight: var(--font-weight-normal);
+    font-variant-numeric: tabular-nums;
+}
+
+.effBetter {
+    background-color: var(--color-success-background);
+    color: var(--color-success-hover);
+}
+
+.effWorse {
+    background-color: var(--color-error-background);
+    color: var(--color-error-dark);
+}
+
+.effNone {
+    background-color: var(--color-background-muted);
+    color: var(--color-text-secondary);
+}
+
+/* A patient or caretaker no longer in the database: grey label, the id on hover */
+.unknownName {
+    color: var(--color-text-tertiary);
+    font-style: italic;
+    cursor: help;
+}

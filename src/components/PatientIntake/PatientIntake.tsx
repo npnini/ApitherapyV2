@@ -18,7 +18,7 @@ import { evaluateGroupVisibility } from '../../utils/questionnaireUtils';
 import MeasuresHistoryTab from './MeasuresHistoryTab';
 import DocumentsTab from './DocumentsTab';
 import ProtocolSelection, { ProtocolSelectionDraft } from '../ProtocolSelection';
-import { History, Lightbulb, X } from 'lucide-react';
+import { Check, History, Lightbulb, X } from 'lucide-react';
 import KnowledgePage from '../Knowledge/KnowledgePage';
 import { StepHeaderSlotContext } from './StepHeaderSlot';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -1426,12 +1426,18 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                 { id: 'treatmentExecution', label: 'Execution' },
                                 { id: 'freeSelection', label: 'Free Selection' },
                                 { id: 'postSting', label: 'Post-Sting' },
-                            ].map((step, idx, allSteps) => (
+                            ].map((step, idx, allSteps) => {
+                                const activeIdx = allSteps.findIndex(s => s.id === viewState);
+                                const isDone = activeIdx > -1 && idx < activeIdx;
+                                return (
                                 <div
                                     key={step.id}
-                                    className={`${styles.stepItem} ${viewState === step.id ? styles.stepActive : ''}`}
+                                    className={`${styles.stepItem} ${viewState === step.id ? styles.stepActive : ''} ${isDone ? styles.stepDone : ''}`}
+                                    aria-current={viewState === step.id ? 'step' : undefined}
                                 >
-                                    <span className={styles.stepNum}>{idx + 1}</span>
+                                    <span className={styles.stepNum}>
+                                        {isDone ? <Check size={13} strokeWidth={3} aria-hidden="true" /> : idx + 1}
+                                    </span>
                                     {/* Phone: only the current step is shown, as "3/5 Execution" */}
                                     <span className={styles.stepTotal}>/{allSteps.length}</span>
                                     <span className={styles.stepLabel}>
@@ -1440,7 +1446,8 @@ const PatientIntake: React.FC<PatientIntakeProps> = ({
                                         {idx === 0 && sessionOpeningData?.treatmentNumber ? <>{' '}<bdi>{sessionOpeningData.treatmentNumber}</bdi></> : null}
                                     </span>
                                 </div>
-                            ))}
+                                );
+                            })}
                             {/* Phone: the first step (which carries the treatment number) is hidden, so show the number here */}
                             {sessionOpeningData?.treatmentNumber ? (
                                 <span className={styles.compactTreatmentNum}><T>Treatment</T> <bdi>{sessionOpeningData.treatmentNumber}</bdi></span>

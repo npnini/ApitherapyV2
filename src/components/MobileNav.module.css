@@ -32,7 +32,7 @@
     font-size: var(--font-size-lg);
     font-weight: 900;
     letter-spacing: -0.05em;
-    color: var(--color-text-primary);
+    color: var(--color-navy);
 }
 
 .backdrop {

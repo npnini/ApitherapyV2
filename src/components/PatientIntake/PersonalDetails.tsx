@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PatientData } from '../../types/patient';
 import styles from './PersonalDetails.module.css';
 import { T } from '../T';
+import DateField from '../Appointments/DateField';
+import { fromIsoDate, toIsoDate } from '../../utils/appointments/time';
 
 interface PersonalDetailsProps {
     patientData: Partial<PatientData>;
@@ -34,10 +36,10 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
         onDataChange({ ...patientData, [name]: value });
     };
 
-    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { value } = e.target;
-        const newAge = calculateAge(value);
-        onDataChange({ ...patientData, birthDate: value, age: newAge });
+    // Birth date is stored as "yyyy-mm-dd"; the field shows and accepts dd/mm/yyyy (DateField).
+    const handleBirthDateChange = (date: Date | null) => {
+        const value = date ? toIsoDate(date) : '';
+        onDataChange({ ...patientData, birthDate: value, age: calculateAge(value) });
     };
 
     const isFieldMissing = (value: any) => !value || (typeof value === 'string' && !value.trim());
@@ -61,7 +63,13 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                 >
                     <T>{labelTitle}</T> {isRequired && <span className={styles.requiredStar}>*</span>}
                 </label>
-                {isTextArea ? (
+                {name === 'birthDate' ? (
+                    <DateField
+                        id="birthDate"
+                        value={fromIsoDate(value as string)}
+                        onChange={handleBirthDateChange}
+                    />
+                ) : isTextArea ? (
                     <textarea
                         id={name}
                         name={name}
@@ -75,7 +83,7 @@ const PersonalDetails: React.FC<PersonalDetailsProps> = ({ patientData, onDataCh
                         id={name}
                         name={name}
                         value={(value as string) || ''}
-                        onChange={name === 'birthDate' ? handleDateChange : handleChange}
+                        onChange={handleChange}
                         className={`${styles.input} ${hasError ? styles.errorInput : ''}`}
                     />
                 )}

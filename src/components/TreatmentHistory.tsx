@@ -6,13 +6,14 @@ import { StingPoint } from '../types/apipuncture';
 import { VitalSigns } from '../types/treatmentSession';
 import { StungPointCounts, formatPointCode } from '../utils/pointSide';
 import { getPointLabel } from '../utils/storageUtils';
-import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, Loader, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding, Printer } from 'lucide-react';
+import { ChevronLeft, Calendar, User, Syringe, FileText, Activity, MapPin, AlertTriangle, ChevronRight, List, Table, Play, CheckCircle, MessageSquare, PersonStanding, Printer } from 'lucide-react';
 import { T, useT, useTranslationContext } from './T';
 import { StorageImage } from './shared/StorageComponents';
 import Modal from './common/Modal';
 import PointsModelViewer from './PointsModelViewer';
 import TreatmentExportModal from './TreatmentExport/TreatmentExportModal';
 import styles from './TreatmentHistory.module.css';
+import LoadingState from './common/LoadingState';
 
 const getMLValue = (value: any, lang: string): string => {
     if (typeof value === 'string') return value;
@@ -366,10 +367,7 @@ const TreatmentHistory: React.FC<TreatmentHistoryProps> = ({ patient, onBack, is
 
     if (isLoading) {
         return (
-            <div className={styles.loadingContainer}>
-                <Loader className={styles.loader} />
-                <p className={styles.loaderText}><T>Loading treatment history...</T></p>
-            </div>
+            <LoadingState label={<T>Loading treatment history...</T>} />
         );
     }
 

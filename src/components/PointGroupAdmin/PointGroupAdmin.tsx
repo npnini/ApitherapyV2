@@ -3,7 +3,8 @@ import { db } from '../../firebase';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { PointGroup, PointGroupType, PointGroupLaterality } from '../../types/pointGroup';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, X, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, X, Search, Layers } from 'lucide-react';
+import PageTitle from '../common/PageTitle';
 import styles from '../PointsAdmin.module.css';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
@@ -15,6 +16,9 @@ const LATERALITY_OPTIONS: PointGroupLaterality[] = ['Paired', 'Midline-front', '
 
 const PointGroupAdmin: React.FC = () => {
     const { getTranslation, registerString } = useTranslationContext();
+    // Row tooltips: hooks are called here once, not inside the table loop (their number would change with the rows)
+    const tEditPointGroup = useT('Edit Point Group');
+    const tDeletePointGroup = useT('Delete Point Group');
     const [user, setUser] = useState<User | null>(null);
     const [pointGroups, setPointGroups] = useState<PointGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -252,7 +256,7 @@ const PointGroupAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}><T>Point Grouping</T></h1>
+                <PageTitle icon={Layers} titleClassName={styles.title}><T>Point Grouping</T></PageTitle>
                 <div className={styles.headerActions}>
                     <div className={styles.searchContainer}>
                         <Search size={18} className={styles.searchIcon} />
@@ -346,7 +350,7 @@ const PointGroupAdmin: React.FC = () => {
                                     </td>
                                     <td className={`${styles.cell} ${styles.actionsCell}`}>
                                         <div className={styles.actionsWrapper}>
-                                            <Tooltip text={useT('Edit Point Group')}>
+                                            <Tooltip text={tEditPointGroup}>
                                                 <button onClick={() => handleStartEditing(group)} className={styles.actionButton}><Edit size={18} /></button>
                                             </Tooltip>
                                             {group.reference_count > 0 ? (
@@ -356,7 +360,7 @@ const PointGroupAdmin: React.FC = () => {
                                                     </button>
                                                 </Tooltip>
                                             ) : (
-                                                <Tooltip text={useT('Delete Point Group')}>
+                                                <Tooltip text={tDeletePointGroup}>
                                                     <button onClick={() => setDeletingGroup(group)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
                                                 </Tooltip>
                                             )}

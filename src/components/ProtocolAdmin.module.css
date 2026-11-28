@@ -253,21 +253,27 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-md) var(--spacing-lg);
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--modal-header-background);
+    color: var(--modal-header-text);
+    border-bottom: 1px solid var(--modal-header-border);
 }
 
 .formTitle {
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
-    color: var(--color-white);
+    color: var(--modal-header-text);
 }
 
 .closeButton {
     background: none;
     border: none;
-    color: var(--color-white);
+    color: var(--modal-header-text);
     cursor: pointer;
+    border-radius: var(--radius-md);
+}
+
+.closeButton:hover {
+    background-color: var(--modal-header-button-hover);
 }
 
 .formError {
@@ -743,12 +749,33 @@ input:checked+.slider:before {
 }
 
 .typeButtonActive {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    border-color: var(--color-primary);
+    background-color: var(--color-selected);
+    color: var(--color-selected-text);
+    border-color: var(--color-selected);
 }
 
 .typeButtonActive:hover {
-    background-color: var(--color-primary-hover);
-    border-color: var(--color-primary-hover);
+    background-color: var(--color-selected-hover);
+    border-color: var(--color-selected-hover);
+}
+
+/* ── Row icons (UI redesign Tier 2): grey by default; edit turns teal on hover, delete turns red only on
+      hover (red is kept for the destructive moment). Placed last so it wins the cascade. ── */
+.actionButton {
+    border-radius: var(--radius-md);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+    color: var(--color-primary);
+    background-color: var(--color-primary-light);
+}
+
+.deleteButton {
+    color: var(--color-text-secondary) !important;
+}
+
+.deleteButton:hover:not(:disabled) {
+    color: var(--color-error) !important;
+    background-color: var(--color-error-background);
 }

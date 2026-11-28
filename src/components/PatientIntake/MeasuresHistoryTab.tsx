@@ -9,7 +9,7 @@ import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { DateDensity, groupReadingsByDensity } from '../../services/measureService';
 import ScaleMeasuresGraph from './ScaleMeasuresGraph';
-import { Loader } from 'lucide-react';
+import LoadingState from '../common/LoadingState';
 
 interface MeasuresHistoryTabProps {
     patientData: PatientData;
@@ -82,10 +82,7 @@ const MeasuresHistoryTab: React.FC<MeasuresHistoryTabProps> = ({ patientData }) 
     if (isLoading) {
         return (
             <div className={styles.placeholderTab}>
-                <div className={measureStyles.placeholderLoader}>
-                    <Loader className={styles.loader} size={48} />
-                    <p className={measureStyles.loaderText}><T>Loading measures history...</T></p>
-                </div>
+                <LoadingState label={<T>Loading measures history...</T>} />
             </div>
         );
     }

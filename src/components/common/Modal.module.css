@@ -31,16 +31,40 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: var(--color-white);
+  color: var(--modal-header-text);
   z-index: 10;
+  border-radius: var(--radius-md);
+}
+
+.closeButton:hover {
+  background-color: var(--modal-header-button-hover);
 }
 
 .modalHeader {
-  background-color: var(--color-primary);
-  color: var(--color-white);
+  background-color: var(--modal-header-background);
+  color: var(--modal-header-text);
   padding: var(--spacing-lg);
   flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--modal-header-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.modalHeaderWithIcon {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.modalIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background-color: var(--modal-header-icon-background);
+  color: var(--modal-header-text);
 }
 
 .modalTitle {

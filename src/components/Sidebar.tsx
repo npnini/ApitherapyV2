@@ -33,7 +33,23 @@ interface SidebarProps {
     onActivityLogClick: () => void;
     viewAsCaretakerId: string | null;
     onViewAsCaretakerChange: (id: string | null) => void;
+    /** The screen on show, to highlight its item ('patients' for the patient list and the intake over it). */
+    activeView?: string;
 }
+
+/** Brand mark: a honey hexagon (honeycomb cell) with a navy core. */
+const BrandMark: React.FC = () => (
+    <svg className={styles.brandMark} viewBox="0 0 34 34" aria-hidden="true" focusable="false">
+        <path d="M17 2l13 7.5v15L17 32 4 24.5v-15z" fill="var(--color-honey)" />
+        <path d="M17 9l7 4v8l-7 4-7-4v-8z" fill="var(--color-navy)" />
+    </svg>
+);
+
+const Brand: React.FC = () => (
+    <div className={styles.header}>
+        <h2 className={styles.title}><BrandMark /><span>ApitherapyCare</span></h2>
+    </div>
+);
 
 const Sidebar: React.FC<SidebarProps> = ({
     user,
@@ -59,6 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onActivityLogClick,
     viewAsCaretakerId,
     onViewAsCaretakerChange,
+    activeView,
 }) => {
     const [configOpen, setConfigOpen] = useState(false);
     const [superAdminOpen, setSuperAdminOpen] = useState(false);
@@ -83,6 +100,20 @@ const Sidebar: React.FC<SidebarProps> = ({
     // are active; the patient items are shown disabled, so a learner sees what the full app offers.
     const isLearner = user?.role === 'learner';
     const tCaretakersOnly = useT('Available to caretakers only. An administrator can give you caretaker access.');
+
+    // A folded group opens when the screen on show is one of its items, so its highlight is visible.
+    React.useEffect(() => {
+        if (!activeView) return;
+        if (activeView === 'data_analysis') setDataAnalysisOpen(true);
+        if (['app_settings', 'admin_body_model', 'admin_point_groups', 'admin_points', 'point_side_analysis', 'admin_protocols',
+            'admin_measures', 'admin_problems', 'admin_questionnaires'].includes(activeView)) setConfigOpen(true);
+        if (activeView === 'admin_users' || activeView === 'activity_log') setSuperAdminOpen(true);
+    }, [activeView]);
+
+    // Current screen: highlighted item, announced to screen readers as the current page.
+    const current = (...views: string[]) => (activeView && views.includes(activeView)
+        ? { 'aria-current': 'page' as const, 'data-active': 'true' }
+        : {});
 
     React.useEffect(() => {
         if (!userUid) return;
@@ -112,20 +143,16 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (!user) {
         return (
             <div className={styles.sidebar} dir={direction}>
-                <div className={styles.header}>
-                    <h2 className={styles.title}>APITHERAPYCARE</h2>
-                </div>
+                <Brand />
             </div>
         );
     }
 
     return (
         <div className={styles.sidebar} dir={direction}>
-            <div className={styles.header}>
-                <h2 className={styles.title}>APITHERAPYCARE</h2>
-            </div>
+            <Brand />
             <nav className={styles.nav}>
-                <button onClick={onUserDetailsClick} className={styles.navButton}>
+                <button onClick={onUserDetailsClick} className={styles.navButton} {...current('user_details', 'onboarding_test')}>
                     <UserIcon size={18} className={styles.iconPrimary} />
                     <span><T>My Profile</T></span>
                 </button>
@@ -139,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                     </div>
                     <div className={styles.configSubMenu}>
-                        <button onClick={onTodayClick} className={styles.configButton} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
+                        <button onClick={onTodayClick} className={styles.configButton} {...current('appointments_today')} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                             <CalendarClock size={16} className={styles.iconSecondary} />
                             <span><T>Today</T></span>
                             {todayCount > 0 && (
@@ -148,20 +175,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </span>
                             )}
                         </button>
-                        <button onClick={onCalendarClick} className={styles.configButton} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
+                        <button onClick={onCalendarClick} className={styles.configButton} {...current('appointments_calendar')} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                             <CalendarDays size={16} className={styles.iconSecondary} />
                             <span><T>Calendar</T></span>
                         </button>
                     </div>
                 </div>
 
-                <button onClick={onPatientsClick} className={styles.navButton} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
+                <button onClick={onPatientsClick} className={styles.navButton} {...current('patients')} disabled={isLearner} title={isLearner ? tCaretakersOnly : undefined}>
                     <Users size={18} className={styles.iconPrimary} />
                     <span><T>Patients</T></span>
                 </button>
 
                 {knowledgeEnabled && (
-                    <button onClick={onKnowledgeClick} className={styles.navButton}>
+                    <button onClick={onKnowledgeClick} className={styles.navButton} {...current('knowledge')}>
                         <BookOpen size={18} className={styles.iconPrimary} />
                         <span><T>Knowledge</T></span>
                     </button>
@@ -177,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                     {dataAnalysisOpen && !isLearner && (
                         <div className={styles.configSubMenu}>
-                            <button onClick={onDataAnalysisClick} className={styles.configButton}>
+                            <button onClick={onDataAnalysisClick} className={styles.configButton} {...current('data_analysis')}>
                                 <BarChart2 size={16} className={styles.iconSecondary} />
                                 <span><T>Treatment Effectiveness</T></span>
                             </button>
@@ -216,39 +243,39 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                         {configOpen && (
                             <div className={styles.configSubMenu}>
-                                <button onClick={onAppSettingsClick} className={styles.configButton}>
+                                <button onClick={onAppSettingsClick} className={styles.configButton} {...current('app_settings')}>
                                     <Settings size={16} className={styles.iconSecondary} />
                                     <span><T>Application Settings</T></span>
                                 </button>
-                                <button onClick={onBodyModelAdminClick} className={styles.configButton}>
+                                <button onClick={onBodyModelAdminClick} className={styles.configButton} {...current('admin_body_model')}>
                                     <Sun size={16} className={styles.iconSecondary} />
                                     <span><T>3D Body Model Lighting</T></span>
                                 </button>
-                                <button onClick={onPointGroupsAdminClick} className={styles.configButton}>
+                                <button onClick={onPointGroupsAdminClick} className={styles.configButton} {...current('admin_point_groups')}>
                                     <Layers size={16} className={styles.iconSecondary} />
                                     <span><T>Point Grouping</T></span>
                                 </button>
-                                <button onClick={onPointsAdminClick} className={styles.configButton}>
+                                <button onClick={onPointsAdminClick} className={styles.configButton} {...current('admin_points')}>
                                     <MapPin size={16} className={styles.iconSecondary} />
                                     <span><T>Points Configuration</T></span>
                                 </button>
-                                <button onClick={onPointSideAnalysisClick} className={styles.configButton}>
+                                <button onClick={onPointSideAnalysisClick} className={styles.configButton} {...current('point_side_analysis')}>
                                     <ClipboardCheck size={16} className={styles.iconSecondary} />
                                     <span><T>Point Side &amp; Pairing Verification</T></span>
                                 </button>
-                                <button onClick={onAdminClick} className={styles.configButton}>
+                                <button onClick={onAdminClick} className={styles.configButton} {...current('admin_protocols')}>
                                     <FileText size={16} className={styles.iconSecondary} />
                                     <span><T>Protocol Configuration</T></span>
                                 </button>
-                                <button onClick={onMeasuresAdminClick} className={styles.configButton}>
+                                <button onClick={onMeasuresAdminClick} className={styles.configButton} {...current('admin_measures')}>
                                     <Ruler size={16} className={styles.iconSecondary} />
                                     <span><T>Measure Configuration</T></span>
                                 </button>
-                                <button onClick={onProblemsAdminClick} className={styles.configButton}>
+                                <button onClick={onProblemsAdminClick} className={styles.configButton} {...current('admin_problems')}>
                                     <Bug size={16} className={styles.iconSecondary} />
                                     <span><T>Problem Configuration</T></span>
                                 </button>
-                                <button onClick={onQuestionnaireAdminClick} className={styles.configButton}>
+                                <button onClick={onQuestionnaireAdminClick} className={styles.configButton} {...current('admin_questionnaires')}>
                                     <ListChecks size={16} className={styles.iconSecondary} />
                                     <span><T>Questionnaire Configuration</T></span>
                                 </button>
@@ -268,11 +295,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                         {superAdminOpen && (
                             <div className={styles.configSubMenu}>
-                                <button onClick={onUserManagementClick} className={styles.configButton}>
+                                <button onClick={onUserManagementClick} className={styles.configButton} {...current('admin_users')}>
                                     <Users size={16} className={styles.iconSecondary} />
                                     <span><T>User Management</T></span>
                                 </button>
-                                <button onClick={onActivityLogClick} className={styles.configButton}>
+                                <button onClick={onActivityLogClick} className={styles.configButton} {...current('activity_log')}>
                                     <ClipboardList size={16} className={styles.iconSecondary} />
                                     <span><T>Activity Log</T></span>
                                 </button>

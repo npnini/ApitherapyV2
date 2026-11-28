@@ -10,30 +10,61 @@ This guide ensures a consistent, professional, and user-friendly interface acros
 
 ### **Base Colors**
 
+The tokens live in **`src/index.css`**, the single source of truth (palette "D · Navy & Tints", docs/Future/UI-Redesign-Plan.md). Never hard-code a colour that a token covers; use the role tokens below so a palette change touches only `index.css`.
+
+**Colour roles:**
+
+* **Teal** (`--color-primary`) is the action colour: primary buttons, links, focus rings, progress.  
+* **Navy** (`--color-navy`) is for headings and the current sidebar item.  
+* **Bright blue** (`--color-selected`) marks what is selected: the active tab, step, toggle or filter pill. It is also used for table header rows and window header bars.  
+* **Honey** (`--color-honey`) is the brand accent, used sparingly: the logo mark and the avatar only.  
+* **Red, orange and green** are reserved for error, warning and success. Never use them as decoration.  
+* **Soft tints** (light background, dark text) are for chips and value tiles, and only where the data has a real category or status.
+
 :root {  
-  /\* Primary \*/  
-  \--color-primary: \#2563eb; /\* Primary blue for key actions \*/  
-  \--color-primary-hover: \#1d4ed8;  
-  \--color-primary-light: \#dbeafe;  
-  \--color-primary-rgb: 37, 99, 235; /\* For rgba usage \*/  
+  /\* Brand \*/  
+  \--color-navy: \#1e2a5a; /\* Headings, selected states \*/  
+  \--color-navy-hover: \#16204a;  
+  \--color-navy-light: \#e8ebf7; /\* Navy tint: hover, current item, value tiles \*/  
+  \--color-honey: \#f2b705; /\* Logo mark, avatar \*/  
+  \--color-honey-ink: \#7a4b00; /\* Text on honey \*/  
+    
+  /\* Primary (action colour) \*/  
+  \--color-primary: \#0b7a6e; /\* Teal; white text on it meets WCAG AA \*/  
+  \--color-primary-hover: \#09655b;  
+  \--color-primary-light: \#dff3ef;  
+  \--color-primary-rgb: 11, 122, 110; /\* For rgba usage: rgba(var(--color-primary-rgb), 0.1) \*/  
+    
+  /\* Roles \*/  
+  \--color-heading: var(--color-navy);  
+  \--color-selected: \#2f6bd8; /\* Active tab / step / toggle / filter pill, table header rows; white text meets AA \*/  
+  \--color-selected-hover: \#2659bd;  
+  \--color-selected-rgb: 47, 107, 216;  
+  \--color-selected-text: var(--color-white);  
+  \--modal-header-background: var(--color-selected); /\* Window header bar \*/  
+  \--modal-header-text: var(--color-white);  
+  \--modal-header-border: var(--color-selected);  
+  \--modal-header-button-hover: rgba(255, 255, 255, 0.16);  
+  \--modal-header-icon-background: rgba(255, 255, 255, 0.16);  
     
   /\* Backgrounds \*/  
-  \--color-background-page: \#f9fafb; /\* Light gray page background \*/  
+  \--color-background-page: \#f5f7fb; /\* Cool off-white page background \*/  
   \--color-background-card: \#ffffff; /\* White for cards/containers \*/  
   \--color-background-input: \#ffffff; /\* White for input fields \*/  
-  \--color-background-input-hover: \#f9fafb; /\* Subtle hover state \*/  
-  \--color-background-input-disabled: \#f3f4f6; /\* Disabled inputs \*/  
+  \--color-background-input-hover: \#f6f8fc; /\* Subtle hover state \*/  
+  \--color-background-input-disabled: \#eef1f6; /\* Disabled inputs \*/  
+  \--color-background-muted: \#eef1f7; /\* Quiet panels \*/  
     
   /\* Borders \*/  
-  \--color-border: \#d1d5db; /\* Medium gray \- default borders \*/  
-  \--color-border-light: \#e5e7eb; /\* Light gray \- subtle dividers \*/  
-  \--color-border-hover: \#9ca3af; /\* Darker gray \- hover state \*/  
-  \--color-border-focus: var(--color-primary); /\* Blue \- focus state \*/  
+  \--color-border: \#d5dbea; /\* Default borders \*/  
+  \--color-border-light: \#e5e9f3; /\* Subtle dividers \*/  
+  \--color-border-hover: \#a3abc4; /\* Hover state \*/  
+  \--color-border-focus: var(--color-primary); /\* Focus state \*/  
     
   /\* Text \*/  
-  \--color-text-primary: \#111827; /\* Dark gray \- main text \*/  
-  \--color-text-secondary: \#6b7280; /\* Medium gray \- secondary text \*/  
-  \--color-text-tertiary: \#9ca3af; /\* Light gray \- placeholders \*/  
+  \--color-text-primary: \#1b2340; /\* Main text \*/  
+  \--color-text-secondary: \#5d6784; /\* Secondary text \*/  
+  \--color-text-tertiary: \#8f97b0; /\* Placeholders \*/  
   \--color-white: \#ffffff;  
     
   /\* Semantic Colors \*/  
@@ -43,17 +74,17 @@ This guide ensures a consistent, professional, and user-friendly interface acros
   \--color-success-background: \#f0fdf4;  
   \--color-warning: \#ea580c;  
   \--color-warning-background: \#fff7ed;  
-  \--color-info-background: \#eff6ff; /\* Light blue for reference boxes \*/  
+  \--color-info-background: \#eef1fa; /\* Light navy for reference boxes \*/  
     
   /\* Button Colors \*/  
-  \--color-secondary-button-background: \#f3f4f6;  
-  \--color-secondary-button-hover: \#e5e7eb;  
+  \--color-secondary-button-background: \#eef1f6;  
+  \--color-secondary-button-hover: \#e3e8f1;  
     
-  /\* Shadows \*/  
-  \--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);  
-  \--shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1);  
-  \--shadow-input-focus: 0 0 0 3px rgba(37, 99, 235, 0.1);  
-  \--shadow-modal: 0 20px 25px \-5px rgba(0, 0, 0, 0.1);  
+  /\* Shadows (navy-tinted, soft and layered) \*/  
+  \--shadow-sm: 0 1px 2px 0 rgba(27, 35, 64, 0.06);  
+  \--shadow-card: 0 1px 2px rgba(27, 35, 64, 0.05), 0 4px 14px \-6px rgba(27, 35, 64, 0.12);  
+  \--shadow-input-focus: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);  
+  \--shadow-modal: 0 20px 25px \-5px rgba(27, 35, 64, 0.14);  
     
   /\* Spacing \*/  
   \--spacing-xs: 0.25rem; /\* 4px \*/  
@@ -64,8 +95,9 @@ This guide ensures a consistent, professional, and user-friendly interface acros
     
   /\* Border Radius \*/  
   \--radius-sm: 4px;  
-  \--radius-md: 6px;  
-  \--radius-lg: 8px;  
+  \--radius-md: 8px;  
+  \--radius-lg: 12px;  
+  \--radius-full: 9999px;  
     
   /\* Typography \*/  
   \--font-size-xs: 0.75rem; /\* 12px \*/  
@@ -359,7 +391,7 @@ Once a translation is entered, the reference box must disappear.
 
 .translation-reference {  
   background-color: var(--color-info-background);  
-  border-left: 4px solid var(--color-primary);  
+  border-inline-start: 4px solid var(--color-navy);  
   padding: var(--spacing-sm) var(--spacing-md);  
   margin-bottom: var(--spacing-sm);  
   border-radius: var(--radius-sm);  
@@ -467,7 +499,11 @@ When displaying multiple buttons together (e.g., "Cancel" and "Save").
 
 ## **Modal & Edit Form Headers**
 
-All edit forms, especially those in modals, must include a standardized header bar.
+**Pages and windows look different:**
+
+* **Windows** (edit forms, patient details, My Profile, settings, analysis, appointment editor) have a coloured header bar in the selected colour, with a white title, icon and close button. Use the shared `common/Modal` (optional `icon` prop) or the `--modal-header-*` tokens.  
+* **Pages** (patient list, Today, admin lists, Knowledge, user management, activity log) have no bar. They have a plain title with an icon tile: use `common/PageTitle` with the page's sidebar icon.  
+* **Small confirmation dialogs** (delete warnings) keep their own warning layout.
 
 ### **Header Styling**
 
@@ -476,8 +512,9 @@ All edit forms, especially those in modals, must include a standardized header b
   justify-content: space-between;  
   align-items: center;  
   padding: var(--spacing-md) var(--spacing-lg);  
-  background-color: var(--color-primary);  
-  color: var(--color-white);  
+  background-color: var(--modal-header-background);  
+  color: var(--modal-header-text);  
+  border-bottom: 1px solid var(--modal-header-border);  
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;  
 }
 
@@ -490,7 +527,7 @@ All edit forms, especially those in modals, must include a standardized header b
 .modal-close-button {  
   background: none;  
   border: none;  
-  color: var(--color-white);  
+  color: var(--modal-header-text);  
   cursor: pointer;  
   padding: var(--spacing-xs);  
   display: flex;  
@@ -501,7 +538,7 @@ All edit forms, especially those in modals, must include a standardized header b
 }
 
 .modal-close-button:hover {  
-  background-color: rgba(255, 255, 255, 0.1);  
+  background-color: var(--modal-header-button-hover);  
 }
 
 .modal-close-icon {  
@@ -562,8 +599,8 @@ const orderedLangs \= \[currentLang, ...SUPPORTED\_LANGS.filter(l \=\> l \!== cu
 }
 
 .language-tab.active {  
-  color: var(--color-primary);  
-  border-bottom-color: var(--color-primary);  
+  color: var(--color-selected);  
+  border-bottom-color: var(--color-selected);  
   font-weight: var(--font-weight-semibold);  
 }
 
@@ -687,10 +724,20 @@ All interactive elements must have clear focus indicators (already defined in in
 
 ---
 
+## **Lists, Icons and Loading**
+
+* **Row icon buttons** (edit, delete, documents) are grey (`--color-text-secondary`). Edit turns teal on hover (`--color-primary` on `--color-primary-light`). Delete turns red only on hover (`--color-error` on `--color-error-background`).  
+* **Status and result badges** are soft tints with dark text, such as `--color-success-background` with a dark green. Never use a saturated fill with white text.  
+* **Loading:** use `common/LoadingState` with the screen's existing loading text. It shows soft placeholder rows and is announced to screen readers. Never show plain "Loading..." text alone.  
+* **Dates:** use `DateField` (dd/mm/yyyy), never the browser's own date input. Store date-only values as "yyyy-mm-dd" and convert with `fromIsoDate` / `toIsoDate` (`utils/appointments/time.ts`).
+
+---
+
 ## **Summary Checklist**
 
 When creating or reviewing a form, ensure:
 
+* \[ \] Colours come from the tokens in `src/index.css` (no hard-coded hex where a token exists); teal for actions, navy for headings and selected states  
 * \[ \] Page uses `--color-background-page` for overall background  
 * \[ \] Form sections are wrapped in `.form-card` containers  
 * \[ \] All inputs use consistent styling with proper states (default, hover, focus, disabled)  
@@ -699,7 +746,8 @@ When creating or reviewing a form, ensure:
 * \[ \] Multilingual fields show globe icon and translation counter  
 * \[ \] Translation reference boxes only appear when needed  
 * \[ \] Primary buttons use `.btn-primary`, secondary use `.btn-secondary`  
-* \[ \] Modal headers follow the standard layout  
+* \[ \] Windows have the coloured header bar; pages have a plain title with an icon tile (`PageTitle`)  
+* \[ \] Row icons are grey with a teal (edit) or red (delete) hover; badges are soft tints  
 * \[ \] Upload areas are clearly interactive with icons  
 * \[ \] Error states are clearly visible  
 * \[ \] All spacing follows the defined spacing scale  

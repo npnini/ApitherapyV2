@@ -5,7 +5,8 @@ import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, getDoc, serverT
 import { Protocol, ProtocolType } from '../types/protocol';
 import { StingPoint as AcuPoint } from '../types/apipuncture';
 import { Measure } from '../types/measure';
-import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe, Search } from 'lucide-react';
+import { Trash2, Edit, Plus, Loader, Save, AlertTriangle, FileCheck2, X, Globe, Search, FileText } from 'lucide-react';
+import PageTitle from './common/PageTitle';
 import ShuttleSelector, { ShuttleItem } from './shared/ShuttleSelector';
 import styles from './ProtocolAdmin.module.css';
 import { uploadFile, deleteFile } from '../services/storageService';
@@ -457,7 +458,7 @@ const ProtocolAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}><T>Protocol Configuration</T></h1>
+                <PageTitle icon={FileText} titleClassName={styles.title}><T>Protocol Configuration</T></PageTitle>
                 <div className={styles.headerActions}>
                     <div className={styles.searchContainer}>
                         <Search size={18} className={styles.searchIcon} />

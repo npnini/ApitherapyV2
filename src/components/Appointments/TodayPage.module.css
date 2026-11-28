@@ -23,7 +23,7 @@
 /* One row per hour: the hour label, then that hour's appointment cards. */
 .hourRow {
     display: grid;
-    grid-template-columns: 3.5rem 1fr;
+    grid-template-columns: 2.75rem 1fr;
     gap: var(--spacing-md);
     min-height: 2.75rem;
     padding: var(--spacing-sm) 0;
@@ -35,6 +35,8 @@
 }
 
 .hourLabel {
+    /* hugs the start side (right in Hebrew): the label is dir="ltr", which would otherwise push it left */
+    justify-self: start;
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-secondary);
@@ -53,9 +55,9 @@
     background: var(--color-background-card);
     border: 1px solid var(--color-border-light);
     border-inline-start: 6px solid var(--fc-event-border-color, var(--color-border));
-    border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem var(--spacing-md);
+    box-shadow: var(--shadow-card);
 }
 
 /* Due now: highlighted by a primary outline as well as the "Due now" tag (never colour alone). */
@@ -133,6 +135,127 @@
 
 .cardActions a {
     text-decoration: none;
+}
+
+/* Card actions: real buttons with an icon (UI redesign Tier 2), not underlined links.
+   One filled primary action (Start treatment); the others are quiet outlined buttons. */
+.actionButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.3;
+    color: var(--color-navy);
+    background-color: var(--color-background-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+    background-color: var(--color-navy-light);
+    border-color: var(--color-border-hover);
+}
+
+.actionButton:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}
+
+.actionButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.actionPrimary {
+    color: var(--color-white);
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.actionPrimary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+/* Cancel: grey until hovered, then red (red is reserved for the destructive moment) */
+.actionDanger {
+    color: var(--color-text-secondary);
+}
+
+.actionDanger:hover:not(:disabled) {
+    color: var(--color-error);
+    background-color: var(--color-error-background);
+    border-color: var(--color-error-border);
+}
+
+/* Page title with its icon */
+.titleBlock {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.titleIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-navy-light);
+    color: var(--color-navy);
+}
+
+.pageTitle {
+    color: var(--color-heading);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Above the hours: "No appointments today" and the free-times toggle */
+.agendaTop {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.freeToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-inline-start: auto;
+    padding: 0.35rem 0.75rem;
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    background: none;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+}
+
+.freeToggle:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-light);
+}
+
+.freeToggle[aria-pressed="true"] {
+    border-style: solid;
+    background-color: var(--color-primary-light);
+}
+
+.freeToggle:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
 }
 
 /* "+ Book HH:mm" on an hour with free time after now: quiet, dashed like a suggestion. */

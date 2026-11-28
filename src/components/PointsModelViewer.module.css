@@ -155,11 +155,11 @@
 }
 
 .modelToggleActive {
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--color-selected);
+    color: var(--color-selected-text);
 }
 
 .modelToggleActive:hover {
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--color-selected);
+    color: var(--color-selected-text);
 }

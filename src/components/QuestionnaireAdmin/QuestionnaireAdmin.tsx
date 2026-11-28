@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase';
 import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { Questionnaire } from '../../types/questionnaire';
-import { PlusCircle, AlertTriangle } from 'lucide-react';
+import { PlusCircle, AlertTriangle, ListChecks } from 'lucide-react';
+import PageTitle from '../common/PageTitle';
 import QuestionnaireList from './QuestionnaireList';
 import QuestionnaireForm from './QuestionnaireForm';
 import styles from './QuestionnaireAdmin.module.css';
@@ -126,7 +127,7 @@ const QuestionnaireAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}><T>Questionnaire Configuration</T></h1>
+                <PageTitle icon={ListChecks} titleClassName={styles.title}><T>Questionnaire Configuration</T></PageTitle>
                 <button onClick={() => setIsEditing({ id: '', domain: 'apitherapy', versionNumber: 1, questions: [] })} className={styles.addButton}>
                     <PlusCircle size={18} /> <T>Add New Questionnaire</T>
                 </button>

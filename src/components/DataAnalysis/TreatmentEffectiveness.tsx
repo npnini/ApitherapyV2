@@ -5,6 +5,8 @@ import { getTreatmentEffectiveness, TreatmentEffectivenessParams } from '../../s
 import { RotateCcw, ArrowLeft, BarChart2 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import DateField from '../Appointments/DateField';
+import { fromIsoDate, toIsoDate } from '../../utils/appointments/time';
 import styles from './TreatmentEffectiveness.module.css';
 
 interface Props {
@@ -40,6 +42,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
     const [endDate, setEndDate] = useState(yesterday.toISOString().split('T')[0]);
 
     const [history, setHistory] = useState<HistoryState[]>([]);
+    // id → name; '' = looked up but not found (e.g. a patient deleted after their treatments reached BigQuery)
     const [nameCache, setNameCache] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -52,10 +55,10 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
         const hydrateNames = async () => {
             const idsToFetch = new Set<string>();
             currentState.data.forEach((row: any) => {
-                if (row.caretaker_id && !nameCache[row.caretaker_id]) {
+                if (row.caretaker_id && !(row.caretaker_id in nameCache)) {
                     idsToFetch.add(`users:${row.caretaker_id}`);
                 }
-                if (row.patient_id && !nameCache[row.patient_id]) {
+                if (row.patient_id && !(row.patient_id in nameCache)) {
                     idsToFetch.add(`patients:${row.patient_id}`);
                 }
             });
@@ -69,10 +72,13 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                     const docSnap = await getDoc(doc(db, collectionName, id));
                     if (docSnap.exists()) {
                         const d = docSnap.data();
-                        updates[id] = d.fullName || d.displayName || id;
+                        updates[id] = d.fullName || d.displayName || '';
+                    } else {
+                        updates[id] = ''; // not in this database: shown as "Unknown patient/caretaker"
                     }
                 } catch (err) {
                     console.warn(`Failed to hydrate ${collectionName}/${id}:`, err);
+                    updates[id] = '';
                 }
             }));
 
@@ -84,6 +90,8 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
         hydrateNames();
     }, [currentState?.data, nameCache]);
 
+    const tUnknownPatient = useT('Unknown patient');
+    const tUnknownCaretaker = useT('Unknown caretaker');
     const tNoEffect = useT('No effect');
     const tDegradation = useT('Degradation');
     const tImprovement = useT('Improvement');
@@ -148,26 +156,34 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
 
     const renderEffectiveness = (val: number) => {
         if (val === undefined || val === null) return null;
-        let color = '#f59e0b'; // yellow
+        // Soft tinted badges (UI redesign Tier 2): green = improvement, red = degradation, grey = no effect
+        let tone = styles.effNone;
         let text = tNoEffect;
         if (val > 0) {
-            color = '#ef4444'; // red
+            tone = styles.effWorse;
             text = tDegradation;
         } else if (val < 0) {
-            color = '#10b981'; // green
+            tone = styles.effBetter;
             text = tImprovement;
         }
         return (
-            <span style={{ backgroundColor: color, color: '#fff', padding: '0.2rem 0.5rem', borderRadius: '4px', display: 'inline-block' }}>
-                {text} ({val.toFixed(2)})
+            <span className={`${styles.effBadge} ${tone}`}>
+                {text} <bdi dir="ltr" className={styles.effValue}>({val.toFixed(2)})</bdi>
             </span>
         );
     };
 
-    const resolveName = (id: string | undefined): string => {
+    // A name not found in Firestore shows as "Unknown patient/caretaker" (never the raw id); "…" while looking up.
+    const isUnknown = (id: string | undefined) => !!id && nameCache[id] === '';
+    const resolveName = (id: string | undefined, unknownLabel: string): string => {
         if (!id) return '';
-        return nameCache[id] || id;
+        const name = nameCache[id];
+        if (name === undefined) return '…';
+        return name || unknownLabel;
     };
+    const renderUnknown = (id: string, label: string) => (
+        <span className={styles.unknownName} title={id}>{label}</span>
+    );
 
     const renderRowButtons = (row: any) => {
         if (!currentState) return null;
@@ -186,7 +202,7 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             return (
                 <button
                     className={styles.actionButton}
-                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, tPatientsOfCaretaker, resolveName(row.caretaker_id))}
+                    onClick={() => fetchLevel('patient', { ...rowParams, caretakerId: row.caretaker_id }, tPatientsOfCaretaker, resolveName(row.caretaker_id, tUnknownCaretaker))}
                 >
                     <T>Patient</T>
                 </button>
@@ -278,12 +294,17 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
 
             return (
                 <tr key={idx}>
-                    {viewLevel === 'caretaker' && <td className={styles.td}>{resolveName(row.caretaker_id)}</td>}
+                    {viewLevel === 'caretaker' && (
+                        <td className={styles.td}>
+                            {isUnknown(row.caretaker_id) ? renderUnknown(row.caretaker_id, tUnknownCaretaker) : resolveName(row.caretaker_id, tUnknownCaretaker)}
+                        </td>
+                    )}
                     <td className={styles.td}>{probName}</td>
                     <td className={styles.td}>{measureName}</td>
 
                     {viewLevel === 'patient' && (
                         <td className={styles.td}>
+                            {isUnknown(row.patient_id) ? renderUnknown(row.patient_id, tUnknownPatient) : (
                             <span
                                 className={onPatientClick && row.patient_id ? styles.link : ''}
                                 onClick={() => {
@@ -295,8 +316,9 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
                                     }
                                 }}
                             >
-                                {resolveName(row.patient_id)}
+                                {resolveName(row.patient_id, tUnknownPatient)}
                             </span>
+                            )}
                         </td>
                     )}
                     {viewLevel === 'gender' && <td className={styles.td}><T>{row.patient_gender || 'Unknown'}</T></td>}
@@ -315,21 +337,19 @@ const TreatmentEffectiveness: React.FC<Props> = ({ user, onPatientClick }) => {
             <div className={styles.filterBar}>
                 <div className={styles.inputsSection}>
                     <div className={styles.inputGroup}>
-                        <label><T>Start Date</T></label>
-                        <input
-                            type="date"
-                            className={styles.datePicker}
-                            value={startDate}
-                            onChange={e => setStartDate(e.target.value)}
+                        <label htmlFor="effStartDate"><T>Start Date</T></label>
+                        <DateField
+                            id="effStartDate"
+                            value={fromIsoDate(startDate)}
+                            onChange={d => setStartDate(d ? toIsoDate(d) : '')}
                         />
                     </div>
                     <div className={styles.inputGroup}>
-                        <label><T>End Date</T></label>
-                        <input
-                            type="date"
-                            className={styles.datePicker}
-                            value={endDate}
-                            onChange={e => setEndDate(e.target.value)}
+                        <label htmlFor="effEndDate"><T>End Date</T></label>
+                        <DateField
+                            id="effEndDate"
+                            value={fromIsoDate(endDate)}
+                            onChange={d => setEndDate(d ? toIsoDate(d) : '')}
                         />
                     </div>
                 </div>

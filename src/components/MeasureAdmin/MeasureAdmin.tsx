@@ -4,7 +4,8 @@ import { isMeasureUsed } from '../../firebase/patient';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Measure } from '../../types/measure';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, AlertCircle, Loader, FileCheck2, X, Globe, Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, AlertCircle, Loader, FileCheck2, X, Globe, Search, ArrowUp, ArrowDown, Ruler } from 'lucide-react';
+import PageTitle from '../common/PageTitle';
 import styles from '../PointsAdmin.module.css'; // General table styles
 import formStyles from './MeasureForm.module.css'; // Form-specific styles
 import { uploadFile, deleteFile } from '../../services/storageService';
@@ -31,6 +32,10 @@ const MeasureAdmin: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [appConfig, setAppConfig] = useState<{ defaultLanguage: string; supportedLanguages: string[] }>({ defaultLanguage: 'en', supportedLanguages: ['en'] });
     const [isMeasureInUse, setIsMeasureInUse] = useState(false);
+    // Row tooltips: hooks are called here once, not inside the table loop (their number would change with the rows)
+    const tViewDocument = useT('View Document');
+    const tEditMeasure = useT('Edit Measure');
+    const tDeleteMeasure = useT('Delete Measure');
 
     // Register all strings used in callbacks or non-T components
     const stringsToRegister = useMemo(() => [
@@ -392,7 +397,7 @@ const MeasureAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}><T>Measure Configuration</T></h1>
+                <PageTitle icon={Ruler} titleClassName={styles.title}><T>Measure Configuration</T></PageTitle>
                 <div className={styles.headerActions}> {/* Added wrapper div */}
                     <div className={styles.searchContainer}> {/* Added search container */}
                         <Search size={18} className={styles.searchIcon} />
@@ -498,7 +503,7 @@ const MeasureAdmin: React.FC = () => {
                                         </td>
                                         <td className={`${styles.cell} ${styles.documentCell}`}>
                                             {measure.documentUrl && getDocumentUrl(measure.documentUrl) && (
-                                                <Tooltip text={useT('View Document')}>
+                                                <Tooltip text={tViewDocument}>
                                                     <StorageLink path={getDocumentUrl(measure.documentUrl) || ''} className={styles.documentLink}>
                                                         <FileCheck2 size={18} />
                                                     </StorageLink>
@@ -507,7 +512,7 @@ const MeasureAdmin: React.FC = () => {
                                         </td>
                                         <td className={`${styles.cell} ${styles.actionsCell}`}>
                                             <div className={styles.actionsWrapper}>
-                                                <Tooltip text={useT('Edit Measure')}>
+                                                <Tooltip text={tEditMeasure}>
                                                     <button onClick={() => handleStartEditing(measure)} className={styles.actionButton}><Edit size={18} /></button>
                                                 </Tooltip>
                                                 {measure.reference_count > 0 ? (
@@ -517,7 +522,7 @@ const MeasureAdmin: React.FC = () => {
                                                         </button>
                                                     </Tooltip>
                                                 ) : (
-                                                    <Tooltip text={useT('Delete Measure')}>
+                                                    <Tooltip text={tDeleteMeasure}>
                                                         <button onClick={() => setDeletingMeasure(measure)} className={`${styles.actionButton} ${styles.deleteButton}`}><Trash2 size={18} /></button>
                                                     </Tooltip>
                                                 )}

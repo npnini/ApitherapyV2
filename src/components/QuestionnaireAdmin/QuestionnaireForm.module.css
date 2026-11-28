@@ -22,8 +22,9 @@
 }
 
 .modalHeaderBar {
-    background-color: var(--color-primary);
-    color: white;
+    background-color: var(--modal-header-background);
+    color: var(--modal-header-text);
+    border-bottom: 1px solid var(--modal-header-border);
     padding: 1rem 1.5rem;
     display: flex;
     justify-content: space-between;

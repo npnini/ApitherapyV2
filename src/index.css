@@ -1,114 +1,187 @@
+/*
+ * Design tokens: the single source of truth for colours, spacing, radii, fonts and shadows.
+ * Palette: direction "D · Navy & Tints" (docs/Future/UI-Redesign-Plan.md).
+ *   - Action colour (buttons, links, focus): teal  --color-primary
+ *   - Headings, selected tabs/steps, modal titles: navy  --color-navy
+ *   - Honey yellow only for the brand accent (avatar, logo)  --color-honey
+ *   - Red / orange / green stay reserved for error / warning / success.
+ * globals.css holds the font import and global rules only; it defines no tokens.
+ */
 :root {
-    /* ── Claude Style-Guide tokens ───────────────────────── */
+    /* ── Brand ───────────────────────────────────────────── */
+    --color-navy: #1e2a5a;
+    --color-navy-hover: #16204a;
+    --color-navy-light: #e8ebf7;
+    --color-navy-rgb: 30, 42, 90;
+    --color-honey: #f2b705;
+    --color-honey-ink: #7a4b00;
 
-    /* Primary */
-    --color-primary: #2563eb;
-    --color-primary-hover: #1d4ed8;
-    --color-primary-light: #dbeafe;
-    --color-primary-rgb: 37, 99, 235;
+    /* Primary (action colour) */
+    --color-primary: #0b7a6e;
+    --color-primary-hover: #09655b;
+    --color-primary-light: #dff3ef;
+    --color-primary-rgb: 11, 122, 110;
+
+    /* Roles built on the brand colours */
+    --color-heading: var(--color-navy);
+    /* Selected states (active tab / step / toggle / filter pill, table header rows): a bright blue, as light
+       as white text allows at WCAG AA (4.5:1) (user decision 28/11/2026) */
+    --color-selected: #2f6bd8;
+    --color-selected-hover: #2659bd;
+    --color-selected-rgb: 47, 107, 216;
+    --color-selected-text: var(--color-white);
+    /* Window headers (edit forms, patient details, My Profile, settings, analysis): a coloured bar in the
+       selected colour. Pages (patient list, Today, admin lists, knowledge) keep a plain title. */
+    --modal-header-background: var(--color-selected);
+    --modal-header-text: var(--color-white);
+    --modal-header-border: var(--color-selected);
+    --modal-header-button-hover: rgba(255, 255, 255, 0.16);
+    --modal-header-icon-background: rgba(255, 255, 255, 0.16);
 
     /* Backgrounds */
-    --color-background-page: #f9fafb;
+    --color-background-page: #f5f7fb;
     --color-background-card: #ffffff;
     --color-background-input: #ffffff;
-    --color-background-input-hover: #f9fafb;
-    --color-background-input-disabled: #f3f4f6;
+    --color-background-input-hover: #f6f8fc;
+    --color-background-input-disabled: #eef1f6;
+    --color-background-muted: #eef1f7;
 
     /* Borders */
-    --color-border: #d1d5db;
-    --color-border-light: #e5e7eb;
-    --color-border-hover: #9ca3af;
+    --color-border: #d5dbea;
+    --color-border-light: #e5e9f3;
+    --color-border-hover: #a3abc4;
     --color-border-focus: var(--color-primary);
 
     /* Text */
-    --color-text-primary: #111827;
-    --color-text-secondary: #6b7280;
-    --color-text-tertiary: #9ca3af;
+    --color-text-primary: #1b2340;
+    --color-text-secondary: #5d6784;
+    --color-text-tertiary: #8f97b0;
     --color-white: #ffffff;
 
     /* Semantic */
     --color-error: #dc2626;
+    --color-error-hover: #b91c1c;
     --color-error-background: #fef2f2;
+    --color-error-border: #fecaca;
+    --color-error-dark: #991b1b;
     --color-success: #16a34a;
+    --color-success-hover: #15803d;
     --color-success-background: #f0fdf4;
     --color-warning: #ea580c;
+    --color-warning-dark: #c2410c;
     --color-warning-background: #fff7ed;
-    --color-info-background: #eff6ff;
+    --color-info-background: #eef1fa;
 
     /* Buttons */
-    --color-secondary-button-background: #f3f4f6;
-    --color-secondary-button-hover: #e5e7eb;
+    --color-secondary-button-background: #eef1f6;
+    --color-secondary-button-hover: #e3e8f1;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    --shadow-input-focus: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    /* Shadows (tinted with the navy, softer and layered) */
+    --shadow-sm: 0 1px 2px 0 rgba(27, 35, 64, 0.06);
+    --shadow-card: 0 1px 2px rgba(27, 35, 64, 0.05), 0 4px 14px -6px rgba(27, 35, 64, 0.12);
+    --shadow-md: 0 4px 6px -1px rgba(27, 35, 64, 0.10), 0 2px 4px -2px rgba(27, 35, 64, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(27, 35, 64, 0.10), 0 4px 6px -2px rgba(27, 35, 64, 0.05);
+    --shadow-input-focus: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+    --shadow-modal: 0 20px 25px -5px rgba(27, 35, 64, 0.14);
+    --color-overlay: rgba(15, 20, 40, 0.45);
+    --color-bg-overlay: rgba(15, 20, 40, 0.35);
 
     /* Spacing */
-    --spacing-xs: 0.25rem;
-    /* 4px  */
-    --spacing-sm: 0.5rem;
-    /* 8px  */
-    --spacing-md: 1rem;
-    /* 16px */
-    --spacing-lg: 1.5rem;
-    /* 24px */
-    --spacing-xl: 2rem;
-    /* 32px */
+    --spacing-xs: 0.25rem;  /* 4px  */
+    --spacing-sm: 0.5rem;   /* 8px  */
+    --spacing-md: 1rem;     /* 16px */
+    --spacing-lg: 1.5rem;   /* 24px */
+    --spacing-xl: 2rem;     /* 32px */
 
-    /* Border Radius */
+    /* Border radius */
     --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
 
     /* Typography */
+    --font-family-main: 'Inter', 'Assistant', system-ui, sans-serif; /* Hebrew falls through Inter to Assistant */
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
     --font-size-lg: 1.125rem;
     --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
 
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
 
-    /* Sidebar Theme (Specific Brand Exception) */
-    --color-background-sidebar: #fdfcf0;
-    /* Light cream background */
-    --color-sidebar-accent: #facc15;
-    /* Bright yellow for buttons/avatar */
-    --color-sidebar-accent-hover: #eab308;
-    /* Darker yellow for hover states */
-    --color-sidebar-text-accent: #92400e;
-    /* Amber/Brown for special labels */
+    --text-h1: clamp(24px, 5vw, 32px);
+    --text-h2: clamp(20px, 4vw, 26px);
+    --text-body: clamp(16px, 3vw, 18px);
+    --text-small: clamp(14px, 2.5vw, 16px);
+    --text-form-label: clamp(14px, 2.5vw, 16px);
 
-    /* ── Legacy aliases (kept for backward compatibility) ── */
-    --color-primary-main: #3B82F6;
-    --color-primary-dark: #2563EB;
-    --color-primary-contrast: #FFFFFF;
+    /* Motion */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.2s ease;
+
+    /* Sidebar */
+    --color-background-sidebar: #fdf9ec; /* warm cream: sets the sidebar apart from the cool working area */
+    --color-sidebar-accent: var(--color-honey);        /* avatar, "view as" box */
+    --color-sidebar-accent-hover: var(--color-navy-light); /* item hover */
+    --color-sidebar-text-accent: var(--color-honey-ink);
+
+    /* ── Aliases: older names still used by some components; they point at the tokens above ── */
+    --color-primary-main: var(--color-primary);
+    --color-primary-dark: var(--color-primary-hover);
+    --color-primary-contrast: var(--color-white);
+    --color-primary-background: var(--color-primary-light);
+    --primary-color: var(--color-primary); /* misspelt fallback in TreatmentExecution.tsx */
+    --color-secondary: var(--color-text-secondary);
     --color-secondary-main: #10B981;
     --color-secondary-dark: #059669;
     --color-secondary-light: #34D399;
     --color-secondary-contrast: #FFFFFF;
-    --color-background-primary: #FFFFFF;
-    --color-background-secondary: #F3F4F6;
+    --color-background: var(--color-background-page);
+    --color-background-primary: var(--color-background-card);
+    --color-background-secondary: var(--color-background-page);
+    --color-background-paper: var(--color-background-card);
+    --color-background-subtle: var(--color-background-page);
+    --color-background-offset: var(--color-background-muted);
+    --color-background-hover: var(--color-background-input-hover);
     --color-background-header: #374151;
-    --color-text-light: #9CA3AF;
-    --color-text-contrast: #FFFFFF;
+    --color-bg: var(--color-background-card);
+    --color-text: var(--color-text-primary);
+    --color-text-muted: var(--color-text-secondary);
+    --color-text-light: var(--color-text-tertiary);
+    --color-text-contrast: var(--color-white);
+    --color-text-inverse: var(--color-white);
+    --color-danger: var(--color-error);
     --color-error-main: #EF4444;
+    --color-error-light: var(--color-error-background);
+    --color-warning-light: var(--color-warning-background);
     --color-success-main: #10B981;
     --color-black: #000000;
-    --font-family-main: 'Inter', sans-serif;
+    --space-xs: var(--spacing-xs);
+    --space-sm: var(--spacing-sm);
+    --space-md: var(--spacing-md);
+    --space-lg: var(--spacing-lg);
+    --space-xl: var(--spacing-xl);
+    --border-radius: var(--radius-md);
+    --border-radius-sm: var(--radius-sm);
+    --border-radius-md: var(--radius-md);
+    --border-radius-lg: var(--radius-lg);
+    --border-radius-xl: var(--radius-lg);
+    --border-width: 1px;
     --spacing-unit: 8px;
 }
 
 body {
     margin: 0;
     font-family: var(--font-family-main);
-    background-color: var(--color-background-secondary);
+    background-color: var(--color-background-page);
     color: var(--color-text-primary);
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }

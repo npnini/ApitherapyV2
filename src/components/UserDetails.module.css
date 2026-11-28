@@ -104,7 +104,7 @@
 .input:focus {
     outline: none;
     border: 2px solid var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
     background-color: var(--color-background-input);
 }
 
@@ -174,7 +174,7 @@
 
 .tabButton:hover:not(.tabButtonActive) {
     background-color: var(--color-background-input-hover);
-    color: var(--color-primary);
+    color: var(--color-selected);
 }
 
 .tabButton:focus-visible {
@@ -183,8 +183,8 @@
 }
 
 .tabButtonActive {
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--color-selected);
+    color: var(--color-selected-text);
 }
 
 .tabButtonActive:focus-visible {
@@ -252,6 +252,36 @@
 }
 
 /* ── Actions ──────────────────────────────────────────────── */
+/* ── My Profile in the modal (fixedActions): only the data items scroll ── */
+.containerFixedActions {
+    min-height: 0;
+    flex: 0 1 auto;
+    padding: 0;
+}
+
+.containerFixedActions .card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 0 1 auto;
+}
+
+/* Title, tabs and buttons keep their height; only the data area gives way */
+.containerFixedActions .card > * {
+    flex-shrink: 0;
+}
+
+.containerFixedActions .scrollArea {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-inline: 2px; /* room for focus rings */
+}
+
+.containerFixedActions .actions {
+    flex-shrink: 0;
+}
+
 .actions {
     display: flex;
     gap: var(--spacing-md);

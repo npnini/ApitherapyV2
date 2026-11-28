@@ -4,9 +4,11 @@ import { db, auth } from '../firebase';
 import { collection, query, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { AppUser } from '../types/user';
 import { T, useTranslationContext } from './T';
-import { Shield, ShieldAlert, User, Check, X, Search } from 'lucide-react';
+import { Shield, ShieldAlert, User, Check, X, Search, Users } from 'lucide-react';
+import PageTitle from './common/PageTitle';
 import styles from './UserManagement.module.css';
 import { setUserRole, callableErrorMessage } from '../services/userService';
+import LoadingState from './common/LoadingState';
 
 const UserManagement: React.FC = () => {
     const [users, setUsers] = useState<AppUser[]>([]);
@@ -77,13 +79,13 @@ const UserManagement: React.FC = () => {
     );
 
     if (loading) {
-        return <div className={styles.loading}><T>Loading users...</T></div>;
+        return <LoadingState label={<T>Loading users...</T>} />;
     }
 
     return (
         <div className={styles.container} dir={direction}>
             <header className={styles.header}>
-                <h1><T>User Management</T></h1>
+                <PageTitle icon={Users}><T>User Management</T></PageTitle>
                 <div className={styles.searchBar}>
                     <Search size={18} />
                     <input

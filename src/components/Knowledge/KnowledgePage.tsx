@@ -8,6 +8,7 @@ import {
 import EntityView from './EntityView';
 import ResultList, { ResultItem, TYPE_GROUPS } from './ResultList';
 import styles from './Knowledge.module.css';
+import LoadingState from '../common/LoadingState';
 
 interface KnowledgePageProps {
     appConfig: any;
@@ -114,9 +115,7 @@ const KnowledgePage: React.FC<KnowledgePageProps> = ({ appConfig, compact }) => 
                     <button type="button" className={styles.secondaryButton} onClick={load}><T>Try again</T></button>
                 </section>
             ) : !kb ? (
-                <section className={styles.card}>
-                    <p className={styles.message}><T>Loading...</T></p>
-                </section>
+                <LoadingState label={<T>Loading...</T>} />
             ) : current ? (
                 <>
                     <div className={styles.entityTop}>

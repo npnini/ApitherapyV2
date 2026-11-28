@@ -1,0 +1,81 @@
+/* Loading placeholder (UI redesign Tier 2): soft rows with a gentle shimmer and the loading text. */
+.loadingState {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: var(--spacing-lg);
+    background-color: var(--color-background-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+
+.fullPage {
+    max-width: 40rem;
+    margin: 15vh auto 0;
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.lines {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bar {
+    display: block;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg,
+            var(--color-background-muted) 0%,
+            var(--color-navy-light) 50%,
+            var(--color-background-muted) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+}
+
+.lineLong {
+    width: 70%;
+    height: 0.75rem;
+}
+
+.lineShort {
+    width: 40%;
+    height: 0.625rem;
+}
+
+.label {
+    margin: 0;
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+@keyframes shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bar {
+        animation: none;
+    }
+}

@@ -224,7 +224,7 @@
 
 .subTabButton:hover:not(.subTabButtonActive) {
     background-color: var(--color-background-input-hover);
-    color: var(--color-primary);
+    color: var(--color-selected);
 }
 
 .subTabButton:focus-visible {
@@ -233,8 +233,8 @@
 }
 
 .subTabButtonActive {
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--color-selected);
+    color: var(--color-selected-text);
 }
 
 .subTabButtonActive:focus-visible {

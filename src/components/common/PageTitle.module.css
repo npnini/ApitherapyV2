@@ -1,0 +1,36 @@
+/* Page title with an icon tile (UI redesign Tier 2). Same look as the Patients and Today page titles. */
+.pageTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    min-width: 0;
+}
+
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-navy-light);
+    color: var(--color-navy);
+}
+
+.text {
+    min-width: 0;
+}
+
+/* .pageTitle .title wins over the page's own title class for colour and margin; the font size stays the page's */
+.pageTitle .title {
+    margin: 0;
+    line-height: 1.25;
+    color: var(--color-heading);
+}
+
+.subtitle {
+    margin: 0.125rem 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}

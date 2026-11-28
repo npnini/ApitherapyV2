@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Sun } from 'lucide-react';
+import PageTitle from './common/PageTitle';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -143,7 +145,7 @@ const BodyModelTuner: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}><T>3D Body Model Lighting</T></h1>
+        <PageTitle icon={Sun} titleClassName={styles.title}><T>3D Body Model Lighting</T></PageTitle>
       </div>
 
       {error && <p className={styles.errorBox}><T>{error}</T></p>}

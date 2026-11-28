@@ -5,7 +5,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-background-sidebar);
+  background-color: var(--color-background-page);
   color: var(--color-text-primary);
 }
 
@@ -32,9 +32,9 @@
 }
 
 .langButton.active {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-white);
+  background-color: var(--color-selected);
+  border-color: var(--color-selected);
+  color: var(--color-selected-text);
 }
 
 .loginBox {

@@ -15,8 +15,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--modal-header-background);
+    color: var(--modal-header-text);
+    border-bottom: 1px solid var(--modal-header-border);
     flex-shrink: 0;
 }
 
@@ -28,8 +29,13 @@
 .closeButton {
     background: none;
     border: none;
-    color: var(--color-white);
+    color: var(--modal-header-text);
     cursor: pointer;
+    border-radius: var(--radius-md);
+}
+
+.closeButton:hover {
+    background-color: var(--modal-header-button-hover);
 }
 
 .form {
@@ -132,7 +138,7 @@
     flex-direction: column;
     gap: 1.5rem;
     padding: 1.25rem;
-    background-color: var(--color-background-sidebar);
+    background-color: var(--color-background-muted);
     border: 1px solid var(--color-border-light);
     border-radius: var(--radius-md);
 }
@@ -248,12 +254,12 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--color-border);
     cursor: pointer;
 }
 
 .documentViewButton {
-    background-color: #e5e7eb;
+    background-color: var(--color-secondary-button-hover);
 }
 
 .documentUploadButton {
@@ -319,7 +325,7 @@
 /* Language tab bar */
 .langTabBar {
     display: flex;
-    background-color: var(--color-background-sidebar);
+    background-color: var(--color-background-muted);
     border-bottom: 1px solid var(--color-border-light);
     padding: 0 1.5rem;
     gap: 0.25rem;
@@ -352,7 +358,7 @@
 
 /* Translation Reference */
 .translationReference {
-    background-color: var(--color-background-sidebar);
+    background-color: var(--color-background-muted);
     border: 1px solid var(--color-border-light);
     border-left: 4px solid var(--color-primary);
     padding: 0.75rem 1rem;
@@ -408,7 +414,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem;
-    background-color: var(--color-background-sidebar);
+    background-color: var(--color-background-muted);
     border: 1px solid var(--color-border-light);
     border-radius: var(--radius-md);
     margin-bottom: 1rem;

@@ -116,7 +116,7 @@
 .textarea:focus {
     outline: none;
     border: 2px solid var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
     background-color: var(--color-background-input);
 }
 
@@ -203,7 +203,7 @@
 .problemSearchInput:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .problemDropdownList {
@@ -325,7 +325,7 @@
 .measureInput:focus {
     outline: none;
     border: 2px solid var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
     background-color: var(--color-background-input);
 }
 
@@ -456,7 +456,7 @@
 .captionInput:focus {
     outline: none;
     border: 2px solid var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .btnRemove {
@@ -621,7 +621,7 @@
 
 .btnExit:hover {
     background-color: var(--color-error);
-    color: #fff;
+    color: var(--color-white);
 }
 
 /* ── Modal inline feedback ─── */

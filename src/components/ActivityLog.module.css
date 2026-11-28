@@ -11,14 +11,15 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-xl);
-    background: var(--color-primary);
-    color: var(--color-white);
+    background: var(--color-background-card);
+    color: var(--color-heading);
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .header h1 {
     margin: 0;
     font-size: var(--font-size-xl);
-    color: var(--color-white);
+    color: var(--color-heading);
 }
 
 .headerActions {
@@ -32,16 +33,16 @@
     gap: var(--spacing-xs);
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--color-white);
+    border: 1px solid var(--color-border);
+    background: var(--color-background-card);
+    color: var(--color-navy);
     cursor: pointer;
     font-size: var(--font-size-sm);
     transition: all 0.2s;
 }
 
 .refreshBtn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--color-navy-light);
 }
 
 .filters {

@@ -47,9 +47,11 @@ import { logAction } from './services/auditLogService';
 import PatientIntake from './components/PatientIntake/PatientIntake';
 import FeedbackStandaloneView from './components/PatientIntake/FeedbackStandaloneView';
 import Modal from './components/common/Modal';
+import { BarChart2, Settings, User as UserIcon } from 'lucide-react';
 import ConfirmationModal from './components/ConfirmationModal';
 import { countPatientTreatments, hasTreatmentToday } from './services/appointmentService';
 import './globals.css';
+import LoadingState from './components/common/LoadingState';
 
 type View = 'dashboard' | 'patient_intake' | 'protocol_selection' | 'treatment_execution' | 'admin_protocols' | 'admin_points' | 'admin_point_groups' | 'admin_body_model' | 'point_side_analysis' | 'admin_measures' | 'admin_problems' | 'admin_questionnaires' | 'admin_users' | 'treatment_history' | 'user_details' | 'onboarding_test' | 'data_analysis' | 'activity_log' | 'appointments_today' | 'appointments_calendar' | 'knowledge';
 /** Knowledge search is on unless cfg_app_config/main.knowledgeSettings.enabled is false. */
@@ -679,7 +681,7 @@ const AppInner: React.FC = () => {
         if (userTermsCfg !== null && !termsAccepted) {
             return <UserTermsAcceptance user={appUser} termsConfig={userTermsCfg} onAccepted={reloadAppUser} onDeclined={handleLogout} />;
         }
-        if (isLoading && currentView === 'dashboard') return <div className="flex justify-center items-center h-screen"><div><T>Loading Patient Data...</T></div></div>;
+        if (isLoading && currentView === 'dashboard') return <LoadingState fullPage rows={5} label={<T>Loading Patient Data...</T>} />;
 
         const dashboardModalViews = ['patient_intake', 'protocol_selection', 'treatment_history'];
         // The intake is an overlay: opened from Today, Today stays underneath it (not the patient list).
@@ -694,7 +696,7 @@ const AppInner: React.FC = () => {
         // Today's agenda; wide screens can also show the patient list next to it (My Profile → Screen layout).
         // Wait for the viewed caretaker's profile under "View As" (their working hours).
         const todayEl = (viewAsCaretakerId && !impersonatedUser)
-            ? <div><T>Loading...</T></div>
+            ? <LoadingState rows={3} label={<T>Loading...</T>} />
             : <TodayPage
                 caretaker={effectiveUser}
                 actor={appUser}
@@ -733,6 +735,7 @@ const AppInner: React.FC = () => {
                     onActivityLogClick={handleActivityLogClick}
                     viewAsCaretakerId={viewAsCaretakerId}
                     onViewAsCaretakerChange={setViewAsCaretakerId}
+                    activeView={isSettingsModalOpen ? 'app_settings' : todayUnderIntake ? 'appointments_today' : isDashboardView ? 'patients' : currentView}
                 />
         );
 
@@ -746,8 +749,8 @@ const AppInner: React.FC = () => {
                         isDashboardView ?
                             patientsDashboardEl
                             : currentView === 'user_details' && effectiveUser ?
-                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile}>
-                                    <UserDetails user={effectiveUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} />
+                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tMyProfile} icon={UserIcon} isFlex>
+                                    <UserDetails user={effectiveUser} onSave={handleSaveUser} onBack={() => setCurrentView('dashboard')} fixedActions />
                                 </Modal>
                                 : currentView === 'onboarding_test' ?
                                     <UserDetails user={appUser} onSave={handleSaveUser} isOnboarding={true} onBack={() => { }} />
@@ -772,7 +775,7 @@ const AppInner: React.FC = () => {
                                                             : currentView === 'activity_log' ?
                                                                 <ActivityLog />
                                                                 : currentView === 'data_analysis' && effectiveUser ?
-                                                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} isFlex={true}>
+                                                                <Modal isOpen={true} onClose={() => setCurrentView('dashboard')} title={tTreatmentEffectiveness} icon={BarChart2} isFlex={true}>
                                                                     <TreatmentEffectiveness user={effectiveUser} onPatientClick={handlePatientClick} />
                                                                 </Modal>
                                                                 : (currentView === 'appointments_today' || todayUnderIntake) ?
@@ -791,7 +794,7 @@ const AppInner: React.FC = () => {
                                                                 : currentView === 'appointments_calendar' ?
                                                                     // Wait for the viewed caretaker's profile under "View As" (their working hours).
                                                                     (viewAsCaretakerId && !impersonatedUser)
-                                                                        ? <div><T>Loading...</T></div>
+                                                                        ? <LoadingState rows={3} label={<T>Loading...</T>} />
                                                                         : <CalendarPage
                                                                             caretaker={effectiveUser}
                                                                             actor={appUser}
@@ -843,6 +846,7 @@ const AppInner: React.FC = () => {
                             isOpen={isSettingsModalOpen}
                             onClose={() => setIsSettingsModalOpen(false)}
                             title={tAppSettings}
+                            icon={Settings}
                         >
                             <ApplicationSettings user={appUser} onClose={() => setIsSettingsModalOpen(false)} />
                         </Modal>

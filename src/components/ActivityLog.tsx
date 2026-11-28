@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, getDoc, doc, startAfter, DocumentSnapshot, Timestamp } from 'firebase/firestore';
 import { T, useTranslationContext } from './T';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ClipboardList } from 'lucide-react';
+import PageTitle from './common/PageTitle';
 import styles from './ActivityLog.module.css';
+import LoadingState from './common/LoadingState';
 
 /**
  * A log record. Since 21/11/2026 records hold IDs only for people: userId (no name) and patientId
@@ -266,7 +268,7 @@ const ActivityLog: React.FC = () => {
     return (
         <div className={styles.container} dir={isRtl ? 'rtl' : 'ltr'}>
             <div className={styles.header}>
-                <h1><T>Activity Log</T></h1>
+                <PageTitle icon={ClipboardList}><T>Activity Log</T></PageTitle>
                 <div className={styles.headerActions}>
                     <button onClick={handleRefresh} className={styles.refreshBtn} disabled={loading}>
                         <RefreshCw size={14} />
@@ -302,7 +304,7 @@ const ActivityLog: React.FC = () => {
             </div>
 
             {loading ? (
-                <div className={styles.loading}><T>Loading...</T></div>
+                <LoadingState label={<T>Loading...</T>} />
             ) : sorted.length === 0 ? (
                 <div className={styles.emptyState}><T>No log entries found</T></div>
             ) : (

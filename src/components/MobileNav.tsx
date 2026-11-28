@@ -45,7 +45,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ open, onOpenChange, children }) =
                 >
                     <Menu size={24} aria-hidden="true" />
                 </button>
-                <span className={styles.appName}>APITHERAPYCARE</span>
+                <span className={styles.appName}>ApitherapyCare</span>
             </header>
 
             {open && <div className={styles.backdrop} onClick={() => onOpenChange(false)} />}

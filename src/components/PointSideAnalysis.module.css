@@ -195,7 +195,7 @@
 }
 
 .rowFlagged {
-    background-color: #fef2f2;
+    background-color: var(--color-error-background);
 }
 
 .cell {

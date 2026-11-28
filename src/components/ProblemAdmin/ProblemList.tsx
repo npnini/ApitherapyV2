@@ -5,12 +5,14 @@ import { db, auth } from '../../firebase';
 import { logAction } from '../../services/auditLogService';
 import { Problem } from '../../types/problem';
 import styles from './ProblemList.module.css';
-import { Plus, Trash2, Edit, Search, X, FileCheck2 } from 'lucide-react';
+import { Plus, Trash2, Edit, Search, X, FileCheck2, Bug } from 'lucide-react';
+import PageTitle from '../common/PageTitle';
 import Modal from '../shared/Modal';
 import { T, useT, useTranslationContext } from '../T';
 import Tooltip from '../common/Tooltip';
 import { StorageLink } from '../shared/StorageComponents';
 import { getFieldContent } from '../../utils/storageUtils';
+import LoadingState from '../common/LoadingState';
 
 interface ProblemListProps {
   onEdit: (id: string) => void;
@@ -84,7 +86,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}><T>Problems Configuration</T></h1>
+        <PageTitle icon={Bug} titleClassName={styles.title}><T>Problems Configuration</T></PageTitle>
         <div className={styles.headerActions}>
           <div className={styles.searchContainer}>
             <Search size={18} className={styles.searchIcon} />
@@ -106,7 +108,7 @@ const ProblemList: React.FC<ProblemListProps> = ({ onEdit, onAddNew, appConfig }
           </button>
         </div>
       </div>
-      {loading && <p className={styles.loadingText}><T>Loading problems...</T></p>}
+      {loading && <LoadingState label={<T>Loading problems...</T>} />}
       {error && <p className={styles.errorText}><T>Error loading problems.</T></p>}
       <div className={styles.tableContainer}>
         <table className={styles.table}>

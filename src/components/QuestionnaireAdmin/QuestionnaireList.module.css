@@ -109,3 +109,24 @@
     padding: 2rem;
     color: var(--color-text-tertiary);
 }
+
+/* ── Row icons (UI redesign Tier 2): grey by default; edit turns teal on hover, delete turns red only on
+      hover (red is kept for the destructive moment). Placed last so it wins the cascade. ── */
+.actionButton {
+    border-radius: var(--radius-md);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+    color: var(--color-primary);
+    background-color: var(--color-primary-light);
+}
+
+.deleteButton {
+    color: var(--color-text-secondary) !important;
+}
+
+.deleteButton:hover:not(:disabled) {
+    color: var(--color-error) !important;
+    background-color: var(--color-error-background);
+}

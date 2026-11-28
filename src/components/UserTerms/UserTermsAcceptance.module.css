@@ -24,7 +24,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    background: #fff;
+    background: var(--color-background-card);
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     padding: 16px;
@@ -61,7 +61,7 @@
 
 .version {
     font-size: 0.875rem;
-    color: #4b5563;
+    color: var(--color-text-secondary);
 }
 
 .tools {
@@ -73,7 +73,7 @@
 
 .intro {
     font-size: 0.875rem;
-    color: #374151;
+    color: var(--color-text-primary);
     margin: 0;
 }
 
@@ -81,7 +81,7 @@
 .document {
     flex: 1 1 auto;
     min-height: 140px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--color-border-light);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -98,7 +98,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--color-border-light);
     padding-top: 12px;
 }
 
@@ -136,14 +136,14 @@
 }
 
 .acceptButton {
-    color: #fff;
+    color: var(--color-white);
     background: #f59e0b;
 }
 
 .declineButton {
-    color: #1f2937;
-    background: #fff;
-    border: 1px solid #d1d5db;
+    color: var(--color-text-primary);
+    background: var(--color-background-card);
+    border: 1px solid var(--color-border);
 }
 
 /* Tablets and desktops: more breathing room */

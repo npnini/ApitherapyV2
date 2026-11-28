@@ -71,7 +71,7 @@
     border: 1px solid var(--color-border-light);
     padding: var(--spacing-md);
     /* Selection while dragging: a clearly visible blue fill. */
-    --fc-highlight-color: rgba(37, 99, 235, 0.18);
+    --fc-highlight-color: rgba(var(--color-primary-rgb), 0.18);
 }
 
 /* Drag preview of a new appointment: dashed primary outline. */
@@ -240,8 +240,9 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-md) var(--spacing-lg);
-    background-color: var(--color-primary);
-    color: var(--color-white);
+    background-color: var(--modal-header-background);
+    color: var(--modal-header-text);
+    border-bottom: 1px solid var(--modal-header-border);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
@@ -259,16 +260,16 @@
     background: none;
     border: none;
     border-radius: var(--radius-sm);
-    color: var(--color-white);
+    color: var(--modal-header-text);
     cursor: pointer;
 }
 
 .modalCloseButton:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--modal-header-button-hover);
 }
 
 .modalCloseButton:focus-visible {
-    outline: 2px solid var(--color-white);
+    outline: 2px solid var(--color-border-focus);
     outline-offset: 2px;
 }
 

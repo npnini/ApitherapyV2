@@ -5,7 +5,8 @@ import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StingPoint, Vector3Pos } from '../types/apipuncture';
 import { PointGroup } from '../types/pointGroup';
-import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, Lock, Unlock } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Save, AlertTriangle, Loader, FileCheck2, X, Globe, Search, Lock, Unlock, MapPin } from 'lucide-react';
+import PageTitle from './common/PageTitle';
 import styles from './PointsAdmin.module.css';
 import { newDocumentId, uploadPendingDocuments, deleteDocuments, unusedDocumentPaths } from '../services/entityDocuments';
 import { T, useT, useTranslationContext } from '../components/T';
@@ -383,7 +384,7 @@ const PointsAdmin: React.FC = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}><T>Points Configuration</T></h1>
+                <PageTitle icon={MapPin} titleClassName={styles.title}><T>Points Configuration</T></PageTitle>
                 <div className={styles.headerActions}>
                     <div className={styles.searchContainer}>
                         <Search size={18} className={styles.searchIcon} />

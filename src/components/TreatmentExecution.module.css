@@ -1733,3 +1733,60 @@
         height: 1.5rem;
     }
 }
+
+/* ── Phone in landscape: the two side thirds (protocol points, stung points) in a compact size so a row fits
+      the narrow column. Placed last so it wins over the touch sizes above. The number boxes keep 16px text
+      (a smaller size makes phones zoom in on focus); their width, arrows and gaps get smaller instead, and a
+      stung row may put its counters on a second line if it still does not fit. ── */
+@media (max-height: 500px) and (min-width: 560px) {
+    .dataPanel {
+        padding: 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .pointItem {
+        padding: 0.35rem 0.5rem;
+    }
+
+    .pointCode,
+    .pointLabel {
+        font-size: 0.75rem;
+    }
+
+    .stungList {
+        padding: 0.25rem;
+    }
+
+    .stungItem {
+        flex-wrap: wrap;
+        gap: 0.25rem 0.5rem;
+        padding: 0.3rem 0.4rem;
+        font-size: 0.75rem;
+    }
+
+    .stungItemControls {
+        gap: 0.25rem;
+        margin-inline-start: auto;
+    }
+
+    .counterGroup {
+        gap: 0.5rem;
+    }
+
+    .counterBox {
+        gap: 0.15rem;
+    }
+
+    .counterLabel {
+        font-size: 0.65rem;
+    }
+
+    .countField .counterInput {
+        width: 2rem;
+        padding-inline: 0.1rem;
+    }
+
+    .countArrowBtn {
+        width: 1.5rem;
+    }
+}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { RefreshCw, Download, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Download, AlertTriangle, ClipboardCheck } from 'lucide-react';
+import PageTitle from './common/PageTitle';
 import { db } from '../firebase';
 import { logger } from '../utils/logger';
 import { StingPoint } from '../types/apipuncture';
@@ -63,7 +64,7 @@ const PointSideAnalysis: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}><T>Point Side &amp; Pairing Verification</T></h1>
+        <PageTitle icon={ClipboardCheck} titleClassName={styles.title}><T>Point Side &amp; Pairing Verification</T></PageTitle>
         <div className={styles.headerActions}>
           <button className={styles.runButton} onClick={runAnalysis} disabled={loading}>
             <RefreshCw size={16} className={loading ? styles.spinning : undefined} />
